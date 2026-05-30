@@ -80,6 +80,9 @@ app-sopralluoghi/
 3. `npm install`
 4. `npm run dev`
 
+Per pubblicarla online (PWA installabile, anche da telefono) vedi **`DEPLOY.md`**
+(deploy su Vercel con build automatica a ogni push).
+
 > Le versioni in `package.json` sono indicative: `npm install` le risolve; puoi
 > aggiornarle con `npm outdated`. Se `tsc` segnala qualche tipo da rifinire,
 > sono ritocchi locali, non problemi di logica.
