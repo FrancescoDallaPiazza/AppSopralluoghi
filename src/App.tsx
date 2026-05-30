@@ -4,6 +4,7 @@ import Login from './Login';
 import MieiSopralluoghi from './MieiSopralluoghi';
 import MieCoseDaFare from './MieCoseDaFare';
 import Compilazione from './Compilazione';
+import BackOffice from './admin/BackOffice';
 import { avviaSyncAuto, runSync } from './lib/sync';
 import type { Tecnico } from './lib/types';
 import type { SopralluogoConContesto } from './lib/sopralluoghi';
@@ -63,6 +64,37 @@ function Home({ tecnico }: { tecnico: Tecnico }) {
   );
 }
 
+// Dopo il login: l'amministratore entra nel back-office (con scorciatoia
+// all'app da campo); il tecnico entra direttamente nell'app da campo.
+function Pronto({ tecnico }: { tecnico: Tecnico }) {
+  const [vista, setVista] = useState<'auto' | 'campo'>('auto');
+  const isAdmin = tecnico.ruolo === 'admin';
+
+  if (isAdmin && vista === 'auto') {
+    return <BackOffice tecnico={tecnico} onVaiAllApp={() => setVista('campo')} />;
+  }
+
+  return (
+    <>
+      <Home tecnico={tecnico} />
+      {isAdmin && (
+        <button
+          onClick={() => setVista('auto')}
+          style={{
+            position: 'fixed', top: 8, right: 8, zIndex: 9999,
+            border: '1px solid #c9c2b4', background: '#fffdf9', color: '#16181c',
+            borderRadius: 999, padding: '6px 12px', fontWeight: 800, fontSize: 12,
+            fontFamily: '-apple-system,system-ui,sans-serif', cursor: 'pointer',
+            boxShadow: '0 6px 18px -10px rgba(0,0,0,.5)',
+          }}
+        >
+          ← Back-office
+        </button>
+      )}
+    </>
+  );
+}
+
 function Gate() {
   const { fase, tecnico, signOut } = useAuth();
 
@@ -88,7 +120,7 @@ function Gate() {
         testo="Non ho ancora i tuoi dati su questo dispositivo. Connettiti una volta per completare l'accesso."
         azione={{ label: 'Esci', onClick: signOut }} />;
     case 'pronto':
-      return <Home tecnico={tecnico!} />;
+      return <Pronto tecnico={tecnico!} />;
   }
 }
 

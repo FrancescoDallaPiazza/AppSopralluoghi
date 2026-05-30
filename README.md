@@ -8,13 +8,23 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
 ## Cosa c'è (funzionante)
 - **Auth** email/password + collegamento utente↔tecnico (`tecnico.user_id`), con
   cache offline del tecnico e gate per gli stati limite (account non collegato,
-  disattivato, offline al primo accesso).
+  disattivato, offline al primo accesso). Ruolo `tecnico` / `admin`.
 - **I miei sopralluoghi** — lista del tecnico (da fare / completati), overlay locale.
 - **Compilazione** (schermata di campo) — checklist per voce con Conforme /
   Non conforme / N.A., note, foto (ridimensionate + geo), generazione di azioni
   correttive e scadenze ricorrenti, **giro precedente** (verifica/chiusura delle
   azioni aperte dei sopralluoghi precedenti dello stesso incarico).
 - **Le mie cose da fare** — azioni assegnate al tecnico, con transizioni di stato.
+- **Report** (cliente / interno) via Edge Function `genera-report`.
+- **Back-office** (solo admin):
+  - **Template** — editor del modello "form configurabile": voci di primo livello
+    e sotto-domande, tipi (scelta / multiscelta / testo / data / numero / slider /
+    foto / rilievo), opzioni con stato logico e generazione azione, scadenza
+    ricorrente, foto richieste, min/max, ripetibilità. Versionamento sicuro: un
+    template già usato non si modifica a ritroso (si crea una nuova versione e si
+    archivia la precedente); duplica e archivia/riattiva.
+  - **Pianificazione** — elenco incarichi con avanzamento; genera le sedute fino a
+    `n_sopralluoghi` e assegna tecnico / data / durata / località per ciascuna.
 - **Sync offline** — coda outbox, drain in ordine, upload foto su Storage.
 
 ## Struttura
@@ -26,30 +36,42 @@ app-sopralluoghi/
 ├─ tsconfig.json
 ├─ .env.local.example      # copia in .env.local
 ├─ supabase/
-│  └─ migrations/001_init.sql   # schema + RLS + bucket foto
+│  ├─ migrations/          # 001 schema+RLS+foto · 002 form model · 003-004 seed
+│  │                       # 005 bucket report · 006 ruolo tecnico (back-office)
+│  └─ functions/genera-report/   # Edge Function report (HTML/PDF + email)
 ├─ mockups/                # riferimenti HTML (campo / report)
 └─ src/
    ├─ main.tsx
-   ├─ App.tsx              # AuthProvider + gate + shell 2 schede
+   ├─ App.tsx              # AuthProvider + gate; admin -> back-office, tecnico -> campo
    ├─ AuthProvider.tsx
    ├─ Login.tsx
    ├─ MieiSopralluoghi.tsx
    ├─ MieCoseDaFare.tsx
    ├─ Compilazione.tsx
+   ├─ admin/              # back-office (solo admin)
+   │  ├─ BackOffice.tsx    # shell + tab Template / Pianificazione
+   │  ├─ TemplateList.tsx  # elenco + nuovo / duplica / archivia
+   │  ├─ TemplateEditor.tsx# editor albero voci + config + versionamento
+   │  ├─ Pianificazione.tsx# incarichi + genera/assegna sedute
+   │  └─ ui.ts             # stile condiviso del back-office
    └─ lib/
       ├─ types.ts
       ├─ supabase.ts
       ├─ db.ts             # Dexie + outbox
       ├─ sync.ts           # resize foto, coda, drain -> server
-      ├─ auth.ts           # signIn/out + risolviTecnico
+      ├─ auth.ts           # signIn/out + risolviTecnico (con ruolo)
       ├─ sopralluoghi.ts
       ├─ azioni.ts         # cose da fare + giro precedente
-      └─ compilazione.ts   # apertura checklist + azioni + stato sopralluogo
+      ├─ report.ts         # client della Edge Function report
+      ├─ compilazione.ts   # apertura checklist + azioni + stato sopralluogo
+      └─ admin/            # strato dati del back-office (online-first)
+         ├─ templates.ts    # CRUD template + versionamento
+         └─ pianificazione.ts # incarichi, sedute, tecnici
 ```
 
 ## Avvio
-1. Crea un progetto Supabase e applica la migration: `supabase db push`
-   (oppure incolla `supabase/migrations/001_init.sql` nello SQL editor).
+1. Crea un progetto Supabase e applica le migration in ordine (`supabase db push`,
+   oppure incolla i file di `supabase/migrations/` nello SQL editor: 001 → 006).
 2. `cp .env.local.example .env.local` e compila:
    ```
    VITE_SUPABASE_URL=https://xxxx.supabase.co
@@ -62,18 +84,22 @@ app-sopralluoghi/
 > aggiornarle con `npm outdated`. Se `tsc` segnala qualche tipo da rifinire,
 > sono ritocchi locali, non problemi di logica.
 
-## Collegamento utente↔tecnico
+## Collegamento utente↔tecnico e ruoli
 L'app non crea account: l'amministratore crea l'utente in Supabase (Auth → Add
 user) e scrive il suo UUID in `tecnico.user_id`
 (`update tecnico set user_id = '<auth-uid>' where id = '<tecnico-id>';`).
 Finché il legame non c'è, il gate mostra "Account non collegato".
 
+Per dare accesso al back-office, imposta il ruolo:
+`update tecnico set ruolo = 'admin' where id = '<tecnico-id>';`
+(default `tecnico`). In Fase 1 le policy RLS restano "staff_full": il gate del
+ruolo vive nell'app; con il portale cliente (Fase 3) si stringeranno lato DB.
+
 ## Cosa manca (prossimi blocchi)
-- **Report PDF** dai template in `mockups/` (versione cliente / interna):
-  Edge Function con Playwright + invio email (Resend/Postmark). È una lettura
-  che assembla `sopralluogo + checklist_compilata + esito_voce + foto + azione`.
-- **Back-office**: creazione template checklist e pianificazione sopralluoghi.
 - **Prefetch offline** dei sopralluoghi/template pianificati (per il campo senza rete).
+- **Anagrafiche** in back-office: clienti e incarichi (oggi inseriti via DB/Werp).
+- **Pianificazione assistita**: suggerimento date/tecnico da `capienza_ore_settimana`
+  e distanza dalla base; viste calendario/carico per tecnico.
 - **Integrazione Werp** (campo `werp_attivita_id` già predisposto) — da chiarire
   col fornitore: API REST / accesso DB / import-export file.
 - Scadenze ricorrenti: rigenerazione del ciclo successivo alla verifica.

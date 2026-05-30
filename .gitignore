@@ -5,3 +5,8 @@ dist-ssr
 .env.local
 .DS_Store
 *.log
+
+# build info / generati da tsc -b
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts

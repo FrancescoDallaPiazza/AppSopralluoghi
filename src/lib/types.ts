@@ -7,6 +7,9 @@ export type AzioneTipo = 'azione_correttiva' | 'scadenza_ricorrente';
 export type AzioneResponsabile = 'cliente' | 'risorsa_interna';
 export type AzionePriorita = 'bassa' | 'media' | 'alta';
 export type AzioneStato = 'aperta' | 'in_corso' | 'conclusa';
+export type RuoloTecnico = 'tecnico' | 'admin';
+export type IncaricoStato = 'attivo' | 'sospeso' | 'chiuso';
+export type ChecklistTmplStato = 'attivo' | 'archiviato';
 
 export interface Tecnico {
   id: string;
@@ -18,6 +21,31 @@ export interface Tecnico {
   calendario_ref: string | null;
   capienza_ore_settimana: number | null;
   attivo: boolean;
+  ruolo: RuoloTecnico;
+}
+
+// --- anagrafiche / contratto (back-office) ---
+export interface Cliente {
+  id: string;
+  werp_id: string | null;
+  ragione_sociale: string;
+  localita: string | null;
+  indirizzo: string | null;
+  lat: number | null;
+  lng: number | null;
+  attivo: boolean;
+}
+
+export interface Incarico {
+  id: string;
+  cliente_id: string;
+  werp_id: string | null;
+  tipo_attivita: string;
+  n_sopralluoghi: number;
+  periodo_inizio: string;
+  periodo_fine: string;
+  durata_seduta_stimata_min: number | null;
+  stato: IncaricoStato;
 }
 
 // --- modello "form configurabile" (vedi migration 002) ---
@@ -62,6 +90,8 @@ export interface ChecklistTemplate {
   nome: string;
   tipo_attivita: string;
   versione: number;
+  stato: ChecklistTmplStato;
+  note: string | null;
   voci?: VoceTemplate[];
 }
 
