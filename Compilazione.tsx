@@ -1,108 +1,107 @@
-import { useState, type FormEvent } from 'react';
-import { signIn } from './lib/auth';
+// Edge Function `genera-report`.
+// Body JSON: { sopralluogo_id, variante?: 'cliente'|'interna', formato?: 'html'|'pdf',
+//              invia_email?: boolean, email_destinatario?: string }
+// Restituisce { url } (URL firmato all'artefatto nel bucket privato 'report').
+//
+// PDF: le Edge Function girano su Deno e non hanno Chromium, quindi la
+// conversione HTML->PDF usa un servizio esterno compatibile "browserless"
+// (env PDF_SERVICE_URL + PDF_SERVICE_TOKEN). Se non configurato, ripiega su
+// HTML stampabile (stessa resa A4 via "Stampa -> Salva come PDF").
+// Email opzionale via Resend (env RESEND_API_KEY + REPORT_FROM_EMAIL).
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [errore, setErrore] = useState<string | null>(null);
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { corsHeaders } from '../_shared/cors.ts';
+import { assemblaReport, type Variante } from './report-data.ts';
+import { renderReport } from './report-html.ts';
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    setErrore(null);
-    setBusy(true);
-    try {
-      await signIn(email, password);
-      // al successo AuthProvider intercetta il login e prosegue da solo
-    } catch (err: any) {
-      const msg = String(err?.message ?? '');
-      setErrore(
-        /invalid login credentials/i.test(msg)
-          ? 'Email o password non corretti.'
-          : /email not confirmed/i.test(msg)
-            ? 'Email non ancora confermata.'
-            : 'Accesso non riuscito. Riprova.',
-      );
-      setBusy(false);
+const BUCKET = 'report';
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function htmlToPdf(html: string): Promise<Uint8Array | null> {
+  const url = Deno.env.get('PDF_SERVICE_URL');
+  if (!url) return null;
+  const token = Deno.env.get('PDF_SERVICE_TOKEN');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    // contratto browserless /pdf
+    body: JSON.stringify({ html, options: { printBackground: true, format: 'A4', preferCSSPageSize: true } }),
+  });
+  if (!res.ok) throw new Error(`PDF service ${res.status}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+async function inviaEmail(to: string, link: string, oggetto: string): Promise<boolean> {
+  const key = Deno.env.get('RESEND_API_KEY');
+  const from = Deno.env.get('REPORT_FROM_EMAIL');
+  if (!key || !from) return false;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      from, to, subject: oggetto,
+      html: `<p>In allegato (link) il report del sopralluogo.</p><p><a href="${link}">Apri il report</a></p>`,
+    }),
+  });
+  return res.ok;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return json({ error: 'Metodo non consentito' }, 405);
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const sopralluogoId: string | undefined = body.sopralluogo_id;
+    const variante: Variante = body.variante === 'interna' ? 'interna' : 'cliente';
+    const formato: 'html' | 'pdf' = body.formato === 'pdf' ? 'pdf' : 'html';
+    if (!sopralluogoId) return json({ error: 'sopralluogo_id mancante' }, 400);
+
+    const sb = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { persistSession: false } },
+    );
+
+    const dati = await assemblaReport(sb, sopralluogoId, variante);
+    const html = renderReport(dati);
+
+    // artefatto: PDF se richiesto e servizio disponibile, altrimenti HTML
+    let bytes: Uint8Array;
+    let ext: string;
+    let contentType: string;
+    if (formato === 'pdf') {
+      const pdf = await htmlToPdf(html);
+      if (pdf) { bytes = pdf; ext = 'pdf'; contentType = 'application/pdf'; }
+      else { bytes = new TextEncoder().encode(html); ext = 'html'; contentType = 'text/html'; }
+    } else {
+      bytes = new TextEncoder().encode(html); ext = 'html'; contentType = 'text/html';
     }
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const path = `${sopralluogoId}/${variante}-${stamp}.${ext}`;
+    const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true });
+    if (up.error) throw up.error;
+
+    const signed = await sb.storage.from(BUCKET).createSignedUrl(path, 60 * 60); // 1h
+    if (signed.error) throw signed.error;
+    const url = signed.data.signedUrl;
+
+    let emailed = false;
+    if (body.invia_email && body.email_destinatario) {
+      emailed = await inviaEmail(
+        String(body.email_destinatario), url,
+        `Report sopralluogo · ${dati.cliente.ragione_sociale}`,
+      );
+    }
+
+    return json({ url, formato: ext, variante, emailed });
+  } catch (e) {
+    return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
-
-  return (
-    <div className="login">
-      <style>{CSS}</style>
-      <form className="card" onSubmit={submit}>
-        <div className="brand">Sopralluoghi</div>
-        <div className="accent" />
-        <p className="sub">Accedi con le credenziali del tuo account.</p>
-
-        <label className="field">
-          <span>Email</span>
-          <input
-            type="email"
-            autoComplete="username"
-            inputMode="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={busy}
-          />
-        </label>
-
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={busy}
-          />
-        </label>
-
-        {errore && <div className="err">{errore}</div>}
-
-        <button className="cta" type="submit" disabled={busy}>
-          {busy ? 'Accesso…' : 'Accedi'}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-const CSS = `
-.login{
-  --ink:#16181c; --ink-soft:#5b5f66; --line:#e3ddd2; --paper:#f5f2ec;
-  --hi:#f4a012; --no:#d8442f; --no-bg:#fbeae6;
-  font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
-  background:#d9d4ca; color:var(--ink);
-  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
-}
-.login *{box-sizing:border-box;}
-.login .card{
-  width:100%; max-width:380px; background:#fff; border:1px solid var(--line);
-  border-radius:16px; padding:26px 24px 24px; box-shadow:0 18px 50px -28px rgba(0,0,0,.55);
-}
-.login .brand{font-weight:800; font-size:22px; letter-spacing:-.3px;}
-.login .accent{height:3px; width:46px; background:var(--hi); border-radius:3px; margin:10px 0 14px;}
-.login .sub{font-size:13px; color:var(--ink-soft); margin:0 0 18px; line-height:1.45;}
-.login .field{display:block; margin-bottom:13px;}
-.login .field span{display:block; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; letter-spacing:.02em;}
-.login .field input{
-  width:100%; -webkit-appearance:none; appearance:none; border:1px solid var(--line);
-  border-radius:10px; padding:12px 12px; font-family:inherit; font-size:15px; background:#fbfaf7; color:var(--ink);
-}
-.login .field input:focus{outline:none; border-color:var(--hi); background:#fff;}
-.login .field input:disabled{opacity:.6;}
-.login .err{
-  background:var(--no-bg); color:var(--no); border:1px solid #f1c4b9; border-radius:10px;
-  padding:9px 11px; font-size:12.5px; font-weight:500; margin:2px 0 14px;
-}
-.login .cta{
-  width:100%; border:none; border-radius:12px; padding:14px; cursor:pointer; margin-top:6px;
-  font-family:inherit; font-weight:800; font-size:15px; background:var(--hi); color:#1a1205; transition:.15s;
-}
-.login .cta:active{transform:scale(.99);}
-.login .cta:disabled{opacity:.6; cursor:default;}
-`;
+});
