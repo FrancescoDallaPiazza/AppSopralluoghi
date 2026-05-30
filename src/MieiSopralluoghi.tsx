@@ -12,6 +12,7 @@ import {
   type SopralluogoConContesto,
 } from './lib/sopralluoghi';
 import type { Sopralluogo, SopralluogoStato } from './lib/types';
+import { generaReport, type VarianteReport } from './lib/report';
 
 // ---------- helpers ----------
 const oggiISO = () => new Date().toISOString().slice(0, 10);
@@ -139,6 +140,26 @@ export default function MieiSopralluoghi({
     });
   }, [sopralluoghi, daFare, filtro]);
 
+  // generazione report (apre l'URL firmato in una nuova scheda)
+  const [reportBusy, setReportBusy] = useState<string | null>(null); // `${id}:${variante}`
+  const [reportErr, setReportErr] = useState<string | null>(null);
+  async function apriReport(s: SopralluogoConContesto, variante: VarianteReport) {
+    const key = `${s.id}:${variante}`;
+    if (reportBusy) return;
+    setReportErr(null);
+    setReportBusy(key);
+    const win = window.open('', '_blank'); // apro subito per non incappare nel blocco popup
+    try {
+      const url = await generaReport(s.id, variante);
+      if (win) win.location.href = url; else window.open(url, '_blank');
+    } catch (e) {
+      if (win) win.close();
+      setReportErr(`Report non generato: ${String((e as Error)?.message ?? e)}`);
+    } finally {
+      setReportBusy(null);
+    }
+  }
+
   return (
     <div className="misopr">
       <style>{CSS}</style>
@@ -184,6 +205,7 @@ export default function MieiSopralluoghi({
             )}
           </div>
 
+          {reportErr && <p className="muted" style={{ color: 'var(--no)' }}>{reportErr}</p>}
           {stato === 'loading' && <p className="muted">Carico i sopralluoghi…</p>}
           {stato === 'errore' && (
             <p className="muted">
@@ -202,9 +224,10 @@ export default function MieiSopralluoghi({
           {lista.map((s) => {
             const late = inRitardo(s);
             const fonte = [s.tipo_attivita, s.progressivo].filter(Boolean).join(' · ');
+            const completato = s.stato === 'completato' || s.stato === 'sincronizzato';
             return (
+              <div key={s.id} className="it-wrap">
               <button
-                key={s.id}
                 className={'it s-' + s.stato + (late ? ' late' : '')}
                 onClick={() => onApriSopralluogo?.(s)}
               >
@@ -230,6 +253,18 @@ export default function MieiSopralluoghi({
                 </div>
                 <span className="it-go">{Icon.chevron}</span>
               </button>
+              {completato && (
+                <div className="report-bar">
+                  <span className="rb-lab">Report</span>
+                  <button className="rb-btn" disabled={!!reportBusy} onClick={() => void apriReport(s, 'cliente')}>
+                    {reportBusy === s.id + ':cliente' ? '…' : 'Cliente'}
+                  </button>
+                  <button className="rb-btn" disabled={!!reportBusy} onClick={() => void apriReport(s, 'interna')}>
+                    {reportBusy === s.id + ':interna' ? '…' : 'Interno'}
+                  </button>
+                </div>
+              )}
+              </div>
             );
           })}
         </main>
@@ -302,4 +337,11 @@ const CSS = `
 .misopr .badge.pianificato{background:var(--na-bg); color:#555;}
 .misopr .badge.in_corso{background:#fbeccb; color:var(--hi-dark);}
 .misopr .badge.completato,.misopr .badge.sincronizzato{background:var(--ok-bg); color:var(--ok);}
+.misopr .it-wrap{margin-bottom:10px;}
+.misopr .it-wrap .it{margin-bottom:0;}
+.misopr .report-bar{display:flex; align-items:center; gap:7px; padding:7px 6px 2px;}
+.misopr .rb-lab{font-size:10.5px; font-weight:700; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; margin-right:auto;}
+.misopr .rb-btn{border:1px solid var(--line); background:#fff; color:var(--ink); font-family:var(--disp); font-weight:700; font-size:12px; padding:6px 13px; border-radius:8px; cursor:pointer;}
+.misopr .rb-btn:active{transform:scale(.97);}
+.misopr .rb-btn:disabled{opacity:.5;}
 `;
