@@ -100,7 +100,7 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
     try {
       const nuovi = await generaSopralluoghiMancanti({ ...piano, sopralluoghi: righe });
       setRighe((rs) => [...rs, ...nuovi]);
-      setMsg(`Generate ${nuovi.length} sedute.`);
+      setMsg(`Generate ${nuovi.length} sedute con date proposte nel periodo (modificabili).`);
     } catch (e: any) {
       setMsg(e?.message ?? 'Generazione non riuscita.');
     } finally { setBusy(false); }

@@ -6,6 +6,7 @@
 // Si toccano SOLO i sopralluoghi ancora 'pianificato' (non avviati in campo).
 
 import { supabase } from '../supabase';
+import { distribuisciDate } from './calendario';
 import { newId, type Incarico, type Sopralluogo, type Tecnico } from '../types';
 
 const COLONNE_SOPRALLUOGO =
@@ -103,11 +104,20 @@ export async function caricaPiano(incaricoId: string): Promise<PianoIncarico> {
 }
 
 // ---- genera i sopralluoghi mancanti fino a n_sopralluoghi ----
+// Le sedute vengono numerate per posizione (k/N) e ricevono una DATA PROPOSTA
+// distribuita uniformemente nel periodo dell'incarico, evitando weekend e
+// festività nazionali (vedi calendario.ts). Le date restano modificabili a
+// mano. La proposta è calcolata sulle posizioni 1..N, così la seduta k ha
+// sempre la stessa data anche rigenerando dopo aver eliminato le ultime.
 export async function generaSopralluoghiMancanti(piano: PianoIncarico): Promise<Sopralluogo[]> {
   const { incarico, cliente_localita } = piano;
   const esistenti = piano.sopralluoghi.length;
   const mancano = incarico.n_sopralluoghi - esistenti;
   if (mancano <= 0) return [];
+
+  const dateProposte = distribuisciDate(
+    incarico.periodo_inizio, incarico.periodo_fine, incarico.n_sopralluoghi,
+  );
 
   const nuovi: Sopralluogo[] = [];
   for (let k = esistenti + 1; k <= incarico.n_sopralluoghi; k++) {
@@ -116,7 +126,7 @@ export async function generaSopralluoghiMancanti(piano: PianoIncarico): Promise<
       incarico_id: incarico.id,
       progressivo: `${k}/${incarico.n_sopralluoghi}`,
       tecnico_id: null,
-      data_pianificata: null,
+      data_pianificata: dateProposte[k - 1] ?? null,
       data_effettiva: null,
       durata_stimata_min: incarico.durata_seduta_stimata_min,
       durata_effettiva_min: null,

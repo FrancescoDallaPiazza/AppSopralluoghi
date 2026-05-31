@@ -29,7 +29,9 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     template già usato non si modifica a ritroso (si crea una nuova versione e si
     archivia la precedente); duplica e archivia/riattiva.
   - **Pianificazione** — elenco incarichi con avanzamento; genera le sedute fino a
-    `n_sopralluoghi` e assegna tecnico / data / durata / località per ciascuna.
+    `n_sopralluoghi` con **date proposte** distribuite uniformemente nel periodo
+    (evitando sabati, domeniche e festività nazionali; date modificabili), e
+    assegna tecnico / data / durata / località per ciascuna.
 - **Sync offline** — coda outbox, drain in ordine, upload foto su Storage.
 
 ## Struttura
@@ -107,8 +109,10 @@ ruolo vive nell'app; con il portale cliente (Fase 3) si stringeranno lato DB.
 
 ## Cosa manca (prossimi blocchi)
 - **Prefetch offline** dei sopralluoghi/template pianificati (per il campo senza rete).
-- **Pianificazione assistita**: suggerimento date/tecnico da `capienza_ore_settimana`
-  e distanza dalla base; viste calendario/carico per tecnico.
+- **Pianificazione assistita** — distribuzione automatica delle date nel periodo
+  ✓ (con esclusione di weekend/festività); resta da fare: scelta del tecnico in
+  base a `capienza_ore_settimana` e distanza dalla base, viste calendario/carico,
+  ed eventuale esclusione dei santi patroni locali.
 - **Integrazione Werp** (campi `werp_id` / `werp_attivita_id` già predisposti) — da
   chiarire col fornitore: API REST / accesso DB / import-export file.
 - Scadenze ricorrenti: rigenerazione del ciclo successivo alla verifica.
