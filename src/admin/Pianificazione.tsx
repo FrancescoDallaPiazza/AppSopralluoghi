@@ -13,6 +13,13 @@ const STATO_LABEL: Record<string, string> = {
   attivo: 'attivo', sospeso: 'sospeso', chiuso: 'chiuso',
 };
 
+// Ordina per il numero del progressivo (k in "k/N"), non come testo: così
+// 2/53 viene prima di 10/53 (e non dopo, come farebbe l'ordinamento alfabetico).
+const numProg = (p: string | null): number => {
+  const n = parseInt((p ?? '').split('/')[0], 10);
+  return Number.isFinite(n) ? n : 0;
+};
+
 export default function Pianificazione() {
   const [sel, setSel] = useState<string | null>(null);
   if (sel) return <DettaglioPiano incaricoId={sel} onIndietro={() => setSel(null)} />;
@@ -169,7 +176,7 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
         <div className="bo-empty">Nessuna seduta. Usa “Genera sedute mancanti”.</div>
       )}
 
-      {righe.sort((a, b) => (a.progressivo ?? '').localeCompare(b.progressivo ?? '')).map((r) => {
+      {[...righe].sort((a, b) => numProg(a.progressivo) - numProg(b.progressivo)).map((r) => {
         const bloccato = r.stato !== 'pianificato';
         return (
           <div className="bo-card" key={r.id}>
