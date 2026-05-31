@@ -10,6 +10,8 @@
 // Tutte le date sono trattate a mezzanotte UTC per evitare slittamenti di
 // fuso quando si formatta in 'YYYY-MM-DD'.
 
+import type { CadenzaUnita } from '../types';
+
 const MS = 86_400_000;
 const INCLUDI_SABATO = true; // i sopralluoghi non si fanno di sabato (modificabile)
 
@@ -102,6 +104,44 @@ export function distribuisciDate(inizioISO: string, fineISO: string, n: number):
       let c = ultimo + MS;
       while (c <= end && eNonLavorativo(c)) c += MS;
       if (c <= end) ms = c;
+    }
+    ultimo = ms;
+    date.push(fmtISO(ms));
+  }
+  return date;
+}
+
+// k-esima occorrenza a partire dalla data di inizio, calcolata SEMPRE
+// dall'origine (niente deriva cumulativa). I mesi sono calendariali.
+function occorrenza(startMs: number, i: number, valore: number, unita: CadenzaUnita): number {
+  if (unita === 'mesi') {
+    const d = new Date(startMs);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + i * valore, d.getUTCDate());
+  }
+  const passoGiorni = unita === 'settimane' ? valore * 7 : valore;
+  return startMs + i * passoGiorni * MS;
+}
+
+// Genera le date a CADENZA fissa ("1 ogni `valore` `unita`") dall'inizio del
+// periodo fino alla fine inclusa, spostando ognuna su un giorno lavorativo.
+// La prima occorrenza è l'inizio del periodo. Mantiene l'ordine crescente.
+export function dateDaCadenza(
+  inizioISO: string, fineISO: string, valore: number, unita: CadenzaUnita,
+): string[] {
+  if (!inizioISO || !fineISO || !valore || valore <= 0) return [];
+  const start = parseISO(inizioISO);
+  const end = Math.max(parseISO(fineISO), start);
+
+  const date: string[] = [];
+  let ultimo = start - MS;
+  for (let i = 0; i < 5000; i++) {
+    const grezzo = occorrenza(start, i, valore, unita);
+    if (grezzo > end) break;
+    let ms = suGiornoLavorativo(grezzo, start, end);
+    if (ms <= ultimo) {
+      let c = ultimo + MS;
+      while (c <= end && eNonLavorativo(c)) c += MS;
+      if (c <= end) ms = c; else continue; // non c'è spazio: salta
     }
     ultimo = ms;
     date.push(fmtISO(ms));

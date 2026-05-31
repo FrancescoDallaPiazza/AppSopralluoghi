@@ -6,7 +6,7 @@
 // Si toccano SOLO i sopralluoghi ancora 'pianificato' (non avviati in campo).
 
 import { supabase } from '../supabase';
-import { distribuisciDate } from './calendario';
+import { distribuisciDate, dateDaCadenza } from './calendario';
 import { newId, type Incarico, type Sopralluogo, type Tecnico } from '../types';
 
 const COLONNE_SOPRALLUOGO =
@@ -32,6 +32,7 @@ export async function caricaIncarichi(): Promise<IncaricoPiano[]> {
     .select(`
       id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi,
       periodo_inizio, periodo_fine, durata_seduta_stimata_min, stato,
+      cadenza_valore, cadenza_unita,
       cliente:cliente!cliente_id ( ragione_sociale, localita )
     `)
     .order('stato', { ascending: true })
@@ -79,6 +80,7 @@ export async function caricaPiano(incaricoId: string): Promise<PianoIncarico> {
     .select(`
       id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi,
       periodo_inizio, periodo_fine, durata_seduta_stimata_min, stato,
+      cadenza_valore, cadenza_unita,
       cliente:cliente!cliente_id ( ragione_sociale, localita, indirizzo )
     `)
     .eq('id', incaricoId).maybeSingle();
@@ -115,9 +117,14 @@ export async function generaSopralluoghiMancanti(piano: PianoIncarico): Promise<
   const mancano = incarico.n_sopralluoghi - esistenti;
   if (mancano <= 0) return [];
 
-  const dateProposte = distribuisciDate(
-    incarico.periodo_inizio, incarico.periodo_fine, incarico.n_sopralluoghi,
-  );
+  const dateProposte = (incarico.cadenza_valore && incarico.cadenza_unita)
+    ? dateDaCadenza(
+        incarico.periodo_inizio, incarico.periodo_fine,
+        incarico.cadenza_valore, incarico.cadenza_unita,
+      )
+    : distribuisciDate(
+        incarico.periodo_inizio, incarico.periodo_fine, incarico.n_sopralluoghi,
+      );
 
   const nuovi: Sopralluogo[] = [];
   for (let k = esistenti + 1; k <= incarico.n_sopralluoghi; k++) {

@@ -9,10 +9,14 @@ import {
   incaricoVuoto, tipiAttivitaSuggeriti,
   type ClienteRiga, type IncaricoRiga,
 } from '../lib/admin/anagrafiche';
-import type { Cliente, Incarico, IncaricoStato } from '../lib/types';
+import { dateDaCadenza } from '../lib/admin/calendario';
+import type { Cliente, Incarico, IncaricoStato, CadenzaUnita } from '../lib/types';
 
 const STATO_INC: { v: IncaricoStato; l: string }[] = [
   { v: 'attivo', l: 'Attivo' }, { v: 'sospeso', l: 'Sospeso' }, { v: 'chiuso', l: 'Chiuso' },
+];
+const UNITA: { v: CadenzaUnita; l: string }[] = [
+  { v: 'giorni', l: 'giorni' }, { v: 'settimane', l: 'settimane' }, { v: 'mesi', l: 'mesi' },
 ];
 const fmtData = (d: string | null) => {
   if (!d) return '—';
@@ -334,6 +338,9 @@ function SchedaCliente({
               <div className="bo-title">{r.incarico.tipo_attivita}</div>
               <div className="bo-meta">
                 <span><b>{r.incarico.n_sopralluoghi}</b> sopralluoghi</span>
+                {r.incarico.cadenza_valore && r.incarico.cadenza_unita && (
+                  <span>1 ogni {r.incarico.cadenza_valore} {r.incarico.cadenza_unita}</span>
+                )}
                 <span>{fmtData(r.incarico.periodo_inizio)} → {fmtData(r.incarico.periodo_fine)}</span>
                 {r.incarico.durata_seduta_stimata_min != null &&
                   <span>{r.incarico.durata_seduta_stimata_min} min/seduta</span>}
@@ -381,12 +388,38 @@ function EditorIncarico({
   onAnnulla: () => void;
 }) {
   const [i, setI] = useState<Incarico>(incarico);
+  const [modo, setModo] = useState<'cadenza' | 'numero'>(
+    incarico.cadenza_valore != null ? 'cadenza' : 'numero',
+  );
   const patch = (p: Partial<Incarico>) => setI((x) => ({ ...x, ...p }));
   const listId = 'tipi-attivita';
 
   const tipoNonCoperto =
     i.tipo_attivita.trim() !== '' && tipi.length > 0 &&
     !tipi.some((t) => t.toLowerCase() === i.tipo_attivita.trim().toLowerCase());
+
+  function cambiaModo(m: 'cadenza' | 'numero') {
+    setModo(m);
+    if (m === 'numero') {
+      patch({ cadenza_valore: null, cadenza_unita: null });
+    } else {
+      patch({ cadenza_valore: i.cadenza_valore ?? 3, cadenza_unita: i.cadenza_unita ?? 'mesi' });
+    }
+  }
+
+  // Anteprima delle date a cadenza (e quindi del numero di sedute calcolato).
+  const anteprima = useMemo(() => {
+    if (modo !== 'cadenza' || !i.cadenza_valore || !i.cadenza_unita) return [];
+    return dateDaCadenza(i.periodo_inizio, i.periodo_fine, i.cadenza_valore, i.cadenza_unita);
+  }, [modo, i.cadenza_valore, i.cadenza_unita, i.periodo_inizio, i.periodo_fine]);
+
+  function salva() {
+    if (modo === 'cadenza') {
+      onSalva({ ...i, n_sopralluoghi: Math.max(1, anteprima.length) });
+    } else {
+      onSalva({ ...i, cadenza_valore: null, cadenza_unita: null });
+    }
+  }
 
   return (
     <div className="bo-card" style={{ borderLeft: '3px solid var(--hi)' }}>
@@ -410,16 +443,60 @@ function EditorIncarico({
         </div>
       )}
 
+      <label className="bo-field">
+        <span>Come definire i sopralluoghi</span>
+        <select value={modo} onChange={(e) => cambiaModo(e.target.value as 'cadenza' | 'numero')}>
+          <option value="cadenza">Per cadenza (1 ogni …)</option>
+          <option value="numero">Numero fisso nel periodo</option>
+        </select>
+      </label>
+
+      {modo === 'cadenza' ? (
+        <>
+          <div className="bo-grid">
+            <label className="bo-field">
+              <span>1 sopralluogo ogni</span>
+              <input type="number" min={1} value={i.cadenza_valore ?? ''}
+                onChange={(e) => patch({ cadenza_valore: e.target.value ? Number(e.target.value) : null })} />
+            </label>
+            <label className="bo-field">
+              <span>Unità</span>
+              <select value={i.cadenza_unita ?? 'mesi'}
+                onChange={(e) => patch({ cadenza_unita: e.target.value as CadenzaUnita })}>
+                {UNITA.map((u) => <option key={u.v} value={u.v}>{u.l}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="bo-note" style={{ marginTop: -2 }}>
+            {anteprima.length > 0
+              ? `≈ ${anteprima.length} ${anteprima.length === 1 ? 'seduta' : 'sedute'} nel periodo `
+                + `(prima ${fmtData(anteprima[0])}, ultima ${fmtData(anteprima[anteprima.length - 1])}). `
+                + 'Il numero viene calcolato in automatico.'
+              : 'Imposta cadenza e periodo per calcolare il numero di sedute.'}
+          </div>
+        </>
+      ) : (
+        <div className="bo-grid">
+          <label className="bo-field">
+            <span>N. sopralluoghi *</span>
+            <input type="number" min={1} value={i.n_sopralluoghi}
+              onChange={(e) => patch({ n_sopralluoghi: Number(e.target.value) || 0 })} />
+          </label>
+          <span />
+        </div>
+      )}
+
       <div className="bo-grid">
-        <label className="bo-field">
-          <span>N. sopralluoghi *</span>
-          <input type="number" min={1} value={i.n_sopralluoghi}
-            onChange={(e) => patch({ n_sopralluoghi: Number(e.target.value) || 0 })} />
-        </label>
         <label className="bo-field">
           <span>Durata seduta (min)</span>
           <input type="number" min={0} value={i.durata_seduta_stimata_min ?? ''}
             onChange={(e) => patch({ durata_seduta_stimata_min: e.target.value ? Number(e.target.value) : null })} />
+        </label>
+        <label className="bo-field">
+          <span>Stato</span>
+          <select value={i.stato} onChange={(e) => patch({ stato: e.target.value as IncaricoStato })}>
+            {STATO_INC.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
+          </select>
         </label>
         <label className="bo-field">
           <span>Inizio periodo *</span>
@@ -431,12 +508,6 @@ function EditorIncarico({
           <input type="date" value={i.periodo_fine}
             onChange={(e) => patch({ periodo_fine: e.target.value })} />
         </label>
-        <label className="bo-field">
-          <span>Stato</span>
-          <select value={i.stato} onChange={(e) => patch({ stato: e.target.value as IncaricoStato })}>
-            {STATO_INC.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
-          </select>
-        </label>
         <label className="bo-field" style={{ marginBottom: 0 }}>
           <span>ID Werp (opzionale)</span>
           <input type="text" value={i.werp_id ?? ''}
@@ -445,7 +516,7 @@ function EditorIncarico({
       </div>
 
       <div className="bo-bar">
-        <button className="bo-btn" onClick={() => onSalva(i)} disabled={busy}>
+        <button className="bo-btn" onClick={salva} disabled={busy}>
           {busy ? 'Salvo…' : 'Salva incarico'}
         </button>
         <button className="bo-btn ghost" onClick={onAnnulla} disabled={busy}>Annulla</button>

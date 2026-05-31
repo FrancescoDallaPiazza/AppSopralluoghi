@@ -10,6 +10,7 @@ export type AzioneStato = 'aperta' | 'in_corso' | 'conclusa';
 export type RuoloTecnico = 'tecnico' | 'admin';
 export type IncaricoStato = 'attivo' | 'sospeso' | 'chiuso';
 export type ChecklistTmplStato = 'attivo' | 'archiviato';
+export type CadenzaUnita = 'giorni' | 'settimane' | 'mesi';
 
 export interface Tecnico {
   id: string;
@@ -46,6 +47,10 @@ export interface Incarico {
   periodo_fine: string;
   durata_seduta_stimata_min: number | null;
   stato: IncaricoStato;
+  // Cadenza opzionale (migration 007): se valorizzata, n_sopralluoghi è
+  // calcolato dalla cadenza sul periodo. Se null, incarico a "numero fisso".
+  cadenza_valore: number | null;
+  cadenza_unita: CadenzaUnita | null;
 }
 
 // --- modello "form configurabile" (vedi migration 002) ---

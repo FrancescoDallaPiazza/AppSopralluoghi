@@ -14,6 +14,7 @@
 //    non ci sono figli (altrimenti si archivia/sospende).
 
 import { supabase } from '../supabase';
+import { dateDaCadenza } from './calendario';
 import {
   newId, type Cliente, type Incarico, type IncaricoStato,
 } from '../types';
@@ -22,7 +23,7 @@ const COLONNE_CLIENTE =
   'id, werp_id, ragione_sociale, localita, indirizzo, lat, lng, attivo';
 const COLONNE_INCARICO =
   'id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi, periodo_inizio, ' +
-  'periodo_fine, durata_seduta_stimata_min, stato';
+  'periodo_fine, durata_seduta_stimata_min, stato, cadenza_valore, cadenza_unita';
 
 const vuotoNull = (s: string | null | undefined): string | null => {
   const v = (s ?? '').trim();
@@ -133,9 +134,6 @@ export async function caricaIncarichiCliente(clienteId: string): Promise<Incaric
 export async function salvaIncarico(i: Incarico): Promise<void> {
   const tipo = i.tipo_attivita.trim();
   if (!tipo) throw new Error('Indica il tipo di attività.');
-  if (!Number.isFinite(i.n_sopralluoghi) || i.n_sopralluoghi <= 0) {
-    throw new Error('Il numero di sopralluoghi deve essere maggiore di zero.');
-  }
   if (!i.periodo_inizio || !i.periodo_fine) {
     throw new Error('Indica inizio e fine del periodo.');
   }
@@ -143,16 +141,29 @@ export async function salvaIncarico(i: Incarico): Promise<void> {
     throw new Error('La fine del periodo non può precedere l’inizio.');
   }
 
+  // Cadenza: se valorizzata, n_sopralluoghi è calcolato dalla cadenza + periodo.
+  const haCadenza = i.cadenza_valore != null && i.cadenza_unita != null;
+  let n = i.n_sopralluoghi;
+  if (haCadenza) {
+    if (!(i.cadenza_valore! > 0)) throw new Error('La cadenza deve essere maggiore di zero.');
+    const date = dateDaCadenza(i.periodo_inizio, i.periodo_fine, i.cadenza_valore!, i.cadenza_unita!);
+    n = Math.max(1, date.length);
+  } else if (!Number.isFinite(n) || n <= 0) {
+    throw new Error('Il numero di sopralluoghi deve essere maggiore di zero.');
+  }
+
   const { error } = await supabase.from('incarico').upsert({
     id: i.id,
     cliente_id: i.cliente_id,
     werp_id: vuotoNull(i.werp_id),
     tipo_attivita: tipo,
-    n_sopralluoghi: i.n_sopralluoghi,
+    n_sopralluoghi: n,
     periodo_inizio: i.periodo_inizio,
     periodo_fine: i.periodo_fine,
     durata_seduta_stimata_min: i.durata_seduta_stimata_min,
     stato: i.stato,
+    cadenza_valore: haCadenza ? i.cadenza_valore : null,
+    cadenza_unita: haCadenza ? i.cadenza_unita : null,
   }, { onConflict: 'id' });
   if (error) throw error;
 }
@@ -183,6 +194,7 @@ export function incaricoVuoto(clienteId: string): Incarico {
     id: newId(), cliente_id: clienteId, werp_id: null, tipo_attivita: '',
     n_sopralluoghi: 1, periodo_inizio: iso(oggi), periodo_fine: iso(traUnAnno),
     durata_seduta_stimata_min: 180, stato: 'attivo',
+    cadenza_valore: null, cadenza_unita: null,
   };
 }
 

@@ -19,6 +19,8 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
 - **Back-office** (solo admin):
   - **Anagrafiche** — clienti (ragione sociale, località, indirizzo, geo, ID Werp)
     e relativi incarichi (tipo attività, n. sopralluoghi, periodo, durata, stato).
+    L'incarico si può definire **per cadenza** (1 ogni X giorni/settimane/mesi, con
+    il numero di sopralluoghi calcolato in automatico) o a **numero fisso**.
     È il blocco a monte della pianificazione: il tipo attività dell'incarico si
     aggancia a un template attivo. Disattivazione/chiusura con guardie sulle FK
     (niente eliminazione se ci sono incarichi/sedute collegati).
@@ -44,7 +46,7 @@ app-sopralluoghi/
 ├─ .env.local.example      # copia in .env.local
 ├─ supabase/
 │  ├─ migrations/          # 001 schema+RLS+foto · 002 form model · 003-004 seed
-│  │                       # 005 bucket report · 006 ruolo tecnico (back-office)
+│  │                       # 005 bucket report · 006 ruolo tecnico · 007 cadenza incarico
 │  └─ functions/genera-report/   # Edge Function report (HTML/PDF + email)
 ├─ mockups/                # riferimenti HTML (campo / report)
 └─ src/
@@ -80,7 +82,7 @@ app-sopralluoghi/
 
 ## Avvio
 1. Crea un progetto Supabase e applica le migration in ordine (`supabase db push`,
-   oppure incolla i file di `supabase/migrations/` nello SQL editor: 001 → 006).
+   oppure incolla i file di `supabase/migrations/` nello SQL editor: 001 → 007).
 2. `cp .env.local.example .env.local` e compila:
    ```
    VITE_SUPABASE_URL=https://xxxx.supabase.co
