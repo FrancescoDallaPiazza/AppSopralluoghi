@@ -17,6 +17,11 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
 - **Le mie cose da fare** — azioni assegnate al tecnico, con transizioni di stato.
 - **Report** (cliente / interno) via Edge Function `genera-report`.
 - **Back-office** (solo admin):
+  - **Anagrafiche** — clienti (ragione sociale, località, indirizzo, geo, ID Werp)
+    e relativi incarichi (tipo attività, n. sopralluoghi, periodo, durata, stato).
+    È il blocco a monte della pianificazione: il tipo attività dell'incarico si
+    aggancia a un template attivo. Disattivazione/chiusura con guardie sulle FK
+    (niente eliminazione se ci sono incarichi/sedute collegati).
   - **Template** — editor del modello "form configurabile": voci di primo livello
     e sotto-domande, tipi (scelta / multiscelta / testo / data / numero / slider /
     foto / rilievo), opzioni con stato logico e generazione azione, scadenza
@@ -49,7 +54,8 @@ app-sopralluoghi/
    ├─ MieCoseDaFare.tsx
    ├─ Compilazione.tsx
    ├─ admin/              # back-office (solo admin)
-   │  ├─ BackOffice.tsx    # shell + tab Template / Pianificazione
+   │  ├─ BackOffice.tsx    # shell + tab Anagrafiche / Template / Pianificazione
+   │  ├─ Anagrafiche.tsx   # clienti + incarichi (scheda + editor)
    │  ├─ TemplateList.tsx  # elenco + nuovo / duplica / archivia
    │  ├─ TemplateEditor.tsx# editor albero voci + config + versionamento
    │  ├─ Pianificazione.tsx# incarichi + genera/assegna sedute
@@ -65,6 +71,7 @@ app-sopralluoghi/
       ├─ report.ts         # client della Edge Function report
       ├─ compilazione.ts   # apertura checklist + azioni + stato sopralluogo
       └─ admin/            # strato dati del back-office (online-first)
+         ├─ anagrafiche.ts  # CRUD clienti + incarichi (con guardie FK)
          ├─ templates.ts    # CRUD template + versionamento
          └─ pianificazione.ts # incarichi, sedute, tecnici
 ```
@@ -100,9 +107,8 @@ ruolo vive nell'app; con il portale cliente (Fase 3) si stringeranno lato DB.
 
 ## Cosa manca (prossimi blocchi)
 - **Prefetch offline** dei sopralluoghi/template pianificati (per il campo senza rete).
-- **Anagrafiche** in back-office: clienti e incarichi (oggi inseriti via DB/Werp).
 - **Pianificazione assistita**: suggerimento date/tecnico da `capienza_ore_settimana`
   e distanza dalla base; viste calendario/carico per tecnico.
-- **Integrazione Werp** (campo `werp_attivita_id` già predisposto) — da chiarire
-  col fornitore: API REST / accesso DB / import-export file.
+- **Integrazione Werp** (campi `werp_id` / `werp_attivita_id` già predisposti) — da
+  chiarire col fornitore: API REST / accesso DB / import-export file.
 - Scadenze ricorrenti: rigenerazione del ciclo successivo alla verifica.

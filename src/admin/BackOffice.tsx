@@ -5,16 +5,17 @@ import { useState } from 'react';
 import { useAuth } from '../AuthProvider';
 import type { Tecnico } from '../lib/types';
 import { CSS_BACKOFFICE } from './ui';
+import Anagrafiche from './Anagrafiche';
 import TemplateList from './TemplateList';
 import Pianificazione from './Pianificazione';
 
-type Sezione = 'template' | 'pianificazione';
+type Sezione = 'anagrafiche' | 'template' | 'pianificazione';
 
 export default function BackOffice({
   tecnico, onVaiAllApp,
 }: { tecnico: Tecnico; onVaiAllApp?: () => void }) {
   const { signOut } = useAuth();
-  const [sezione, setSezione] = useState<Sezione>('template');
+  const [sezione, setSezione] = useState<Sezione>('anagrafiche');
 
   return (
     <div className="bo">
@@ -30,6 +31,8 @@ export default function BackOffice({
           <button className="bo-btn ghost sm" onClick={() => void signOut()}>Esci</button>
         </div>
         <nav className="bo-tabs">
+          <button className={`bo-tab ${sezione === 'anagrafiche' ? 'on' : ''}`}
+            onClick={() => setSezione('anagrafiche')}>Anagrafiche</button>
           <button className={`bo-tab ${sezione === 'template' ? 'on' : ''}`}
             onClick={() => setSezione('template')}>Template</button>
           <button className={`bo-tab ${sezione === 'pianificazione' ? 'on' : ''}`}
@@ -38,7 +41,9 @@ export default function BackOffice({
       </header>
 
       <main className="bo-main">
-        {sezione === 'template' ? <TemplateList /> : <Pianificazione />}
+        {sezione === 'anagrafiche' && <Anagrafiche />}
+        {sezione === 'template' && <TemplateList />}
+        {sezione === 'pianificazione' && <Pianificazione />}
       </main>
     </div>
   );
