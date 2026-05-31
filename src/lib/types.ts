@@ -30,6 +30,9 @@ export interface Cliente {
   id: string;
   werp_id: string | null;
   ragione_sociale: string;
+  referente: string | null;
+  telefono: string | null;
+  email: string | null;
   localita: string | null;
   indirizzo: string | null;
   lat: number | null;

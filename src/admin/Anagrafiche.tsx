@@ -105,7 +105,9 @@ function ElencoClienti({
               <div className="bo-title">{r.cliente.ragione_sociale}</div>
               <div className="bo-meta">
                 {r.cliente.localita && <span>{r.cliente.localita}</span>}
-                {r.cliente.indirizzo && <span>{r.cliente.indirizzo}</span>}
+                {r.cliente.referente && <span>{r.cliente.referente}</span>}
+                {r.cliente.telefono && <span>{r.cliente.telefono}</span>}
+                {r.cliente.email && <span>{r.cliente.email}</span>}
                 <span className={`bo-pill ${r.n_incarichi_attivi > 0 ? 'attivo' : 'archiviato'}`}>
                   {r.n_incarichi} {r.n_incarichi === 1 ? 'incarico' : 'incarichi'}
                 </span>
@@ -259,6 +261,21 @@ function SchedaCliente({
             onChange={(e) => patch({ ragione_sociale: e.target.value })} />
         </label>
         <div className="bo-grid">
+          <label className="bo-field">
+            <span>Referente</span>
+            <input type="text" value={cliente.referente ?? ''}
+              onChange={(e) => patch({ referente: e.target.value || null })} />
+          </label>
+          <label className="bo-field">
+            <span>Telefono</span>
+            <input type="tel" value={cliente.telefono ?? ''}
+              onChange={(e) => patch({ telefono: e.target.value || null })} />
+          </label>
+          <label className="bo-field">
+            <span>Email</span>
+            <input type="email" value={cliente.email ?? ''}
+              onChange={(e) => patch({ email: e.target.value || null })} />
+          </label>
           <label className="bo-field">
             <span>Località</span>
             <input type="text" value={cliente.localita ?? ''}

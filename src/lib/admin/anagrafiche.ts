@@ -20,7 +20,7 @@ import {
 } from '../types';
 
 const COLONNE_CLIENTE =
-  'id, werp_id, ragione_sociale, localita, indirizzo, lat, lng, attivo';
+  'id, werp_id, ragione_sociale, referente, telefono, email, localita, indirizzo, lat, lng, attivo';
 const COLONNE_INCARICO =
   'id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi, periodo_inizio, ' +
   'periodo_fine, durata_seduta_stimata_min, stato, cadenza_valore, cadenza_unita';
@@ -67,6 +67,9 @@ export async function salvaCliente(c: Cliente): Promise<void> {
     id: c.id,
     werp_id: vuotoNull(c.werp_id),
     ragione_sociale: c.ragione_sociale.trim(),
+    referente: vuotoNull(c.referente),
+    telefono: vuotoNull(c.telefono),
+    email: vuotoNull(c.email),
     localita: vuotoNull(c.localita),
     indirizzo: vuotoNull(c.indirizzo),
     lat: c.lat,
@@ -95,8 +98,9 @@ export async function eliminaCliente(id: string): Promise<void> {
 
 export function clienteVuoto(): Cliente {
   return {
-    id: newId(), werp_id: null, ragione_sociale: '', localita: null,
-    indirizzo: null, lat: null, lng: null, attivo: true,
+    id: newId(), werp_id: null, ragione_sociale: '',
+    referente: null, telefono: null, email: null,
+    localita: null, indirizzo: null, lat: null, lng: null, attivo: true,
   };
 }
 

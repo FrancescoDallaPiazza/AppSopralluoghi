@@ -17,7 +17,7 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
 - **Le mie cose da fare** — azioni assegnate al tecnico, con transizioni di stato.
 - **Report** (cliente / interno) via Edge Function `genera-report`.
 - **Back-office** (solo admin):
-  - **Anagrafiche** — clienti (ragione sociale, località, indirizzo, geo, ID Werp)
+  - **Anagrafiche** — clienti (ragione sociale, referente, telefono, email, località, indirizzo, geo, ID Werp)
     e relativi incarichi (tipo attività, n. sopralluoghi, periodo, durata, stato).
     L'incarico si può definire **per cadenza** (1 ogni X giorni/settimane/mesi, con
     il numero di sopralluoghi calcolato in automatico) o a **numero fisso**.
@@ -46,7 +46,7 @@ app-sopralluoghi/
 ├─ .env.local.example      # copia in .env.local
 ├─ supabase/
 │  ├─ migrations/          # 001 schema+RLS+foto · 002 form model · 003-004 seed
-│  │                       # 005 bucket report · 006 ruolo tecnico · 007 cadenza incarico
+│  │                       # 005 bucket report · 006 ruolo · 007 cadenza incarico · 008 contatti cliente
 │  └─ functions/genera-report/   # Edge Function report (HTML/PDF + email)
 ├─ mockups/                # riferimenti HTML (campo / report)
 └─ src/
@@ -82,7 +82,7 @@ app-sopralluoghi/
 
 ## Avvio
 1. Crea un progetto Supabase e applica le migration in ordine (`supabase db push`,
-   oppure incolla i file di `supabase/migrations/` nello SQL editor: 001 → 007).
+   oppure incolla i file di `supabase/migrations/` nello SQL editor: 001 → 008).
 2. `cp .env.local.example .env.local` e compila:
    ```
    VITE_SUPABASE_URL=https://xxxx.supabase.co
