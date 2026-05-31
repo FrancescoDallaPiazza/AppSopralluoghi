@@ -118,24 +118,31 @@ export async function caricaGiroPrecedente(
   incaricoId: string,
   sopralluogoCorrenteId: string,
 ): Promise<AzioneConContesto[]> {
-  const { data, error } = await supabase
-    .from('azione')
-    .select(`
-      ${COLONNE_AZIONE.join(', ')},
-      origine:esito_voce!origine_esito_id ( voce_testo, voce_sezione ),
-      sopr:sopralluogo!sopralluogo_origine_id!inner (
-        progressivo, incarico_id,
-        incarico:incarico!incarico_id (
-          tipo_attivita,
-          cliente:cliente!cliente_id ( ragione_sociale )
+  let data: any[] | null = null;
+  try {
+    const res = await supabase
+      .from('azione')
+      .select(`
+        ${COLONNE_AZIONE.join(', ')},
+        origine:esito_voce!origine_esito_id ( voce_testo, voce_sezione ),
+        sopr:sopralluogo!sopralluogo_origine_id!inner (
+          progressivo, incarico_id,
+          incarico:incarico!incarico_id (
+            tipo_attivita,
+            cliente:cliente!cliente_id ( ragione_sociale )
+          )
         )
-      )
-    `)
-    .eq('sopr.incarico_id', incaricoId)
-    .neq('sopralluogo_origine_id', sopralluogoCorrenteId)
-    .neq('stato', 'conclusa');
-
-  if (error) throw error;
+      `)
+      .eq('sopr.incarico_id', incaricoId)
+      .neq('sopralluogo_origine_id', sopralluogoCorrenteId)
+      .neq('stato', 'conclusa');
+    if (res.error) throw res.error;
+    data = res.data;
+  } catch {
+    // Offline: ripiego sulle azioni in cache locale, filtrate per incarico
+    // tramite i sopralluoghi locali (db.sopralluoghi ha incarico_id).
+    return await giroPrecedenteLocale(incaricoId, sopralluogoCorrenteId);
+  }
 
   const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
     Array.isArray(v) ? v[0] : (v ?? undefined);
@@ -166,6 +173,49 @@ export async function caricaGiroPrecedente(
   if (daSeminare.length) await db.azioni.bulkPut(daSeminare);
 
   return out;
+}
+
+// Giro precedente dalla sola cache locale (offline).
+async function giroPrecedenteLocale(
+  incaricoId: string,
+  sopralluogoCorrenteId: string,
+): Promise<AzioneConContesto[]> {
+  const sopr = await db.sopralluoghi.where('incarico_id').equals(incaricoId).toArray();
+  const idsIncarico = new Set(sopr.map((s) => s.id));
+  const azioni = await db.azioni.toArray();
+  return azioni
+    .filter((a) =>
+      a.stato !== 'conclusa' &&
+      a.sopralluogo_origine_id != null &&
+      idsIncarico.has(a.sopralluogo_origine_id) &&
+      a.sopralluogo_origine_id !== sopralluogoCorrenteId)
+    .map((a) => ({ ...a, cliente_nome: null, sopralluogo_label: null, origine_voce: null }));
+}
+
+// Prefetch (online): azioni aperte dei sopralluoghi degli incarichi indicati,
+// seminate in locale (senza sovrascrivere modifiche non sincronizzate). Serve
+// al "giro precedente" offline.
+export async function prefetchAzioniIncarichi(incaricoIds: string[]): Promise<number> {
+  if (!incaricoIds.length) return 0;
+  const { data, error } = await supabase
+    .from('azione')
+    .select(`
+      ${COLONNE_AZIONE.join(', ')},
+      sopr:sopralluogo!sopralluogo_origine_id!inner ( incarico_id )
+    `)
+    .in('sopr.incarico_id', incaricoIds)
+    .neq('stato', 'conclusa');
+  if (error) throw error;
+
+  const out = (data ?? []).map((r: any) => toBaseAzione(r as Azione));
+  const presenti = new Set(
+    (await db.azioni.bulkGet(out.map((o) => o.id)))
+      .filter(Boolean)
+      .map((a) => (a as Azione).id),
+  );
+  const nuovi = out.filter((o) => !presenti.has(o.id));
+  if (nuovi.length) await db.azioni.bulkPut(nuovi);
+  return out.length;
 }
 
 // Verifica/chiusura di un'azione DENTRO un sopralluogo: la chiude e registra

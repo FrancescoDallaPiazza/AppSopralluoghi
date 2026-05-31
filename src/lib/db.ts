@@ -19,6 +19,15 @@ export interface FotoBlob {
   blob: Blob;
 }
 
+// Contesto di un sopralluogo (cliente, tipo attività) messo in cache dal
+// prefetch, così la lista di campo mostra i dati anche offline.
+export interface ContestoSopralluogo {
+  id: string;                  // = sopralluogo.id
+  cliente_nome: string | null;
+  cliente_id: string | null;
+  tipo_attivita: string | null;
+}
+
 class LocalDB extends Dexie {
   sopralluoghi!: Table<Sopralluogo, string>;
   compilate!: Table<ChecklistCompilata, string>;
@@ -26,6 +35,7 @@ class LocalDB extends Dexie {
   foto!: Table<Foto, string>;
   fotoBlob!: Table<FotoBlob, string>;
   azioni!: Table<Azione, string>;
+  contesto!: Table<ContestoSopralluogo, string>;
   outbox!: Table<OutboxOp, number>;
 
   constructor() {
@@ -38,6 +48,10 @@ class LocalDB extends Dexie {
       fotoBlob: 'id',
       azioni: 'id, sopralluogo_origine_id, responsabile_interno_id, stato',
       outbox: '++seq, kind',
+    });
+    // v2: cache del contesto sopralluogo per il prefetch offline.
+    this.version(2).stores({
+      contesto: 'id',
     });
   }
 }

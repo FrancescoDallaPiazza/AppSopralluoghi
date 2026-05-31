@@ -6,11 +6,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { liveQuery } from 'dexie';
-import { db } from './lib/db';
+import { db, type ContestoSopralluogo } from './lib/db';
 import {
   caricaMieiSopralluoghi,
   type SopralluogoConContesto,
 } from './lib/sopralluoghi';
+import {
+  prefetchOffline, leggiPrefetchMeta, cacheLista, type PrefetchMeta,
+} from './lib/prefetch';
 import type { Sopralluogo, SopralluogoStato } from './lib/types';
 import { generaReport, type VarianteReport } from './lib/report';
 
@@ -20,6 +23,11 @@ const fmt = (d: string | null) => {
   if (!d) return '—';
   const [y, m, g] = d.split('-');
   return `${g}/${m}/${y}`;
+};
+const fmtOra = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 const inRitardo = (s: SopralluogoConContesto) =>
   s.stato === 'pianificato' &&
@@ -40,14 +48,20 @@ const LABEL_STATO: Record<SopralluogoStato, string> = {
 function useMieiSopralluoghi(tecnicoId: string) {
   const [base, setBase] = useState<SopralluogoConContesto[]>([]);
   const [locali, setLocali] = useState<Record<string, Sopralluogo>>({});
+  const [contesti, setContesti] = useState<Record<string, ContestoSopralluogo>>({});
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
 
-  // 1) contesto dal server
+  // 1) contesto dal server (e, se va, prepara la cache offline)
   useEffect(() => {
     let vivo = true;
     setStato('loading');
     caricaMieiSopralluoghi(tecnicoId)
-      .then((s) => vivo && (setBase(s), setStato('ok')))
+      .then((s) => {
+        if (!vivo) return;
+        setBase(s);
+        setStato('ok');
+        void cacheLista(s); // il solo aprire la lista online prepara l'offline
+      })
       .catch(() => vivo && setStato('errore'));
     return () => {
       vivo = false;
@@ -67,16 +81,34 @@ function useMieiSopralluoghi(tecnicoId: string) {
     return () => sub.unsubscribe();
   }, [tecnicoId]);
 
+  // 3) contesto in cache (per le voci offline / local-only)
+  useEffect(() => {
+    const sub = liveQuery(() => db.contesto.toArray()).subscribe({
+      next: (rows) => {
+        const map: Record<string, ContestoSopralluogo> = {};
+        for (const r of rows) map[r.id] = r;
+        setContesti(map);
+      },
+    });
+    return () => sub.unsubscribe();
+  }, []);
+
   const sopralluoghi = useMemo<SopralluogoConContesto[]>(() => {
     const visti = new Set(base.map((b) => b.id));
     const out = base.map((b) => (locali[b.id] ? { ...b, ...locali[b.id] } : b));
     for (const id in locali) {
       if (!visti.has(id)) {
-        out.push({ ...locali[id], cliente_nome: null, cliente_id: null, tipo_attivita: null });
+        const c = contesti[id];
+        out.push({
+          ...locali[id],
+          cliente_nome: c?.cliente_nome ?? null,
+          cliente_id: c?.cliente_id ?? null,
+          tipo_attivita: c?.tipo_attivita ?? null,
+        });
       }
     }
     return out;
-  }, [base, locali]);
+  }, [base, locali, contesti]);
 
   return { sopralluoghi, stato };
 }
@@ -118,6 +150,36 @@ export default function MieiSopralluoghi({
 }: Props) {
   const { sopralluoghi, stato } = useMieiSopralluoghi(tecnicoId);
   const [filtro, setFiltro] = useState<'da_fare' | 'completati'>('da_fare');
+
+  // prefetch offline: scarica lista + checklist + giro precedente
+  const [pf, setPf] = useState<{ busy: boolean; msg: string | null; meta: PrefetchMeta | null }>(
+    () => ({ busy: false, msg: null, meta: leggiPrefetchMeta() }),
+  );
+  async function scaricaOffline() {
+    if (pf.busy) return;
+    setPf((p) => ({ ...p, busy: true, msg: null }));
+    try {
+      const r = await prefetchOffline(tecnicoId);
+      const extra = r.tipiMancanti.length
+        ? ` · ${r.tipiMancanti.length} tipo/i senza checklist`
+        : '';
+      setPf({
+        busy: false, meta: leggiPrefetchMeta(),
+        msg: `Pronti per offline: ${r.sopralluoghi} sopralluoghi, ${r.checklist} checklist${extra}.`,
+      });
+    } catch (e) {
+      setPf((p) => ({ ...p, busy: false, msg: String((e as Error)?.message ?? e) }));
+    }
+  }
+  // aggiornamento silenzioso all'apertura, se c'è rete
+  useEffect(() => {
+    let vivo = true;
+    if (!navigator.onLine) return;
+    prefetchOffline(tecnicoId)
+      .then(() => vivo && setPf((p) => ({ ...p, meta: leggiPrefetchMeta() })))
+      .catch(() => { /* silenzioso: il pulsante resta per riprovare */ });
+    return () => { vivo = false; };
+  }, [tecnicoId]);
 
   const daFare = sopralluoghi.filter(isDaFare);
   const ritardo = daFare.filter(inRitardo).length;
@@ -185,6 +247,18 @@ export default function MieiSopralluoghi({
         </header>
 
         <main>
+          <div className="pf-bar">
+            <button className="pf-btn" disabled={pf.busy} onClick={() => void scaricaOffline()}>
+              {pf.busy ? 'Scarico…' : '⤓ Scarica per offline'}
+            </button>
+            <span className="pf-stato">
+              {pf.msg
+                ?? (pf.meta
+                  ? `Pronto offline · ${pf.meta.sopralluoghi} sopralluoghi · agg. ${fmtOra(pf.meta.quando)}`
+                  : 'Non ancora scaricato per l’uso offline')}
+            </span>
+          </div>
+
           <div className="bar-row">
             <div className="seg-filter">
               <button
@@ -304,6 +378,13 @@ const CSS = `
 .misopr .tab.on::after{content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--hi); border-radius:3px 3px 0 0;}
 
 .misopr main{flex:1; padding:14px 14px 40px;}
+.misopr .pf-bar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;
+  background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 11px; box-shadow:var(--shadow);}
+.misopr .pf-btn{border:1px solid var(--hi); background:var(--hi); color:#1a1205; font-family:var(--disp);
+  font-weight:800; font-size:12.5px; padding:7px 12px; border-radius:9px; cursor:pointer; white-space:nowrap;}
+.misopr .pf-btn:active{transform:scale(.98);}
+.misopr .pf-btn:disabled{opacity:.55; cursor:default;}
+.misopr .pf-stato{font-size:11.5px; color:var(--ink-soft); font-weight:600; line-height:1.4; flex:1; min-width:0;}
 .misopr .bar-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;}
 .misopr .seg-filter{display:flex; gap:6px; background:#ece7dd; padding:4px; border-radius:11px;}
 .misopr .seg-filter button{border:none; background:transparent; color:var(--ink-soft); font-family:var(--disp);

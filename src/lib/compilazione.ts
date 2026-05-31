@@ -84,6 +84,21 @@ function leggiCacheVoci(templateId: string): VoceTemplate[] | null {
   } catch { return null; }
 }
 
+// ---- cache locale del template attivo per tipo attività ----
+// Senza questa, offline non si saprebbe QUALE template/versione usare per un
+// sopralluogo mai aperto: la prefetch la riempie, l'apertura offline la legge.
+type TemplateAttivo = { id: string; versione: number };
+const chiaveTmpl = (tipo: string) => `tmplattivo:${tipo}`;
+function scriviCacheTmpl(tipo: string, t: TemplateAttivo) {
+  try { localStorage.setItem(chiaveTmpl(tipo), JSON.stringify(t)); } catch { /* ignora */ }
+}
+function leggiCacheTmpl(tipo: string): TemplateAttivo | null {
+  try {
+    const raw = localStorage.getItem(chiaveTmpl(tipo));
+    return raw ? (JSON.parse(raw) as TemplateAttivo) : null;
+  } catch { return null; }
+}
+
 async function caricaVoci(templateId: string): Promise<VoceTemplate[]> {
   try {
     const { data, error } = await supabase
@@ -102,17 +117,36 @@ async function caricaVoci(templateId: string): Promise<VoceTemplate[]> {
   }
 }
 
-async function caricaTemplateAttivo(tipoAttivita: string) {
-  const { data, error } = await supabase
-    .from('checklist_template')
-    .select('id, versione')
-    .eq('tipo_attivita', tipoAttivita)
-    .eq('stato', 'attivo')
-    .order('versione', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data as { id: string; versione: number } | null;
+async function caricaTemplateAttivo(tipoAttivita: string): Promise<TemplateAttivo | null> {
+  try {
+    const { data, error } = await supabase
+      .from('checklist_template')
+      .select('id, versione')
+      .eq('tipo_attivita', tipoAttivita)
+      .eq('stato', 'attivo')
+      .order('versione', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) {
+      const t = data as TemplateAttivo;
+      scriviCacheTmpl(tipoAttivita, t);
+      return t;
+    }
+    return null; // online ma nessun template attivo: risposta autorevole
+  } catch {
+    return leggiCacheTmpl(tipoAttivita); // offline: ripiego sulla cache
+  }
+}
+
+// Prefetch (online): scarica e mette in cache il template attivo + le voci per
+// un tipo attività, così il sopralluogo si potrà aprire offline. Ritorna true
+// se un template attivo esiste.
+export async function prefetchTemplatePerTipo(tipoAttivita: string): Promise<boolean> {
+  const tmpl = await caricaTemplateAttivo(tipoAttivita);
+  if (!tmpl) return false;
+  await caricaVoci(tmpl.id);
+  return true;
 }
 
 // ---- esiti esistenti (resume): server + locale, locale vince ----

@@ -35,6 +35,10 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     (evitando sabati, domeniche e festività nazionali; date modificabili), e
     assegna tecnico / data / durata / località per ciascuna.
 - **Sync offline** — coda outbox, drain in ordine, upload foto su Storage.
+- **Prefetch offline** — da "I miei sopralluoghi", il pulsante "Scarica per offline"
+  (più aggiornamento automatico all'apertura, se c'è rete) mette in cache lista +
+  contesto, template attivo + voci per tipo attività, e azioni aperte del giro
+  precedente: la checklist si apre e si compila anche senza connessione.
 
 ## Struttura
 ```
@@ -73,6 +77,7 @@ app-sopralluoghi/
       ├─ sopralluoghi.ts
       ├─ azioni.ts         # cose da fare + giro precedente
       ├─ report.ts         # client della Edge Function report
+      ├─ prefetch.ts       # prefetch offline (lista + template + giro precedente)
       ├─ compilazione.ts   # apertura checklist + azioni + stato sopralluogo
       └─ admin/            # strato dati del back-office (online-first)
          ├─ anagrafiche.ts  # CRUD clienti + incarichi (con guardie FK)
@@ -110,7 +115,6 @@ Per dare accesso al back-office, imposta il ruolo:
 ruolo vive nell'app; con il portale cliente (Fase 3) si stringeranno lato DB.
 
 ## Cosa manca (prossimi blocchi)
-- **Prefetch offline** dei sopralluoghi/template pianificati (per il campo senza rete).
 - **Pianificazione assistita** — distribuzione automatica delle date nel periodo
   ✓ (con esclusione di weekend/festività); resta da fare: scelta del tecnico in
   base a `capienza_ore_settimana` e distanza dalla base, viste calendario/carico,
