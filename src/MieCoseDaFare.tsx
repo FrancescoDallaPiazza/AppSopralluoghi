@@ -190,9 +190,11 @@ export default function MieCoseDaFare({ tecnicoId, tecnicoNome, onApriSopralluog
               </div>
             </div>
             <div className="tabs">
-              <button className="tab" onClick={onApriSopralluoghi}>
-                I miei sopralluoghi
-              </button>
+              {onApriSopralluoghi && (
+                <button className="tab" onClick={onApriSopralluoghi}>
+                  I miei sopralluoghi
+                </button>
+              )}
               <button className="tab on">Le mie cose da fare</button>
             </div>
           </div>

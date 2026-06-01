@@ -83,6 +83,17 @@ function Home({ tecnico }: { tecnico: Tecnico }) {
   const [tab, setTab] = useState<'sopralluoghi' | 'cose'>('sopralluoghi');
   const [aperto, setAperto] = useState<SopralluogoConContesto | null>(null);
 
+  // Utente interno: non fa sopralluoghi -> vede SOLO "Le mie cose da fare".
+  // Niente prop onApriSopralluoghi => la tab verso i sopralluoghi non compare.
+  if (tecnico.ruolo === 'interno') {
+    return (
+      <>
+        <MieCoseDaFare tecnicoId={tecnico.id} tecnicoNome={nomeCompleto(tecnico)} />
+        <MenuAccount />
+      </>
+    );
+  }
+
   if (aperto) {
     return (
       <Compilazione

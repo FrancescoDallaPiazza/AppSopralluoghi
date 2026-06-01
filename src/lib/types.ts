@@ -7,7 +7,10 @@ export type AzioneTipo = 'azione_correttiva' | 'scadenza_ricorrente';
 export type AzioneResponsabile = 'cliente' | 'risorsa_interna';
 export type AzionePriorita = 'bassa' | 'media' | 'alta';
 export type AzioneStato = 'aperta' | 'in_corso' | 'conclusa';
-export type RuoloTecnico = 'tecnico' | 'admin';
+// Ruoli: 'tecnico' (app da campo), 'admin' (back-office), 'interno'
+// (destinatario di cose da fare, senza sopralluoghi: vede solo "Le mie cose
+// da fare"). Allineato alla migration 011.
+export type RuoloTecnico = 'tecnico' | 'admin' | 'interno';
 export type IncaricoStato = 'attivo' | 'sospeso' | 'chiuso';
 export type ChecklistTmplStato = 'attivo' | 'archiviato';
 export type CadenzaUnita = 'giorni' | 'settimane' | 'mesi';

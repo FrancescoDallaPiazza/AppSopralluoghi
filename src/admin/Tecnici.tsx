@@ -16,7 +16,12 @@ import { nomeCompleto, type Tecnico, type RuoloTecnico } from '../lib/types';
 
 const RUOLI: { v: RuoloTecnico; l: string }[] = [
   { v: 'tecnico', l: 'Tecnico' }, { v: 'admin', l: 'Amministratore' },
+  { v: 'interno', l: 'Interno (solo cose da fare)' },
 ];
+
+const ETICHETTA_RUOLO: Record<RuoloTecnico, string> = {
+  tecnico: 'tecnico', admin: 'amministratore', interno: 'interno',
+};
 
 export default function Tecnici() {
   const [apri, setApri] = useState<{ id?: string; nuovo?: boolean } | null>(null);
@@ -83,7 +88,7 @@ function ElencoTecnici({
                 {r.tecnico.capienza_ore_settimana != null &&
                   <span>{r.tecnico.capienza_ore_settimana} h/sett.</span>}
                 <span className={`bo-pill ${r.tecnico.ruolo === 'admin' ? 'usato' : 'archiviato'}`}>
-                  {r.tecnico.ruolo === 'admin' ? 'amministratore' : 'tecnico'}
+                  {ETICHETTA_RUOLO[r.tecnico.ruolo] ?? r.tecnico.ruolo}
                 </span>
                 {!r.tecnico.user_id && <span className="bo-pill warn">login non collegato</span>}
                 {r.assegnati > 0 && <span>{r.assegnati} sopralluoghi</span>}
