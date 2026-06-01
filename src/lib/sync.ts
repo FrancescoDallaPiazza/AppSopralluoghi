@@ -4,7 +4,7 @@
 // (gli id sono generati lato client, quindi niente conflitti di chiave).
 
 import { supabase, FOTO_BUCKET } from './supabase';
-import { db, enqueueRow } from './db';
+import { db, enqueueRow, enqueueDelete } from './db';
 import { newId, type EsitoVoce, type Foto, type Azione } from './types';
 
 // ---------- Foto: ridimensiona allo scatto, poi accoda ----------
@@ -53,6 +53,33 @@ export async function rimuoviFoto(fotoId: string) {
   // TODO (slice 2): se già sincronizzata, accodare delete su storage + riga foto.
 }
 
+// Rimuove un esito (es. un rilievo aggiunto per sbaglio): pulizia locale +
+// cancellazione lato server tramite la coda, così non riappare al ricaricamento.
+//  * cancella le foto collegate (locale + eventuale upload ancora in coda);
+//  * elimina l'esito in locale;
+//  * ANNULLA gli upsert ancora pendenti dello stesso esito, così il delete in
+//    coda non viene "ricreato" da un upsert successivo;
+//  * accoda il delete della riga esito_voce: il vincolo FK fa cascata sulle
+//    righe foto e azzera origine_esito_id sulle eventuali azioni collegate.
+// Nota: gli oggetti già caricati nello storage restano (orfani) — stessa
+// limitazione documentata in rimuoviFoto; non incidono sulla correttezza.
+export async function rimuoviEsito(esitoId: string) {
+  const foto = await db.foto.where('esito_voce_id').equals(esitoId).toArray();
+  for (const f of foto) await rimuoviFoto(f.id);
+
+  await db.esiti.delete(esitoId);
+
+  const ops = await db.outbox.where('kind').equals('row').toArray();
+  for (const o of ops) {
+    if (o.table === 'esito_voce' && (o.payload as { id?: string } | undefined)?.id === esitoId && o.seq != null) {
+      await db.outbox.delete(o.seq);
+    }
+  }
+
+  await enqueueDelete('esito_voce', esitoId);
+  void runSync();
+}
+
 // ---------- Esiti e azioni: salva locale + accoda ----------
 export async function salvaEsito(e: EsitoVoce) {
   await db.esiti.put(e);
@@ -92,6 +119,9 @@ export async function runSync(): Promise<void> {
         }
       } else if (op.kind === 'row' && op.table && op.payload) {
         const row = await supabase.from(op.table).upsert(op.payload);
+        if (row.error) throw row.error;
+      } else if (op.kind === 'delete' && op.table && op.id) {
+        const row = await supabase.from(op.table).delete().eq('id', op.id);
         if (row.error) throw row.error;
       }
       await db.outbox.delete(op.seq!);

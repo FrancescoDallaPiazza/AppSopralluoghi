@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { liveQuery } from 'dexie';
 import { db } from './lib/db';
-import { salvaEsito, aggiungiFoto, rimuoviFoto, runSync } from './lib/sync';
+import { salvaEsito, aggiungiFoto, rimuoviFoto, rimuoviEsito, runSync } from './lib/sync';
 import {
   apriCompilazione, generaAzione, completaSopralluogo,
   nuovoEsito, opzioneDi, statoEsito, figliDi, isRipetibile,
@@ -338,6 +338,13 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     upsertEsiti([...esiti, e]);
     await salvaEsito(e);
   }
+  async function rimuoviRilievo(esito: EsitoVoce) {
+    if (!confirm('Eliminare questo rilievo? Verranno rimosse anche le sue foto e l’eventuale cosa da fare collegata.')) return;
+    await rimuoviEsito(esito.id);
+    setEsiti((arr) => arr.filter((x) => x.id !== esito.id));
+    setBozze((b) => { const n = { ...b }; delete n[esito.id]; return n; });
+    setScad((s) => { const n = { ...s }; delete n[esito.id]; return n; });
+  }
   async function setRilievoTesto(esito: EsitoVoce, testo: string) {
     sostituisci({ ...esito, valore: testo });
   }
@@ -537,8 +544,13 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
         <div className="voce-head">
           <div className="voce-req">{voce.testo_requisito}</div>
           {voce.descrizione && <div className="voce-hint">{voce.descrizione}</div>}
-          {istanze.map((e) => (
+          {istanze.map((e, idx) => (
             <div key={e.id} className="rilievo">
+              <div className="ril-h">
+                <span className="ril-n">Rilievo {idx + 1}</span>
+                <button className="ril-del" title="Elimina questo rilievo"
+                  onClick={() => void rimuoviRilievo(e)}>{I.x}</button>
+              </div>
               <NotaVocale className="fld" rows={2} placeholder="Descrivi il rilievo…" ariaLabel="Rilievo"
                 defaultValue={(e.valore as string) ?? ''}
                 onCommit={(t) => { void setRilievoTesto(e, t).then(() => salvaRilievo({ ...e, valore: t })); }} />
@@ -831,6 +843,11 @@ const CSS = `
 .compila .sub .voce{box-shadow:none; border-radius:10px;}
 
 .compila .rilievo{border:1px solid var(--line); border-radius:12px; padding:11px; margin-top:10px; background:#fbfaf7;}
+.compila .ril-h{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+.compila .ril-n{font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft);}
+.compila .ril-del{background:none; border:none; color:var(--na); cursor:pointer; padding:0; width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.compila .ril-del svg{width:14px; height:14px;}
+.compila .ril-del:active{background:var(--no-bg); color:var(--no);}
 
 .compila .gen{margin-top:12px; border-radius:12px; padding:12px; border:1px solid;}
 .compila .gen.azione{background:var(--no-bg); border-color:#f1c4b9;} .compila .gen.scad{background:#fbeccb; border-color:#f0d28a;}
@@ -840,7 +857,7 @@ const CSS = `
 .compila .gen-x:active{background:rgba(216,68,47,.14);}
 .compila .add-cdf{margin-top:2px; width:100%; border:1.5px dashed #f1c4b9; background:var(--no-bg); color:var(--no); font-family:var(--disp); font-weight:700; font-size:12.5px; padding:10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;}
 .compila .add-cdf svg{width:15px; height:15px;}
-.compila .field select{width:100%; appearance:none; border:1px solid rgba(0,0,0,.12); border-radius:8px; padding:9px 10px; font-family:inherit; font-size:13.5px; background:#fff; color:var(--ink);}
+.compila .field select{width:100%; appearance:none; -webkit-appearance:none; border:1px solid rgba(0,0,0,.12); border-radius:8px; padding:9px 32px 9px 10px; font-family:inherit; font-size:13.5px; background-color:#fff; color:var(--ink); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b5f66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 9px center; background-size:16px;}
 .compila .field select:focus{outline:none; border-color:var(--ink);}
 .compila .field{margin-bottom:9px;} .compila .field label{display:block; font-size:11px; font-weight:600; color:var(--ink-soft); margin-bottom:4px;}
 .compila .field input,.compila .field textarea{width:100%; appearance:none; border:1px solid rgba(0,0,0,.12); border-radius:8px; padding:9px 10px; font-family:inherit; font-size:13.5px; background:#fff; color:var(--ink); resize:none;}
