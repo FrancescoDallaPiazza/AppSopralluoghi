@@ -7,9 +7,9 @@ import {
   nuovoEsito, opzioneDi, statoEsito, figliDi, isRipetibile,
 } from './lib/compilazione';
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
-import { caricaGiroPrecedente, verificaAzione, type AzioneConContesto } from './lib/azioni';
+import { caricaGiroPrecedente, verificaAzione, caricaAreeInterne, type AzioneConContesto } from './lib/azioni';
 import NotaVocale from './NotaVocale';
-import type { EsitoVoce, Foto, Azione, VoceTemplate } from './lib/types';
+import type { EsitoVoce, Foto, Azione, VoceTemplate, AreaInterna } from './lib/types';
 
 // ---------- helpers ----------
 const isoPiuMesi = (mesi: number) => {
@@ -38,9 +38,9 @@ const posizione = (): Promise<{ lat: number; lng: number } | undefined> =>
   });
 
 type Resp = 'cliente' | 'interno';
-interface Bozza { descrizione: string; responsabile: Resp; scadenza: string; priorita: 'bassa' | 'media' | 'alta'; }
-interface BozzaScad { responsabile: Resp; mesi: number; data: string; }
-const nuovaBozza = (): Bozza => ({ descrizione: '', responsabile: 'cliente', scadenza: isoPiuGiorni(30), priorita: 'media' });
+interface Bozza { descrizione: string; responsabile: Resp; areaId: string | null; scadenza: string; priorita: 'bassa' | 'media' | 'alta'; }
+interface BozzaScad { responsabile: Resp; areaId: string | null; mesi: number; data: string; }
+const nuovaBozza = (): Bozza => ({ descrizione: '', responsabile: 'cliente', areaId: null, scadenza: isoPiuGiorni(30), priorita: 'media' });
 
 const PERIODICITA = [
   { l: 'Mensile', m: 1 }, { l: 'Trimestrale', m: 3 }, { l: 'Semestrale', m: 6 },
@@ -163,6 +163,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [esiti, setEsiti] = useState<EsitoVoce[]>([]);
   const [bozze, setBozze] = useState<Record<string, Bozza>>({});
   const [scad, setScad] = useState<Record<string, BozzaScad>>({});
+  const [aree, setAree] = useState<AreaInterna[]>([]);
   const [inCoda, setInCoda] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
@@ -186,6 +187,14 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     window.addEventListener('online', su); window.addEventListener('offline', giu);
     const sub = liveQuery(() => db.outbox.count()).subscribe({ next: setInCoda });
     return () => { window.removeEventListener('online', su); window.removeEventListener('offline', giu); sub.unsubscribe(); };
+  }, []);
+
+  // aree interne (per assegnare le cose da fare a una funzione: Formazione,
+  // Preventivi…). Best-effort: se offline o vuoto, resta solo "tecnico".
+  useEffect(() => {
+    let vivo = true;
+    caricaAreeInterne().then((a) => vivo && setAree(a)).catch(() => { /* offline */ });
+    return () => { vivo = false; };
   }, []);
 
   // ---- indici ----
@@ -290,7 +299,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     setScad((s) => {
       const n = { ...s };
       if (n[id]) delete n[id];
-      else { const m = mesiDefault ?? 12; n[id] = { responsabile: 'cliente', mesi: m, data: isoPiuMesi(m) }; }
+      else { const m = mesiDefault ?? 12; n[id] = { responsabile: 'cliente', areaId: null, mesi: m, data: isoPiuMesi(m) }; }
       return n;
     });
   const setScadPatch = (id: string, patch: Partial<BozzaScad>) =>
@@ -350,6 +359,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           descrizione: desc, responsabileTipo: b.responsabile === 'interno' ? 'risorsa_interna' : 'cliente',
           dataScadenza: b.scadenza || null, priorita: b.priorita,
           clienteId: sopralluogo.cliente_id, tecnicoId,
+          areaId: b.responsabile === 'interno' ? b.areaId : null,
         });
       }
       for (const [esitoId, s] of Object.entries(scad)) {
@@ -360,6 +370,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           responsabileTipo: s.responsabile === 'interno' ? 'risorsa_interna' : 'cliente',
           dataScadenza: s.data || null, priorita: 'media',
           clienteId: sopralluogo.cliente_id, tecnicoId, periodicitaMesi: s.mesi,
+          areaId: s.responsabile === 'interno' ? s.areaId : null,
         });
       }
       await completaSopralluogo(toBaseSopralluogo(sopralluogo));
@@ -518,7 +529,15 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             value={b.descrizione}
             onChange={(t) => setBozza(esito.id, { descrizione: t })} /></div>
         <div className="field"><label>Responsabile</label>
-          <Seg value={b.responsabile} onChange={(x) => setBozza(esito.id, { responsabile: x })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
+          <Seg value={b.responsabile} onChange={(x) => setBozza(esito.id, { responsabile: x, areaId: x === 'cliente' ? null : b.areaId })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
+        {b.responsabile === 'interno' && aree.length > 0 && (
+          <div className="field"><label>Destinatario interno</label>
+            <select value={b.areaId ?? ''} onChange={(e) => setBozza(esito.id, { areaId: e.target.value || null })}>
+              <option value="">Me (tecnico del sopralluogo)</option>
+              {aree.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </select>
+          </div>
+        )}
         <div className="row2">
           <div className="field"><label>Scadenza</label>
             <input type="date" value={b.scadenza} onChange={(e) => setBozza(esito.id, { scadenza: e.target.value })} /></div>
@@ -551,8 +570,16 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               <div className="field"><label>Prossima scadenza</label>
                 <input type="date" value={s.data} onChange={(e) => setScadPatch(esito.id, { data: e.target.value })} /></div>
               <div className="field"><label>Responsabile</label>
-                <Seg value={s.responsabile} onChange={(x) => setScadPatch(esito.id, { responsabile: x })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
+                <Seg value={s.responsabile} onChange={(x) => setScadPatch(esito.id, { responsabile: x, areaId: x === 'cliente' ? null : s.areaId })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
             </div>
+            {s.responsabile === 'interno' && aree.length > 0 && (
+              <div className="field"><label>Destinatario interno</label>
+                <select value={s.areaId ?? ''} onChange={(e) => setScadPatch(esito.id, { areaId: e.target.value || null })}>
+                  <option value="">Me (tecnico del sopralluogo)</option>
+                  {aree.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                </select>
+              </div>
+            )}
           </>
         )}
       </div>

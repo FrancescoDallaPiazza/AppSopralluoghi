@@ -83,6 +83,7 @@ function useMieAzioni(tecnicoId: string) {
           cliente_nome: null,
           sopralluogo_label: null,
           origine_voce: l.descrizione,
+          area_nome: null,
         });
       }
     }

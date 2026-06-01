@@ -7,10 +7,11 @@ import type { Tecnico } from '../lib/types';
 import { CSS_BACKOFFICE } from './ui';
 import Anagrafiche from './Anagrafiche';
 import Tecnici from './Tecnici';
+import Aree from './Aree';
 import TemplateList from './TemplateList';
 import Pianificazione from './Pianificazione';
 
-type Sezione = 'anagrafiche' | 'tecnici' | 'template' | 'pianificazione';
+type Sezione = 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'pianificazione';
 
 export default function BackOffice({
   tecnico, onVaiAllApp,
@@ -36,6 +37,8 @@ export default function BackOffice({
             onClick={() => setSezione('anagrafiche')}>Anagrafiche</button>
           <button className={`bo-tab ${sezione === 'tecnici' ? 'on' : ''}`}
             onClick={() => setSezione('tecnici')}>Tecnici</button>
+          <button className={`bo-tab ${sezione === 'aree' ? 'on' : ''}`}
+            onClick={() => setSezione('aree')}>Aree</button>
           <button className={`bo-tab ${sezione === 'template' ? 'on' : ''}`}
             onClick={() => setSezione('template')}>Template</button>
           <button className={`bo-tab ${sezione === 'pianificazione' ? 'on' : ''}`}
@@ -46,6 +49,7 @@ export default function BackOffice({
       <main className="bo-main">
         {sezione === 'anagrafiche' && <Anagrafiche />}
         {sezione === 'tecnici' && <Tecnici />}
+        {sezione === 'aree' && <Aree />}
         {sezione === 'template' && <TemplateList />}
         {sezione === 'pianificazione' && <Pianificazione />}
       </main>

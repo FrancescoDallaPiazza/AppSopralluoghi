@@ -253,12 +253,16 @@ export interface InputAzione {
   priorita: AzionePriorita;
   clienteId: string | null;
   tecnicoId: string;
+  areaId?: string | null;          // se interno -> a un'area invece che al tecnico
   periodicitaMesi?: number | null;
 }
 
 export async function generaAzione(i: InputAzione): Promise<Azione> {
   const esistenti = await db.azioni.toArray();
   const gia = esistenti.find((a) => a.origine_esito_id === i.esitoId && a.tipo === i.tipo);
+
+  // Interno: destinatario = area se indicata, altrimenti il tecnico.
+  const versoArea = i.responsabileTipo === 'risorsa_interna' && !!i.areaId;
 
   const azione: Azione = {
     id: gia?.id ?? newId(),
@@ -268,7 +272,9 @@ export async function generaAzione(i: InputAzione): Promise<Azione> {
     descrizione: i.descrizione,
     responsabile_tipo: i.responsabileTipo,
     responsabile_cliente_id: i.responsabileTipo === 'cliente' ? i.clienteId : null,
-    responsabile_interno_id: i.responsabileTipo === 'risorsa_interna' ? i.tecnicoId : null,
+    responsabile_interno_id:
+      i.responsabileTipo === 'risorsa_interna' && !versoArea ? i.tecnicoId : null,
+    responsabile_area_id: versoArea ? i.areaId! : null,
     data_scadenza: i.dataScadenza,
     priorita: i.priorita,
     stato: 'aperta',

@@ -9,7 +9,7 @@
 import { supabase } from './supabase';
 import { db, enqueueRow } from './db';
 import { runSync } from './sync';
-import { newId, type Azione, type AzioneStato } from './types';
+import { newId, type Azione, type AzioneStato, type AreaInterna } from './types';
 
 // Azione + etichette di contesto per la UI (NON sono colonne di `azione`:
 // vanno tolte prima di salvare/upsert, vedi toBaseAzione).
@@ -17,12 +17,25 @@ export interface AzioneConContesto extends Azione {
   cliente_nome: string | null;
   sopralluogo_label: string | null;
   origine_voce: string | null;
+  area_nome: string | null;
+}
+
+// Aree/funzioni interne attive, per i menù di assegnazione.
+export async function caricaAreeInterne(): Promise<AreaInterna[]> {
+  const { data, error } = await supabase
+    .from('area_interna')
+    .select('id, nome, email, attiva')
+    .eq('attiva', true)
+    .order('nome', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as AreaInterna[];
 }
 
 // Le sole colonne reali della tabella `azione` (allineate a 001_init.sql).
 const COLONNE_AZIONE = [
   'id', 'tipo', 'origine_esito_id', 'sopralluogo_origine_id', 'descrizione',
   'responsabile_tipo', 'responsabile_cliente_id', 'responsabile_interno_id',
+  'responsabile_area_id',
   'data_scadenza', 'priorita', 'stato', 'sopralluogo_verifica_id',
   'data_verifica', 'periodicita_mesi', 'werp_attivita_id',
 ] as const;
@@ -46,6 +59,7 @@ export async function caricaMieAzioni(tecnicoId: string): Promise<AzioneConConte
     .select(`
       ${COLONNE_AZIONE.join(', ')},
       origine:esito_voce!origine_esito_id ( voce_testo, voce_sezione ),
+      area:area_interna!responsabile_area_id ( nome ),
       sopr:sopralluogo!sopralluogo_origine_id (
         progressivo,
         incarico:incarico!incarico_id (
@@ -69,6 +83,7 @@ export async function caricaMieAzioni(tecnicoId: string): Promise<AzioneConConte
     const inc = uno<any>(sopr?.incarico);
     const cli = uno<any>(inc?.cliente);
     const orig = uno<any>(r.origine);
+    const area = uno<any>(r.area);
     const label = sopr
       ? [inc?.tipo_attivita, sopr.progressivo].filter(Boolean).join(' · ') || null
       : null;
@@ -77,6 +92,7 @@ export async function caricaMieAzioni(tecnicoId: string): Promise<AzioneConConte
       cliente_nome: cli?.ragione_sociale ?? null,
       sopralluogo_label: label,
       origine_voce: orig?.voce_testo ?? null,
+      area_nome: area?.nome ?? null,
     };
   });
 }
@@ -125,6 +141,7 @@ export async function caricaGiroPrecedente(
       .select(`
         ${COLONNE_AZIONE.join(', ')},
         origine:esito_voce!origine_esito_id ( voce_testo, voce_sezione ),
+        area:area_interna!responsabile_area_id ( nome ),
         sopr:sopralluogo!sopralluogo_origine_id!inner (
           progressivo, incarico_id,
           incarico:incarico!incarico_id (
@@ -152,6 +169,7 @@ export async function caricaGiroPrecedente(
     const inc = uno<any>(sopr?.incarico);
     const cli = uno<any>(inc?.cliente);
     const orig = uno<any>(r.origine);
+    const area = uno<any>(r.area);
     const label = sopr
       ? [inc?.tipo_attivita, sopr.progressivo].filter(Boolean).join(' · ') || null
       : null;
@@ -160,6 +178,7 @@ export async function caricaGiroPrecedente(
       cliente_nome: cli?.ragione_sociale ?? null,
       sopralluogo_label: label,
       origine_voce: orig?.voce_testo ?? null,
+      area_nome: area?.nome ?? null,
     };
   });
 
@@ -189,7 +208,7 @@ async function giroPrecedenteLocale(
       a.sopralluogo_origine_id != null &&
       idsIncarico.has(a.sopralluogo_origine_id) &&
       a.sopralluogo_origine_id !== sopralluogoCorrenteId)
-    .map((a) => ({ ...a, cliente_nome: null, sopralluogo_label: null, origine_voce: null }));
+    .map((a) => ({ ...a, cliente_nome: null, sopralluogo_label: null, origine_voce: null, area_nome: null }));
 }
 
 // Prefetch (online): azioni aperte dei sopralluoghi degli incarichi indicati,

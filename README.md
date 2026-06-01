@@ -29,6 +29,8 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     ore/settimana, ruolo tecnico/admin, attivo). Alimenta la pianificazione
     assistita. Il login resta su Supabase Auth: qui si collega il profilo a un
     `user_id` esistente (non si creano account dall'app).
+  - **Aree interne** — funzioni del team (Formazione, Preventivi, …) a cui
+    assegnare le "cose da fare" interne in alternativa al tecnico.
   - **Template** — editor del modello "form configurabile": voci di primo livello
     e sotto-domande, tipi (scelta / multiscelta / testo / data / numero / slider /
     foto / rilievo), opzioni con stato logico e generazione azione, scadenza
@@ -58,7 +60,7 @@ app-sopralluoghi/
 ├─ .env.local.example      # copia in .env.local
 ├─ supabase/
 │  ├─ migrations/          # 001 schema+RLS+foto · 002 form model · 003-004 seed
-│  │                       # 005 bucket report · 006 ruolo · 007 cadenza incarico · 008 contatti cliente
+│  │                       # 005 bucket report · 006 ruolo · 007 cadenza · 008 contatti · 009 aree interne
 │  └─ functions/genera-report/   # Edge Function report (HTML/PDF + email)
 ├─ mockups/                # riferimenti HTML (campo / report)
 └─ src/
@@ -91,6 +93,7 @@ app-sopralluoghi/
       └─ admin/            # strato dati del back-office (online-first)
          ├─ anagrafiche.ts  # CRUD clienti + incarichi (con guardie FK)
          ├─ tecnici.ts      # CRUD tecnici (profilo; login via Supabase Auth)
+         ├─ aree.ts         # CRUD aree interne (destinatari cose-da-fare)
          ├─ templates.ts    # CRUD template + versionamento
          ├─ assistita.ts    # motore pianificazione assistita (carico + distanza)
          └─ pianificazione.ts # incarichi, sedute, tecnici
@@ -98,7 +101,7 @@ app-sopralluoghi/
 
 ## Avvio
 1. Crea un progetto Supabase e applica le migration in ordine (`supabase db push`,
-   oppure incolla i file di `supabase/migrations/` nello SQL editor: 001 → 008).
+   oppure incolla i file di `supabase/migrations/` nello SQL editor: 001 → 009).
 2. `cp .env.local.example .env.local` e compila:
    ```
    VITE_SUPABASE_URL=https://xxxx.supabase.co

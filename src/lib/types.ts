@@ -160,6 +160,7 @@ export interface Azione {
   responsabile_tipo: AzioneResponsabile;
   responsabile_cliente_id: string | null;
   responsabile_interno_id: string | null;
+  responsabile_area_id: string | null;
   data_scadenza: string | null;
   priorita: AzionePriorita;
   stato: AzioneStato;
@@ -167,6 +168,15 @@ export interface Azione {
   data_verifica: string | null;
   periodicita_mesi: number | null;
   werp_attivita_id: string | null;
+}
+
+// Area/funzione interna (Formazione, Preventivi, …): destinatario di una
+// "cosa da fare" interna alternativo al tecnico (migration 009).
+export interface AreaInterna {
+  id: string;
+  nome: string;
+  email: string | null;
+  attiva: boolean;
 }
 
 export const newId = (): string => crypto.randomUUID();
