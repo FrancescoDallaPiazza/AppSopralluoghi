@@ -282,6 +282,7 @@ export async function generaAzione(i: InputAzione): Promise<Azione> {
     data_verifica: null,
     periodicita_mesi: i.tipo === 'scadenza_ricorrente' ? (i.periodicitaMesi ?? null) : null,
     werp_attivita_id: null,
+    notificata_il: null,
   };
   await salvaAzione(azione);
   return azione;

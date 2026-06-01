@@ -9,6 +9,7 @@ import {
   type CosaDaFareAdmin, type DestinatarioTipo,
 } from '../lib/admin/cosedafare';
 import type { AzioneStato } from '../lib/types';
+import { notificaAzione } from '../lib/notifiche';
 
 const oggiISO = () => new Date().toISOString().slice(0, 10);
 const fra30 = () => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().slice(0, 10); };
@@ -47,6 +48,16 @@ export default function CoseDaFare() {
       setRighe((rs) => rs.map((r) => (r.azione.id === id ? { ...r, azione: { ...r.azione, stato: s } } : r)));
     } catch (e: any) {
       setMsg(e?.message ?? 'Aggiornamento non riuscito.');
+    } finally { setBusy(null); }
+  }
+
+  async function avvisa(id: string) {
+    setBusy(id); setMsg(null);
+    try {
+      const r = await notificaAzione(id);
+      setMsg(r.sent ? 'Email inviata al destinatario.' : `Email non inviata: ${r.reason ?? 'motivo sconosciuto'}.`);
+    } catch (e: any) {
+      setMsg(e?.message ?? 'Invio non riuscito.');
     } finally { setBusy(null); }
   }
 
@@ -169,6 +180,16 @@ export default function CoseDaFare() {
                 </select>
               </label>
             </div>
+            {r.destinatario_tipo !== 'cliente' && a.stato !== 'conclusa' && (
+              <div className="bo-bar" style={{ marginTop: 10 }}>
+                <span className="bo-sp" />
+                <button className="bo-btn ghost sm" disabled={busy === a.id}
+                  onClick={() => void avvisa(a.id)}
+                  title="Invia un'email di avviso al destinatario interno">
+                  ✉ Avvisa via email
+                </button>
+              </div>
+            )}
           </div>
         );
       })}

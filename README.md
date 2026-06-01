@@ -49,6 +49,9 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     e vicinanza alla base (haversine sulle coordinate cliente), con
     "Assegna automaticamente" che riempie i tecnici mancanti senza sovraccarichi.
 - **Sync offline** — coda outbox, drain in ordine, upload foto su Storage.
+- **Notifiche cose-da-fare** — alla chiusura del sopralluogo, le cose-da-fare
+  assegnate a una risorsa interna (tecnico o area) generano un'email di avviso
+  (Edge Function `notifica-azione` via SMTP); re-invio manuale dal back-office.
 - **Prefetch offline** — da "I miei sopralluoghi", il pulsante "Scarica per offline"
   (più aggiornamento automatico all'apertura, se c'è rete) mette in cache lista +
   contesto, template attivo + voci per tipo attività, e azioni aperte del giro
@@ -137,9 +140,11 @@ ruolo vive nell'app; con il portale cliente (Fase 3) si stringeranno lato DB.
 - **Onboarding tecnico** — creazione/invito dell'account di login via Edge Function
   (Admin API) con collegamento automatico di `user_id`, al posto del passo manuale
   in Supabase.
-- **Invio esiti** — report al cliente via email; notifica alle aree interne (email
-  già predisposta su `area_interna`).
+- **Invio esiti al cliente** — report al cliente via email (notifica alle risorse
+  interne ✓ con `notifica-azione`).
 - **Vista disponibilità tecnici** — carico % per settimana/tecnico (calendario).
+- **Notifiche più ricche** — badge in-app delle cose-da-fare aperte, ed eventuali
+  push del telefono.
 - **Pianificazione assistita** — esclusione santi patroni locali (rifinitura).
 - Scadenze ricorrenti: rigenerazione del ciclo successivo alla verifica.
 - **Integrazione Werp** (campi `werp_id` / `werp_attivita_id` già predisposti) — da

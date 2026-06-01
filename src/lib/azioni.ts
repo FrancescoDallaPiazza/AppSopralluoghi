@@ -37,7 +37,7 @@ const COLONNE_AZIONE = [
   'responsabile_tipo', 'responsabile_cliente_id', 'responsabile_interno_id',
   'responsabile_area_id',
   'data_scadenza', 'priorita', 'stato', 'sopralluogo_verifica_id',
-  'data_verifica', 'periodicita_mesi', 'werp_attivita_id',
+  'data_verifica', 'periodicita_mesi', 'werp_attivita_id', 'notificata_il',
 ] as const;
 
 // Ricava la sola Azione "pulita" (senza i campi di contesto) per upsert/locale.

@@ -168,6 +168,7 @@ export interface Azione {
   data_verifica: string | null;
   periodicita_mesi: number | null;
   werp_attivita_id: string | null;
+  notificata_il: string | null;
 }
 
 // Area/funzione interna (Formazione, Preventivi, …): destinatario di una

@@ -16,7 +16,7 @@ const COLONNE_AZIONE = [
   'responsabile_tipo', 'responsabile_cliente_id', 'responsabile_interno_id',
   'responsabile_area_id',
   'data_scadenza', 'priorita', 'stato', 'sopralluogo_verifica_id',
-  'data_verifica', 'periodicita_mesi', 'werp_attivita_id',
+  'data_verifica', 'periodicita_mesi', 'werp_attivita_id', 'notificata_il',
 ] as const;
 
 const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
