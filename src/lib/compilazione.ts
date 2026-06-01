@@ -242,8 +242,16 @@ export async function apriCompilazione(
   return { compilataId: compilata.id, voci, esiti };
 }
 
-// ---- azione generata (idempotente per esito + tipo) ----
+// ---- azione generata ----
+// Chiave di identità dell'azione:
+//   * se `azioneId` è passato (cose da fare correttive), la riga è identificata
+//     da QUELL'id: niente dedup per esito, così uno stesso rilievo può generare
+//     PIÙ cose da fare. Resta idempotente: ripetere la chiamata con lo stesso
+//     azioneId fa un upsert, non un duplicato.
+//   * se `azioneId` è assente (es. scadenze ricorrenti, una per esito), si
+//     mantiene il dedup storico per (origine_esito_id + tipo).
 export interface InputAzione {
+  azioneId?: string;               // chiave stabile per-bozza (cose da fare multiple)
   esitoId: string;
   sopralluogoId: string;
   tipo: AzioneTipo;
@@ -252,20 +260,26 @@ export interface InputAzione {
   dataScadenza: string | null;
   priorita: AzionePriorita;
   clienteId: string | null;
-  tecnicoId: string;
+  tecnicoId: string;               // destinatario interno (può essere un tecnico diverso da chi compila)
   areaId?: string | null;          // se interno -> a un'area invece che al tecnico
   periodicitaMesi?: number | null;
 }
 
 export async function generaAzione(i: InputAzione): Promise<Azione> {
-  const esistenti = await db.azioni.toArray();
-  const gia = esistenti.find((a) => a.origine_esito_id === i.esitoId && a.tipo === i.tipo);
+  let id: string;
+  if (i.azioneId) {
+    id = i.azioneId;
+  } else {
+    const esistenti = await db.azioni.toArray();
+    const gia = esistenti.find((a) => a.origine_esito_id === i.esitoId && a.tipo === i.tipo);
+    id = gia?.id ?? newId();
+  }
 
   // Interno: destinatario = area se indicata, altrimenti il tecnico.
   const versoArea = i.responsabileTipo === 'risorsa_interna' && !!i.areaId;
 
   const azione: Azione = {
-    id: gia?.id ?? newId(),
+    id,
     tipo: i.tipo,
     origine_esito_id: i.esitoId,
     sopralluogo_origine_id: i.sopralluogoId,

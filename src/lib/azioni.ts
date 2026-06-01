@@ -31,6 +31,23 @@ export async function caricaAreeInterne(): Promise<AreaInterna[]> {
   return (data ?? []) as unknown as AreaInterna[];
 }
 
+// Tecnici attivi assegnabili come destinatario interno di una cosa da fare:
+// serve a permettere che il tecnico A assegni un'azione al tecnico B (oltre che
+// a sé stesso o a un'area). Lettura best-effort dal server: offline ritorna una
+// lista vuota e in compilazione restano comunque disponibili "Me" e le aree.
+export interface TecnicoAssegnabile { id: string; nome: string; cognome: string | null; }
+
+export async function caricaTecniciAssegnabili(): Promise<TecnicoAssegnabile[]> {
+  const { data, error } = await supabase
+    .from('tecnico')
+    .select('id, nome, cognome')
+    .eq('attivo', true)
+    .order('cognome', { ascending: true, nullsFirst: false })
+    .order('nome', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as TecnicoAssegnabile[];
+}
+
 // Le sole colonne reali della tabella `azione` (allineate a 001_init.sql).
 const COLONNE_AZIONE = [
   'id', 'tipo', 'origine_esito_id', 'sopralluogo_origine_id', 'descrizione',

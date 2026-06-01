@@ -7,8 +7,12 @@ import {
   nuovoEsito, opzioneDi, statoEsito, figliDi, isRipetibile,
 } from './lib/compilazione';
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
-import { caricaGiroPrecedente, verificaAzione, caricaAreeInterne, type AzioneConContesto } from './lib/azioni';
+import {
+  caricaGiroPrecedente, verificaAzione, caricaAreeInterne, caricaTecniciAssegnabili,
+  type AzioneConContesto, type TecnicoAssegnabile,
+} from './lib/azioni';
 import NotaVocale from './NotaVocale';
+import { newId, nomeCompleto } from './lib/types';
 import type { EsitoVoce, Foto, Azione, VoceTemplate, AreaInterna } from './lib/types';
 
 // ---------- helpers ----------
@@ -38,9 +42,9 @@ const posizione = (): Promise<{ lat: number; lng: number } | undefined> =>
   });
 
 type Resp = 'cliente' | 'interno';
-interface Bozza { descrizione: string; responsabile: Resp; areaId: string | null; scadenza: string; priorita: 'bassa' | 'media' | 'alta'; }
-interface BozzaScad { responsabile: Resp; areaId: string | null; mesi: number; data: string; }
-const nuovaBozza = (): Bozza => ({ descrizione: '', responsabile: 'cliente', areaId: null, scadenza: isoPiuGiorni(30), priorita: 'media' });
+interface Bozza { id: string; descrizione: string; responsabile: Resp; tecnicoTargetId: string | null; areaId: string | null; scadenza: string; priorita: 'bassa' | 'media' | 'alta'; }
+interface BozzaScad { responsabile: Resp; tecnicoTargetId: string | null; areaId: string | null; mesi: number; data: string; }
+const nuovaBozza = (): Bozza => ({ id: newId(), descrizione: '', responsabile: 'cliente', tecnicoTargetId: null, areaId: null, scadenza: isoPiuGiorni(30), priorita: 'media' });
 
 const PERIODICITA = [
   { l: 'Mensile', m: 1 }, { l: 'Trimestrale', m: 3 }, { l: 'Semestrale', m: 6 },
@@ -161,9 +165,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [compilataId, setCompilataId] = useState<string>('');
   const [voci, setVoci] = useState<VoceTemplate[]>([]);
   const [esiti, setEsiti] = useState<EsitoVoce[]>([]);
-  const [bozze, setBozze] = useState<Record<string, Bozza>>({});
+  const [bozze, setBozze] = useState<Record<string, Bozza[]>>({});
   const [scad, setScad] = useState<Record<string, BozzaScad>>({});
   const [aree, setAree] = useState<AreaInterna[]>([]);
+  const [tecnici, setTecnici] = useState<TecnicoAssegnabile[]>([]);
   const [inCoda, setInCoda] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
@@ -194,6 +199,14 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   useEffect(() => {
     let vivo = true;
     caricaAreeInterne().then((a) => vivo && setAree(a)).catch(() => { /* offline */ });
+    return () => { vivo = false; };
+  }, []);
+
+  // tecnici attivi (per assegnare una cosa da fare a un collega: tecnico A -> B).
+  // Best-effort come le aree: offline resta disponibile solo "Me".
+  useEffect(() => {
+    let vivo = true;
+    caricaTecniciAssegnabili().then((t) => vivo && setTecnici(t)).catch(() => { /* offline */ });
     return () => { vivo = false; };
   }, []);
 
@@ -257,10 +270,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     sostituisci(agg);
     await salvaEsito(agg);
 
-    // bozza azione
+    // bozza azione (lista per esito: si parte da una, se ne possono aggiungere)
     setBozze((b) => {
       const n = { ...b };
-      if (opt?.genera_azione && !n[esito.id]) n[esito.id] = nuovaBozza();
+      if (opt?.genera_azione && !(n[esito.id]?.length)) n[esito.id] = [nuovaBozza()];
       if (!opt?.genera_azione) delete n[esito.id];
       return n;
     });
@@ -293,13 +306,21 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   }
   async function salvaNota(esito: EsitoVoce) { await salvaEsito(esito); }
 
-  const setBozza = (id: string, patch: Partial<Bozza>) =>
-    setBozze((b) => ({ ...b, [id]: { ...(b[id] ?? nuovaBozza()), ...patch } }));
+  // cose da fare come LISTA per esito: aggiungi / rimuovi / modifica una bozza.
+  const aggiungiBozza = (esitoId: string) =>
+    setBozze((b) => ({ ...b, [esitoId]: [...(b[esitoId] ?? []), nuovaBozza()] }));
+  const rimuoviBozza = (esitoId: string, bozzaId: string) =>
+    setBozze((b) => ({ ...b, [esitoId]: (b[esitoId] ?? []).filter((x) => x.id !== bozzaId) }));
+  const setBozza = (esitoId: string, bozzaId: string, patch: Partial<Bozza>) =>
+    setBozze((b) => ({
+      ...b,
+      [esitoId]: (b[esitoId] ?? []).map((x) => (x.id === bozzaId ? { ...x, ...patch } : x)),
+    }));
   const toggleScad = (id: string, mesiDefault?: number) =>
     setScad((s) => {
       const n = { ...s };
       if (n[id]) delete n[id];
-      else { const m = mesiDefault ?? 12; n[id] = { responsabile: 'cliente', areaId: null, mesi: m, data: isoPiuMesi(m) }; }
+      else { const m = mesiDefault ?? 12; n[id] = { responsabile: 'cliente', tecnicoTargetId: null, areaId: null, mesi: m, data: isoPiuMesi(m) }; }
       return n;
     });
   const setScadPatch = (id: string, patch: Partial<BozzaScad>) =>
@@ -325,14 +346,14 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     const g = !esito.genera_azione;
     const agg = { ...esito, genera_azione: g };
     sostituisci(agg); await salvaEsito(agg);
-    setBozze((b) => { const n = { ...b }; if (g && !n[esito.id]) n[esito.id] = nuovaBozza(); if (!g) delete n[esito.id]; return n; });
+    setBozze((b) => { const n = { ...b }; if (g && !(n[esito.id]?.length)) n[esito.id] = [nuovaBozza()]; if (!g) delete n[esito.id]; return n; });
   }
 
   // ---- sintesi ----
   const topVoci = useMemo(() => voci.filter((v) => v.parent_voce_id === null), [voci]);
   const totale = topVoci.filter((v) => !isRipetibile(v)).length;
   const fatte = topVoci.filter((v) => !isRipetibile(v) && (esitoTop.get(v.id)?.valore != null)).length;
-  const nAzioni = esiti.filter((e) => e.genera_azione).length + Object.keys(scad).length;
+  const nAzioni = Object.values(bozze).reduce((acc, l) => acc + l.length, 0) + Object.keys(scad).length;
 
   const sezioni = useMemo(() => {
     const out: Array<{ sez: string | null; voci: VoceTemplate[] }> = [];
@@ -348,29 +369,40 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   async function completa() {
     setSalvataggio('corso');
     try {
-      for (const e of esiti) {
-        if (!e.genera_azione) continue;
-        const b = bozze[e.id] ?? nuovaBozza();
-        const desc = b.descrizione.trim()
-          || (e.voce_tipo === 'rilievo' ? String(e.valore ?? '').trim() : '')
-          || `Da definire — ${e.voce_testo}`;
-        await generaAzione({
-          esitoId: e.id, sopralluogoId: sopralluogo.id, tipo: 'azione_correttiva',
-          descrizione: desc, responsabileTipo: b.responsabile === 'interno' ? 'risorsa_interna' : 'cliente',
-          dataScadenza: b.scadenza || null, priorita: b.priorita,
-          clienteId: sopralluogo.cliente_id, tecnicoId,
-          areaId: b.responsabile === 'interno' ? b.areaId : null,
-        });
+      // Cose da fare: una azione per ogni bozza della lista dell'esito (più
+      // cose da fare possibili sullo stesso rilievo). azioneId = id della bozza,
+      // così la creazione è idempotente e non duplica al re-salvataggio.
+      for (const [esitoId, lista] of Object.entries(bozze)) {
+        const e = esiti.find((x) => x.id === esitoId);
+        if (!e) continue;
+        for (const b of lista) {
+          const desc = b.descrizione.trim()
+            || (e.voce_tipo === 'rilievo' ? String(e.valore ?? '').trim() : '')
+            || `Da definire — ${e.voce_testo}`;
+          const interno = b.responsabile === 'interno';
+          await generaAzione({
+            azioneId: b.id,
+            esitoId: e.id, sopralluogoId: sopralluogo.id, tipo: 'azione_correttiva',
+            descrizione: desc, responsabileTipo: interno ? 'risorsa_interna' : 'cliente',
+            dataScadenza: b.scadenza || null, priorita: b.priorita,
+            clienteId: sopralluogo.cliente_id,
+            tecnicoId: interno ? (b.tecnicoTargetId ?? tecnicoId) : tecnicoId,
+            areaId: interno ? b.areaId : null,
+          });
+        }
       }
       for (const [esitoId, s] of Object.entries(scad)) {
         const e = esiti.find((x) => x.id === esitoId);
+        const interno = s.responsabile === 'interno';
         await generaAzione({
           esitoId, sopralluogoId: sopralluogo.id, tipo: 'scadenza_ricorrente',
           descrizione: `Scadenza ricorrente: ${e?.voce_testo ?? ''}`.trim(),
-          responsabileTipo: s.responsabile === 'interno' ? 'risorsa_interna' : 'cliente',
+          responsabileTipo: interno ? 'risorsa_interna' : 'cliente',
           dataScadenza: s.data || null, priorita: 'media',
-          clienteId: sopralluogo.cliente_id, tecnicoId, periodicitaMesi: s.mesi,
-          areaId: s.responsabile === 'interno' ? s.areaId : null,
+          clienteId: sopralluogo.cliente_id,
+          tecnicoId: interno ? (s.tecnicoTargetId ?? tecnicoId) : tecnicoId,
+          periodicitaMesi: s.mesi,
+          areaId: interno ? s.areaId : null,
         });
       }
       await completaSopralluogo(toBaseSopralluogo(sopralluogo));
@@ -433,7 +465,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
                   onChange={(t) => void setNota(esito, t)}
                   onCommit={() => void salvaNota(esito)} />
                 <FotoStrip esitoId={esito.id} />
-                {opt?.genera_azione && renderBozzaAzione(esito)}
+                {opt?.genera_azione && renderBozzeAzione(esito)}
                 {opt?.stato === 'positivo' && voce.config.scadenza?.abilitata && renderScadenza(esito, voce)}
               </>
             )}
@@ -515,7 +547,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
                 <input type="checkbox" checked={e.genera_azione} onChange={() => void toggleRilievoAzione(e)} />
                 Genera una "cosa da fare"
               </label>
-              {e.genera_azione && renderBozzaAzione(e)}
+              {e.genera_azione && renderBozzeAzione(e)}
             </div>
           ))}
           <button className="add-ril" onClick={() => void aggiungiRilievo(voce)}>{I.plus} Aggiungi rilievo</button>
@@ -524,32 +556,70 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     );
   }
 
-  function renderBozzaAzione(esito: EsitoVoce): ReactNode {
-    const b = bozze[esito.id] ?? nuovaBozza();
+  // Select del destinatario interno: Me / altri tecnici (A->B) / aree. Il valore
+  // è codificato ('me' | 'tec:<id>' | 'area:<id>') e tradotto in tecnicoTargetId/areaId.
+  const valoreDest = (tecnicoTargetId: string | null, areaId: string | null): string =>
+    areaId ? `area:${areaId}` : tecnicoTargetId ? `tec:${tecnicoTargetId}` : 'me';
+  const campiDest = (v: string): { tecnicoTargetId: string | null; areaId: string | null } =>
+    v.startsWith('tec:') ? { tecnicoTargetId: v.slice(4), areaId: null }
+      : v.startsWith('area:') ? { tecnicoTargetId: null, areaId: v.slice(5) }
+        : { tecnicoTargetId: null, areaId: null };
+
+  function SelectDestinatario({ value, onPick }: { value: string; onPick: (v: string) => void }): ReactNode {
+    const altri = tecnici.filter((t) => t.id !== tecnicoId);
     return (
-      <div className="gen azione">
-        <div className="gen-h">Cosa da fare</div>
-        <div className="field"><label>Descrizione</label>
-          <NotaVocale className="" rows={2} placeholder="Cosa va fatto…" ariaLabel="Descrizione cosa da fare"
-            value={b.descrizione}
-            onChange={(t) => setBozza(esito.id, { descrizione: t })} /></div>
-        <div className="field"><label>Responsabile</label>
-          <Seg value={b.responsabile} onChange={(x) => setBozza(esito.id, { responsabile: x, areaId: x === 'cliente' ? null : b.areaId })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
-        {b.responsabile === 'interno' && aree.length > 0 && (
-          <div className="field"><label>Destinatario interno</label>
-            <select value={b.areaId ?? ''} onChange={(e) => setBozza(esito.id, { areaId: e.target.value || null })}>
-              <option value="">Me (tecnico del sopralluogo)</option>
-              {aree.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
-            </select>
-          </div>
-        )}
-        <div className="row2">
-          <div className="field"><label>Scadenza</label>
-            <input type="date" value={b.scadenza} onChange={(e) => setBozza(esito.id, { scadenza: e.target.value })} /></div>
-          <div className="field"><label>Priorità</label>
-            <Seg value={b.priorita} onChange={(x) => setBozza(esito.id, { priorita: x })} options={[{ v: 'bassa', l: 'Bassa' }, { v: 'media', l: 'Media' }, { v: 'alta', l: 'Alta' }]} /></div>
-        </div>
+      <div className="field"><label>Destinatario interno</label>
+        <select value={value} onChange={(e) => onPick(e.target.value)}>
+          <option value="me">Me (tecnico del sopralluogo)</option>
+          {altri.length > 0 && (
+            <optgroup label="Altri tecnici">
+              {altri.map((t) => <option key={t.id} value={`tec:${t.id}`}>{nomeCompleto(t)}</option>)}
+            </optgroup>
+          )}
+          {aree.length > 0 && (
+            <optgroup label="Aree / funzioni">
+              {aree.map((a) => <option key={a.id} value={`area:${a.id}`}>{a.nome}</option>)}
+            </optgroup>
+          )}
+        </select>
       </div>
+    );
+  }
+
+  // Una o PIÙ cose da fare per lo stesso esito/rilievo (lista di bozze).
+  function renderBozzeAzione(esito: EsitoVoce): ReactNode {
+    const lista = bozze[esito.id] ?? [];
+    return (
+      <>
+        {lista.map((b, idx) => (
+          <div className="gen azione" key={b.id}>
+            <div className="gen-h">
+              <span>Cosa da fare{lista.length > 1 ? ` ${idx + 1}` : ''}</span>
+              <button className="gen-x" title="Rimuovi questa cosa da fare"
+                onClick={() => rimuoviBozza(esito.id, b.id)}>{I.x}</button>
+            </div>
+            <div className="field"><label>Descrizione</label>
+              <NotaVocale className="" rows={2} placeholder="Cosa va fatto…" ariaLabel="Descrizione cosa da fare"
+                value={b.descrizione}
+                onChange={(t) => setBozza(esito.id, b.id, { descrizione: t })} /></div>
+            <div className="field"><label>Responsabile</label>
+              <Seg value={b.responsabile}
+                onChange={(x) => setBozza(esito.id, b.id, { responsabile: x, tecnicoTargetId: null, areaId: null })}
+                options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
+            {b.responsabile === 'interno' && (
+              <SelectDestinatario value={valoreDest(b.tecnicoTargetId, b.areaId)}
+                onPick={(v) => setBozza(esito.id, b.id, campiDest(v))} />
+            )}
+            <div className="row2">
+              <div className="field"><label>Scadenza</label>
+                <input type="date" value={b.scadenza} onChange={(e) => setBozza(esito.id, b.id, { scadenza: e.target.value })} /></div>
+              <div className="field"><label>Priorità</label>
+                <Seg value={b.priorita} onChange={(x) => setBozza(esito.id, b.id, { priorita: x })} options={[{ v: 'bassa', l: 'Bassa' }, { v: 'media', l: 'Media' }, { v: 'alta', l: 'Alta' }]} /></div>
+            </div>
+          </div>
+        ))}
+        <button className="add-cdf" onClick={() => aggiungiBozza(esito.id)}>{I.plus} Aggiungi cosa da fare</button>
+      </>
     );
   }
 
@@ -575,15 +645,11 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               <div className="field"><label>Prossima scadenza</label>
                 <input type="date" value={s.data} onChange={(e) => setScadPatch(esito.id, { data: e.target.value })} /></div>
               <div className="field"><label>Responsabile</label>
-                <Seg value={s.responsabile} onChange={(x) => setScadPatch(esito.id, { responsabile: x, areaId: x === 'cliente' ? null : s.areaId })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
+                <Seg value={s.responsabile} onChange={(x) => setScadPatch(esito.id, { responsabile: x, tecnicoTargetId: null, areaId: null })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
             </div>
-            {s.responsabile === 'interno' && aree.length > 0 && (
-              <div className="field"><label>Destinatario interno</label>
-                <select value={s.areaId ?? ''} onChange={(e) => setScadPatch(esito.id, { areaId: e.target.value || null })}>
-                  <option value="">Me (tecnico del sopralluogo)</option>
-                  {aree.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
-                </select>
-              </div>
+            {s.responsabile === 'interno' && (
+              <SelectDestinatario value={valoreDest(s.tecnicoTargetId, s.areaId)}
+                onPick={(v) => setScadPatch(esito.id, campiDest(v))} />
             )}
           </>
         )}
@@ -768,7 +834,14 @@ const CSS = `
 
 .compila .gen{margin-top:12px; border-radius:12px; padding:12px; border:1px solid;}
 .compila .gen.azione{background:var(--no-bg); border-color:#f1c4b9;} .compila .gen.scad{background:#fbeccb; border-color:#f0d28a;}
-.compila .gen-h{font-weight:700; font-size:12px; letter-spacing:.04em; text-transform:uppercase; margin-bottom:10px; color:var(--no);}
+.compila .gen-h{font-weight:700; font-size:12px; letter-spacing:.04em; text-transform:uppercase; margin-bottom:10px; color:var(--no); display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.compila .gen-x{background:none; border:none; color:var(--no); cursor:pointer; padding:0; width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.compila .gen-x svg{width:13px; height:13px;}
+.compila .gen-x:active{background:rgba(216,68,47,.14);}
+.compila .add-cdf{margin-top:2px; width:100%; border:1.5px dashed #f1c4b9; background:var(--no-bg); color:var(--no); font-family:var(--disp); font-weight:700; font-size:12.5px; padding:10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;}
+.compila .add-cdf svg{width:15px; height:15px;}
+.compila .field select{width:100%; appearance:none; border:1px solid rgba(0,0,0,.12); border-radius:8px; padding:9px 10px; font-family:inherit; font-size:13.5px; background:#fff; color:var(--ink);}
+.compila .field select:focus{outline:none; border-color:var(--ink);}
 .compila .field{margin-bottom:9px;} .compila .field label{display:block; font-size:11px; font-weight:600; color:var(--ink-soft); margin-bottom:4px;}
 .compila .field input,.compila .field textarea{width:100%; appearance:none; border:1px solid rgba(0,0,0,.12); border-radius:8px; padding:9px 10px; font-family:inherit; font-size:13.5px; background:#fff; color:var(--ink); resize:none;}
 .compila .field input:focus,.compila .field textarea:focus{outline:none; border-color:var(--ink);}
