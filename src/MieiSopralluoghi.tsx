@@ -16,6 +16,7 @@ import {
 } from './lib/prefetch';
 import type { Sopralluogo, SopralluogoStato } from './lib/types';
 import { generaReport, type VarianteReport } from './lib/report';
+import BottoneInviaCliente from './BottoneInviaCliente';
 
 // ---------- helpers ----------
 const oggiISO = () => new Date().toISOString().slice(0, 10);
@@ -336,6 +337,7 @@ export default function MieiSopralluoghi({
                   <button className="rb-btn" disabled={!!reportBusy} onClick={() => void apriReport(s, 'interna')}>
                     {reportBusy === s.id + ':interna' ? '…' : 'Interno'}
                   </button>
+                  <BottoneInviaCliente sopralluogoId={s.id} />
                 </div>
               )}
               </div>
@@ -420,7 +422,7 @@ const CSS = `
 .misopr .badge.completato,.misopr .badge.sincronizzato{background:var(--ok-bg); color:var(--ok);}
 .misopr .it-wrap{margin-bottom:10px;}
 .misopr .it-wrap .it{margin-bottom:0;}
-.misopr .report-bar{display:flex; align-items:center; gap:7px; padding:7px 6px 2px;}
+.misopr .report-bar{display:flex; align-items:center; gap:7px; padding:7px 6px 2px; flex-wrap:wrap;}
 .misopr .rb-lab{font-size:10.5px; font-weight:700; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; margin-right:auto;}
 .misopr .rb-btn{border:1px solid var(--line); background:#fff; color:var(--ink); font-family:var(--disp); font-weight:700; font-size:12px; padding:6px 13px; border-radius:8px; cursor:pointer;}
 .misopr .rb-btn:active{transform:scale(.97);}
