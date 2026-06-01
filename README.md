@@ -33,7 +33,10 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
   - **Pianificazione** — elenco incarichi con avanzamento; genera le sedute fino a
     `n_sopralluoghi` con **date proposte** distribuite uniformemente nel periodo
     (evitando sabati, domeniche e festività nazionali; date modificabili), e
-    assegna tecnico / data / durata / località per ciascuna.
+    assegna tecnico / data / durata / località per ciascuna. **Assistita**: per ogni
+    seduta suggerisce il tecnico per carico settimanale (`capienza_ore_settimana`)
+    e vicinanza alla base (haversine sulle coordinate cliente), con
+    "Assegna automaticamente" che riempie i tecnici mancanti senza sovraccarichi.
 - **Sync offline** — coda outbox, drain in ordine, upload foto su Storage.
 - **Prefetch offline** — da "I miei sopralluoghi", il pulsante "Scarica per offline"
   (più aggiornamento automatico all'apertura, se c'è rete) mette in cache lista +
@@ -82,6 +85,7 @@ app-sopralluoghi/
       └─ admin/            # strato dati del back-office (online-first)
          ├─ anagrafiche.ts  # CRUD clienti + incarichi (con guardie FK)
          ├─ templates.ts    # CRUD template + versionamento
+         ├─ assistita.ts    # motore pianificazione assistita (carico + distanza)
          └─ pianificazione.ts # incarichi, sedute, tecnici
 ```
 
@@ -115,10 +119,10 @@ Per dare accesso al back-office, imposta il ruolo:
 ruolo vive nell'app; con il portale cliente (Fase 3) si stringeranno lato DB.
 
 ## Cosa manca (prossimi blocchi)
-- **Pianificazione assistita** — distribuzione automatica delle date nel periodo
-  ✓ (con esclusione di weekend/festività); resta da fare: scelta del tecnico in
-  base a `capienza_ore_settimana` e distanza dalla base, viste calendario/carico,
-  ed eventuale esclusione dei santi patroni locali.
+- **Pianificazione assistita** — distribuzione automatica delle date ✓, cadenza ✓,
+  suggerimento del tecnico per carico settimanale + vicinanza alla base e
+  "Assegna automaticamente" ✓. Resta: vista calendario/carico per tecnico, ed
+  eventuale esclusione dei santi patroni locali.
 - **Integrazione Werp** (campi `werp_id` / `werp_attivita_id` già predisposti) — da
   chiarire col fornitore: API REST / accesso DB / import-export file.
 - Scadenze ricorrenti: rigenerazione del ciclo successivo alla verifica.

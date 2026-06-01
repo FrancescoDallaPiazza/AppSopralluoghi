@@ -71,6 +71,8 @@ export interface PianoIncarico {
   cliente_nome: string;
   cliente_localita: string | null;
   cliente_indirizzo: string | null;
+  cliente_lat: number | null;
+  cliente_lng: number | null;
   sopralluoghi: Sopralluogo[];
 }
 
@@ -81,7 +83,7 @@ export async function caricaPiano(incaricoId: string): Promise<PianoIncarico> {
       id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi,
       periodo_inizio, periodo_fine, durata_seduta_stimata_min, stato,
       cadenza_valore, cadenza_unita,
-      cliente:cliente!cliente_id ( ragione_sociale, localita, indirizzo )
+      cliente:cliente!cliente_id ( ragione_sociale, localita, indirizzo, lat, lng )
     `)
     .eq('id', incaricoId).maybeSingle();
   if (e1) throw e1;
@@ -101,8 +103,23 @@ export async function caricaPiano(incaricoId: string): Promise<PianoIncarico> {
     cliente_nome: cli?.ragione_sociale ?? '—',
     cliente_localita: cli?.localita ?? null,
     cliente_indirizzo: cli?.indirizzo ?? null,
+    cliente_lat: cli?.lat ?? null,
+    cliente_lng: cli?.lng ?? null,
     sopralluoghi: (sopr ?? []) as unknown as Sopralluogo[],
   };
+}
+
+// Sedute pianificate di TUTTI gli incarichi (con tecnico e data), per calcolare
+// il carico settimanale complessivo di ogni tecnico — non solo dell'incarico
+// corrente. Si limita alle colonne utili al calcolo.
+export async function caricaCaricoGlobale(): Promise<Sopralluogo[]> {
+  const { data, error } = await supabase
+    .from('sopralluogo')
+    .select('id, incarico_id, tecnico_id, data_pianificata, durata_stimata_min, stato')
+    .not('tecnico_id', 'is', null)
+    .not('data_pianificata', 'is', null);
+  if (error) throw error;
+  return (data ?? []) as unknown as Sopralluogo[];
 }
 
 // ---- genera i sopralluoghi mancanti fino a n_sopralluoghi ----
