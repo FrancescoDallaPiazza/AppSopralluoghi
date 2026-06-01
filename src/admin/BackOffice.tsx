@@ -10,8 +10,9 @@ import Tecnici from './Tecnici';
 import Aree from './Aree';
 import TemplateList from './TemplateList';
 import Pianificazione from './Pianificazione';
+import CoseDaFare from './CoseDaFare';
 
-type Sezione = 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'pianificazione';
+type Sezione = 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'pianificazione' | 'cosedafare';
 
 export default function BackOffice({
   tecnico, onVaiAllApp,
@@ -43,6 +44,8 @@ export default function BackOffice({
             onClick={() => setSezione('template')}>Template</button>
           <button className={`bo-tab ${sezione === 'pianificazione' ? 'on' : ''}`}
             onClick={() => setSezione('pianificazione')}>Pianificazione</button>
+          <button className={`bo-tab ${sezione === 'cosedafare' ? 'on' : ''}`}
+            onClick={() => setSezione('cosedafare')}>Cose da fare</button>
         </nav>
       </header>
 
@@ -52,6 +55,7 @@ export default function BackOffice({
         {sezione === 'aree' && <Aree />}
         {sezione === 'template' && <TemplateList />}
         {sezione === 'pianificazione' && <Pianificazione />}
+        {sezione === 'cosedafare' && <CoseDaFare />}
       </main>
     </div>
   );

@@ -31,6 +31,10 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     `user_id` esistente (non si creano account dall'app).
   - **Aree interne** — funzioni del team (Formazione, Preventivi, …) a cui
     assegnare le "cose da fare" interne in alternativa al tecnico.
+  - **Cose da fare** (scadenzario) — vista d'insieme di tutte le azioni correttive
+    e scadenze ricorrenti, con filtri per stato / destinatario (cliente, tecnico,
+    area) / scadenza, ricerca, evidenza delle scadute e cambio stato. È dove si
+    consultano anche le cose-da-fare assegnate a un'area.
   - **Template** — editor del modello "form configurabile": voci di primo livello
     e sotto-domande, tipi (scelta / multiscelta / testo / data / numero / slider /
     foto / rilievo), opzioni con stato logico e generazione azione, scadenza
@@ -96,6 +100,7 @@ app-sopralluoghi/
          ├─ aree.ts         # CRUD aree interne (destinatari cose-da-fare)
          ├─ templates.ts    # CRUD template + versionamento
          ├─ assistita.ts    # motore pianificazione assistita (carico + distanza)
+         ├─ cosedafare.ts   # vista azioni/scadenzario (back-office)
          └─ pianificazione.ts # incarichi, sedute, tecnici
 ```
 
@@ -129,10 +134,13 @@ Per dare accesso al back-office, imposta il ruolo:
 ruolo vive nell'app; con il portale cliente (Fase 3) si stringeranno lato DB.
 
 ## Cosa manca (prossimi blocchi)
-- **Pianificazione assistita** — distribuzione automatica delle date ✓, cadenza ✓,
-  suggerimento del tecnico per carico settimanale + vicinanza alla base e
-  "Assegna automaticamente" ✓. Resta: vista calendario/carico per tecnico, ed
-  eventuale esclusione dei santi patroni locali.
+- **Onboarding tecnico** — creazione/invito dell'account di login via Edge Function
+  (Admin API) con collegamento automatico di `user_id`, al posto del passo manuale
+  in Supabase.
+- **Invio esiti** — report al cliente via email; notifica alle aree interne (email
+  già predisposta su `area_interna`).
+- **Vista disponibilità tecnici** — carico % per settimana/tecnico (calendario).
+- **Pianificazione assistita** — esclusione santi patroni locali (rifinitura).
+- Scadenze ricorrenti: rigenerazione del ciclo successivo alla verifica.
 - **Integrazione Werp** (campi `werp_id` / `werp_attivita_id` già predisposti) — da
   chiarire col fornitore: API REST / accesso DB / import-export file.
-- Scadenze ricorrenti: rigenerazione del ciclo successivo alla verifica.
