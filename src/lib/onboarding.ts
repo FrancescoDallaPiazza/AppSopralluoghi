@@ -8,7 +8,7 @@
 
 import { supabase } from './supabase';
 
-export type ModalitaInvito = 'invito' | 'link';
+export type ModalitaInvito = 'invito' | 'link' | 'password';
 
 export interface InvitaTecnicoInput {
   /** Collega un tecnico ESISTENTE (alternativo a `nome`). */
@@ -19,8 +19,10 @@ export interface InvitaTecnicoInput {
   email: string;
   baseLocalita?: string;
   capienzaOreSettimana?: number;
-  /** 'invito' (Supabase manda l'email) | 'link' (ritorna il link da inoltrare). */
+  /** 'invito' (Supabase manda l'email) | 'link' (ritorna il link) | 'password' (account già attivo). */
   modalita?: ModalitaInvito;
+  /** Obbligatoria con modalita 'password' (min 8 caratteri). */
+  password?: string;
   /** Dove atterra l'utente dopo aver scelto la password. */
   redirectTo?: string;
 }
@@ -48,6 +50,7 @@ export async function invitaTecnico(
       base_localita: input.baseLocalita,
       capienza_ore_settimana: input.capienzaOreSettimana,
       modalita: input.modalita ?? 'invito',
+      password: input.password,
       redirect_to: input.redirectTo,
     },
   });

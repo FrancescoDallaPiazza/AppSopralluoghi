@@ -16,7 +16,8 @@
 //     email: string,              // obbligatoria: indirizzo del login
 //     base_localita?: string,
 //     capienza_ore_settimana?: number,
-//     modalita?: 'invito' | 'link', // default 'invito' (manda l'email da solo)
+//     modalita?: 'invito' | 'link' | 'password', // default 'invito'
+//     password?: string,          // obbligatoria con modalita 'password' (min 8)
 //     redirect_to?: string        // dove atterra l'utente dopo aver scelto la password
 //   }
 //
@@ -87,7 +88,9 @@ Deno.serve(async (req) => {
     const email = String(body.email ?? '').trim();
     const tecnicoIdIn = body.tecnico_id ? String(body.tecnico_id) : null;
     const nome = body.nome ? String(body.nome).trim() : null;
-    const modalita = body.modalita === 'link' ? 'link' : 'invito';
+    const modalita =
+      body.modalita === 'link' || body.modalita === 'password' ? body.modalita : 'invito';
+    const password = body.password ? String(body.password) : '';
     const redirectTo = body.redirect_to ? String(body.redirect_to) : undefined;
 
     if (!email || !email.includes('@')) {
@@ -95,6 +98,9 @@ Deno.serve(async (req) => {
     }
     if (!tecnicoIdIn && !nome) {
       return json({ error: 'Indica `tecnico_id` (esistente) oppure `nome` (nuovo).' }, 400);
+    }
+    if (modalita === 'password' && password.trim().length < 8) {
+      return json({ error: 'La password deve avere almeno 8 caratteri.' }, 400);
     }
 
     // 2) trova o crea il tecnico
@@ -135,7 +141,23 @@ Deno.serve(async (req) => {
     let actionLink: string | undefined;
     let giaEsistente = false;
 
-    if (modalita === 'link') {
+    if (modalita === 'password') {
+      // crea l'utente già attivo con la password scelta dall'admin
+      const { data, error } = await admin.auth.admin.createUser({
+        email,
+        password: password.trim(),
+        email_confirm: true,
+      });
+      if (error) {
+        // utente già presente: recuperalo e collega (NON tocco la sua password)
+        const ex = await trovaUtentePerEmail(admin, email);
+        if (!ex) throw error;
+        userId = ex.id;
+        giaEsistente = true;
+      } else {
+        userId = data.user?.id ?? null;
+      }
+    } else if (modalita === 'link') {
       // crea l'utente e restituisce il link d'invito da inoltrare a mano
       const { data, error } = await admin.auth.admin.generateLink({
         type: 'invite',

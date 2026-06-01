@@ -112,7 +112,8 @@ function SchedaTecnico({
 
   // --- onboarding: invito / creazione account di login ---
   const [emailInvito, setEmailInvito] = useState('');
-  const [modInvito, setModInvito] = useState<ModalitaInvito>('link');
+  const [modInvito, setModInvito] = useState<ModalitaInvito>('password');
+  const [pwdInvito, setPwdInvito] = useState('');
   const [linkInvito, setLinkInvito] = useState<string | null>(null);
 
   useEffect(() => {
@@ -170,18 +171,34 @@ function SchedaTecnico({
       setMsg('Indica un indirizzo email valido per l’invito.');
       return;
     }
+    if (modInvito === 'password' && pwdInvito.trim().length < 8) {
+      setMsg('La password deve avere almeno 8 caratteri.');
+      return;
+    }
     setBusy(true); setMsg(null); setLinkInvito(null);
     try {
-      const res = await invitaTecnico({ tecnicoId: t.id, email, modalita: modInvito });
+      const res = await invitaTecnico({
+        tecnicoId: t.id, email, modalita: modInvito,
+        password: modInvito === 'password' ? pwdInvito.trim() : undefined,
+      });
       patch({ user_id: res.user_id });
       if (res.action_link) setLinkInvito(res.action_link);
-      setMsg(
-        res.gia_esistente
-          ? 'Account già esistente: l’ho collegato a questo tecnico.'
-          : modInvito === 'invito'
+      if (res.gia_esistente) {
+        setMsg(
+          modInvito === 'password'
+            ? 'Account già esistente: l’ho collegato a questo tecnico. La password NON è stata modificata (usa “Password dimenticata” se serve).'
+            : 'Account già esistente: l’ho collegato a questo tecnico.',
+        );
+      } else {
+        setMsg(
+          modInvito === 'invito'
             ? 'Invito inviato via email e account collegato.'
-            : 'Account creato e collegato. Copia il link qui sotto e invialo al tecnico.',
-      );
+            : modInvito === 'link'
+              ? 'Account creato e collegato. Copia il link qui sotto e invialo al tecnico.'
+              : 'Account creato e collegato. Comunica al tecnico email e password per accedere.',
+        );
+      }
+      if (modInvito === 'password') setPwdInvito('');
     } catch (e: any) {
       setMsg(e?.message ?? 'Invito non riuscito.');
     } finally { setBusy(false); }
@@ -298,14 +315,26 @@ function SchedaTecnico({
                 <label className="bo-field" style={{ marginBottom: 0 }}>
                   <span>Modalità</span>
                   <select value={modInvito} onChange={(e) => setModInvito(e.target.value as ModalitaInvito)}>
+                    <option value="password">Imposta password (accesso immediato)</option>
                     <option value="link">Genera link da inviare</option>
                     <option value="invito">Invia email d’invito</option>
                   </select>
                 </label>
               </div>
+              {modInvito === 'password' && (
+                <label className="bo-field" style={{ marginTop: 10, marginBottom: 0 }}>
+                  <span>Password iniziale (min. 8 caratteri)</span>
+                  <input type="text" value={pwdInvito} placeholder="es. una password temporanea"
+                    autoComplete="new-password"
+                    onChange={(e) => setPwdInvito(e.target.value)} />
+                  <span className="bo-sub" style={{ marginTop: 4 }}>
+                    Comunicala al tecnico; consigliagli di cambiarla al primo accesso.
+                  </span>
+                </label>
+              )}
               <div className="bo-bar">
                 <button className="bo-btn" onClick={() => void invita()} disabled={busy}>
-                  {busy ? 'Procedo…' : 'Crea / invita account'}
+                  {busy ? 'Procedo…' : (modInvito === 'password' ? 'Crea account' : 'Crea / invita account')}
                 </button>
               </div>
               {linkInvito && (
