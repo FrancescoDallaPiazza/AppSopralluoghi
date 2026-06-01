@@ -24,6 +24,10 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     È il blocco a monte della pianificazione: il tipo attività dell'incarico si
     aggancia a un template attivo. Disattivazione/chiusura con guardie sulle FK
     (niente eliminazione se ci sono incarichi/sedute collegati).
+  - **Tecnici** — anagrafica delle risorse (nome, base + coordinate, capienza
+    ore/settimana, ruolo tecnico/admin, attivo). Alimenta la pianificazione
+    assistita. Il login resta su Supabase Auth: qui si collega il profilo a un
+    `user_id` esistente (non si creano account dall'app).
   - **Template** — editor del modello "form configurabile": voci di primo livello
     e sotto-domande, tipi (scelta / multiscelta / testo / data / numero / slider /
     foto / rilievo), opzioni con stato logico e generazione azione, scadenza
@@ -67,6 +71,7 @@ app-sopralluoghi/
    ├─ admin/              # back-office (solo admin)
    │  ├─ BackOffice.tsx    # shell + tab Anagrafiche / Template / Pianificazione
    │  ├─ Anagrafiche.tsx   # clienti + incarichi (scheda + editor)
+   │  ├─ Tecnici.tsx       # anagrafica tecnici (base, capienza, ruolo)
    │  ├─ TemplateList.tsx  # elenco + nuovo / duplica / archivia
    │  ├─ TemplateEditor.tsx# editor albero voci + config + versionamento
    │  ├─ Pianificazione.tsx# incarichi + genera/assegna sedute
@@ -84,6 +89,7 @@ app-sopralluoghi/
       ├─ compilazione.ts   # apertura checklist + azioni + stato sopralluogo
       └─ admin/            # strato dati del back-office (online-first)
          ├─ anagrafiche.ts  # CRUD clienti + incarichi (con guardie FK)
+         ├─ tecnici.ts      # CRUD tecnici (profilo; login via Supabase Auth)
          ├─ templates.ts    # CRUD template + versionamento
          ├─ assistita.ts    # motore pianificazione assistita (carico + distanza)
          └─ pianificazione.ts # incarichi, sedute, tecnici
