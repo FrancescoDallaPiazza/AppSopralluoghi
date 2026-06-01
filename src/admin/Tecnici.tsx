@@ -1,15 +1,17 @@
 // Tecnici del back-office: anagrafica delle risorse (nome, base, capienza,
 // ruolo) usate dalla pianificazione assistita. Online-first.
 //
-// Nota: qui NON si creano account di login. Per far accedere un tecnico all'app
-// serve un utente Supabase (registrazione/invito), poi si incolla il suo user_id
-// nel campo "Account di login": è quello che collega la persona al suo profilo.
+// Onboarding: dalla scheda tecnico si crea/invita l'account di login e si
+// collega `tecnico.user_id` in automatico (Edge Function `invita-tecnico`).
+// Resta disponibile, nascosto in un dettaglio, il collegamento manuale di un
+// user_id già esistente.
 
 import { useEffect, useMemo, useState } from 'react';
 import {
   caricaTecniciTutti, salvaTecnico, impostaStatoTecnico, eliminaTecnico, tecnicoVuoto,
   type TecnicoRiga,
 } from '../lib/admin/tecnici';
+import { invitaTecnico, type ModalitaInvito } from '../lib/onboarding';
 import type { Tecnico, RuoloTecnico } from '../lib/types';
 
 const RUOLI: { v: RuoloTecnico; l: string }[] = [
@@ -108,6 +110,11 @@ function SchedaTecnico({
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // --- onboarding: invito / creazione account di login ---
+  const [emailInvito, setEmailInvito] = useState('');
+  const [modInvito, setModInvito] = useState<ModalitaInvito>('link');
+  const [linkInvito, setLinkInvito] = useState<string | null>(null);
+
   useEffect(() => {
     if (nuovo) return;
     setFase('carico');
@@ -154,6 +161,30 @@ function SchedaTecnico({
       setMsg(e?.message ?? 'Eliminazione non riuscita.');
       setBusy(false);
     }
+  }
+
+  // Crea/invita l'account di login e collega user_id (via Edge Function).
+  async function invita() {
+    const email = emailInvito.trim();
+    if (!email || !email.includes('@')) {
+      setMsg('Indica un indirizzo email valido per l’invito.');
+      return;
+    }
+    setBusy(true); setMsg(null); setLinkInvito(null);
+    try {
+      const res = await invitaTecnico({ tecnicoId: t.id, email, modalita: modInvito });
+      patch({ user_id: res.user_id });
+      if (res.action_link) setLinkInvito(res.action_link);
+      setMsg(
+        res.gia_esistente
+          ? 'Account già esistente: l’ho collegato a questo tecnico.'
+          : modInvito === 'invito'
+            ? 'Invito inviato via email e account collegato.'
+            : 'Account creato e collegato. Copia il link qui sotto e invialo al tecnico.',
+      );
+    } catch (e: any) {
+      setMsg(e?.message ?? 'Invito non riuscito.');
+    } finally { setBusy(false); }
   }
 
   if (fase === 'carico') return <div className="bo-empty">Carico la scheda…</div>;
@@ -225,17 +256,75 @@ function SchedaTecnico({
           </label>
         </div>
 
-        <label className="bo-field" style={{ marginTop: 14, marginBottom: 0 }}>
-          <span>Account di login · user_id (opzionale)</span>
-          <input type="text" value={t.user_id ?? ''} placeholder="UUID dell'utente Supabase"
-            onChange={(e) => patch({ user_id: e.target.value || null })} />
-        </label>
-        <div className="bo-note" style={{ marginTop: 8 }}>
-          L'account di login si crea registrando/invitando la persona in Supabase
-          (Authentication → Users): qui incolli il suo <b>user_id</b> per collegarlo
-          al profilo. Senza, il tecnico è comunque assegnabile nella pianificazione,
-          ma non può accedere all'app. Il ruolo <b>Amministratore</b> dà accesso al
-          back-office.
+        {/* ---------- account di login (onboarding) ---------- */}
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+          <div className="bo-field" style={{ marginBottom: 8 }}>
+            <span>Account di login</span>
+          </div>
+
+          {t.user_id ? (
+            <>
+              <div className="bo-note">
+                Login collegato (user_id <code>{t.user_id}</code>). Il tecnico può accedere all’app.
+              </div>
+              <details style={{ marginTop: 8 }}>
+                <summary className="bo-sub" style={{ cursor: 'pointer' }}>Scollega / modifica manualmente</summary>
+                <label className="bo-field" style={{ marginTop: 8, marginBottom: 0 }}>
+                  <span>user_id (UUID Supabase)</span>
+                  <input type="text" value={t.user_id ?? ''} placeholder="UUID dell'utente Supabase"
+                    onChange={(e) => patch({ user_id: e.target.value || null })} />
+                </label>
+                <div className="bo-sub" style={{ marginTop: 6 }}>
+                  Svuota il campo e premi “Salva tecnico” per scollegare l’accesso.
+                </div>
+              </details>
+            </>
+          ) : !persistito ? (
+            <div className="bo-note">
+              Salva prima il tecnico, poi qui potrai creare e collegare il suo accesso all’app.
+            </div>
+          ) : (
+            <>
+              <p className="bo-sub" style={{ margin: '0 0 10px' }}>
+                Crea l’accesso del tecnico e collegalo in automatico — niente più user_id da
+                incollare a mano da Supabase.
+              </p>
+              <div className="bo-grid">
+                <label className="bo-field">
+                  <span>Email del tecnico</span>
+                  <input type="email" value={emailInvito} placeholder="nome@studio.it"
+                    onChange={(e) => setEmailInvito(e.target.value)} />
+                </label>
+                <label className="bo-field" style={{ marginBottom: 0 }}>
+                  <span>Modalità</span>
+                  <select value={modInvito} onChange={(e) => setModInvito(e.target.value as ModalitaInvito)}>
+                    <option value="link">Genera link da inviare</option>
+                    <option value="invito">Invia email d’invito</option>
+                  </select>
+                </label>
+              </div>
+              <div className="bo-bar">
+                <button className="bo-btn" onClick={() => void invita()} disabled={busy}>
+                  {busy ? 'Procedo…' : 'Crea / invita account'}
+                </button>
+              </div>
+              {linkInvito && (
+                <label className="bo-field" style={{ marginTop: 8, marginBottom: 0 }}>
+                  <span>Link d’invito (selezionalo, copialo e invialo al tecnico)</span>
+                  <input type="text" readOnly value={linkInvito}
+                    onFocus={(e) => e.currentTarget.select()} />
+                </label>
+              )}
+              <details style={{ marginTop: 10 }}>
+                <summary className="bo-sub" style={{ cursor: 'pointer' }}>Collega manualmente un user_id esistente</summary>
+                <label className="bo-field" style={{ marginTop: 8, marginBottom: 0 }}>
+                  <span>user_id (UUID Supabase)</span>
+                  <input type="text" value={t.user_id ?? ''} placeholder="UUID dell'utente Supabase"
+                    onChange={(e) => patch({ user_id: e.target.value || null })} />
+                </label>
+              </details>
+            </>
+          )}
         </div>
 
         <div className="bo-bar">
