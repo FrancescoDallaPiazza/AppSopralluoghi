@@ -198,12 +198,16 @@ export async function eliminaSopralluogo(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// ---- tecnici assegnabili ----
+// ---- tecnici assegnabili ai sopralluoghi ----
+// Esclude il ruolo 'interno' (riceve solo cose da fare, non fa sopralluoghi).
+// Include il cognome, così la tendina di assegnazione può mostrare nome+cognome.
 export async function caricaTecnici(): Promise<Tecnico[]> {
   const { data, error } = await supabase
     .from('tecnico')
-    .select('id, user_id, nome, base_localita, base_lat, base_lng, calendario_ref, capienza_ore_settimana, attivo, ruolo')
+    .select('id, user_id, nome, cognome, base_localita, base_lat, base_lng, calendario_ref, capienza_ore_settimana, attivo, ruolo')
     .eq('attivo', true)
+    .neq('ruolo', 'interno')
+    .order('cognome', { ascending: true, nullsFirst: false })
     .order('nome', { ascending: true });
   if (error) throw error;
   return (data ?? []) as unknown as Tecnico[];

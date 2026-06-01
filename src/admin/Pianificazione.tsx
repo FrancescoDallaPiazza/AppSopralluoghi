@@ -11,7 +11,7 @@ import {
   calcolaCarico, valutaTecnici, ordinaSuggeriti, tecnicoSuggerito, settimanaISO,
   type CaricoPerTecnico, type ValutazioneTecnico,
 } from '../lib/admin/assistita';
-import type { Sopralluogo, Tecnico } from '../lib/types';
+import { nomeCompleto, type Sopralluogo, type Tecnico } from '../lib/types';
 
 const STATO_LABEL: Record<string, string> = {
   attivo: 'attivo', sospeso: 'sospeso', chiuso: 'chiuso',
@@ -250,7 +250,7 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
           const ore = `${v.oreSettimana}${v.capienza != null ? `/${v.capienza}` : ''}h`;
           const dist = v.distanzaKm != null ? ` · ${v.distanzaKm}km` : '';
           const pieno = !v.entroCapienza ? ' · pieno' : '';
-          return `${v.tecnico.nome} (${ore}${dist}${pieno})`;
+          return `${nomeCompleto(v.tecnico)} (${ore}${dist}${pieno})`;
         };
         return (
           <div className="bo-card" key={r.id}>
@@ -302,14 +302,14 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
                   <button className="bo-pill usato" style={{ cursor: 'pointer', border: 0 }}
                     onClick={() => patch(r.id, { tecnico_id: sugg.tecnico.id })}
                     title="Assegna il tecnico suggerito">
-                    ✦ Suggerito: {sugg.tecnico.nome}
+                    ✦ Suggerito: {nomeCompleto(sugg.tecnico)}
                     {sugg.distanzaKm != null ? ` · ${sugg.distanzaKm}km` : ''}
                     {sugg.capienza != null ? ` · ${sugg.oreSettimana}/${sugg.capienza}h` : ''}
                   </button>
                 )}
                 {scelto && !scelto.entroCapienza && (
                   <span className="bo-pill warn">
-                    {scelto.tecnico.nome} oltre capienza questa settimana
+                    {nomeCompleto(scelto.tecnico)} oltre capienza questa settimana
                     ({scelto.oreSettimana}/{scelto.capienza}h)
                   </span>
                 )}
