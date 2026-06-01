@@ -9,19 +9,10 @@ export interface EsitoNotifica {
   reason?: string | null;
 }
 
-export async function notificaAzione(azioneId: string): Promise<EsitoNotifica> {
+export async function notificaAzione(azioneId: string, force = false): Promise<EsitoNotifica> {
   const { data, error } = await supabase.functions.invoke('notifica-azione', {
-    body: { azione_id: azioneId },
+    body: { azione_id: azioneId, force },
   });
   if (error) return { sent: false, reason: error.message };
   return { sent: !!data?.sent, reason: data?.reason ?? null };
-}
-
-// Notifica più azioni, ignorando i singoli errori (best-effort).
-export async function notificaAzioni(ids: string[]): Promise<number> {
-  let inviate = 0;
-  for (const id of ids) {
-    try { if ((await notificaAzione(id)).sent) inviate++; } catch { /* ignora */ }
-  }
-  return inviate;
 }

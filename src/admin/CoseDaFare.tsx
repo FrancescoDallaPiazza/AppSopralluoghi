@@ -54,7 +54,7 @@ export default function CoseDaFare() {
   async function avvisa(id: string) {
     setBusy(id); setMsg(null);
     try {
-      const r = await notificaAzione(id);
+      const r = await notificaAzione(id, true);
       setMsg(r.sent ? 'Email inviata al destinatario.' : `Email non inviata: ${r.reason ?? 'motivo sconosciuto'}.`);
     } catch (e: any) {
       setMsg(e?.message ?? 'Invio non riuscito.');

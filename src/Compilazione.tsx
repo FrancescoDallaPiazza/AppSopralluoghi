@@ -9,7 +9,6 @@ import {
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
 import { caricaGiroPrecedente, verificaAzione, caricaAreeInterne, type AzioneConContesto } from './lib/azioni';
 import NotaVocale from './NotaVocale';
-import { notificaAzioni } from './lib/notifiche';
 import type { EsitoVoce, Foto, Azione, VoceTemplate, AreaInterna } from './lib/types';
 
 // ---------- helpers ----------
@@ -349,25 +348,23 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   async function completa() {
     setSalvataggio('corso');
     try {
-      const daNotificare: string[] = [];
       for (const e of esiti) {
         if (!e.genera_azione) continue;
         const b = bozze[e.id] ?? nuovaBozza();
         const desc = b.descrizione.trim()
           || (e.voce_tipo === 'rilievo' ? String(e.valore ?? '').trim() : '')
           || `Da definire — ${e.voce_testo}`;
-        const az = await generaAzione({
+        await generaAzione({
           esitoId: e.id, sopralluogoId: sopralluogo.id, tipo: 'azione_correttiva',
           descrizione: desc, responsabileTipo: b.responsabile === 'interno' ? 'risorsa_interna' : 'cliente',
           dataScadenza: b.scadenza || null, priorita: b.priorita,
           clienteId: sopralluogo.cliente_id, tecnicoId,
           areaId: b.responsabile === 'interno' ? b.areaId : null,
         });
-        if (az.responsabile_tipo === 'risorsa_interna') daNotificare.push(az.id);
       }
       for (const [esitoId, s] of Object.entries(scad)) {
         const e = esiti.find((x) => x.id === esitoId);
-        const az = await generaAzione({
+        await generaAzione({
           esitoId, sopralluogoId: sopralluogo.id, tipo: 'scadenza_ricorrente',
           descrizione: `Scadenza ricorrente: ${e?.voce_testo ?? ''}`.trim(),
           responsabileTipo: s.responsabile === 'interno' ? 'risorsa_interna' : 'cliente',
@@ -375,14 +372,14 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           clienteId: sopralluogo.cliente_id, tecnicoId, periodicitaMesi: s.mesi,
           areaId: s.responsabile === 'interno' ? s.areaId : null,
         });
-        if (az.responsabile_tipo === 'risorsa_interna') daNotificare.push(az.id);
       }
       await completaSopralluogo(toBaseSopralluogo(sopralluogo));
       void runSync();
-      // Notifica via email i destinatari interni (best-effort, solo online):
-      // la sincronizzazione del dato è già garantita dalla coda offline; questa
-      // è solo la mail di avviso, che non deve mai bloccare la chiusura.
-      if (navigator.onLine && daNotificare.length) void notificaAzioni(daNotificare);
+      // La notifica email ai destinatari interni parte LATO SERVER quando la
+      // cosa-da-fare arriva sul database (Database Webhook -> notifica-azione):
+      // così funziona anche se il sopralluogo è stato chiuso offline e la coda
+      // si sincronizza più tardi. Niente invio dall'app, niente dipendenza dalla
+      // connessione del telefono al momento della chiusura.
       setSalvataggio('fatto');
       setTimeout(onChiudi, 1400);
     } catch {

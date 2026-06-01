@@ -62,7 +62,10 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const azioneId: string | undefined = body.azione_id;
+    // Due chiamanti: il pulsante manuale invia { azione_id }, il Database
+    // Webhook invia { type, table, record, old_record }. Accettiamo entrambi.
+    const azioneId: string | undefined = body.azione_id ?? body.record?.id;
+    const force: boolean = body.force === true;
     if (!azioneId) return json({ error: 'azione_id mancante' }, 400);
 
     const sb = createClient(
@@ -94,7 +97,7 @@ Deno.serve(async (req) => {
     if (a.responsabile_tipo !== 'risorsa_interna') {
       return json({ sent: false, reason: 'destinatario non interno (cliente)' });
     }
-    if (a.notificata_il) {
+    if (a.notificata_il && !force) {
       return json({ sent: false, reason: 'già notificata', notificata_il: a.notificata_il });
     }
 
