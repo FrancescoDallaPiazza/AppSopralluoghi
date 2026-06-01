@@ -12,7 +12,7 @@ import {
   type TecnicoRiga,
 } from '../lib/admin/tecnici';
 import { invitaTecnico, type ModalitaInvito } from '../lib/onboarding';
-import type { Tecnico, RuoloTecnico } from '../lib/types';
+import { nomeCompleto, type Tecnico, type RuoloTecnico } from '../lib/types';
 
 const RUOLI: { v: RuoloTecnico; l: string }[] = [
   { v: 'tecnico', l: 'Tecnico' }, { v: 'admin', l: 'Amministratore' },
@@ -77,7 +77,7 @@ function ElencoTecnici({
         <div key={r.tecnico.id} className={`bo-card ${r.tecnico.attivo ? '' : 'dim'}`}>
           <div className="bo-row">
             <div className="grow">
-              <div className="bo-title">{r.tecnico.nome}</div>
+              <div className="bo-title">{nomeCompleto(r.tecnico)}</div>
               <div className="bo-meta">
                 {r.tecnico.base_localita && <span>{r.tecnico.base_localita}</span>}
                 {r.tecnico.capienza_ore_settimana != null &&
@@ -132,6 +132,7 @@ function SchedaTecnico({
 
   async function salva() {
     if (!t.nome.trim()) { setMsg('Il nome è obbligatorio.'); return; }
+    if (!(t.cognome ?? '').trim()) { setMsg('Il cognome è obbligatorio.'); return; }
     setBusy(true); setMsg(null);
     try {
       await salvaTecnico(t);
@@ -220,7 +221,7 @@ function SchedaTecnico({
         <button className="bo-iconbtn" onClick={onIndietro} title="Indietro">←</button>
         <div className="grow">
           <h2 className="bo-h" style={{ margin: 0 }}>
-            {nuovo && !persistito ? 'Nuovo tecnico' : t.nome || 'Tecnico'}
+            {nuovo && !persistito ? 'Nuovo tecnico' : nomeCompleto(t)}
           </h2>
         </div>
         {persistito && (
@@ -233,11 +234,18 @@ function SchedaTecnico({
       {msg && <div className="bo-note">{msg}</div>}
 
       <div className="bo-card">
-        <label className="bo-field">
-          <span>Nome *</span>
-          <input type="text" value={t.nome}
-            onChange={(e) => patch({ nome: e.target.value })} />
-        </label>
+        <div className="bo-grid">
+          <label className="bo-field">
+            <span>Nome *</span>
+            <input type="text" value={t.nome}
+              onChange={(e) => patch({ nome: e.target.value })} />
+          </label>
+          <label className="bo-field">
+            <span>Cognome *</span>
+            <input type="text" value={t.cognome ?? ''}
+              onChange={(e) => patch({ cognome: e.target.value || null })} />
+          </label>
+        </div>
 
         <div className="bo-grid">
           <label className="bo-field">

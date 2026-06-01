@@ -9,6 +9,7 @@ import Compilazione from './Compilazione';
 import BackOffice from './admin/BackOffice';
 import { avviaSyncAuto, runSync } from './lib/sync';
 import type { Tecnico } from './lib/types';
+import { nomeCompleto } from './lib/types';
 import type { SopralluogoConContesto } from './lib/sopralluoghi';
 
 function Schermo({ titolo, testo, azione }: {
@@ -97,14 +98,14 @@ function Home({ tecnico }: { tecnico: Tecnico }) {
       {tab === 'sopralluoghi' ? (
         <MieiSopralluoghi
           tecnicoId={tecnico.id}
-          tecnicoNome={tecnico.nome}
+          tecnicoNome={nomeCompleto(tecnico)}
           onApriCoseDaFare={() => setTab('cose')}
           onApriSopralluogo={setAperto}
         />
       ) : (
         <MieCoseDaFare
           tecnicoId={tecnico.id}
-          tecnicoNome={tecnico.nome}
+          tecnicoNome={nomeCompleto(tecnico)}
           onApriSopralluoghi={() => setTab('sopralluoghi')}
         />
       )}

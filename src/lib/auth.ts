@@ -11,7 +11,7 @@ import { supabase } from './supabase';
 import type { Tecnico } from './types';
 
 const COLONNE_TECNICO =
-  'id, user_id, nome, base_localita, base_lat, base_lng, calendario_ref, capienza_ore_settimana, attivo, ruolo';
+  'id, user_id, nome, cognome, base_localita, base_lat, base_lng, calendario_ref, capienza_ore_settimana, attivo, ruolo';
 
 const chiaveCache = (userId: string) => `tecnico:${userId}`;
 

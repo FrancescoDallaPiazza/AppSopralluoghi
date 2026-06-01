@@ -16,6 +16,7 @@ export interface Tecnico {
   id: string;
   user_id: string | null;
   nome: string;
+  cognome: string | null;
   base_localita: string | null;
   base_lat: number | null;
   base_lng: number | null;
@@ -23,6 +24,17 @@ export interface Tecnico {
   capienza_ore_settimana: number | null;
   attivo: boolean;
   ruolo: RuoloTecnico;
+}
+
+// Nome completo per la visualizzazione: "Nome Cognome" se il cognome c'è,
+// altrimenti solo il nome (retrocompatibile con i tecnici creati prima della
+// migration 010, che hanno cognome = null).
+export function nomeCompleto(
+  t: { nome?: string | null; cognome?: string | null } | null | undefined,
+): string {
+  const n = (t?.nome ?? '').trim();
+  const c = (t?.cognome ?? '').trim();
+  return [n, c].filter(Boolean).join(' ') || 'Tecnico';
 }
 
 // --- anagrafiche / contratto (back-office) ---
