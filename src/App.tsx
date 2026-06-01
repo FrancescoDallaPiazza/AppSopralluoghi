@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { AuthProvider, useAuth } from './AuthProvider';
 import Login from './Login';
 import ImpostaPassword from './ImpostaPassword';
+import CambiaPassword from './CambiaPassword';
 import MieiSopralluoghi from './MieiSopralluoghi';
 import MieCoseDaFare from './MieCoseDaFare';
 import Compilazione from './Compilazione';
@@ -34,6 +35,48 @@ function Schermo({ titolo, testo, azione }: {
   );
 }
 
+// Menu account dell'app da campo: Cambia password + Esci. Fisso in basso a
+// destra, compare solo nelle viste-elenco (non durante la compilazione).
+function MenuAccount() {
+  const { signOut } = useAuth();
+  const [apri, setApri] = useState(false);
+  const [cambia, setCambia] = useState(false);
+
+  return (
+    <>
+      {cambia && <CambiaPassword onChiudi={() => setCambia(false)} />}
+      <div style={{ position: 'fixed', right: 14, bottom: 16, zIndex: 9998,
+        fontFamily: '-apple-system,system-ui,sans-serif' }}>
+        {apri && (
+          <div style={{
+            position: 'absolute', right: 0, bottom: 52, width: 190,
+            background: '#fffdf9', border: '1px solid #c9c2b4', borderRadius: 12,
+            boxShadow: '0 18px 40px -20px rgba(0,0,0,.5)', overflow: 'hidden',
+          }}>
+            <button onClick={() => { setApri(false); setCambia(true); }}
+              style={menuItem}>Cambia password</button>
+            <div style={{ height: 1, background: '#ece7dd' }} />
+            <button onClick={() => void signOut()}
+              style={{ ...menuItem, color: '#b23b2a', fontWeight: 800 }}>Esci</button>
+          </div>
+        )}
+        <button onClick={() => setApri((v) => !v)} aria-label="Account"
+          style={{
+            width: 46, height: 46, borderRadius: '50%', border: '1px solid #2c2f36',
+            background: '#16181c', color: '#fff', fontSize: 18, fontWeight: 800,
+            cursor: 'pointer', boxShadow: '0 10px 24px -10px rgba(0,0,0,.6)',
+          }}>⋯</button>
+      </div>
+    </>
+  );
+}
+
+const menuItem: CSSProperties = {
+  display: 'block', width: '100%', textAlign: 'left', border: 'none',
+  background: 'none', padding: '12px 14px', fontSize: 14, fontWeight: 700,
+  color: '#16181c', cursor: 'pointer', fontFamily: 'inherit',
+};
+
 // Le due schede + la schermata di campo.
 function Home({ tecnico }: { tecnico: Tecnico }) {
   const [tab, setTab] = useState<'sopralluoghi' | 'cose'>('sopralluoghi');
@@ -49,19 +92,24 @@ function Home({ tecnico }: { tecnico: Tecnico }) {
     );
   }
 
-  return tab === 'sopralluoghi' ? (
-    <MieiSopralluoghi
-      tecnicoId={tecnico.id}
-      tecnicoNome={tecnico.nome}
-      onApriCoseDaFare={() => setTab('cose')}
-      onApriSopralluogo={setAperto}
-    />
-  ) : (
-    <MieCoseDaFare
-      tecnicoId={tecnico.id}
-      tecnicoNome={tecnico.nome}
-      onApriSopralluoghi={() => setTab('sopralluoghi')}
-    />
+  return (
+    <>
+      {tab === 'sopralluoghi' ? (
+        <MieiSopralluoghi
+          tecnicoId={tecnico.id}
+          tecnicoNome={tecnico.nome}
+          onApriCoseDaFare={() => setTab('cose')}
+          onApriSopralluogo={setAperto}
+        />
+      ) : (
+        <MieCoseDaFare
+          tecnicoId={tecnico.id}
+          tecnicoNome={tecnico.nome}
+          onApriSopralluoghi={() => setTab('sopralluoghi')}
+        />
+      )}
+      <MenuAccount />
+    </>
   );
 }
 

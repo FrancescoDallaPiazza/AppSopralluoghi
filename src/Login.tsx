@@ -1,16 +1,20 @@
 import { useState, type FormEvent } from 'react';
 import { signIn } from './lib/auth';
+import { supabase } from './lib/supabase';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
+  // recupero password
+  const [recupero, setRecupero] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
-    setErrore(null);
+    setErrore(null); setInfo(null);
     setBusy(true);
     try {
       await signIn(email, password);
@@ -28,13 +32,41 @@ export default function Login() {
     }
   }
 
+  // Invia la mail di recupero: il link riporta all'app, dove compare la
+  // schermata "Imposta password" (vedi authFlow + AuthProvider).
+  async function inviaRecupero() {
+    setErrore(null); setInfo(null);
+    const mail = email.trim();
+    if (!mail || !mail.includes('@')) {
+      setErrore('Scrivi prima la tua email, poi premi “Invia il link”.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(mail, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      setInfo('Se l’indirizzo esiste, ti arriva una mail con il link per reimpostare la password.');
+    } catch {
+      // messaggio neutro: non rivelare se l'indirizzo esiste o no
+      setInfo('Se l’indirizzo esiste, ti arriva una mail con il link per reimpostare la password.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="login">
       <style>{CSS}</style>
       <form className="card" onSubmit={submit}>
         <div className="brand">Sopralluoghi</div>
         <div className="accent" />
-        <p className="sub">Accedi con le credenziali del tuo account.</p>
+        <p className="sub">
+          {recupero
+            ? 'Inserisci la tua email: ti invieremo un link per reimpostare la password.'
+            : 'Accedi con le credenziali del tuo account.'}
+        </p>
 
         <label className="field">
           <span>Email</span>
@@ -49,23 +81,44 @@ export default function Login() {
           />
         </label>
 
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={busy}
-          />
-        </label>
+        {!recupero && (
+          <label className="field">
+            <span>Password</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={busy}
+            />
+          </label>
+        )}
 
         {errore && <div className="err">{errore}</div>}
+        {info && <div className="info">{info}</div>}
 
-        <button className="cta" type="submit" disabled={busy}>
-          {busy ? 'Accesso…' : 'Accedi'}
-        </button>
+        {recupero ? (
+          <>
+            <button className="cta" type="button" disabled={busy} onClick={() => void inviaRecupero()}>
+              {busy ? 'Invio…' : 'Invia il link'}
+            </button>
+            <button className="link" type="button" disabled={busy}
+              onClick={() => { setRecupero(false); setErrore(null); setInfo(null); }}>
+              ← Torna all’accesso
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="cta" type="submit" disabled={busy}>
+              {busy ? 'Accesso…' : 'Accedi'}
+            </button>
+            <button className="link" type="button" disabled={busy}
+              onClick={() => { setRecupero(true); setErrore(null); setInfo(null); }}>
+              Password dimenticata?
+            </button>
+          </>
+        )}
       </form>
     </div>
   );
@@ -99,10 +152,20 @@ const CSS = `
   background:var(--no-bg); color:var(--no); border:1px solid #f1c4b9; border-radius:10px;
   padding:9px 11px; font-size:12.5px; font-weight:500; margin:2px 0 14px;
 }
+.login .info{
+  background:#e7f3ea; color:#256b3a; border:1px solid #b6dcc1; border-radius:10px;
+  padding:9px 11px; font-size:12.5px; font-weight:500; margin:2px 0 14px;
+}
 .login .cta{
   width:100%; border:none; border-radius:12px; padding:14px; cursor:pointer; margin-top:6px;
   font-family:inherit; font-weight:800; font-size:15px; background:var(--hi); color:#1a1205; transition:.15s;
 }
 .login .cta:active{transform:scale(.99);}
 .login .cta:disabled{opacity:.6; cursor:default;}
+.login .link{
+  width:100%; border:none; background:none; margin-top:10px; padding:6px; cursor:pointer;
+  font-family:inherit; font-weight:700; font-size:12.5px; color:var(--ink-soft);
+}
+.login .link:hover{color:var(--ink);}
+.login .link:disabled{opacity:.6; cursor:default;}
 `;
