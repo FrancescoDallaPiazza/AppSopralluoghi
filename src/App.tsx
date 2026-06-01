@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './AuthProvider';
 import Login from './Login';
+import ImpostaPassword from './ImpostaPassword';
 import MieiSopralluoghi from './MieiSopralluoghi';
 import MieCoseDaFare from './MieCoseDaFare';
 import Compilazione from './Compilazione';
@@ -96,10 +97,18 @@ function Pronto({ tecnico }: { tecnico: Tecnico }) {
 }
 
 function Gate() {
-  const { fase, tecnico, signOut } = useAuth();
+  const { fase, tecnico, session, richiediPassword, confermaPasswordImpostata, signOut } = useAuth();
 
   useEffect(() => { avviaSyncAuto(); }, []);
   useEffect(() => { if (fase === 'pronto') void runSync(); }, [fase]);
+
+  // Invito / recupero password: prima di tutto, l'utente sceglie la password.
+  if (richiediPassword) {
+    if (!session) {
+      return <Schermo titolo="Sopralluoghi" testo="Apro l’invito…" />;
+    }
+    return <ImpostaPassword onFatto={confermaPasswordImpostata} />;
+  }
 
   switch (fase) {
     case 'avvio':

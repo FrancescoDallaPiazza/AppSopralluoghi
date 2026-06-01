@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { azioneAuthIniziale, pulisciHashAuth } from './lib/authFlow';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import { risolviTecnico, signOut as doSignOut, TecnicoNonRisolto } from './lib/auth';
@@ -23,6 +24,10 @@ interface AuthValue {
   session: Session | null;
   tecnico: Tecnico | null;
   fase: FaseAuth;
+  /** true quando si arriva da invito/recovery: va prima impostata la password. */
+  richiediPassword: boolean;
+  /** Chiamata dopo aver impostato la password: sblocca il flusso normale. */
+  confermaPasswordImpostata: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -38,6 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [tecnico, setTecnico] = useState<Tecnico | null>(null);
   const [fase, setFase] = useState<FaseAuth>('avvio');
+  // invito o recupero password: l'utente deve prima sceglierne una nuova.
+  const [richiediPassword, setRichiediPassword] = useState<boolean>(
+    azioneAuthIniziale === 'invite' || azioneAuthIniziale === 'recovery',
+  );
 
   // 1) sessione: stato iniziale + sottoscrizione ai cambi
   useEffect(() => {
@@ -48,8 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // NB: non chiamare altre funzioni supabase *dentro* questa callback
     // (rischio di deadlock in supabase-js v2): la risoluzione del tecnico vive
     // in un effetto separato, guidato da session.user.id.
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((evt, s) => {
       setSession(s);
+      // link di recupero password: Supabase emette questo evento.
+      if (evt === 'PASSWORD_RECOVERY') setRichiediPassword(true);
     });
     return () => {
       vivo = false;
@@ -88,6 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     tecnico,
     fase,
+    richiediPassword,
+    confermaPasswordImpostata: () => {
+      setRichiediPassword(false);
+      pulisciHashAuth();
+    },
     // onAuthStateChange porterà a 'anon' da solo
     signOut: () => doSignOut(),
   };
