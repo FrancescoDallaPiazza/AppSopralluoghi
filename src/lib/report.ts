@@ -1,6 +1,7 @@
 // Helper client per generare il report di un sopralluogo via Edge Function.
-// Chiede l'HTML (resa A4 stampabile, funziona senza servizio PDF esterno) e
-// restituisce un URL firmato all'artefatto nel bucket privato 'report'.
+// Chiede il PDF (resa fedele del report) e restituisce un URL firmato
+// all'artefatto nel bucket privato 'report'. Se il servizio PDF non è
+// configurato lato server, ripiega automaticamente su HTML.
 
 import { supabase } from './supabase';
 
@@ -9,7 +10,7 @@ export type VarianteReport = 'cliente' | 'interna';
 export async function generaReport(
   sopralluogoId: string,
   variante: VarianteReport,
-  formato: 'html' | 'pdf' = 'html',
+  formato: 'html' | 'pdf' = 'pdf',
 ): Promise<string> {
   const { data, error } = await supabase.functions.invoke('genera-report', {
     body: { sopralluogo_id: sopralluogoId, variante, formato },
@@ -32,7 +33,7 @@ export interface EsitoInvioReport {
 export async function inviaReportCliente(
   sopralluogoId: string,
   emailDestinatario?: string,
-  formato: 'html' | 'pdf' = 'html',
+  formato: 'html' | 'pdf' = 'pdf',
 ): Promise<EsitoInvioReport> {
   const { data, error } = await supabase.functions.invoke('genera-report', {
     body: {
