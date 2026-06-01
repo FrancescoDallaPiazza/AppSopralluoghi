@@ -11,7 +11,8 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
   disattivato, offline al primo accesso). Ruolo `tecnico` / `admin`.
 - **I miei sopralluoghi** — lista del tecnico (da fare / completati), overlay locale.
 - **Compilazione** (schermata di campo) — checklist per voce con Conforme /
-  Non conforme / N.A., note, foto (ridimensionate + geo), generazione di azioni
+  Non conforme / N.A., note (con **dettatura vocale** trascritta in italiano dove
+  il browser la supporta), foto (ridimensionate + geo), generazione di azioni
   correttive e scadenze ricorrenti, **giro precedente** (verifica/chiusura delle
   azioni aperte dei sopralluoghi precedenti dello stesso incarico).
 - **Le mie cose da fare** — azioni assegnate al tecnico, con transizioni di stato.

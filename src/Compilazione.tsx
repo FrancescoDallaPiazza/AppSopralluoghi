@@ -8,6 +8,7 @@ import {
 } from './lib/compilazione';
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
 import { caricaGiroPrecedente, verificaAzione, type AzioneConContesto } from './lib/azioni';
+import NotaVocale from './NotaVocale';
 import type { EsitoVoce, Foto, Azione, VoceTemplate } from './lib/types';
 
 // ---------- helpers ----------
@@ -411,8 +412,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             </div>
             {valore != null && (
               <>
-                <textarea className="note" placeholder="Note…" value={esito.note ?? ''}
-                  onChange={(e) => void setNota(esito, e.target.value)} onBlur={() => void salvaNota(esito)} />
+                <NotaVocale className="note" placeholder="Note…" ariaLabel="Note"
+                  value={esito.note ?? ''}
+                  onChange={(t) => void setNota(esito, t)}
+                  onCommit={() => void salvaNota(esito)} />
                 <FotoStrip esitoId={esito.id} />
                 {opt?.genera_azione && renderBozzaAzione(esito)}
                 {opt?.stato === 'positivo' && voce.config.scadenza?.abilitata && renderScadenza(esito, voce)}
@@ -436,8 +439,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
         break;
       }
       case 'testo':
-        corpo = <textarea className="fld" rows={2} placeholder="Scrivi…" defaultValue={(valore as string) ?? ''}
-          onBlur={(e) => void setValoreSemplice(esito, e.target.value)} />;
+        corpo = <NotaVocale className="fld" rows={2} placeholder="Scrivi…" ariaLabel="Testo"
+          defaultValue={(valore as string) ?? ''}
+          onCommit={(t) => void setValoreSemplice(esito, t)} />;
         break;
       case 'data':
         corpo = <input className="fld" type="date" value={(valore as string) ?? ''} onChange={(e) => void setValoreSemplice(esito, e.target.value)} />;
@@ -487,8 +491,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           {voce.descrizione && <div className="voce-hint">{voce.descrizione}</div>}
           {istanze.map((e) => (
             <div key={e.id} className="rilievo">
-              <textarea className="fld" rows={2} placeholder="Descrivi il rilievo…" defaultValue={(e.valore as string) ?? ''}
-                onChange={(ev) => void setRilievoTesto(e, ev.target.value)} onBlur={() => void salvaRilievo(e)} />
+              <NotaVocale className="fld" rows={2} placeholder="Descrivi il rilievo…" ariaLabel="Rilievo"
+                defaultValue={(e.valore as string) ?? ''}
+                onCommit={(t) => { void setRilievoTesto(e, t).then(() => salvaRilievo({ ...e, valore: t })); }} />
               <FotoStrip esitoId={e.id} />
               <label className={'ril-az' + (e.genera_azione ? ' on' : '')}>
                 <input type="checkbox" checked={e.genera_azione} onChange={() => void toggleRilievoAzione(e)} />
@@ -509,7 +514,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
       <div className="gen azione">
         <div className="gen-h">Cosa da fare</div>
         <div className="field"><label>Descrizione</label>
-          <textarea rows={2} placeholder="Cosa va fatto…" value={b.descrizione} onChange={(e) => setBozza(esito.id, { descrizione: e.target.value })} /></div>
+          <NotaVocale className="" rows={2} placeholder="Cosa va fatto…" ariaLabel="Descrizione cosa da fare"
+            value={b.descrizione}
+            onChange={(t) => setBozza(esito.id, { descrizione: t })} /></div>
         <div className="field"><label>Responsabile</label>
           <Seg value={b.responsabile} onChange={(x) => setBozza(esito.id, { responsabile: x })} options={[{ v: 'cliente', l: 'Cliente' }, { v: 'interno', l: 'Interno' }]} /></div>
         <div className="row2">
@@ -697,6 +704,21 @@ const CSS = `
 
 .compila .note{width:100%; border:1px solid var(--line); border-radius:10px; background:#fbfaf7; padding:10px 11px; font-family:inherit; font-size:14px; color:var(--ink); resize:none; min-height:42px; margin:10px 0;}
 .compila .note:focus{outline:none; border-color:var(--hi); background:#fff;}
+.compila .nv-wrap{position:relative;}
+.compila .nv-wrap textarea{padding-right:46px;}
+.compila .nv-mic{position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:50%;
+  border:1px solid var(--line); background:#fff; color:var(--ink); font-size:14px; line-height:1;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  box-shadow:0 1px 0 rgba(0,0,0,.04);}
+.compila .nv-mic:active{transform:scale(.95);}
+.compila .nv-mic.on{width:auto; padding:0 11px; border-radius:15px; background:var(--no); color:#fff;
+  border-color:var(--no); font-weight:800; font-size:11.5px; letter-spacing:.02em;
+  animation:nv-pulse 1.1s ease-in-out infinite;}
+@keyframes nv-pulse{0%,100%{box-shadow:0 0 0 0 rgba(216,68,47,.45);}50%{box-shadow:0 0 0 6px rgba(216,68,47,0);}}
+.compila .nv-err{font-size:11.5px; color:var(--no); margin:-4px 0 8px;}
+.compila .field .nv-wrap textarea{margin:0; width:100%; appearance:none; border:1px solid rgba(0,0,0,.12);
+  border-radius:8px; padding:9px 46px 9px 10px; font-family:inherit; font-size:13.5px; background:#fff; color:var(--ink); resize:none;}
+.compila .field .nv-wrap textarea:focus{outline:none; border-color:var(--ink);}
 
 .compila .photos{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
 .compila .ph-add,.compila .ph{width:58px; height:58px; border-radius:10px; flex-shrink:0; position:relative;}
