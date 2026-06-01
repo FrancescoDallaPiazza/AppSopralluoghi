@@ -68,7 +68,15 @@ async function htmlToPdf(html: string): Promise<Uint8Array | null> {
     const txt = await res.text().catch(() => '');
     throw new Error(`PDFBolt ${res.status} ${txt}`.slice(0, 300));
   }
-  return new Uint8Array(await res.arrayBuffer());
+  // A volte il servizio risponde 200 ma con un messaggio (non un PDF): lo
+  // riconosciamo dai magic bytes "%PDF-" e altrimenti solleviamo l'errore vero.
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const head = new TextDecoder().decode(buf.subarray(0, 5));
+  if (head !== '%PDF-') {
+    const msg = new TextDecoder().decode(buf).slice(0, 300);
+    throw new Error(`PDFBolt: risposta non-PDF (${buf.length} byte): ${msg}`);
+  }
+  return buf;
 }
 
 interface Allegato { filename: string; content: Uint8Array; contentType: string; }
@@ -101,8 +109,8 @@ async function inviaEmailSMTP(
         ? [{
             filename: allegato.filename,
             contentType: allegato.contentType,
-            encoding: 'base64',
-            content: toBase64(allegato.content),
+            encoding: 'binary',
+            content: allegato.content,
           }]
         : undefined,
     });
@@ -147,10 +155,21 @@ Deno.serve(async (req) => {
     let bytes: Uint8Array;
     let ext: string;
     let contentType: string;
+    let pdfError: string | null = null;
     if (formato === 'pdf') {
-      const pdf = await htmlToPdf(html);
-      if (pdf) { bytes = pdf; ext = 'pdf'; contentType = 'application/pdf'; }
-      else { bytes = new TextEncoder().encode(html); ext = 'html'; contentType = 'text/html; charset=utf-8'; }
+      try {
+        const pdf = await htmlToPdf(html);
+        if (pdf) {
+          bytes = pdf; ext = 'pdf'; contentType = 'application/pdf';
+        } else {
+          // chiave PDFBolt assente: ripiego su HTML
+          bytes = new TextEncoder().encode(html); ext = 'html'; contentType = 'text/html; charset=utf-8';
+        }
+      } catch (e) {
+        pdfError = String((e as Error)?.message ?? e);
+        console.error('Generazione PDF fallita:', pdfError);
+        bytes = new TextEncoder().encode(html); ext = 'html'; contentType = 'text/html; charset=utf-8';
+      }
     } else {
       bytes = new TextEncoder().encode(html); ext = 'html'; contentType = 'text/html; charset=utf-8';
     }
@@ -206,7 +225,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ url, formato: ext, variante, emailed, email_to: emailTo, email_reason: emailReason });
+    return json({ url, formato: ext, variante, emailed, email_to: emailTo, email_reason: emailReason, pdf_error: pdfError });
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
