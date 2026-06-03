@@ -204,11 +204,56 @@ riga "Rev. N" sul report.
 
 ---
 
-## 8. Decisioni aperte
+## 8. Lavori aperti e lacune
 
-- Contenuto email di `notifica-sopralluogo`: attualmente **elenco testuale** delle
-  cose da fare. Da decidere se aggiungere link/allegato del report interno.
+Richieste/auspici delle istruzioni iniziali non ancora realizzati:
+
+- **Vista disponibilità tecnici in %** (punto 2, "sarebbe bello… colonna riempita
+  % rispetto al 100%"): manca il cruscotto panoramico con il carico percentuale
+  per tecnico/settimana. Il motore di calcolo esiste (`lib/admin/assistita.ts` +
+  `caricaCaricoGlobale`) ed è usato in pianificazione per suggerire il tecnico e
+  segnalare "oltre capienza", ma la vista dedicata non c'è. → DA FARE.
+- **Collegamento a gestionale/altra app (Werp)** (punto 2, "magari collegata ad
+  altra funzione/app"): campi predisposti (`incarico.werp_id`,
+  `azione.werp_attivita_id`, ID Werp cliente) ma nessuna sincronizzazione attiva.
+  Da chiarire col fornitore il canale (API REST / accesso DB / import-export).
+  → DA FARE / DA DEFINIRE.
+- **Rigenerazione automatica delle scadenze ricorrenti**: alla verifica di una
+  scadenza ricorrente non si crea ancora in automatico il ciclo successivo.
+  → DA FARE (minore).
+
+Decisioni da prendere:
+- Contenuto email di `notifica-sopralluogo`: elenco testuale (attuale) o anche
+  link/allegato del report interno.
 - Isolamento RLS a livello DB per i ruoli (oggi gating solo in-app).
+
+Migliorie non richieste nelle istruzioni iniziali (a discrezione): notifiche
+push/badge in-app; esclusione festività/patroni locali in pianificazione.
+
+---
+
+## 9. Confronto con le istruzioni iniziali
+
+| Istruzione iniziale | Stato |
+| --- | --- |
+| 1. Ordine continuativo con N sopralluoghi nel periodo (incarico) | Coperto |
+| 2. Pianificazione temporale + assegnazione tecnici | Coperto |
+| 2-bis. Disponibilità tecnici in % (colonna 0–100%) | **Mancante** (motore sì, vista no) |
+| 2-ter. Collegamento ad altra app/gestionale (Werp) | **Mancante** (campi predisposti) |
+| 3. Check-list di riferimento scelta | Coperto |
+| 3. Conforme + note + foto + scadenzario se calendarizzabile | Coperto |
+| 3. Conforme + note + foto | Coperto |
+| 3. Non conforme + note + foto + COSE DA FARE (cliente/interno) | Coperto |
+| 3. Invio esiti al cliente (con COSE DA FARE) | Coperto |
+| 3. Invio esiti alla risorsa interna (cose dirette) | Coperto |
+| 3. Scadenzario | Coperto (rigenerazione ciclo successivo: da fare) |
+| 3. COSE DA FARE aggiornabili nel tempo | Coperto |
+| 4. Sopralluogo successivo: input = stato COSE DA FARE aggiornato (giro prec.) | Coperto (con "Verifica e chiudi") |
+| 4. Check-list scelta + stesso workflow | Coperto |
+
+Aggiunte concordate dopo le istruzioni iniziali (non lacune): ruolo `interno`,
+assegnazione A→B, più cose da fare per rilievo, email digest unica, revisioni con
+snapshot (vedi §7).
 
 ---
 
@@ -220,3 +265,6 @@ riga "Rev. N" sul report.
   conservazione `notificata_il`).
 - Concordato e specificato il sistema di revisioni con snapshot completo
   (prossimo sviluppo).
+- Confronto con le istruzioni iniziali (§9): emergono come lacune la vista
+  disponibilità tecnici in %, il collegamento al gestionale Werp e la
+  rigenerazione delle scadenze ricorrenti.
