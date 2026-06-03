@@ -107,6 +107,8 @@ normalizzati a CRLF prima della consegna.
   `notifica-sopralluogo` (header `Authorization: Bearer <service_role_key>`). Il
   vecchio webhook su `azione` → `notifica-azione` è da considerarsi dismesso
   (resta innocuo perché la funzione lo ignora).
+- **Trigger DB**: `trg_azione_rigenera_scadenza` su `azione` (migration 013) —
+  alla verifica di una scadenza ricorrente crea il ciclo successivo (vedi §8 e §5).
 - **Secrets** (condivisi tra le funzioni): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
   `SMTP_PASS`, `MAIL_FROM`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -142,8 +144,10 @@ normalizzati a CRLF prima della consegna.
 Migrazioni presenti: 001 schema+RLS+foto · 002 form model · 003–004 template/seed ·
 005 bucket report · 006 ruolo back-office · 007 cadenza · 008 contatti · 009 aree
 interne · 010 (notificata_il / periodicità / responsabile_area) · 011 ruolo
-`interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente).
-**Prossima libera: 013.**
+`interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente) · 013
+rigenerazione automatica scadenze ricorrenti (trigger `trg_azione_rigenera_scadenza`
+su `azione`, nessuna colonna nuova).
+**Prossima libera: 014.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -186,6 +190,16 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   `caricaCaricoGlobale`), nessuna nuova tabella né Edge Function. Chiude la
   lacuna 2-bis delle istruzioni iniziali ("colonna riempita % rispetto al 100%").
   File: `src/admin/Disponibilita.tsx`, `src/lib/admin/disponibilita.ts`.
+- **Rigenerazione automatica delle scadenze ricorrenti** (migration 013): alla
+  verifica di una `scadenza_ricorrente` (transizione a `conclusa`, da qualunque
+  punto: campo, "Le mie cose da fare", back-office) un **trigger sul DB** crea il
+  ciclo successivo — copia identica con `data_scadenza` avanzata di
+  `periodicita_mesi` e stato `aperta`. Idempotente (per `origine_esito_id` +
+  `sopralluogo_origine_id` + data calcolata), così re-sync o chiusure ripetute non
+  duplicano. La nuova azione resta `aperta` e non notificata (nessuna email
+  automatica) e ricompare nel giro successivo dello stesso incarico. Nessuna
+  colonna nuova. Comparendo lato server, è visibile nello scadenzario al
+  successivo caricamento/refresh. File: `supabase/migrations/013_scadenze_ricorrenti.sql`.
 
 ---
 
@@ -249,17 +263,14 @@ Richieste/auspici delle istruzioni iniziali non ancora realizzati:
   `azione.werp_attivita_id`, ID Werp cliente) ma nessuna sincronizzazione attiva.
   Da chiarire col fornitore il canale (API REST / accesso DB / import-export).
   → DA FARE / DA DEFINIRE.
-- **Rigenerazione automatica delle scadenze ricorrenti**: alla verifica di una
-  scadenza ricorrente non si crea ancora in automatico il ciclo successivo.
-  → DA FARE (minore).
 
-Possibili affinamenti della vista disponibilità (non bloccanti):
-- includere le ferie/indisponibilità del tecnico (oggi il carico è solo dalle
-  sedute pianificate; non esiste un calendario di assenze);
-- contare anche le sedute `in_corso`/`completato` non ancora archiviate se serve
-  un quadro a consuntivo, non solo previsionale (oggi conta tutte le sedute con
-  tecnico + data, qualunque stato);
-- link diretto dalla cella alla pianificazione della settimana.
+Possibili affinamenti (non bloccanti):
+- Vista disponibilità: includere ferie/indisponibilità del tecnico (oggi il carico
+  è solo dalle sedute pianificate); link dalla cella alla pianificazione della
+  settimana.
+- Scadenze ricorrenti: feedback in-app immediato "creato il prossimo ciclo il
+  gg/mm" (oggi la nuova azione nasce lato DB e si vede al refresh); eventuale data
+  di fine serie per fermare la ricorrenza in automatico.
 
 Decisioni da prendere:
 - Contenuto email di `notifica-sopralluogo`: elenco testuale (attuale) o anche
@@ -285,7 +296,7 @@ push/badge in-app; esclusione festività/patroni locali in pianificazione.
 | 3. Non conforme + note + foto + COSE DA FARE (cliente/interno) | Coperto |
 | 3. Invio esiti al cliente (con COSE DA FARE) | Coperto |
 | 3. Invio esiti alla risorsa interna (cose dirette) | Coperto |
-| 3. Scadenzario | Coperto (rigenerazione ciclo successivo: da fare) |
+| 3. Scadenzario | Coperto (rigenerazione ciclo successivo automatica, migration 013) |
 | 3. COSE DA FARE aggiornabili nel tempo | Coperto |
 | 4. Sopralluogo successivo: input = stato COSE DA FARE aggiornato (giro prec.) | Coperto (con "Verifica e chiudi") |
 | 4. Check-list scelta + stesso workflow | Coperto |
@@ -314,5 +325,9 @@ snapshot (vedi §7).
   e helper puri `src/lib/admin/disponibilita.ts` (finestra settimane +
   occupazione %), sopra il motore esistente (`assistita.ts` +
   `caricaCaricoGlobale`). Front-end puro, nessuna migrazione né Edge Function:
-  rilascio con un solo push (canale 1). Chiude la lacuna 2-bis delle istruzioni
-  iniziali.
+  rilascio con un solo push (canale 1). Chiude la lacuna 2-bis.
+- Realizzata la **rigenerazione automatica delle scadenze ricorrenti**
+  (migration 013): trigger `trg_azione_rigenera_scadenza` su `azione` che alla
+  verifica di una scadenza ricorrente crea il ciclo successivo (idempotente,
+  nessuna colonna nuova). Rilascio via SQL Editor (canale 3). Chiude la lacuna
+  "rigenerazione ciclo successivo" del §8.
