@@ -393,6 +393,11 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   async function aggiungiRilievo(voce: VoceTemplate) {
     const e = nuovoEsito(compilataId, voce);
     e.valore = '';
+    // ordine crescente per istanza: i rilievi restano in ordine di creazione
+    // (il primo creato = "Rilievo 1"), invece di un ordine casuale per id.
+    const esistenti = rilieviByVoce.get(voce.id) ?? [];
+    const maxOrd = esistenti.reduce((m, x) => Math.max(m, x.ordine ?? 0), voce.ordine - 1);
+    e.ordine = maxOrd + 1;
     upsertEsiti([...esiti, e]);
     await salvaEsito(e);
   }
@@ -610,7 +615,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   }
 
   function renderRilievo(voce: VoceTemplate): ReactNode {
-    const istanze = (rilieviByVoce.get(voce.id) ?? []).sort((a, b) => a.id.localeCompare(b.id));
+    const istanze = (rilieviByVoce.get(voce.id) ?? []).sort((a, b) => (a.ordine - b.ordine) || a.id.localeCompare(b.id));
     return (
       <div key={voce.id} className="voce">
         <div className="voce-head">
