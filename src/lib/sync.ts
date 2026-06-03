@@ -93,6 +93,20 @@ export async function salvaAzione(a: Azione) {
   void runSync();
 }
 
+// Rimuove una cosa-da-fare (azione): pulizia locale + annullamento di eventuali
+// upsert ancora in coda per la stessa riga + cancellazione lato server. Usata
+// dalla riconciliazione al completamento, quando una cosa da fare viene tolta.
+export async function rimuoviAzione(azioneId: string) {
+  await db.azioni.delete(azioneId);
+  const ops = await db.outbox.where('kind').equals('row').toArray();
+  for (const o of ops) {
+    if (o.table === 'azione' && (o.payload as { id?: string } | undefined)?.id === azioneId && o.seq != null) {
+      await db.outbox.delete(o.seq);
+    }
+  }
+  await enqueueDelete('azione', azioneId);
+}
+
 // ---------- Drain della coda ----------
 let inFlight = false;
 

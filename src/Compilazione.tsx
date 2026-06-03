@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { liveQuery } from 'dexie';
 import { db } from './lib/db';
-import { salvaEsito, aggiungiFoto, rimuoviFoto, rimuoviEsito, runSync } from './lib/sync';
+import { salvaEsito, aggiungiFoto, rimuoviFoto, rimuoviEsito, rimuoviAzione, runSync } from './lib/sync';
 import {
   apriCompilazione, generaAzione, completaSopralluogo,
   nuovoEsito, opzioneDi, statoEsito, figliDi, isRipetibile,
@@ -470,6 +470,20 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           areaId: interno ? s.areaId : null,
         });
       }
+      // Riconcilia le CANCELLAZIONI: elimina le azioni di questo sopralluogo
+      // non più presenti tra bozze/scadenze correnti (cose da fare rimosse,
+      // rilievi tolti). Senza, le azioni già salvate resterebbero nel report.
+      const validiCorrettiva = new Set<string>();
+      for (const lista of Object.values(bozze)) for (const b of lista) validiCorrettiva.add(b.id);
+      const validiScadEsiti = new Set(Object.keys(scad));
+      const azioniSopr = (await db.azioni.toArray()).filter((a) => a.sopralluogo_origine_id === sopralluogo.id);
+      for (const a of azioniSopr) {
+        const tieni = a.tipo === 'scadenza_ricorrente'
+          ? (a.origine_esito_id != null && validiScadEsiti.has(a.origine_esito_id))
+          : validiCorrettiva.has(a.id);
+        if (!tieni) await rimuoviAzione(a.id);
+      }
+
       await completaSopralluogo(toBaseSopralluogo(sopralluogo));
       void runSync();
       // La notifica email ai destinatari interni parte LATO SERVER quando la
