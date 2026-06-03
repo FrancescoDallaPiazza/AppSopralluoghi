@@ -3,8 +3,9 @@ import { liveQuery } from 'dexie';
 import { db } from './lib/db';
 import { salvaEsito, aggiungiFoto, rimuoviFoto, rimuoviEsito, rimuoviAzione, runSync } from './lib/sync';
 import {
-  apriCompilazione, generaAzione, completaSopralluogo,
+  apriCompilazione, iniziaCompilazione, generaAzione, completaSopralluogo,
   nuovoEsito, opzioneDi, statoEsito, figliDi, isRipetibile,
+  type TemplateScelta,
 } from './lib/compilazione';
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
 import {
@@ -153,6 +154,42 @@ function useGiroPrecedente(incaricoId: string | null, sopralluogoId: string) {
   return { azioni, stato };
 }
 
+// ---------- ricostruzione bozze/scadenze dalle azioni già salvate ----------
+// Riaprendo (o appena creato) un sopralluogo, le cose da fare GIÀ presenti per
+// quel sopralluogo si riportano nelle bozze, così si rivedono quelle reali
+// (descrizione, destinatario, scadenza). Bozza.id = id dell'azione, quindi il
+// ri-completamento fa upsert e non duplica. Pura: nessun accesso allo stato.
+function bozzeDaAzioni(azioni: Azione[], sopralluogoId: string, tecnicoId: string) {
+  const bz: Record<string, Bozza[]> = {};
+  const sc: Record<string, BozzaScad> = {};
+  for (const a of azioni) {
+    if (a.sopralluogo_origine_id !== sopralluogoId || !a.origine_esito_id) continue;
+    const interno = a.responsabile_tipo === 'risorsa_interna';
+    const versoArea = interno && !!a.responsabile_area_id;
+    const versoAltroTec = interno && !versoArea
+      && !!a.responsabile_interno_id && a.responsabile_interno_id !== tecnicoId;
+    const resp: Resp = interno ? 'interno' : 'cliente';
+    const tecnicoTargetId = versoAltroTec ? a.responsabile_interno_id : null;
+    const areaId = versoArea ? a.responsabile_area_id : null;
+    if (a.tipo === 'scadenza_ricorrente') {
+      const mesi = a.periodicita_mesi ?? 12;
+      sc[a.origine_esito_id] = {
+        responsabile: resp, tecnicoTargetId, areaId,
+        mesi, data: a.data_scadenza ?? isoPiuMesi(mesi),
+      };
+    } else {
+      (bz[a.origine_esito_id] ??= []).push({
+        id: a.id,
+        descrizione: a.descrizione ?? '',
+        responsabile: resp, tecnicoTargetId, areaId,
+        scadenza: a.data_scadenza ?? '',
+        priorita: a.priorita ?? 'media',
+      });
+    }
+  }
+  return { bz, sc };
+}
+
 // ---------- componente ----------
 interface Props {
   sopralluogo: SopralluogoConContesto;
@@ -161,7 +198,7 @@ interface Props {
 }
 
 export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props) {
-  const [fase, setFase] = useState<'loading' | 'ok' | 'errore'>('loading');
+  const [fase, setFase] = useState<'loading' | 'ok' | 'errore' | 'scelta'>('loading');
   const [erroreMsg, setErroreMsg] = useState<string | null>(null);
   const [compilataId, setCompilataId] = useState<string>('');
   const [voci, setVoci] = useState<VoceTemplate[]>([]);
@@ -175,6 +212,11 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
   const [sheet, setSheet] = useState<null | 'prev'>(null);
   const [annullando, setAnnullando] = useState(false);
+  // scelta della checklist alla prima apertura (default = quella dell'incarico)
+  const [tmplScelta, setTmplScelta] = useState<TemplateScelta[]>([]);
+  const [tmplSel, setTmplSel] = useState<string | null>(null);
+  const [tmplDefault, setTmplDefault] = useState<string | null>(null);
+  const [avviando, setAvviando] = useState(false);
   // true quando si sta modificando un sopralluogo già completato (una revisione)
   const inRevisione = (sopralluogo.revisione_corrente ?? 1) > 1;
 
@@ -200,42 +242,21 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   useEffect(() => {
     let vivo = true; setFase('loading');
     apriCompilazione(sopralluogo)
-      .then(async (d) => {
+      .then(async (r) => {
         if (!vivo) return;
-        setCompilataId(d.compilataId); setVoci(d.voci); setEsiti(d.esiti);
-        // Riallinea le cose da fare GIÀ create per questo sopralluogo: riaprendolo
-        // si rivedono quelle reali (descrizione, destinatario, scadenza) invece di
-        // una bozza vuota. Bozza.id = id dell'azione, quindi un eventuale
-        // ri-completamento fa upsert e non duplica.
+        // serve scegliere la checklist (prima apertura): default = incarico
+        if (r.modo === 'scelta') {
+          setTmplScelta(r.templates);
+          setTmplDefault(r.defaultTemplateId ?? null);
+          setTmplSel(r.defaultTemplateId ?? r.templates[0]?.id ?? null);
+          setFase('scelta');
+          return;
+        }
+        // pronto: ripresa o ripiego offline sul template dell'incarico
+        setCompilataId(r.compilataId); setVoci(r.voci); setEsiti(r.esiti);
         try {
           const tutte = await db.azioni.toArray();
-          const bz: Record<string, Bozza[]> = {};
-          const sc: Record<string, BozzaScad> = {};
-          for (const a of tutte) {
-            if (a.sopralluogo_origine_id !== sopralluogo.id || !a.origine_esito_id) continue;
-            const interno = a.responsabile_tipo === 'risorsa_interna';
-            const versoArea = interno && !!a.responsabile_area_id;
-            const versoAltroTec = interno && !versoArea
-              && !!a.responsabile_interno_id && a.responsabile_interno_id !== tecnicoId;
-            const resp: Resp = interno ? 'interno' : 'cliente';
-            const tecnicoTargetId = versoAltroTec ? a.responsabile_interno_id : null;
-            const areaId = versoArea ? a.responsabile_area_id : null;
-            if (a.tipo === 'scadenza_ricorrente') {
-              const mesi = a.periodicita_mesi ?? 12;
-              sc[a.origine_esito_id] = {
-                responsabile: resp, tecnicoTargetId, areaId,
-                mesi, data: a.data_scadenza ?? isoPiuMesi(mesi),
-              };
-            } else {
-              (bz[a.origine_esito_id] ??= []).push({
-                id: a.id,
-                descrizione: a.descrizione ?? '',
-                responsabile: resp, tecnicoTargetId, areaId,
-                scadenza: a.data_scadenza ?? '',
-                priorita: a.priorita ?? 'media',
-              });
-            }
-          }
+          const { bz, sc } = bozzeDaAzioni(tutte, sopralluogo.id, tecnicoId);
           if (vivo) { setBozze(bz); setScad(sc); }
         } catch { /* offline o nessuna azione locale: si parte da vuoto */ }
         if (vivo) setFase('ok');
@@ -243,6 +264,28 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
       .catch((e) => { if (vivo) { setErroreMsg(String(e?.message ?? e)); setFase('errore'); } });
     return () => { vivo = false; };
   }, [sopralluogo.id]);
+
+  // conferma della scelta della checklist: crea la compilazione e apre il form
+  async function confermaScelta() {
+    if (avviando) return;
+    const sel = tmplSel ? tmplScelta.find((t) => t.id === tmplSel) : null;
+    if (!sel) return;
+    setAvviando(true); setFase('loading');
+    try {
+      const d = await iniziaCompilazione(sopralluogo, { id: sel.id, versione: sel.versione });
+      setCompilataId(d.compilataId); setVoci(d.voci); setEsiti(d.esiti);
+      try {
+        const tutte = await db.azioni.toArray();
+        const { bz, sc } = bozzeDaAzioni(tutte, sopralluogo.id, tecnicoId);
+        setBozze(bz); setScad(sc);
+      } catch { /* nessuna azione locale */ }
+      setFase('ok');
+    } catch (e) {
+      setErroreMsg(String((e as Error)?.message ?? e)); setFase('errore');
+    } finally {
+      setAvviando(false);
+    }
+  }
 
   // rete + coda
   useEffect(() => {
@@ -509,6 +552,41 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
       <Cornice>
         <p className="muted">{erroreMsg ?? 'Errore.'}</p>
         <button className="cta" onClick={onChiudi}>Torna ai sopralluoghi</button>
+      </Cornice>
+    );
+  }
+  if (fase === 'scelta') {
+    return (
+      <Cornice>
+        <div className="pick-client">{sopralluogo.cliente_nome ?? 'Cliente —'}</div>
+        <div className="pick-sub">{[sopralluogo.tipo_attivita, sopralluogo.progressivo].filter(Boolean).join(' · ') || 'Sopralluogo'}</div>
+        <p className="muted" style={{ margin: '12px 2px 16px' }}>
+          Scegli la checklist per questo sopralluogo. È preselezionata quella dell'incarico,
+          ma puoi cambiarla. Una volta aperta resta fissata per questa seduta; le cose da fare
+          del giro precedente restano comunque collegate.
+        </p>
+        <div className="pick-list">
+          {tmplScelta.map((t) => {
+            const on = t.id === tmplSel;
+            const def = t.id === tmplDefault;
+            return (
+              <button key={t.id} type="button" className={'pick-item' + (on ? ' on' : '')} onClick={() => setTmplSel(t.id)}>
+                <span className="pick-radio" />
+                <span className="pick-body">
+                  <span className="pick-nome">{t.nome}{def && <span className="pick-badge">Consigliata</span>}</span>
+                  <span className="pick-tipo">{t.tipo_attivita} · v{t.versione}</span>
+                </span>
+              </button>
+            );
+          })}
+          {tmplScelta.length === 0 && <p className="muted">Nessuna checklist attiva disponibile.</p>}
+        </div>
+        <div className="pick-actions">
+          <button className="pick-ghost" type="button" onClick={onChiudi} disabled={avviando}>Annulla</button>
+          <button className="cta" type="button" onClick={() => void confermaScelta()} disabled={!tmplSel || avviando}>
+            {avviando ? 'Apro…' : 'Apri la checklist'}
+          </button>
+        </div>
       </Cornice>
     );
   }
@@ -987,4 +1065,21 @@ const CSS = `
 .compila .task-meta{font-size:11.5px; color:var(--ink-soft); margin-top:7px; display:flex; gap:14px; flex-wrap:wrap;} .compila .task-meta b{color:var(--ink); font-weight:600;}
 .compila .verifica{margin-top:10px; width:100%; border:1px solid var(--ok); background:var(--ok-bg); color:var(--ok); font-family:var(--disp); font-weight:700; font-size:13px; padding:10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;} .compila .verifica svg{width:16px;height:16px;}
 .compila .empty{text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; line-height:1.5;}
+
+/* selettore checklist (prima apertura) */
+.compila .pick-client{font-weight:800; font-size:18px; letter-spacing:-.2px; line-height:1.15;}
+.compila .pick-sub{font-size:12px; color:var(--ink-soft); margin-top:3px; font-weight:600;}
+.compila .pick-list{display:flex; flex-direction:column; gap:9px;}
+.compila .pick-item{display:flex; align-items:flex-start; gap:11px; width:100%; text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:13px; padding:13px; cursor:pointer; font-family:inherit; box-shadow:var(--shadow);}
+.compila .pick-item.on{border-color:var(--hi); box-shadow:0 0 0 3px rgba(244,160,18,.16);}
+.compila .pick-radio{flex-shrink:0; width:19px; height:19px; border-radius:50%; border:2px solid var(--line); margin-top:1px; position:relative;}
+.compila .pick-item.on .pick-radio{border-color:var(--hi);}
+.compila .pick-item.on .pick-radio::after{content:""; position:absolute; inset:3px; border-radius:50%; background:var(--hi);}
+.compila .pick-body{display:flex; flex-direction:column; gap:3px; min-width:0;}
+.compila .pick-nome{font-weight:700; font-size:14.5px; color:var(--ink); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.compila .pick-tipo{font-size:11.5px; color:var(--ink-soft); font-weight:500;}
+.compila .pick-badge{font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--hi-dark); background:#fbeccb; border-radius:999px; padding:2px 7px;}
+.compila .pick-actions{display:flex; gap:10px; margin-top:18px;}
+.compila .pick-ghost{flex-shrink:0; background:none; border:1.5px solid var(--line); color:var(--ink-soft); border-radius:12px; padding:0 16px; font-weight:700; font-size:14px; cursor:pointer; font-family:var(--disp);}
+.compila .pick-actions .cta{flex:1;}
 `;
