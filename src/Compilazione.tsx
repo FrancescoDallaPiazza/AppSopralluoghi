@@ -181,7 +181,46 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   useEffect(() => {
     let vivo = true; setFase('loading');
     apriCompilazione(sopralluogo)
-      .then((d) => { if (vivo) { setCompilataId(d.compilataId); setVoci(d.voci); setEsiti(d.esiti); setFase('ok'); } })
+      .then(async (d) => {
+        if (!vivo) return;
+        setCompilataId(d.compilataId); setVoci(d.voci); setEsiti(d.esiti);
+        // Riallinea le cose da fare GIÀ create per questo sopralluogo: riaprendolo
+        // si rivedono quelle reali (descrizione, destinatario, scadenza) invece di
+        // una bozza vuota. Bozza.id = id dell'azione, quindi un eventuale
+        // ri-completamento fa upsert e non duplica.
+        try {
+          const tutte = await db.azioni.toArray();
+          const bz: Record<string, Bozza[]> = {};
+          const sc: Record<string, BozzaScad> = {};
+          for (const a of tutte) {
+            if (a.sopralluogo_origine_id !== sopralluogo.id || !a.origine_esito_id) continue;
+            const interno = a.responsabile_tipo === 'risorsa_interna';
+            const versoArea = interno && !!a.responsabile_area_id;
+            const versoAltroTec = interno && !versoArea
+              && !!a.responsabile_interno_id && a.responsabile_interno_id !== tecnicoId;
+            const resp: Resp = interno ? 'interno' : 'cliente';
+            const tecnicoTargetId = versoAltroTec ? a.responsabile_interno_id : null;
+            const areaId = versoArea ? a.responsabile_area_id : null;
+            if (a.tipo === 'scadenza_ricorrente') {
+              const mesi = a.periodicita_mesi ?? 12;
+              sc[a.origine_esito_id] = {
+                responsabile: resp, tecnicoTargetId, areaId,
+                mesi, data: a.data_scadenza ?? isoPiuMesi(mesi),
+              };
+            } else {
+              (bz[a.origine_esito_id] ??= []).push({
+                id: a.id,
+                descrizione: a.descrizione ?? '',
+                responsabile: resp, tecnicoTargetId, areaId,
+                scadenza: a.data_scadenza ?? '',
+                priorita: a.priorita ?? 'media',
+              });
+            }
+          }
+          if (vivo) { setBozze(bz); setScad(sc); }
+        } catch { /* offline o nessuna azione locale: si parte da vuoto */ }
+        if (vivo) setFase('ok');
+      })
       .catch((e) => { if (vivo) { setErroreMsg(String(e?.message ?? e)); setFase('errore'); } });
     return () => { vivo = false; };
   }, [sopralluogo.id]);

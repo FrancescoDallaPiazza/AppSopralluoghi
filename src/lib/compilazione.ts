@@ -278,6 +278,12 @@ export async function generaAzione(i: InputAzione): Promise<Azione> {
   // Interno: destinatario = area se indicata, altrimenti il tecnico.
   const versoArea = i.responsabileTipo === 'risorsa_interna' && !!i.areaId;
 
+  // Se l'azione esiste già (ricompletamento dello stesso sopralluogo), si
+  // conservano lo stato di avanzamento, gli estremi di verifica e soprattutto
+  // notificata_il: così ricompletare NON rispedisce le email già inviate e NON
+  // riapre azioni eventualmente già chiuse. È un upsert, non un duplicato.
+  const esistente = await db.azioni.get(id);
+
   const azione: Azione = {
     id,
     tipo: i.tipo,
@@ -291,12 +297,12 @@ export async function generaAzione(i: InputAzione): Promise<Azione> {
     responsabile_area_id: versoArea ? i.areaId! : null,
     data_scadenza: i.dataScadenza,
     priorita: i.priorita,
-    stato: 'aperta',
-    sopralluogo_verifica_id: null,
-    data_verifica: null,
+    stato: esistente?.stato ?? 'aperta',
+    sopralluogo_verifica_id: esistente?.sopralluogo_verifica_id ?? null,
+    data_verifica: esistente?.data_verifica ?? null,
     periodicita_mesi: i.tipo === 'scadenza_ricorrente' ? (i.periodicitaMesi ?? null) : null,
-    werp_attivita_id: null,
-    notificata_il: null,
+    werp_attivita_id: esistente?.werp_attivita_id ?? null,
+    notificata_il: esistente?.notificata_il ?? null,
   };
   await salvaAzione(azione);
   return azione;
