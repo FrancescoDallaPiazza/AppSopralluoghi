@@ -52,13 +52,14 @@ src/
   NotaVocale.tsx          # dettatura vocale note
   admin/                  # back-office (solo admin)
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
-    CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx
+    CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx,
+    Disponibilita.tsx
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
     auth.ts, sopralluoghi.ts, azioni.ts, report.ts, prefetch.ts,
     compilazione.ts, onboarding.ts
     admin/ (anagrafiche, tecnici, aree, templates, assistita, cosedafare,
-            pianificazione)
+            pianificazione, disponibilita)
 supabase/
   migrations/             # schema + seed (vedi §5)
   functions/              # Edge Functions (vedi §4)
@@ -158,7 +159,7 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   da fare e scadenze, giro precedente.
 - Report cliente / interno + invio al cliente.
 - Back-office: anagrafiche, tecnici, aree, template (con versionamento),
-  scadenzario "Cose da fare", pianificazione.
+  scadenzario "Cose da fare", pianificazione, disponibilità tecnici.
 - Prefetch offline.
 - **Roadmap a 4 punti chiusa**:
   1. Unica comunicazione per sopralluogo: una email per destinatario interno al
@@ -174,6 +175,17 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
 - **Revisioni con snapshot** (vedi §7): un sopralluogo completato si apre in
   riepilogo sola lettura; *Modifica* archivia la versione attuale e la rende
   modificabile; "Rev. N" sul report. Implementato — da verificare in produzione.
+
+**Implementate, da verificare in produzione**
+- **Vista disponibilità tecnici (carico % settimanale)**: nuovo tab back-office
+  "Disponibilità" — per ogni tecnico, settimana per settimana, il carico
+  pianificato in percentuale rispetto alla capienza oraria (campo
+  `capienza_ore_settimana`), con finestra navigabile 4/8/12 settimane, evidenza
+  della settimana corrente e badge "oltre capienza". Sola lettura, front-end
+  puro: riusa il motore della pianificazione assistita (`assistita.ts` +
+  `caricaCaricoGlobale`), nessuna nuova tabella né Edge Function. Chiude la
+  lacuna 2-bis delle istruzioni iniziali ("colonna riempita % rispetto al 100%").
+  File: `src/admin/Disponibilita.tsx`, `src/lib/admin/disponibilita.ts`.
 
 ---
 
@@ -232,11 +244,6 @@ Possibile estensione futura: un visualizzatore della storia delle revisioni
 
 Richieste/auspici delle istruzioni iniziali non ancora realizzati:
 
-- **Vista disponibilità tecnici in %** (punto 2, "sarebbe bello… colonna riempita
-  % rispetto al 100%"): manca il cruscotto panoramico con il carico percentuale
-  per tecnico/settimana. Il motore di calcolo esiste (`lib/admin/assistita.ts` +
-  `caricaCaricoGlobale`) ed è usato in pianificazione per suggerire il tecnico e
-  segnalare "oltre capienza", ma la vista dedicata non c'è. → DA FARE.
 - **Collegamento a gestionale/altra app (Werp)** (punto 2, "magari collegata ad
   altra funzione/app"): campi predisposti (`incarico.werp_id`,
   `azione.werp_attivita_id`, ID Werp cliente) ma nessuna sincronizzazione attiva.
@@ -245,6 +252,14 @@ Richieste/auspici delle istruzioni iniziali non ancora realizzati:
 - **Rigenerazione automatica delle scadenze ricorrenti**: alla verifica di una
   scadenza ricorrente non si crea ancora in automatico il ciclo successivo.
   → DA FARE (minore).
+
+Possibili affinamenti della vista disponibilità (non bloccanti):
+- includere le ferie/indisponibilità del tecnico (oggi il carico è solo dalle
+  sedute pianificate; non esiste un calendario di assenze);
+- contare anche le sedute `in_corso`/`completato` non ancora archiviate se serve
+  un quadro a consuntivo, non solo previsionale (oggi conta tutte le sedute con
+  tecnico + data, qualunque stato);
+- link diretto dalla cella alla pianificazione della settimana.
 
 Decisioni da prendere:
 - Contenuto email di `notifica-sopralluogo`: elenco testuale (attuale) o anche
@@ -262,7 +277,7 @@ push/badge in-app; esclusione festività/patroni locali in pianificazione.
 | --- | --- |
 | 1. Ordine continuativo con N sopralluoghi nel periodo (incarico) | Coperto |
 | 2. Pianificazione temporale + assegnazione tecnici | Coperto |
-| 2-bis. Disponibilità tecnici in % (colonna 0–100%) | **Mancante** (motore sì, vista no) |
+| 2-bis. Disponibilità tecnici in % (colonna 0–100%) | Coperto (tab "Disponibilità") |
 | 2-ter. Collegamento ad altra app/gestionale (Werp) | **Mancante** (campi predisposti) |
 | 3. Check-list di riferimento scelta | Coperto |
 | 3. Conforme + note + foto + scadenzario se calendarizzabile | Coperto |
@@ -294,3 +309,10 @@ snapshot (vedi §7).
   rigenerazione delle scadenze ricorrenti.
 - Revisioni con snapshot completo realizzate (migration 012 + strato dati +
   schermata di riepilogo con gate *Modifica* + riga "Rev. N" sul report).
+- Realizzata la **vista disponibilità tecnici** (carico % settimanale per
+  tecnico): nuovo tab back-office "Disponibilità" + `src/admin/Disponibilita.tsx`
+  e helper puri `src/lib/admin/disponibilita.ts` (finestra settimane +
+  occupazione %), sopra il motore esistente (`assistita.ts` +
+  `caricaCaricoGlobale`). Front-end puro, nessuna migrazione né Edge Function:
+  rilascio con un solo push (canale 1). Chiude la lacuna 2-bis delle istruzioni
+  iniziali.

@@ -1,5 +1,6 @@
-// Shell del back-office (solo amministratori). Due sezioni: Template e
-// Pianificazione. Header con switch opzionale verso l'app da campo.
+// Shell del back-office (solo amministratori). Sezioni: Anagrafiche, Tecnici,
+// Aree, Template, Pianificazione, Disponibilità, Cose da fare. Header con switch
+// opzionale verso l'app da campo.
 
 import { useState } from 'react';
 import { useAuth } from '../AuthProvider';
@@ -10,9 +11,12 @@ import Tecnici from './Tecnici';
 import Aree from './Aree';
 import TemplateList from './TemplateList';
 import Pianificazione from './Pianificazione';
+import Disponibilita from './Disponibilita';
 import CoseDaFare from './CoseDaFare';
 
-type Sezione = 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'pianificazione' | 'cosedafare';
+type Sezione =
+  | 'anagrafiche' | 'tecnici' | 'aree' | 'template'
+  | 'pianificazione' | 'disponibilita' | 'cosedafare';
 
 export default function BackOffice({
   tecnico, onVaiAllApp,
@@ -44,6 +48,8 @@ export default function BackOffice({
             onClick={() => setSezione('template')}>Template</button>
           <button className={`bo-tab ${sezione === 'pianificazione' ? 'on' : ''}`}
             onClick={() => setSezione('pianificazione')}>Pianificazione</button>
+          <button className={`bo-tab ${sezione === 'disponibilita' ? 'on' : ''}`}
+            onClick={() => setSezione('disponibilita')}>Disponibilità</button>
           <button className={`bo-tab ${sezione === 'cosedafare' ? 'on' : ''}`}
             onClick={() => setSezione('cosedafare')}>Cose da fare</button>
         </nav>
@@ -55,6 +61,7 @@ export default function BackOffice({
         {sezione === 'aree' && <Aree />}
         {sezione === 'template' && <TemplateList />}
         {sezione === 'pianificazione' && <Pianificazione />}
+        {sezione === 'disponibilita' && <Disponibilita />}
         {sezione === 'cosedafare' && <CoseDaFare />}
       </main>
     </div>
