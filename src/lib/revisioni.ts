@@ -12,6 +12,7 @@
 import { db, enqueueRow, enqueueDelete, type OutboxOp } from './db';
 import { supabase } from './supabase';
 import { runSync, rimuoviEsito } from './sync';
+import { toBaseSopralluogo } from './sopralluoghi';
 import { newId, type Azione, type EsitoVoce, type Sopralluogo } from './types';
 
 export interface SnapshotRevisione {
@@ -90,9 +91,12 @@ export async function apriRevisione(
   };
   await enqueueRow('sopralluogo_revisione', riga as unknown as Record<string, unknown>);
 
-  // riapri il sopralluogo per la modifica e porta avanti la revisione corrente
+  // riapri il sopralluogo per la modifica e porta avanti la revisione corrente.
+  // toBaseSopralluogo ripulisce i campi di contesto (cliente_nome, ecc.) che NON
+  // sono colonne della tabella: altrimenti l'upsert fallisce e blocca la coda.
+  const base = toBaseSopralluogo(sopralluogo);
   const aggiornato: Sopralluogo = {
-    ...sopralluogo,
+    ...base,
     stato: 'in_corso',
     revisione_corrente: numero + 1,
   };
@@ -195,8 +199,10 @@ export async function annullaRevisione(sopralluogo: Sopralluogo): Promise<Sopral
   }
 
   // 4) riporta il sopralluogo a completato con il numero precedente
+  //    (toBaseSopralluogo: stesse ragioni di apriRevisione)
+  const base = toBaseSopralluogo(sopralluogo);
   const aggiornato: Sopralluogo = {
-    ...sopralluogo,
+    ...base,
     stato: 'completato',
     revisione_corrente: numeroPrecedente,
   };
