@@ -14,6 +14,7 @@ import {
 import NotaVocale from './NotaVocale';
 import { newId, nomeCompleto } from './lib/types';
 import type { EsitoVoce, Foto, Azione, VoceTemplate, AreaInterna } from './lib/types';
+import { annullaRevisione } from './lib/revisioni';
 
 // ---------- helpers ----------
 const isoPiuMesi = (mesi: number) => {
@@ -173,6 +174,24 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [online, setOnline] = useState(navigator.onLine);
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
   const [sheet, setSheet] = useState<null | 'prev'>(null);
+  const [annullando, setAnnullando] = useState(false);
+  // true quando si sta modificando un sopralluogo già completato (una revisione)
+  const inRevisione = (sopralluogo.revisione_corrente ?? 1) > 1;
+
+  async function annulla() {
+    if (annullando) return;
+    const ok = window.confirm(
+      'Annullare la modifica?\n\nLe eventuali modifiche fatte verranno scartate e il '
+      + 'sopralluogo tornerà alla versione precedente, senza creare una nuova revisione.',
+    );
+    if (!ok) return;
+    setAnnullando(true);
+    try { await annullaRevisione(sopralluogo); onChiudi(); }
+    catch (e) {
+      window.alert('Annullamento non riuscito: ' + String((e as Error)?.message ?? e));
+      setAnnullando(false);
+    }
+  }
 
   const { azioni: prev, stato: statoPrev } = useGiroPrecedente(sopralluogo.incarico_id, sopralluogo.id);
   const prevAperte = prev.filter((a) => a.stato !== 'conclusa').length;
@@ -730,6 +749,17 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
         </header>
 
         <main>
+          {inRevisione && (
+            <div className="rev-ban">
+              <div className="rev-txt">
+                Stai modificando un sopralluogo già <b>completato</b> (revisione {sopralluogo.revisione_corrente}).
+                Completando confermi questa revisione; in alternativa puoi annullare e tornare com'era.
+              </div>
+              <button className="rev-ann" disabled={annullando} onClick={() => void annulla()}>
+                {annullando ? 'Annullo…' : 'Annulla modifica'}
+              </button>
+            </div>
+          )}
           {sezioni.map((s) => (
             <div key={s.sez ?? '—'}>
               {s.sez && <div className="section-h">{s.sez}</div>}
@@ -918,6 +948,10 @@ const CSS = `
 .compila .chip small{color:var(--ink-soft); font-weight:500; font-size:11px; display:block; line-height:1.2;}
 .compila .cta{width:100%; border:none; border-radius:12px; padding:14px; cursor:pointer; font-family:var(--disp); font-weight:800; font-size:15px; background:var(--hi); color:#1a1205; display:flex; align-items:center; justify-content:center; gap:9px; transition:.18s;}
 .compila .cta:disabled{opacity:.85;} .compila .cta.done{background:var(--ok); color:#fff;} .compila .cta svg{width:18px;height:18px;}
+.compila .rev-ban{display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fbeccb; border:1px solid #f0d79a; border-radius:12px; padding:11px 13px; margin-bottom:14px;}
+.compila .rev-txt{flex:1; min-width:170px; font-size:12.5px; line-height:1.45; color:var(--hi-dark);}
+.compila .rev-ann{flex-shrink:0; border:1px solid var(--no); background:#fff; color:var(--no); font-family:var(--disp); font-weight:700; font-size:12.5px; padding:8px 13px; border-radius:9px; cursor:pointer;}
+.compila .rev-ann:active{transform:scale(.97);} .compila .rev-ann:disabled{opacity:.6;}
 
 .compila .scrim{position:fixed; inset:0; background:rgba(20,22,26,.45); z-index:30; opacity:0; pointer-events:none; transition:.2s;}
 .compila .scrim.show{opacity:1; pointer-events:auto;}

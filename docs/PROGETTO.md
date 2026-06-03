@@ -211,6 +211,10 @@ Realizzato:
 - `src/lib/sopralluoghi.ts` (carica `revisione_corrente`) e
   `src/MieiSopralluoghi.tsx` (schermata di riepilogo in sola lettura + gate
   *Modifica* con conferma);
+- `src/Compilazione.tsx` + `revisioni.ts` (`annullaRevisione`): durante la
+  modifica di una revisione c'è un **"Annulla modifica"** che ripristina lo stato
+  dallo snapshot, elimina la revisione e riporta a `completato` senza lasciare
+  revisioni a vuoto;
 - `supabase/functions/genera-report/report-data.ts` e `report-html.ts` (riga
   "Rev. N · dal gg/mm/aaaa" nel report).
 
