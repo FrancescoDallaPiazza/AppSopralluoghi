@@ -130,6 +130,7 @@ export interface Sopralluogo {
   localita: string | null;
   stato: SopralluogoStato;
   werp_attivita_id: string | null;
+  revisione_corrente?: number;   // versione corrente (1 = primo completamento)
 }
 
 export interface ChecklistCompilata {

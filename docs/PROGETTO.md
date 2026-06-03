@@ -134,11 +134,15 @@ normalizzati a CRLF prima della consegna.
   destinatario alternativo al tecnico.
 - `tecnico` — anagrafica risorse (nome, cognome, base+coordinate, capienza
   ore/settimana, ruolo, attivo, user_id).
+- `sopralluogo_revisione` — versioni congelate di un sopralluogo (numero, data,
+  autore, motivo, `snapshot` jsonb con esiti+azioni). Il sopralluogo ha il
+  contatore `revisione_corrente` (1 = primo completamento). [migration 012]
 
 Migrazioni presenti: 001 schema+RLS+foto · 002 form model · 003–004 template/seed ·
 005 bucket report · 006 ruolo back-office · 007 cadenza · 008 contatti · 009 aree
 interne · 010 (notificata_il / periodicità / responsabile_area) · 011 ruolo
-`interno`. **Prossima libera: 012.**
+`interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente).
+**Prossima libera: 013.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -167,12 +171,13 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
 - Robustezza ri-completamento: riaprendo un sopralluogo si ricaricano le cose da
   fare reali; ricompletare fa upsert (niente duplicati) e conserva `notificata_il`
   (niente email rispedite).
-
-**In corso / prossimo step — Revisioni con snapshot (vedi §7).**
+- **Revisioni con snapshot** (vedi §7): un sopralluogo completato si apre in
+  riepilogo sola lettura; *Modifica* archivia la versione attuale e la rende
+  modificabile; "Rev. N" sul report. Implementato — da verificare in produzione.
 
 ---
 
-## 7. Prossimo step: revisioni di un sopralluogo completato (snapshot completo)
+## 7. Revisioni di un sopralluogo completato (snapshot completo) — implementato
 
 Obiettivo: un sopralluogo completato non deve essere modificabile "al volo".
 Riaprendolo si vede un **riepilogo in sola lettura**; la modifica è un'azione
@@ -198,9 +203,24 @@ Schema previsto (migration **012**):
   lo `snapshot` contiene esiti + azioni della versione congelata.
 - `sopralluogo.revisione_corrente int default 1` (o equivalente) per il contatore.
 
-Pezzi da realizzare: migration 012; strato dati per creare lo snapshot e gestire
-il contatore (offline via outbox); schermata di **Riepilogo** + gate *Modifica*;
-riga "Rev. N" sul report.
+Realizzato:
+- migration `012_revisioni.sql` (tabella `sopralluogo_revisione` + contatore);
+- `src/lib/revisioni.ts` (`apriRevisione` con snapshot server-first e ripiego
+  locale, `caricaRevisioni`), `src/lib/db.ts` (tabella in outbox),
+  `src/lib/types.ts` (campo `revisione_corrente`);
+- `src/lib/sopralluoghi.ts` (carica `revisione_corrente`) e
+  `src/MieiSopralluoghi.tsx` (schermata di riepilogo in sola lettura + gate
+  *Modifica* con conferma);
+- `supabase/functions/genera-report/report-data.ts` e `report-html.ts` (riga
+  "Rev. N · dal gg/mm/aaaa" nel report).
+
+Ordine di deploy: migration 012 sull'SQL Editor PRIMA del push (i sorgenti
+caricano la colonna `revisione_corrente`); i file `src/...` col push; la Edge
+Function `genera-report` si ridistribuisce a parte (CLI consigliata, così include
+`_shared/cors.ts`).
+
+Possibile estensione futura: un visualizzatore della storia delle revisioni
+(`caricaRevisioni` è già pronto) per rileggere gli snapshot archiviati.
 
 ---
 
@@ -268,3 +288,5 @@ snapshot (vedi §7).
 - Confronto con le istruzioni iniziali (§9): emergono come lacune la vista
   disponibilità tecnici in %, il collegamento al gestionale Werp e la
   rigenerazione delle scadenze ricorrenti.
+- Revisioni con snapshot completo realizzate (migration 012 + strato dati +
+  schermata di riepilogo con gate *Modifica* + riga "Rev. N" sul report).

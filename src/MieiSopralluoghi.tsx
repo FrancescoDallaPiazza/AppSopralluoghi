@@ -16,6 +16,8 @@ import {
 } from './lib/prefetch';
 import type { Sopralluogo, SopralluogoStato } from './lib/types';
 import { generaReport, type VarianteReport } from './lib/report';
+import { apriRevisione } from './lib/revisioni';
+import { supabase } from './lib/supabase';
 import BottoneInviaCliente from './BottoneInviaCliente';
 
 // ---------- helpers ----------
@@ -133,6 +135,11 @@ const Icon = {
       <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  back: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+      <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 // ---------- componente ----------
@@ -151,6 +158,8 @@ export default function MieiSopralluoghi({
 }: Props) {
   const { sopralluoghi, stato } = useMieiSopralluoghi(tecnicoId);
   const [filtro, setFiltro] = useState<'da_fare' | 'completati'>('da_fare');
+  // sopralluogo completato aperto in sola lettura (riepilogo prima della modifica)
+  const [riepilogo, setRiepilogo] = useState<SopralluogoConContesto | null>(null);
 
   // prefetch offline: scarica lista + checklist + giro precedente
   const [pf, setPf] = useState<{ busy: boolean; msg: string | null; meta: PrefetchMeta | null }>(
@@ -221,6 +230,27 @@ export default function MieiSopralluoghi({
     } finally {
       setReportBusy(null);
     }
+  }
+
+  // Modifica di un sopralluogo completato: prima si archivia la versione
+  // attuale (apriRevisione), poi si apre la compilazione, ora modificabile.
+  async function eseguiModifica(s: SopralluogoConContesto) {
+    const agg = await apriRevisione(s, { autoreId: tecnicoId });
+    setRiepilogo(null);
+    onApriSopralluogo?.({ ...s, ...agg });
+  }
+
+  // Schermata di riepilogo in sola lettura (gate prima della modifica).
+  if (riepilogo) {
+    return (
+      <RiepilogoView
+        s={riepilogo}
+        reportBusy={reportBusy}
+        onReport={(v) => void apriReport(riepilogo, v)}
+        onIndietro={() => setRiepilogo(null)}
+        onModifica={() => eseguiModifica(riepilogo)}
+      />
+    );
   }
 
   return (
@@ -304,7 +334,7 @@ export default function MieiSopralluoghi({
               <div key={s.id} className="it-wrap">
               <button
                 className={'it s-' + s.stato + (late ? ' late' : '')}
-                onClick={() => onApriSopralluogo?.(s)}
+                onClick={() => (completato ? setRiepilogo(s) : onApriSopralluogo?.(s))}
               >
                 <div className="it-body">
                   <div className="it-top">
@@ -343,6 +373,149 @@ export default function MieiSopralluoghi({
               </div>
             );
           })}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ---------- riepilogo (sola lettura) di un sopralluogo completato ----------
+interface AzioneRiepilogo {
+  id: string; tipo: string; descrizione: string;
+  destinatario: string; scadenza: string | null; priorita: string;
+}
+
+function RiepilogoView({
+  s, reportBusy, onReport, onIndietro, onModifica,
+}: {
+  s: SopralluogoConContesto;
+  reportBusy: string | null;
+  onReport: (v: VarianteReport) => void;
+  onIndietro: () => void;
+  onModifica: () => Promise<void>;
+}) {
+  const [azioni, setAzioni] = useState<AzioneRiepilogo[]>([]);
+  const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const rev = s.revisione_corrente ?? 1;
+  const fonte = [s.tipo_attivita, s.progressivo].filter(Boolean).join(' · ');
+
+  useEffect(() => {
+    let vivo = true; setStato('loading');
+    const uno = (v: any) => (Array.isArray(v) ? v[0] : v);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('azione')
+          .select(`id, tipo, descrizione, responsabile_tipo, data_scadenza, priorita,
+            area:area_interna!responsabile_area_id ( nome ),
+            tecnico:tecnico!responsabile_interno_id ( nome )`)
+          .eq('sopralluogo_origine_id', s.id);
+        if (error) throw error;
+        const out: AzioneRiepilogo[] = (data ?? []).map((a: any) => {
+          const area = uno(a.area); const tec = uno(a.tecnico);
+          const destinatario = a.responsabile_tipo === 'cliente' ? 'Cliente'
+            : area?.nome ? `Interno · ${area.nome}`
+              : tec?.nome ? `Interno · ${tec.nome}` : 'Interno';
+          return {
+            id: a.id, tipo: a.tipo, descrizione: a.descrizione ?? '—',
+            destinatario, scadenza: a.data_scadenza ?? null, priorita: a.priorita ?? 'media',
+          };
+        });
+        if (vivo) { setAzioni(out); setStato('ok'); }
+      } catch {
+        // fallback offline: cache locale (senza i nomi dei destinatari)
+        try {
+          const loc = (await db.azioni.toArray()).filter((a) => a.sopralluogo_origine_id === s.id);
+          const out: AzioneRiepilogo[] = loc.map((a) => ({
+            id: a.id, tipo: a.tipo, descrizione: a.descrizione ?? '—',
+            destinatario: a.responsabile_tipo === 'cliente' ? 'Cliente' : 'Interno',
+            scadenza: a.data_scadenza ?? null, priorita: a.priorita ?? 'media',
+          }));
+          if (vivo) { setAzioni(out); setStato('ok'); }
+        } catch { if (vivo) setStato('errore'); }
+      }
+    })();
+    return () => { vivo = false; };
+  }, [s.id]);
+
+  async function fai() {
+    if (busy) return;
+    const ok = window.confirm(
+      `Questo sopralluogo è completato (revisione ${rev}).\n\n`
+      + `Proseguendo, la versione attuale viene archiviata come revisione ${rev} `
+      + `e il sopralluogo torna modificabile. Continuare?`,
+    );
+    if (!ok) return;
+    setBusy(true); setErr(null);
+    try { await onModifica(); }
+    catch (e) { setErr(String((e as Error)?.message ?? e)); setBusy(false); }
+  }
+
+  const tipoLabel = (t: string) => (t === 'scadenza_ricorrente' ? 'Scadenza' : 'Azione');
+
+  return (
+    <div className="misopr">
+      <style>{CSS}</style>
+      <div className="phone">
+        <header>
+          <div className="h-pad">
+            <div className="rp-head">
+              <button className="rp-back" onClick={onIndietro} aria-label="Indietro">{Icon.back}</button>
+              <div className="rp-titles">
+                <div className="h-title">{s.cliente_nome ?? 'Cliente —'}</div>
+                <div className="rp-sub">{fonte || 'Sopralluogo'}</div>
+              </div>
+              <span className="rp-rev">Rev. {rev}</span>
+            </div>
+          </div>
+        </header>
+
+        <main>
+          <div className="rp-meta">
+            <span className="m">{Icon.cal}{fmt(s.data_effettiva ?? s.data_pianificata)}</span>
+            {s.localita && <span className="m">{Icon.pin}{s.localita}</span>}
+            <span className={'badge ' + s.stato}>{LABEL_STATO[s.stato]}</span>
+          </div>
+
+          <div className="rp-sech">Cose da fare decise</div>
+          {stato === 'loading' && <p className="muted">Carico…</p>}
+          {stato === 'errore' && <p className="muted">Non riesco a caricare le cose da fare.</p>}
+          {stato === 'ok' && azioni.length === 0 && (
+            <p className="empty">Nessuna cosa da fare registrata in questo sopralluogo.</p>
+          )}
+          {azioni.map((a) => (
+            <div key={a.id} className="rp-card">
+              <div className="rp-desc">{a.descrizione}</div>
+              <div className="rp-row">
+                <span className="rp-tag">{tipoLabel(a.tipo)}</span>
+                <span className="rp-dest">{a.destinatario}</span>
+                <span className={'rp-pri p-' + a.priorita}>{a.priorita}</span>
+                {a.scadenza && <span className="rp-scad">{Icon.cal}{fmt(a.scadenza)}</span>}
+              </div>
+            </div>
+          ))}
+
+          <div className="rp-sech">Report</div>
+          <div className="report-bar rp-rep">
+            <button className="rb-btn" disabled={!!reportBusy} onClick={() => onReport('cliente')}>
+              {reportBusy === s.id + ':cliente' ? '…' : 'Cliente'}
+            </button>
+            <button className="rb-btn" disabled={!!reportBusy} onClick={() => onReport('interna')}>
+              {reportBusy === s.id + ':interna' ? '…' : 'Interno'}
+            </button>
+            <BottoneInviaCliente sopralluogoId={s.id} />
+          </div>
+
+          {err && <p className="muted" style={{ color: 'var(--no)' }}>{err}</p>}
+          <button className="rp-edit" disabled={busy} onClick={() => void fai()}>
+            {busy ? 'Apro la modifica…' : '✎ Modifica sopralluogo'}
+          </button>
+          <p className="rp-note">
+            Modificando, la versione attuale (revisione {rev}) viene archiviata e resta
+            consultabile; le modifiche diventano la revisione {rev + 1}.
+          </p>
         </main>
       </div>
     </div>
@@ -427,4 +600,37 @@ const CSS = `
 .misopr .rb-btn{border:1px solid var(--line); background:#fff; color:var(--ink); font-family:var(--disp); font-weight:700; font-size:12px; padding:6px 13px; border-radius:8px; cursor:pointer;}
 .misopr .rb-btn:active{transform:scale(.97);}
 .misopr .rb-btn:disabled{opacity:.5;}
+
+/* riepilogo sola lettura */
+.misopr .rp-head{display:flex; align-items:center; gap:10px; padding-bottom:13px;}
+.misopr .rp-back{flex-shrink:0; width:34px; height:34px; border-radius:9px; border:none;
+  background:rgba(255,255,255,.12); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+.misopr .rp-back svg{width:20px;height:20px;}
+.misopr .rp-titles{flex:1; min-width:0;}
+.misopr .rp-sub{font-size:11.5px; color:#c7cad0; font-weight:600; margin-top:2px;}
+.misopr .rp-rev{flex-shrink:0; font-size:11px; font-weight:800; color:#1a1205; background:var(--hi);
+  padding:4px 9px; border-radius:8px; white-space:nowrap;}
+.misopr .rp-meta{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:18px;}
+.misopr .rp-sech{font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--faint); margin:18px 2px 9px;}
+.misopr .rp-card{background:var(--card); border:1px solid var(--line); border-left:4px solid var(--hi);
+  border-radius:12px; padding:11px 13px; margin-bottom:9px; box-shadow:var(--shadow);}
+.misopr .rp-desc{font-size:13.5px; font-weight:600; line-height:1.4; color:var(--ink);}
+.misopr .rp-row{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:8px;}
+.misopr .rp-tag{font-size:10.5px; font-weight:700; color:var(--ink-soft); background:var(--na-bg);
+  padding:3px 8px; border-radius:6px;}
+.misopr .rp-dest{font-size:12px; font-weight:600; color:var(--ink-soft);}
+.misopr .rp-pri{font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:6px; text-transform:capitalize;}
+.misopr .rp-pri.p-alta{background:var(--no-bg); color:var(--no);}
+.misopr .rp-pri.p-media{background:#fbeccb; color:var(--hi-dark);}
+.misopr .rp-pri.p-bassa{background:var(--ok-bg); color:var(--ok);}
+.misopr .rp-scad{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--ink-soft);}
+.misopr .rp-scad svg{width:14px;height:14px;}
+.misopr .rp-rep{padding:0 0 2px;}
+.misopr .rp-edit{width:100%; margin-top:22px; border:none; border-radius:12px; cursor:pointer;
+  background:var(--ink); color:#fff; font-family:var(--disp); font-weight:800; font-size:14.5px; padding:14px;
+  box-shadow:var(--shadow);}
+.misopr .rp-edit:active{transform:scale(.99);}
+.misopr .rp-edit:disabled{opacity:.6; cursor:default;}
+.misopr .rp-note{font-size:11.5px; color:var(--ink-soft); line-height:1.5; margin:10px 2px 0;}
 `;

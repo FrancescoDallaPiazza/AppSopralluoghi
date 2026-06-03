@@ -10,7 +10,7 @@ import type { Sopralluogo, ChecklistCompilata, EsitoVoce, Foto, Azione } from '.
 export interface OutboxOp {
   seq?: number;                 // auto-increment, garantisce l'ordine
   kind: 'row' | 'photo' | 'delete';
-  table?: 'sopralluogo' | 'checklist_compilata' | 'esito_voce' | 'foto' | 'azione' | 'aggiornamento_azione';
+  table?: 'sopralluogo' | 'checklist_compilata' | 'esito_voce' | 'foto' | 'azione' | 'aggiornamento_azione' | 'sopralluogo_revisione';
   payload?: Record<string, unknown>;
   fotoId?: string;             // per kind 'photo': id della foto/blob da caricare
   id?: string;                 // per kind 'delete': id della riga da cancellare
