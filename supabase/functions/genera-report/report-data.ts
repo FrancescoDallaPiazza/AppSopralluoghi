@@ -37,6 +37,7 @@ export interface ReportData {
   cliente: { ragione_sociale: string; localita: string | null; indirizzo: string | null };
   incarico: { tipo_attivita: string | null; n_sopralluoghi: number | null };
   sopralluogo: { progressivo: string | null; data: string | null; durata_min: number | null; localita: string | null };
+  revisione: { numero: number; dal: string | null };
   tecnico: { nome: string | null };
   conteggi: { conformi: number; non_conformi: number; non_applicabili: number; totale: number };
   esiti: EsitoDisplay[];
@@ -195,8 +196,26 @@ export async function assemblaReport(
     }
   }
 
+  // 5) revisione corrente (best-effort: richiede la migration 012; se non c'è
+  // ancora, il report continua a funzionare senza la riga revisione)
+  let revisione: { numero: number; dal: string | null } = { numero: 1, dal: null };
+  try {
+    const { data: sr } = await sb.from('sopralluogo')
+      .select('revisione_corrente').eq('id', sopralluogoId).maybeSingle();
+    const num = (sr as any)?.revisione_corrente ?? 1;
+    let dal: string | null = null;
+    if (num > 1) {
+      const { data: lastRev } = await sb.from('sopralluogo_revisione')
+        .select('numero, creata_il').eq('sopralluogo_id', sopralluogoId)
+        .order('numero', { ascending: false }).limit(1).maybeSingle();
+      dal = (lastRev as any)?.creata_il ?? null;
+    }
+    revisione = { numero: num, dal };
+  } catch { /* migration 012 non ancora applicata */ }
+
   return {
     variante,
+    revisione,
     cliente: { ragione_sociale: clienteNome, localita: cli?.localita ?? null, indirizzo: cli?.indirizzo ?? null },
     incarico: { tipo_attivita: inc?.tipo_attivita ?? null, n_sopralluoghi: inc?.n_sopralluoghi ?? null },
     sopralluogo: {

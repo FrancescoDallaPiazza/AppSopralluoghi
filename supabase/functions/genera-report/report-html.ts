@@ -102,6 +102,7 @@ export function renderReport(d: ReportData): string {
     <div><span>Incarico</span><b>${esc(incLabel)}</b></div>
     <div><span>Tecnico</span><b>${esc(d.tecnico.nome ?? '—')}</b></div>
     <div><span>${cli ? 'Esito generale' : 'Durata'}</span><b>${cli ? esc(d.conteggi.non_conformi ? d.conteggi.non_conformi + ' da programmare' : 'Nessuna criticità') : esc(durata(d.sopralluogo.durata_min))}</b></div>
+    <div><span>Revisione</span><b>Rev. ${d.revisione.numero}${d.revisione.dal ? ' · dal ' + esc(fmtData(d.revisione.dal)) : ''}</b></div>
   </div>`;
 
   const coseDaFare = cli
