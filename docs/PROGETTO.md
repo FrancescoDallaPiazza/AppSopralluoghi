@@ -18,10 +18,11 @@ Flusso di riferimento:
 1. Ordine di consulenza continuativa (incarico) con N sopralluoghi in un periodo.
 2. Pianificazione delle sedute e assegnazione ai tecnici (con suggerimento per
    carico settimanale e vicinanza alla base).
-3. Sopralluogo sul campo con check-list: per ogni evidenza si registra lo stato
-   (conforme / non conforme / N.A.), note, foto, ed eventuali "cose da fare"
-   (azioni correttive) o scadenze ricorrenti, con responsabile (cliente, tecnico
-   o area interna), scadenza e priorità.
+3. Sopralluogo sul campo con check-list (scelta alla prima apertura, default =
+   quella dell'incarico): per ogni evidenza si registra lo stato (conforme / non
+   conforme / N.A.), note, foto, ed eventuali "cose da fare" (azioni correttive)
+   o scadenze ricorrenti, con responsabile (cliente, tecnico o area interna),
+   scadenza e priorità.
 4. Esiti: report al cliente (cose a suo carico), comunicazione interna (cose a
    carico del team), scadenzario.
 5. Continuità: il sopralluogo successivo riparte dallo stato aggiornato delle
@@ -48,7 +49,7 @@ src/
   Login.tsx, AuthProvider.tsx
   MieiSopralluoghi.tsx    # lista del tecnico (Da fare / Completati) + report
   MieCoseDaFare.tsx       # azioni assegnate al singolo
-  Compilazione.tsx        # schermata di campo (check-list + cose da fare)
+  Compilazione.tsx        # schermata di campo (scelta checklist + check-list + cose da fare)
   NotaVocale.tsx          # dettatura vocale note
   admin/                  # back-office (solo admin)
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
@@ -107,8 +108,6 @@ normalizzati a CRLF prima della consegna.
   `notifica-sopralluogo` (header `Authorization: Bearer <service_role_key>`). Il
   vecchio webhook su `azione` → `notifica-azione` è da considerarsi dismesso
   (resta innocuo perché la funzione lo ignora).
-- **Trigger DB**: `trg_azione_rigenera_scadenza` su `azione` (migration 013) —
-  alla verifica di una scadenza ricorrente crea il ciclo successivo (vedi §8 e §5).
 - **Secrets** (condivisi tra le funzioni): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
   `SMTP_PASS`, `MAIL_FROM`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -126,13 +125,18 @@ normalizzati a CRLF prima della consegna.
   opzioni con stato logico e generazione azione; scadenza ricorrente; ripetibilità).
   Versionamento: un template già usato non si modifica a ritroso.
 - `checklist_compilata` + `esito_voce` — compilazione effettiva: per ogni voce lo
-  stato, il valore, le note; `genera_azione` sul rilievo.
+  stato, il valore, le note; `genera_azione` sul rilievo. Il template (`template_id`
+  + `template_versione`) si sceglie alla prima apertura del sopralluogo (default =
+  quello dell'incarico) e resta CONGELATO sulla compilazione.
 - `foto` — immagini per esito (url Storage, thumb, geo).
 - `azione` — "cosa da fare" (azione correttiva o scadenza ricorrente): descrizione,
   `responsabile_tipo` (`cliente` / `risorsa_interna`), `responsabile_cliente_id` /
   `responsabile_interno_id` (tecnico) / `responsabile_area_id` (area),
   `data_scadenza`, `priorita`, `stato`, `origine_esito_id`, `sopralluogo_origine_id`,
-  `sopralluogo_verifica_id`, `periodicita_mesi`, `notificata_il`.
+  `sopralluogo_verifica_id`, `periodicita_mesi`, `notificata_il`. Le azioni sono
+  agganciate all'**incarico** (via `sopralluogo_origine_id`), non al template: il
+  "giro precedente" filtra per incarico, quindi cambiare checklist tra una seduta
+  e l'altra non spezza la continuità delle cose da fare.
 - `area_interna` — funzioni del team (Formazione, Preventivi…) con email, come
   destinatario alternativo al tecnico.
 - `tecnico` — anagrafica risorse (nome, cognome, base+coordinate, capienza
@@ -144,10 +148,8 @@ normalizzati a CRLF prima della consegna.
 Migrazioni presenti: 001 schema+RLS+foto · 002 form model · 003–004 template/seed ·
 005 bucket report · 006 ruolo back-office · 007 cadenza · 008 contatti · 009 aree
 interne · 010 (notificata_il / periodicità / responsabile_area) · 011 ruolo
-`interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente) · 013
-rigenerazione automatica scadenze ricorrenti (trigger `trg_azione_rigenera_scadenza`
-su `azione`, nessuna colonna nuova).
-**Prossima libera: 014.**
+`interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente).
+**Prossima libera: 013.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -190,16 +192,22 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   `caricaCaricoGlobale`), nessuna nuova tabella né Edge Function. Chiude la
   lacuna 2-bis delle istruzioni iniziali ("colonna riempita % rispetto al 100%").
   File: `src/admin/Disponibilita.tsx`, `src/lib/admin/disponibilita.ts`.
-- **Rigenerazione automatica delle scadenze ricorrenti** (migration 013): alla
-  verifica di una `scadenza_ricorrente` (transizione a `conclusa`, da qualunque
-  punto: campo, "Le mie cose da fare", back-office) un **trigger sul DB** crea il
-  ciclo successivo — copia identica con `data_scadenza` avanzata di
-  `periodicita_mesi` e stato `aperta`. Idempotente (per `origine_esito_id` +
-  `sopralluogo_origine_id` + data calcolata), così re-sync o chiusure ripetute non
-  duplicano. La nuova azione resta `aperta` e non notificata (nessuna email
-  automatica) e ricompare nel giro successivo dello stesso incarico. Nessuna
-  colonna nuova. Comparendo lato server, è visibile nello scadenzario al
-  successivo caricamento/refresh. File: `supabase/migrations/013_scadenze_ricorrenti.sql`.
+- **Scelta della checklist per seduta**: alla prima apertura di un sopralluogo
+  non ancora avviato si sceglie la checklist. È preselezionata quella
+  dell'incarico (template attivo per `tipo_attivita`, marcata "Consigliata"), ma
+  si può scegliere fra tutti i template attivi. Confermata la scelta, la
+  `checklist_compilata` congela il template scelto e parte la compilazione.
+  Sopralluoghi già avviati / completati / in revisione usano il template
+  congelato (nessun selettore). Le cose da fare restano agganciate all'incarico,
+  quindi il "giro precedente" non si spezza cambiando checklist. Offline: dopo il
+  prefetch (che ora scarica anche l'elenco dei template attivi + voci) il
+  selettore funziona; se offline e mai prefetchato, ripiego automatico sul
+  template dell'incarico (comportamento storico). Front-end puro, nessuna
+  migrazione né Edge Function: rilascio sul solo canale 1.
+  File: `src/lib/compilazione.ts` (`apriCompilazione` ritorna `scelta`/`pronto`,
+  nuove `iniziaCompilazione` / `caricaTemplatesAttivi` / `prefetchTemplatesAttivi`),
+  `src/Compilazione.tsx` (fase "scelta" + selettore), `src/lib/prefetch.ts`
+  (step 2-bis: prefetch dei template attivi).
 
 ---
 
@@ -263,14 +271,23 @@ Richieste/auspici delle istruzioni iniziali non ancora realizzati:
   `azione.werp_attivita_id`, ID Werp cliente) ma nessuna sincronizzazione attiva.
   Da chiarire col fornitore il canale (API REST / accesso DB / import-export).
   → DA FARE / DA DEFINIRE.
+- **Rigenerazione automatica delle scadenze ricorrenti**: alla verifica di una
+  scadenza ricorrente non si crea ancora in automatico il ciclo successivo.
+  → DA FARE (minore).
 
-Possibili affinamenti (non bloccanti):
-- Vista disponibilità: includere ferie/indisponibilità del tecnico (oggi il carico
-  è solo dalle sedute pianificate); link dalla cella alla pianificazione della
-  settimana.
-- Scadenze ricorrenti: feedback in-app immediato "creato il prossimo ciclo il
-  gg/mm" (oggi la nuova azione nasce lato DB e si vede al refresh); eventuale data
-  di fine serie per fermare la ricorrenza in automatico.
+Possibili affinamenti della vista disponibilità (non bloccanti):
+- includere le ferie/indisponibilità del tecnico (oggi il carico è solo dalle
+  sedute pianificate; non esiste un calendario di assenze);
+- contare anche le sedute `in_corso`/`completato` non ancora archiviate se serve
+  un quadro a consuntivo, non solo previsionale (oggi conta tutte le sedute con
+  tecnico + data, qualunque stato);
+- link diretto dalla cella alla pianificazione della settimana.
+
+Possibili affinamenti della scelta checklist (non bloccanti):
+- mostrare un'avvertenza se si sceglie una checklist di `tipo_attivita` diverso
+  da quello dell'incarico (oggi è ammesso senza segnalazioni);
+- consentire il cambio di checklist su un sopralluogo già avviato ma ancora senza
+  esiti compilati (oggi, creata la compilazione, il template è congelato).
 
 Decisioni da prendere:
 - Contenuto email di `notifica-sopralluogo`: elenco testuale (attuale) o anche
@@ -296,14 +313,14 @@ push/badge in-app; esclusione festività/patroni locali in pianificazione.
 | 3. Non conforme + note + foto + COSE DA FARE (cliente/interno) | Coperto |
 | 3. Invio esiti al cliente (con COSE DA FARE) | Coperto |
 | 3. Invio esiti alla risorsa interna (cose dirette) | Coperto |
-| 3. Scadenzario | Coperto (rigenerazione ciclo successivo automatica, migration 013) |
+| 3. Scadenzario | Coperto (rigenerazione ciclo successivo: da fare) |
 | 3. COSE DA FARE aggiornabili nel tempo | Coperto |
 | 4. Sopralluogo successivo: input = stato COSE DA FARE aggiornato (giro prec.) | Coperto (con "Verifica e chiudi") |
-| 4. Check-list scelta + stesso workflow | Coperto |
+| 4. Check-list scelta + stesso workflow | Coperto (selettore per seduta, default = incarico) |
 
 Aggiunte concordate dopo le istruzioni iniziali (non lacune): ruolo `interno`,
 assegnazione A→B, più cose da fare per rilievo, email digest unica, revisioni con
-snapshot (vedi §7).
+snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 
 ---
 
@@ -325,9 +342,12 @@ snapshot (vedi §7).
   e helper puri `src/lib/admin/disponibilita.ts` (finestra settimane +
   occupazione %), sopra il motore esistente (`assistita.ts` +
   `caricaCaricoGlobale`). Front-end puro, nessuna migrazione né Edge Function:
-  rilascio con un solo push (canale 1). Chiude la lacuna 2-bis.
-- Realizzata la **rigenerazione automatica delle scadenze ricorrenti**
-  (migration 013): trigger `trg_azione_rigenera_scadenza` su `azione` che alla
-  verifica di una scadenza ricorrente crea il ciclo successivo (idempotente,
-  nessuna colonna nuova). Rilascio via SQL Editor (canale 3). Chiude la lacuna
-  "rigenerazione ciclo successivo" del §8.
+  rilascio con un solo push (canale 1). Chiude la lacuna 2-bis delle istruzioni
+  iniziali.
+- Realizzata la **scelta della checklist per singola seduta**: default = quella
+  dell'incarico, modificabile tra i template attivi alla prima apertura; il
+  template scelto si congela sulla compilazione. Le cose da fare restano legate
+  all'incarico (giro precedente invariato). Prefetch esteso ai template attivi
+  per il funzionamento offline del selettore. Front-end puro, rilascio solo
+  canale 1. File: `src/lib/compilazione.ts`, `src/Compilazione.tsx`,
+  `src/lib/prefetch.ts`.
