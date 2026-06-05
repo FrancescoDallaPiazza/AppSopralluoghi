@@ -371,11 +371,14 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     sostituisci(agg);
     await salvaEsito(agg);
 
-    // bozza azione (lista per esito: si parte da una, se ne possono aggiungere)
+    // bozza azione (lista per esito): se l'opzione scelta ha `genera_azione`
+    // e non c'è ancora nessuna bozza, ne semino una vuota come suggerimento;
+    // NON cancello le bozze esistenti quando l'utente cambia opzione, perché
+    // le "cose da fare" ora possono essere aggiunte a mano su qualunque voce
+    // (a prescindere da `genera_azione` del template).
     setBozze((b) => {
       const n = { ...b };
       if (opt?.genera_azione && !(n[esito.id]?.length)) n[esito.id] = [nuovaBozza()];
-      if (!opt?.genera_azione) delete n[esito.id];
       return n;
     });
     // bozza scadenza (solo opzione positiva + scadenza abilitata)
@@ -627,7 +630,6 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
                   onChange={(t) => void setNota(esito, t)}
                   onCommit={() => void salvaNota(esito)} />
                 <FotoStrip esitoId={esito.id} />
-                {opt?.genera_azione && renderBozzeAzione(esito)}
                 {opt?.stato === 'positivo' && voce.config.scadenza?.abilitata && renderScadenza(esito, voce)}
               </>
             )}
@@ -681,7 +683,16 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
         <div className="voce-head">
           <div className="voce-req">{voce.testo_requisito}</div>
           {voce.descrizione && <div className="voce-hint">{voce.descrizione}</div>}
-          <div className="voce-body">{corpo}</div>
+          <div className="voce-body">
+            {corpo}
+            {/* "Cose da fare" sempre proponibili su QUALSIASI voce, a
+                prescindere dal tipo (scelta, multiscelta, testo, data, numero,
+                slider, foto) e dalla configurazione del template:
+                renderBozzeAzione mostra il bottone "+ Aggiungi cosa da fare"
+                anche con lista vuota. I `rilievo` non passano da qui — hanno
+                il loro flusso per-rilievo dentro renderRilievo. */}
+            {renderBozzeAzione(esito)}
+          </div>
         </div>
         {childKey && figli.some((f) => f.mostra_se_chiave === childKey) && (
           <div className="sub">
