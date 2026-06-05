@@ -39,6 +39,16 @@ export function useAuth(): AuthValue {
   return v;
 }
 
+// Gate DUREVOLE: l'account invitato (link/email) porta nei suoi metadati il
+// flag `deve_impostare_password=true` finché l'utente non ne sceglie una.
+// A differenza del solo segnale letto dall'URL all'avvio (#type=invite), questo
+// vive nella sessione: sopravvive ai reload e funziona anche con i link che
+// NON espongono l'hash (flusso ?code=, redirect, ecc.). Quindi "se non la
+// decide, non entra" vale comunque sia arrivato.
+function deveImpostarePassword(s: Session | null): boolean {
+  return s?.user?.user_metadata?.deve_impostare_password === true;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [tecnico, setTecnico] = useState<Tecnico | null>(null);
@@ -52,7 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let vivo = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (vivo) setSession(data.session);
+      if (!vivo) return;
+      setSession(data.session);
+      // Se l'account deve ancora scegliere la password, imponi la schermata
+      // "Imposta password" anche dopo un reload o da un link senza #type.
+      if (deveImpostarePassword(data.session)) setRichiediPassword(true);
     });
     // NB: non chiamare altre funzioni supabase *dentro* questa callback
     // (rischio di deadlock in supabase-js v2): la risoluzione del tecnico vive
@@ -61,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       // link di recupero password: Supabase emette questo evento.
       if (evt === 'PASSWORD_RECOVERY') setRichiediPassword(true);
+      // ...oppure account invitato che non ha ancora una password propria.
+      else if (deveImpostarePassword(s)) setRichiediPassword(true);
     });
     return () => {
       vivo = false;

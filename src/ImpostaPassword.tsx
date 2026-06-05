@@ -27,7 +27,13 @@ export default function ImpostaPassword({ onFatto }: { onFatto: () => void }) {
 
     setBusy(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: pwd.trim() });
+      // Imposta la password E spegne il flag durevole "deve_impostare_password":
+      // da ora l'account ha una password propria e ai prossimi accessi non viene
+      // più dirottato su questa schermata.
+      const { error } = await supabase.auth.updateUser({
+        password: pwd.trim(),
+        data: { deve_impostare_password: false },
+      });
       if (error) throw error;
       // password impostata: l'AuthProvider proseguirà col flusso normale
       onFatto();
