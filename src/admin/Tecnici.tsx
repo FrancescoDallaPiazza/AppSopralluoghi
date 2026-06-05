@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   caricaTecniciTutti, salvaTecnico, impostaStatoTecnico, eliminaTecnico, tecnicoVuoto,
+  rigeneraCalendarioToken, urlFeedCalendario, leggiCalendarioToken,
   type TecnicoRiga,
 } from '../lib/admin/tecnici';
 import { invitaTecnico, type ModalitaInvito } from '../lib/onboarding';
@@ -140,7 +141,16 @@ function SchedaTecnico({
     if (!(t.cognome ?? '').trim()) { setMsg('Il cognome è obbligatorio.'); return; }
     setBusy(true); setMsg(null);
     try {
+      const eraNuovo = !persistito;
       await salvaTecnico(t);
+      // Per un nuovo tecnico il `calendario_token` lo genera il DEFAULT del DB:
+      // lo rileggiamo qui per mostrare subito l'URL del feed senza riaprire la scheda.
+      if (eraNuovo && !t.calendario_token) {
+        try {
+          const tok = await leggiCalendarioToken(t.id);
+          if (tok) patch({ calendario_token: tok });
+        } catch { /* non bloccante */ }
+      }
       setPersistito(true);
       setMsg('Tecnico salvato.');
     } catch (e: any) {
@@ -286,6 +296,28 @@ function SchedaTecnico({
           </label>
         </div>
 
+        {/* ---------- calendario sottoscrivibile (iCal) ---------- */}
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+          <div className="bo-field" style={{ marginBottom: 8 }}>
+            <span>Calendario sottoscrivibile (iCal)</span>
+          </div>
+          {!persistito ? (
+            <div className="bo-note">
+              Salva prima il tecnico, poi qui troverai il link al suo calendario.
+            </div>
+          ) : !t.calendario_token ? (
+            <div className="bo-err">
+              Token calendario assente. Esegui la migration 013 in Supabase
+              (SQL Editor) e riapri la scheda.
+            </div>
+          ) : (
+            <CalendarioSottoscrivibile
+              tecnico={t}
+              onTokenChanged={(nuovo) => patch({ calendario_token: nuovo })}
+            />
+          )}
+        </div>
+
         {/* ---------- account di login (onboarding) ---------- */}
         <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
           <div className="bo-field" style={{ marginBottom: 8 }}>
@@ -387,5 +419,93 @@ function SchedaTecnico({
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------------- calendario sottoscrivibile (iCal) ----------------
+// Mostra l'URL pubblico del feed iCal del tecnico, con bottoni copia/rigenera
+// token e una guida sintetica alla sottoscrizione su Google/Outlook/Apple.
+function CalendarioSottoscrivibile({
+  tecnico, onTokenChanged,
+}: {
+  tecnico: Tecnico;
+  onTokenChanged: (nuovo: string) => void;
+}) {
+  const url = useMemo(
+    () => tecnico.calendario_token
+      ? urlFeedCalendario(tecnico.id, tecnico.calendario_token)
+      : '',
+    [tecnico.id, tecnico.calendario_token],
+  );
+  const [copiato, setCopiato] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function copia() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiato(true);
+      window.setTimeout(() => setCopiato(false), 1800);
+    } catch {
+      // se clipboard non è disponibile, l'utente può comunque selezionare il campo
+    }
+  }
+
+  async function rigenera() {
+    if (!confirm(
+      'Rigenerare il token? L\'URL precedentemente condiviso smetterà di funzionare ' +
+      'e le sottoscrizioni esistenti andranno aggiornate col nuovo link.',
+    )) return;
+    setBusy(true); setErr(null);
+    try {
+      const nuovo = await rigeneraCalendarioToken(tecnico.id);
+      onTokenChanged(nuovo);
+    } catch (e: any) {
+      setErr(e?.message ?? 'Rigenerazione non riuscita.');
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <>
+      <p className="bo-sub" style={{ margin: '0 0 8px' }}>
+        URL pubblico (sola lettura) da iscrivere in Google Calendar / Outlook /
+        Apple Calendar. Il calendario si aggiorna in autonomia (ogni 6-24 ore
+        secondo il client) a ogni nuovo sopralluogo o modifica di data.
+      </p>
+      <label className="bo-field" style={{ marginBottom: 8 }}>
+        <span>Indirizzo del feed iCal</span>
+        <input type="text" readOnly value={url || '(URL non disponibile: VITE_SUPABASE_URL mancante)'}
+          onFocus={(e) => e.currentTarget.select()} />
+      </label>
+      <div className="bo-bar">
+        <button className="bo-btn" onClick={() => void copia()} disabled={!url}>
+          {copiato ? 'Copiato!' : 'Copia link'}
+        </button>
+        <button className="bo-btn ghost" onClick={() => void rigenera()} disabled={busy}>
+          {busy ? 'Procedo…' : 'Rigenera token'}
+        </button>
+      </div>
+      {err && <div className="bo-err" style={{ marginTop: 8 }}>{err}</div>}
+      <details style={{ marginTop: 10 }}>
+        <summary className="bo-sub" style={{ cursor: 'pointer' }}>
+          Istruzioni di sottoscrizione (Google / Outlook / Apple)
+        </summary>
+        <div className="bo-sub" style={{ marginTop: 8, lineHeight: 1.55 }}>
+          <p style={{ margin: '0 0 6px' }}>
+            <b>Google Calendar (PC):</b> nella barra laterale "Altri calendari"
+            → <b>+</b> → "Da URL" → incolla l'indirizzo → "Aggiungi calendario".
+          </p>
+          <p style={{ margin: '0 0 6px' }}>
+            <b>Outlook (web/PC):</b> Calendario → "Aggiungi calendario" →
+            "Sottoscrivi dal Web" → incolla l'indirizzo.
+          </p>
+          <p style={{ margin: 0 }}>
+            <b>Apple Calendar:</b> su Mac File → "Nuova sottoscrizione
+            calendario"; su iPhone Impostazioni → Calendario → Account →
+            Aggiungi account → Altro → "Aggiungi calendario sottoscritto".
+          </p>
+        </div>
+      </details>
+    </>
   );
 }

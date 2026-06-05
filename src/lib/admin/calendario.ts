@@ -148,3 +148,49 @@ export function dateDaCadenza(
   }
   return date;
 }
+
+// ===========================================================================
+// RICALIBRAZIONE delle date successive a una modifica manuale.
+// Usate da Pianificazione.tsx quando l'utente sposta la data di un sopralluogo
+// e vuole tarare di conseguenza i sopralluoghi successivi dello stesso incarico.
+// ===========================================================================
+
+// Ridistribuisce uniformemente N date lavorative STRETTAMENTE DOPO `dopoISO` e
+// fino a `fineISO`. Riusa la stessa logica di `distribuisciDate`. Ritorna un
+// array di lunghezza ≤ N: vuoto se tra (dopoISO+1) e fineISO non c'è spazio.
+export function ricalibraUniformi(dopoISO: string, fineISO: string, n: number): string[] {
+  if (n <= 0 || !dopoISO || !fineISO) return [];
+  const inizio = parseISO(dopoISO) + MS; // giorno successivo
+  if (inizio > parseISO(fineISO)) return [];
+  return distribuisciDate(fmtISO(inizio), fineISO, n);
+}
+
+// Applica lo stesso scarto in giorni (nuova - vecchia) a ciascuna data della
+// sequenza successiva, snappando su un giorno lavorativo entro `[nuova+1, fine]`.
+// Le voci `null` restano `null`. Mantiene l'ordine crescente: se una data
+// traslata cade prima o uguale all'ultima accettata, viene avanzata al primo
+// lavorativo libero; se non c'è più spazio entro `fineISO`, la voce diventa `null`.
+export function ricalibraShift(
+  vecchiaISO: string, nuovaISO: string,
+  dateSuccessive: (string | null)[], fineISO: string,
+): (string | null)[] {
+  if (!vecchiaISO || !nuovaISO || !fineISO) return dateSuccessive;
+  const delta = Math.round((parseISO(nuovaISO) - parseISO(vecchiaISO)) / MS);
+  if (delta === 0) return dateSuccessive;
+  const minMs = parseISO(nuovaISO) + MS;
+  const maxMs = parseISO(fineISO);
+  let ultimo = minMs - MS;
+  return dateSuccessive.map((d) => {
+    if (!d) return null;
+    const grezzo = Math.min(Math.max(parseISO(d) + delta * MS, minMs), maxMs);
+    let ms = suGiornoLavorativo(grezzo, minMs, maxMs);
+    if (ms <= ultimo) {
+      let c = ultimo + MS;
+      while (c <= maxMs && eNonLavorativo(c)) c += MS;
+      if (c > maxMs) return null;
+      ms = c;
+    }
+    ultimo = ms;
+    return fmtISO(ms);
+  });
+}

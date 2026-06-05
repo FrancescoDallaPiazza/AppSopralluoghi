@@ -103,6 +103,10 @@ normalizzati a CRLF prima della consegna.
     completamento del sopralluogo, con tutte le sue cose da fare. Idempotente per
     (sopralluogo + destinatario) via `azione.notificata_il`.
   - `invita-tecnico` — onboarding: crea/invita l'account e collega `user_id`.
+  - `calendario-ics` — feed iCal pubblico (RFC 5545) dei sopralluoghi del
+    tecnico, sottoscrivibile da Google/Outlook/Apple. URL pubblica con token,
+    autenticata dal `tecnico.calendario_token` (rigenerabile dal back-office).
+    CORS inline, idoneo al deploy dal Dashboard.
   - `_shared/cors.ts` — intestazioni CORS condivise (usate via CLI).
 - **Database Webhook**: su tabella `sopralluogo`, evento **Update**, →
   `notifica-sopralluogo` (header `Authorization: Bearer <service_role_key>`). Il
@@ -140,7 +144,7 @@ normalizzati a CRLF prima della consegna.
 - `area_interna` — funzioni del team (Formazione, Preventivi…) con email, come
   destinatario alternativo al tecnico.
 - `tecnico` — anagrafica risorse (nome, cognome, base+coordinate, capienza
-  ore/settimana, ruolo, attivo, user_id).
+  ore/settimana, ruolo, attivo, user_id, `calendario_token` per il feed iCal).
 - `sopralluogo_revisione` — versioni congelate di un sopralluogo (numero, data,
   autore, motivo, `snapshot` jsonb con esiti+azioni). Il sopralluogo ha il
   contatore `revisione_corrente` (1 = primo completamento). [migration 012]
@@ -148,8 +152,9 @@ normalizzati a CRLF prima della consegna.
 Migrazioni presenti: 001 schema+RLS+foto · 002 form model · 003–004 template/seed ·
 005 bucket report · 006 ruolo back-office · 007 cadenza · 008 contatti · 009 aree
 interne · 010 (notificata_il / periodicità / responsabile_area) · 011 ruolo
-`interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente).
-**Prossima libera: 013.**
+`interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente) · 013
+calendario_token su `tecnico` (feed iCal pubblico).
+**Prossima libera: 014.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -183,6 +188,37 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   modificabile; "Rev. N" sul report. Implementato — da verificare in produzione.
 
 **Implementate, da verificare in produzione**
+- **Ricalibrazione date successive in pianificazione**: quando in
+  `admin/Pianificazione.tsx` si modifica la `data_pianificata` di un sopralluogo,
+  se ci sono sedute successive `pianificato` con data valorizzata appare un
+  dialogo con tre scelte: (a) ridistribuisci le successive **uniformi** tra la
+  nuova data e `periodo_fine` (evitando weekend e festività, riusa
+  `distribuisciDate`); (b) **shift** dello stesso scarto di giorni (mantiene la
+  cadenza originale, snappa su giorni lavorativi); (c) non toccare le altre.
+  Le date che cadono fuori dal periodo restano `null` e il messaggio lo segnala.
+  Front-end puro, niente migrazioni: rilascio sul solo canale 1.
+  File: `src/lib/admin/calendario.ts` (`ricalibraUniformi`, `ricalibraShift`),
+  `src/admin/Pianificazione.tsx` (`cambiaData`, `applicaRicalibrazione`,
+  componente `DialogoRicalibra`).
+- **Calendario sottoscrivibile per tecnico (feed iCal)**: ogni tecnico ha un
+  `calendario_token` (migration 013) e la Edge Function `calendario-ics`
+  pubblica un feed RFC 5545 (text/calendar) con i suoi sopralluoghi
+  pianificati/completati. Google/Outlook/Apple si abbonano una volta all'URL e
+  si aggiornano da soli (ogni 6-24 ore secondo il client). DTSTART alle 09:00
+  Europe/Rome con durata `durata_stimata_min` (default 240 min); STATUS
+  TENTATIVE per `pianificato`/`in_corso`, CONFIRMED per
+  `completato`/`sincronizzato`. In `admin/Tecnici.tsx` la scheda mostra l'URL,
+  il bottone "Copia link", "Rigenera token" (invalida l'URL precedente) e una
+  guida sintetica alla sottoscrizione. Ordine di deploy: migration 013 →
+  Edge Function `calendario-ics` (dal Dashboard, CORS inline) → push del
+  front-end.
+  File: `supabase/migrations/013_calendario_token.sql`,
+  `supabase/functions/calendario-ics/index.ts`,
+  `src/lib/types.ts` (campo `calendario_token` su `Tecnico`),
+  `src/lib/admin/tecnici.ts` (`leggiCalendarioToken`,
+  `rigeneraCalendarioToken`, `urlFeedCalendario`),
+  `src/lib/auth.ts` (colonna inclusa), `src/admin/Tecnici.tsx`
+  (componente `CalendarioSottoscrivibile`).
 - **Vista disponibilità tecnici (carico % settimanale)**: nuovo tab back-office
   "Disponibilità" — per ogni tecnico, settimana per settimana, il carico
   pianificato in percentuale rispetto alla capienza oraria (campo
@@ -351,3 +387,12 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   per il funzionamento offline del selettore. Front-end puro, rilascio solo
   canale 1. File: `src/lib/compilazione.ts`, `src/Compilazione.tsx`,
   `src/lib/prefetch.ts`.
+- Realizzata la **ricalibrazione delle date successive in pianificazione**:
+  spostando manualmente una `data_pianificata`, un dialogo offre di
+  ridistribuire le successive uniformi entro il periodo, fare lo shift dello
+  stesso scarto, o lasciare invariate. Front-end puro, canale 1.
+- Realizzato il **feed iCal sottoscrivibile per tecnico**: migration 013 che
+  aggiunge `tecnico.calendario_token`, Edge Function pubblica `calendario-ics`
+  che genera il feed RFC 5545, e in back-office (scheda tecnico) URL con copia,
+  rigenera token, e guida alla sottoscrizione su Google/Outlook/Apple. Ordine
+  di deploy: migration 013 → Edge Function dal Dashboard (CORS inline) → push.

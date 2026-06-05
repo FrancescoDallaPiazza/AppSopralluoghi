@@ -11,6 +11,7 @@ import {
   calcolaCarico, valutaTecnici, ordinaSuggeriti, tecnicoSuggerito, settimanaISO,
   type CaricoPerTecnico, type ValutazioneTecnico,
 } from '../lib/admin/assistita';
+import { ricalibraUniformi, ricalibraShift } from '../lib/admin/calendario';
 import { nomeCompleto, type Sopralluogo, type Tecnico } from '../lib/types';
 
 const STATO_LABEL: Record<string, string> = {
@@ -93,6 +94,13 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Dialogo "ricalibra date successive" aperto dopo aver modificato la data di
+  // un sopralluogo: chiede se ridistribuire uniformi entro il periodo, fare uno
+  // shift della cadenza originale, o lasciare solo questa modifica.
+  const [ricalibra, setRicalibra] = useState<
+    { rigaId: string; vecchia: string; nuova: string; successiveIds: string[] } | null
+  >(null);
+
   function carica() {
     setFase('carico');
     Promise.all([caricaPiano(incaricoId), caricaTecnici(), caricaCaricoGlobale()])
@@ -105,6 +113,54 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
 
   const patch = (id: string, p: Partial<Sopralluogo>) =>
     setRighe((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
+
+  // Cambio data manuale: applica il patch alla riga, poi — se ci sono sedute
+  // 'pianificato' successive con una data valorizzata — chiede come tarare le
+  // successive (uniformi / shift / niente). Vedi applicaRicalibrazione().
+  function cambiaData(r: Sopralluogo, nuova: string | null) {
+    const vecchia = r.data_pianificata;
+    patch(r.id, { data_pianificata: nuova });
+    if (!nuova || !vecchia || nuova === vecchia) return;
+    const ordinati = [...righe].sort((a, b) => numProg(a.progressivo) - numProg(b.progressivo));
+    const idx = ordinati.findIndex((s) => s.id === r.id);
+    if (idx < 0) return;
+    const successiveIds = ordinati
+      .slice(idx + 1)
+      .filter((s) => s.stato === 'pianificato' && s.data_pianificata)
+      .map((s) => s.id);
+    if (successiveIds.length === 0) return;
+    setRicalibra({ rigaId: r.id, vecchia, nuova, successiveIds });
+  }
+
+  function applicaRicalibrazione(modo: 'uniformi' | 'shift') {
+    if (!ricalibra || !piano) return;
+    const { vecchia, nuova, successiveIds } = ricalibra;
+    const ordinate = successiveIds
+      .map((id) => righe.find((r) => r.id === id))
+      .filter((r): r is Sopralluogo => !!r);
+    let nuoveDate: (string | null)[];
+    if (modo === 'uniformi') {
+      const dates = ricalibraUniformi(nuova, piano.incarico.periodo_fine, ordinate.length);
+      nuoveDate = ordinate.map((_, i) => dates[i] ?? null);
+    } else {
+      nuoveDate = ricalibraShift(
+        vecchia, nuova,
+        ordinate.map((s) => s.data_pianificata),
+        piano.incarico.periodo_fine,
+      );
+    }
+    const mappa = new Map(successiveIds.map((id, i) => [id, nuoveDate[i] ?? null]));
+    setRighe((rs) => rs.map((r) =>
+      mappa.has(r.id) ? { ...r, data_pianificata: mappa.get(r.id) ?? null } : r
+    ));
+    const oltreFine = nuoveDate.filter((d) => d === null).length;
+    setMsg(
+      `Ricalibrate ${nuoveDate.length - oltreFine} date successive` +
+      (oltreFine ? ` (${oltreFine} fuori dal periodo: da rivedere)` : '') +
+      `. Ricorda di salvare.`,
+    );
+    setRicalibra(null);
+  }
 
   // Carico settimanale "dal vivo": parte dalle sedute di tutti gli altri
   // incarichi e sovrappone le righe in editing di questo (così spostando un
@@ -240,6 +296,17 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
         <div className="bo-empty">Nessuna seduta. Usa “Genera sedute mancanti”.</div>
       )}
 
+      {ricalibra && (
+        <DialogoRicalibra
+          successiveN={ricalibra.successiveIds.length}
+          vecchia={ricalibra.vecchia}
+          nuova={ricalibra.nuova}
+          periodoFine={piano.incarico.periodo_fine}
+          onScegli={applicaRicalibrazione}
+          onAnnulla={() => setRicalibra(null)}
+        />
+      )}
+
       {[...righe].sort((a, b) => numProg(a.progressivo) - numProg(b.progressivo)).map((r) => {
         const bloccato = r.stato !== 'pianificato';
         const val = bloccato ? [] : valutazioni(r);
@@ -283,7 +350,7 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
                 <label className="bo-field">
                   <span>Data pianificata</span>
                   <input type="date" value={r.data_pianificata ?? ''}
-                    onChange={(e) => patch(r.id, { data_pianificata: e.target.value || null })} />
+                    onChange={(e) => cambiaData(r, e.target.value || null)} />
                 </label>
                 <label className="bo-field" style={{ marginBottom: 0 }}>
                   <span>Durata stimata (min)</span>
@@ -324,6 +391,60 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ---------------- dialogo "ricalibra date successive" ----------------
+function DialogoRicalibra({
+  successiveN, vecchia, nuova, periodoFine, onScegli, onAnnulla,
+}: {
+  successiveN: number;
+  vecchia: string;
+  nuova: string;
+  periodoFine: string;
+  onScegli: (modo: 'uniformi' | 'shift') => void;
+  onAnnulla: () => void;
+}) {
+  const fmt = (d: string) => {
+    const [y, m, g] = d.split('-');
+    return `${g}/${m}/${y}`;
+  };
+  const delta = Math.round(
+    (Date.parse(nuova + 'T00:00:00Z') - Date.parse(vecchia + 'T00:00:00Z')) / 86_400_000,
+  );
+  const verso = delta > 0 ? `avanti di ${delta} gg` : `indietro di ${-delta} gg`;
+  return (
+    <div role="dialog" aria-modal="true"
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16,
+      }}>
+      <div className="bo-card" style={{ maxWidth: 460, width: '100%', margin: 0 }}>
+        <h3 className="bo-h" style={{ marginBottom: 6 }}>Ricalibra date successive?</h3>
+        <p className="bo-sub" style={{ marginBottom: 14 }}>
+          Hai spostato la data <b>{fmt(vecchia)}</b> → <b>{fmt(nuova)}</b> ({verso}).
+          Vuoi tarare anche le <b>{successiveN}</b> sedute successive dello stesso incarico
+          (entro fine periodo: {fmt(periodoFine)})?
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button className="bo-btn" onClick={() => onScegli('uniformi')}>
+            Ridistribuisci uniformi
+            <div style={{ fontWeight: 400, fontSize: 12, opacity: 0.85 }}>
+              Tra la nuova data e fine periodo, evitando weekend e festività.
+            </div>
+          </button>
+          <button className="bo-btn ghost" onClick={() => onScegli('shift')}>
+            Sposta tutte di {delta > 0 ? `+${delta}` : delta} gg
+            <div style={{ fontWeight: 400, fontSize: 12, opacity: 0.85 }}>
+              Mantiene la cadenza originale fra una seduta e l'altra.
+            </div>
+          </button>
+          <button className="bo-btn ghost" onClick={onAnnulla}>
+            Non toccare le altre
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

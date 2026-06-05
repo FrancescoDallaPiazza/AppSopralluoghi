@@ -20,7 +20,7 @@ import { newId, type Tecnico, type RuoloTecnico } from '../types';
 
 const COLONNE_TECNICO =
   'id, user_id, nome, cognome, base_localita, base_lat, base_lng, calendario_ref, ' +
-  'capienza_ore_settimana, attivo, ruolo';
+  'capienza_ore_settimana, attivo, ruolo, calendario_token';
 
 const vuotoNull = (s: string | null | undefined): string | null => {
   const v = (s ?? '').trim();
@@ -108,4 +108,34 @@ export function tecnicoVuoto(): Tecnico {
     calendario_ref: null, capienza_ore_settimana: 40, attivo: true,
     ruolo: 'tecnico' as RuoloTecnico,
   };
+}
+
+// Rilegge dal server il `calendario_token` del tecnico (DEFAULT gen_random_uuid
+// del DB): serve subito dopo aver creato un nuovo tecnico, per mostrare l'URL
+// del feed senza dover riaprire la scheda.
+export async function leggiCalendarioToken(id: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('tecnico').select('calendario_token').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return (data?.calendario_token as string | null) ?? null;
+}
+
+// Rigenera il token del feed iCal (invalida l'URL precedentemente condiviso).
+// Affidiamo la generazione del nuovo UUID al DEFAULT della colonna (migration
+// 013): un UPDATE con `calendario_token: null` non basterebbe perché la colonna
+// è NOT NULL, quindi forziamo lato client una nuova chiave random.
+export async function rigeneraCalendarioToken(id: string): Promise<string> {
+  const nuovo = newId();
+  const { error } = await supabase
+    .from('tecnico').update({ calendario_token: nuovo }).eq('id', id);
+  if (error) throw error;
+  return nuovo;
+}
+
+// Costruisce l'URL pubblico del feed iCal (Edge Function `calendario-ics`).
+// Punta alla stessa istanza di Supabase usata dall'app (VITE_SUPABASE_URL).
+export function urlFeedCalendario(tecnicoId: string, token: string): string {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/+$/, '');
+  if (!base) return '';
+  return `${base}/functions/v1/calendario-ics?tecnico=${tecnicoId}&token=${token}`;
 }
