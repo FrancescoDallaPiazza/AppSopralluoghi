@@ -307,7 +307,7 @@ function SchedaTecnico({
             </div>
           ) : !t.calendario_token ? (
             <div className="bo-err">
-              Token calendario assente. Esegui la migration 013 in Supabase
+              Token calendario assente. Esegui la migration 014 in Supabase
               (SQL Editor) e riapri la scheda.
             </div>
           ) : (

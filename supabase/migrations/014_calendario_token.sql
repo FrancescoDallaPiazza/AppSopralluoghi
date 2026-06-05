@@ -1,4 +1,4 @@
--- 013 · Token pubblico per il feed iCal del tecnico (calendario sottoscrivibile).
+-- 014 · Token pubblico per il feed iCal del tecnico (calendario sottoscrivibile).
 -- L'URL del feed include questo token: senza, o con token errato, la Edge
 -- Function `calendario-ics` risponde 403. Il bottone "Rigenera token" in
 -- back-office cambia il valore e invalida l'URL precedente.
