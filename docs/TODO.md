@@ -30,6 +30,15 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## B · Aperti (sviluppi pianificati)
 
+### UX trasversale
+
+- [ ] **App unica responsive (PC / tablet / phone)**. Oggi c'è una separazione
+  implicita tra "app da campo" (tecnico, pensata mobile) e back-office (admin,
+  pensato desktop). Unificare in un'unica esperienza che si adatti a qualsiasi
+  schermo: layout fluidi, breakpoints, controlli touch-friendly anche da PC
+  e viceversa. Toccare `index.html`, lo stile in `admin/ui.ts` e quello del
+  campo, le tabelle/griglie del back-office (oggi a larghezza fissa).
+
 ### Integrazione gestionale
 
 - [ ] **Werp · sincronizzazione**. Campi `incarico.werp_id`,
@@ -52,6 +61,16 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ### Checklist / Compilazione
 
+- [ ] **"Cose da fare" sempre proponibili su qualunque voce**. Oggi la
+  generazione di un'azione correttiva è agganciata a configurazioni specifiche:
+  `OpzioneVoce.genera_azione` (solo `scelta`/`multiscelta`) e
+  `VoceConfig.azione_opzionale` (solo `rilievo`). Serve che il tecnico possa
+  aggiungere una "cosa da fare" da QUALSIASI voce — testo, data, numero,
+  slider, foto, rilievo, scelta — senza dover toccare il template. Quindi:
+  bottone "+ Aggiungi cosa da fare" sempre presente nella card dell'esito,
+  indipendentemente dal tipo, e applicabile retroattivamente a checklist
+  esistenti (nessuna migrazione del template). Toccare
+  `src/Compilazione.tsx`, `src/lib/compilazione.ts`, `src/lib/azioni.ts`.
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza
