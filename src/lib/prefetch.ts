@@ -6,6 +6,8 @@
 //      (cliente, tipo attività), così la lista si vede offline;
 //   2. il template attivo + le voci per ogni tipo attività coinvolto, così la
 //      checklist si può APRIRE e compilare offline (anche se mai aperta prima);
+//      più l'elenco di TUTTI i template attivi + voci, così la checklist si può
+//      anche SCEGLIERE in campo (default = quella dell'incarico) da offline;
 //   3. le azioni aperte del "giro precedente" per gli incarichi coinvolti.
 //
 // Le scritture in locale non sovrascrivono mai il lavoro non sincronizzato:
@@ -15,7 +17,7 @@ import { db } from './db';
 import {
   caricaMieiSopralluoghi, toBaseSopralluogo, type SopralluogoConContesto,
 } from './sopralluoghi';
-import { prefetchTemplatePerTipo } from './compilazione';
+import { prefetchTemplatePerTipo, prefetchTemplatesAttivi } from './compilazione';
 import { prefetchAzioniIncarichi } from './azioni';
 import type { Sopralluogo } from './types';
 
@@ -89,6 +91,10 @@ export async function prefetchOffline(tecnicoId: string): Promise<RisultatoPrefe
       tipiMancanti.push(t);
     }
   }
+
+  // 2-bis) elenco completo dei template attivi + voci: serve a SCEGLIERE la
+  // checklist in campo (default = quella dell'incarico) anche da offline.
+  try { await prefetchTemplatesAttivi(); } catch { /* best-effort */ }
 
   // 3) azioni aperte del giro precedente (best-effort)
   const incarichi = [...new Set(daFare.map((s) => s.incarico_id))];
