@@ -4,7 +4,7 @@ import { db } from './lib/db';
 import { salvaEsito, aggiungiFoto, rimuoviFoto, rimuoviEsito, rimuoviAzione, runSync } from './lib/sync';
 import {
   apriCompilazione, iniziaCompilazione, generaAzione, completaSopralluogo,
-  nuovoEsito, opzioneDi, statoEsito, figliDi, isRipetibile,
+  nuovoEsito, figliDi, isRipetibile,
   type TemplateScelta,
 } from './lib/compilazione';
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
@@ -14,7 +14,7 @@ import {
 } from './lib/azioni';
 import NotaVocale from './NotaVocale';
 import { newId, nomeCompleto } from './lib/types';
-import type { EsitoVoce, Foto, Azione, VoceTemplate, AreaInterna } from './lib/types';
+import type { EsitoVoce, EsitoStato, Foto, Azione, VoceTemplate, AreaInterna } from './lib/types';
 import { annullaRevisione } from './lib/revisioni';
 
 // ---------- helpers ----------
@@ -361,35 +361,27 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
 
   async function setScelta(esito: EsitoVoce, voce: VoceTemplate, chiave: string) {
     const corrente = esito.valore === chiave ? null : chiave;
-    const opt = opzioneDi(voce, corrente);
-    const agg: EsitoVoce = {
-      ...esito,
-      valore: corrente,
-      stato: statoEsito(voce, corrente),
-      genera_azione: !!opt?.genera_azione,
-    };
+    // L'opzione è solo INPUT descrittivo: NON deriva più l'esito (conforme/NC/NA),
+    // che ora è un gesto esplicito in fondo alla card (vedi setEsito).
+    const agg: EsitoVoce = { ...esito, valore: corrente };
     sostituisci(agg);
     await salvaEsito(agg);
-
-    // bozza azione (lista per esito): se l'opzione scelta ha `genera_azione`
-    // e non c'è ancora nessuna bozza, ne semino una vuota come suggerimento;
-    // NON cancello le bozze esistenti quando l'utente cambia opzione, perché
-    // le "cose da fare" ora possono essere aggiunte a mano su qualunque voce
-    // (a prescindere da `genera_azione` del template).
-    setBozze((b) => {
-      const n = { ...b };
-      if (opt?.genera_azione && !(n[esito.id]?.length)) n[esito.id] = [nuovaBozza()];
-      return n;
-    });
-    // bozza scadenza (solo opzione positiva + scadenza abilitata)
-    setScad((s) => {
-      const n = { ...s };
-      const pos = opt?.stato === 'positivo' && voce.config?.scadenza?.abilitata;
-      if (!pos) delete n[esito.id];
-      return n;
-    });
-    // rivela figli
+    // rivela le eventuali domande condizionate per l'opzione scelta
     if (corrente) await ensureFigli(voce, agg, corrente);
+  }
+
+  // Esito esplicito (conforme / non conforme / N.A.): gesto distinto dall'input,
+  // in coda alla card. Ricliccare lo stesso esito lo azzera. Quando si marca
+  // "non conforme" e non c'è ancora una cosa da fare, ne propongo una vuota come
+  // promemoria (resta rimovibile: le cose da fare non sono obbligatorie).
+  async function setEsito(esito: EsitoVoce, stato: EsitoStato) {
+    const next = esito.stato === stato ? null : stato;
+    const agg: EsitoVoce = { ...esito, stato: next };
+    sostituisci(agg);
+    await salvaEsito(agg);
+    if (next === 'non_conforme') {
+      setBozze((b) => (b[esito.id]?.length ? b : { ...b, [esito.id]: [nuovaBozza()] }));
+    }
   }
 
   async function setMulti(esito: EsitoVoce, voce: VoceTemplate, chiave: string) {
@@ -458,17 +450,15 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     sostituisci({ ...esito, valore: testo });
   }
   async function salvaRilievo(esito: EsitoVoce) { await salvaEsito(esito); }
-  async function toggleRilievoAzione(esito: EsitoVoce) {
-    const g = !esito.genera_azione;
-    const agg = { ...esito, genera_azione: g };
-    sostituisci(agg); await salvaEsito(agg);
-    setBozze((b) => { const n = { ...b }; if (g && !(n[esito.id]?.length)) n[esito.id] = [nuovaBozza()]; if (!g) delete n[esito.id]; return n; });
-  }
 
   // ---- sintesi ----
   const topVoci = useMemo(() => voci.filter((v) => v.parent_voce_id === null), [voci]);
   const totale = topVoci.filter((v) => !isRipetibile(v)).length;
-  const fatte = topVoci.filter((v) => !isRipetibile(v) && (esitoTop.get(v.id)?.valore != null)).length;
+  const fatte = topVoci.filter((v) => {
+    if (isRipetibile(v)) return false;
+    const e = esitoTop.get(v.id);
+    return e != null && (e.stato != null || e.valore != null);
+  }).length;
   const nAzioni = Object.values(bozze).reduce((acc, l) => acc + l.length, 0) + Object.keys(scad).length;
 
   const sezioni = useMemo(() => {
@@ -607,7 +597,6 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     if (!esito) return null;
 
     const valore = esito.valore;
-    const opt = opzioneDi(voce, valore);
     const figli = figliDi(voci, voce.id);
     const childKey = typeof valore === 'string' ? valore : null;
 
@@ -615,25 +604,12 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     switch (voce.tipo) {
       case 'scelta':
         corpo = (
-          <>
-            <div className="opts">
-              {(voce.config.opzioni ?? []).map((o) => {
-                const on = valore === o.chiave;
-                const cls = on ? (o.stato === 'positivo' ? 'on-ok' : o.stato === 'da_fare' ? 'on-no' : o.stato === 'non_applicabile' ? 'on-na' : 'on-neu') : '';
-                return <button key={o.chiave} className={'opt ' + cls} onClick={() => void setScelta(esito, voce, o.chiave)}>{o.etichetta}</button>;
-              })}
-            </div>
-            {valore != null && (
-              <>
-                <NotaVocale className="note" placeholder="Note…" ariaLabel="Note"
-                  value={esito.note ?? ''}
-                  onChange={(t) => void setNota(esito, t)}
-                  onCommit={() => void salvaNota(esito)} />
-                <FotoStrip esitoId={esito.id} />
-                {opt?.stato === 'positivo' && voce.config.scadenza?.abilitata && renderScadenza(esito, voce)}
-              </>
-            )}
-          </>
+          <div className="opts">
+            {(voce.config.opzioni ?? []).map((o) => (
+              <button key={o.chiave} className={'opt' + (valore === o.chiave ? ' on-sel' : '')}
+                onClick={() => void setScelta(esito, voce, o.chiave)}>{o.etichetta}</button>
+            ))}
+          </div>
         );
         break;
       case 'multiscelta': {
@@ -685,13 +661,15 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           {voce.descrizione && <div className="voce-hint">{voce.descrizione}</div>}
           <div className="voce-body">
             {corpo}
-            {/* "Cose da fare" sempre proponibili su QUALSIASI voce, a
-                prescindere dal tipo (scelta, multiscelta, testo, data, numero,
-                slider, foto) e dalla configurazione del template:
-                renderBozzeAzione mostra il bottone "+ Aggiungi cosa da fare"
-                anche con lista vuota. I `rilievo` non passano da qui — hanno
-                il loro flusso per-rilievo dentro renderRilievo. */}
+            {/* Modalità di rilievo UNICA: a prescindere dal tipo di voce, dopo
+                l'input vengono SEMPRE offerti evidenze (nota testo+voce, foto),
+                output opzionali (cose da fare, scadenza ricorrente) e l'esito
+                esplicito in coda. I `rilievo` hanno il loro flusso per-istanza
+                in renderRilievo. */}
+            {renderEvidenze(esito, voce)}
             {renderBozzeAzione(esito)}
+            {renderScadenza(esito, voce)}
+            {renderEsito(esito)}
           </div>
         </div>
         {childKey && figli.some((f) => f.mostra_se_chiave === childKey) && (
@@ -717,18 +695,18 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
                 <button className="ril-del" title="Elimina questo rilievo"
                   onClick={() => void rimuoviRilievo(e)}>{I.x}</button>
               </div>
+              {/* Card di rilievo = stessa modalità unica delle voci predefinite:
+                  descrizione (testo+voce), foto, cose da fare, scadenza, esito. */}
               <NotaVocale className="fld" rows={2} placeholder="Descrivi il rilievo…" ariaLabel="Rilievo"
                 defaultValue={(e.valore as string) ?? ''}
                 onCommit={(t) => { void setRilievoTesto(e, t).then(() => salvaRilievo({ ...e, valore: t })); }} />
               <FotoStrip esitoId={e.id} />
-              <label className={'ril-az' + (e.genera_azione ? ' on' : '')}>
-                <input type="checkbox" checked={e.genera_azione} onChange={() => void toggleRilievoAzione(e)} />
-                Genera una "cosa da fare"
-              </label>
-              {e.genera_azione && renderBozzeAzione(e)}
+              {renderBozzeAzione(e)}
+              {renderScadenza(e, voce)}
+              {renderEsito(e)}
             </div>
           ))}
-          <button className="add-ril" onClick={() => void aggiungiRilievo(voce)}>{I.plus} Aggiungi rilievo</button>
+          <button className="add-ril" onClick={() => void aggiungiRilievo(voce)}>{I.plus} {voce.config.etichetta_aggiunta?.trim() || 'Aggiungi rilievo'}</button>
         </div>
       </div>
     );
@@ -760,6 +738,43 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             </optgroup>
           )}
         </select>
+      </div>
+    );
+  }
+
+  // Evidenze universali: nota (testo+dettatura vocale) e foto su QUALSIASI voce.
+  // Saltiamo la nota sulle voci 'testo' (il loro input è già una nota) e le foto
+  // sulle voci 'foto' (il loro input è già la striscia foto), per non duplicare.
+  function renderEvidenze(esito: EsitoVoce, voce: VoceTemplate): ReactNode {
+    return (
+      <>
+        {voce.tipo !== 'testo' && (
+          <NotaVocale className="note" placeholder="Note…" ariaLabel="Note"
+            value={esito.note ?? ''}
+            onChange={(t) => void setNota(esito, t)}
+            onCommit={() => void salvaNota(esito)} />
+        )}
+        {voce.tipo !== 'foto' && <FotoStrip esitoId={esito.id} />}
+      </>
+    );
+  }
+
+  // Esito esplicito, in coda alla card. Tre stati + ri-clic per azzerare.
+  function renderEsito(esito: EsitoVoce): ReactNode {
+    const opts: Array<{ v: EsitoStato; l: string; c: string }> = [
+      { v: 'conforme', l: 'Conforme', c: 'ok' },
+      { v: 'non_conforme', l: 'Non conforme', c: 'no' },
+      { v: 'non_applicabile', l: 'N.A.', c: 'na' },
+    ];
+    return (
+      <div className="esito-box">
+        <div className="esito-lab">Esito</div>
+        <div className="seg esito">
+          {opts.map((o) => (
+            <button key={o.v} className={esito.stato === o.v ? 'on ' + o.c : ''}
+              onClick={() => void setEsito(esito, o.v)}>{o.l}</button>
+          ))}
+        </div>
       </div>
     );
   }
@@ -976,7 +991,7 @@ const CSS = `
 .compila .opt.on-ok{background:var(--ok-bg); border-color:var(--ok); color:var(--ok);}
 .compila .opt.on-no{background:var(--no-bg); border-color:var(--no); color:var(--no);}
 .compila .opt.on-na{background:var(--na-bg); border-color:var(--na); color:#555;}
-.compila .opt.on-neu{background:#eef1f4; border-color:#9aa3ad; color:#2b3a4a;}
+.compila .opt.on-neu,.compila .opt.on-sel{background:#eef1f4; border-color:#9aa3ad; color:#2b3a4a;}
 
 .compila .checks{display:flex; flex-direction:column; gap:7px;}
 .compila .chk,.compila .ril-az{display:flex; align-items:center; gap:9px; font-size:13.5px; font-weight:500; border:1px solid var(--line); background:#fbfaf7; border-radius:10px; padding:10px 12px; cursor:pointer;}
@@ -1043,6 +1058,12 @@ const CSS = `
 .compila .seg button{flex:1 1 auto; border:1px solid rgba(0,0,0,.14); background:#fff; color:var(--ink-soft); font-family:inherit; font-weight:600; font-size:12px; padding:8px 6px; border-radius:8px; cursor:pointer;}
 .compila .seg button.on{background:var(--ink); color:#fff; border-color:var(--ink);}
 .compila .row2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+
+.compila .esito-box{margin-top:12px; padding-top:11px; border-top:1px dashed var(--line);}
+.compila .esito-lab{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:7px;}
+.compila .seg.esito button.on.ok{background:var(--ok); color:#fff; border-color:var(--ok);}
+.compila .seg.esito button.on.no{background:var(--no); color:#fff; border-color:var(--no);}
+.compila .seg.esito button.on.na{background:var(--na); color:#fff; border-color:var(--na);}
 
 .compila .add-ril{margin-top:10px; width:100%; border:1.5px dashed #c9c2b4; background:#fbfaf7; color:var(--ink-soft); font-family:var(--disp); font-weight:700; font-size:13px; padding:11px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;}
 .compila .add-ril svg{width:16px;height:16px;}

@@ -94,6 +94,8 @@ export interface VoceConfig {
   max?: number;               // slider
   ripetibile?: boolean;       // foto/rilievo
   azione_opzionale?: boolean; // rilievo
+  consenti_aggiunte?: boolean;   // abilita rilievi liberi aggiuntivi sotto la voce
+  etichetta_aggiunta?: string;   // etichetta del bottone di aggiunta (default "Aggiungi rilievo")
 }
 
 export interface VoceTemplate {
