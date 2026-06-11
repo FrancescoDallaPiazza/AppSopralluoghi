@@ -20,8 +20,8 @@ import { toBaseSopralluogo, type SopralluogoConContesto } from './sopralluoghi';
 import {
   newId,
   type Azione, type AzioneTipo, type AzioneResponsabile, type AzionePriorita,
-  type ChecklistCompilata, type EsitoStato, type EsitoVoce, type Sopralluogo,
-  type SopralluogoStato, type VoceTemplate, type OpzioneVoce,
+  type ChecklistCompilata, type EsitoVoce, type Sopralluogo,
+  type SopralluogoStato, type VoceTemplate,
 } from './types';
 
 export interface DatiCompilazione {
@@ -56,19 +56,6 @@ const COLONNE_ESITO =
 
 // ---- helper modello ----
 export const isRipetibile = (v: VoceTemplate) => v.tipo === 'rilievo';
-
-export function opzioneDi(v: VoceTemplate, chiave: unknown): OpzioneVoce | undefined {
-  if (typeof chiave !== 'string') return undefined;
-  return (v.config?.opzioni ?? []).find((o) => o.chiave === chiave);
-}
-
-export function statoEsito(v: VoceTemplate, chiave: unknown): EsitoStato | null {
-  const s = opzioneDi(v, chiave)?.stato;
-  return s === 'positivo' ? 'conforme'
-    : s === 'da_fare' ? 'non_conforme'
-      : s === 'non_applicabile' ? 'non_applicabile'
-        : null;
-}
 
 export const figliDi = (voci: VoceTemplate[], parentId: string | null) =>
   voci.filter((v) => v.parent_voce_id === parentId).sort((a, b) => a.ordine - b.ordine);

@@ -76,26 +76,24 @@ export interface Incarico {
 }
 
 // --- modello "form configurabile" (vedi migration 002) ---
+// Nota: dalla "modalità di rilievo unica" (commit a35cf45) la compilazione offre
+// su OGNI voce evidenze (nota+foto), cose da fare, scadenza ricorrente ed esito
+// esplicito. L'opzione di una 'scelta' è quindi solo la risposta descrittiva e
+// non deriva più esito né azioni: niente più stato/genera_azione sull'opzione.
 export type VoceTipo =
   | 'scelta' | 'multiscelta' | 'testo' | 'data' | 'numero' | 'slider' | 'foto' | 'rilievo';
-export type StatoLogico = 'positivo' | 'da_fare' | 'non_applicabile' | 'neutro';
 
 export interface OpzioneVoce {
   chiave: string;
   etichetta: string;
-  stato?: StatoLogico;        // default 'neutro'
-  genera_azione?: boolean;    // selezionandola si crea una "cosa da fare"
 }
 export interface VoceConfig {
   opzioni?: OpzioneVoce[];
-  scadenza?: { abilitata?: boolean; periodicita_default_mesi?: number };
-  richiedi_foto_se?: string[];
+  scadenza?: { periodicita_default_mesi?: number }; // default proposto in compilazione
   min?: number;               // slider
   max?: number;               // slider
   ripetibile?: boolean;       // foto/rilievo
-  azione_opzionale?: boolean; // rilievo
-  consenti_aggiunte?: boolean;   // abilita rilievi liberi aggiuntivi sotto la voce
-  etichetta_aggiunta?: string;   // etichetta del bottone di aggiunta (default "Aggiungi rilievo")
+  etichetta_aggiunta?: string;   // rilievo: etichetta del bottone di aggiunta (default "Aggiungi rilievo")
 }
 
 export interface VoceTemplate {

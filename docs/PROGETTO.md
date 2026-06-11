@@ -125,8 +125,13 @@ normalizzati a CRLF prima della consegna.
 - `sopralluogo` — seduta: progressivo, tecnico, date pianificata/effettiva, durata,
   località, stato (`pianificato` / `in_corso` / `completato` / `sincronizzato`).
 - `checklist_template` + `voce_template` — modello form configurabile (voci e
-  sotto-domande, tipi: scelta/multiscelta/testo/data/numero/slider/foto/rilievo;
-  opzioni con stato logico e generazione azione; scadenza ricorrente; ripetibilità).
+  sotto-domande, tipi: scelta/multiscelta/testo/data/numero/slider/foto/rilievo).
+  Dalla **modalità di rilievo unica** (commit `a35cf45`) l'opzione di una scelta
+  è solo la risposta descrittiva (chiave + etichetta): non deriva l'esito né
+  genera azioni, perché in compilazione evidenze, cose da fare, scadenza
+  ricorrente ed esito esplicito sono offerti su OGNI voce. La config voce
+  conserva: periodicità di default della scadenza, ripetibilità (foto/rilievo),
+  etichetta del bottone "aggiungi" (rilievo).
   Versionamento: un template già usato non si modifica a ritroso.
 - `checklist_compilata` + `esito_voce` — compilazione effettiva: per ogni voce lo
   stato, il valore, le note; `genera_azione` sul rilievo. Il template (`template_id`

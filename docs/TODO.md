@@ -92,11 +92,16 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     cliente / risorsa_interna / area (`responsabile_*_id`, CHECK di coerenza).
 
   Quindi l'intervento è: (a) **uniformare la UX di compilazione** così che ogni
-  voce esponga sempre questa modalità (oggi dipende dalla config del template:
-  tipo voce, `genera_azione`, ecc.); (b) **ridisegnare/sostituire i contenuti**
-  delle 3 checklist d'esempio. Unica eccezione potenzialmente "nuovo schema":
-  se si vuole **conservare anche il file audio** originale (oltre alla
-  trascrizione) servirebbe una tabella `audio`/`allegato` gemella di `foto`.
+  voce esponga sempre questa modalità — **FATTO** (Fasi A+B, commit `a35cf45`:
+  evidenze, cose da fare, scadenza ricorrente ed esito esplicito su ogni voce,
+  a prescindere dal tipo); (a-bis) **riallineare l'editor di template** togliendo
+  i knob ormai inerti (stato/`genera_azione` sulle opzioni, `richiedi_foto_se`,
+  `azione_opzionale`, gate scadenza) ed esponendo `etichetta_aggiunta` — **FATTO**
+  (Fase C); (b) **ridisegnare/sostituire i contenuti** delle 3 checklist
+  d'esempio — **ANCORA DA FARE** (lavoro di soli contenuti, nessun codice).
+  Unica eccezione potenzialmente "nuovo schema": se si vuole **conservare anche
+  il file audio** originale (oltre alla trascrizione) servirebbe una tabella
+  `audio`/`allegato` gemella di `foto`.
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza
@@ -135,6 +140,17 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## ✅ Fatti di recente
 
+- [x] **2026-06-11** Editor template riallineato alla modalità di rilievo unica
+  (Fase C). Rimossi i knob senza più effetto a runtime: `stato`/`genera_azione`
+  sulle opzioni (l'esito è esplicito), `richiedi_foto_se` e `azione_opzionale`
+  (foto/cose-da-fare ormai universali), il gate "Abilita scadenza ricorrente"
+  (la scadenza è proponibile sempre; resta solo la periodicità di default,
+  ora editabile su ogni voce). Aggiunto il campo `etichetta_aggiunta` per le
+  voci *Rilievo*. Pulito il modello (`types.ts`) e il codice morto in
+  `compilazione.ts` (`statoEsito`/`opzioneDi`). Build verde, nessuna migrazione.
+- [x] **2026-06-11** Compilazione: modalità di rilievo unica (Fasi A+B, commit
+  `a35cf45`). Ogni voce, a prescindere dal tipo, offre evidenze (nota+foto),
+  cose da fare, scadenza ricorrente ed esito esplicito conforme/NC/NA.
 - [x] **2026-06-05** "Cose da fare" sempre proponibili su qualunque voce della
   checklist. Bottone "+ Aggiungi cosa da fare" universale in compilazione, a
   prescindere dal tipo di voce e dalla configurazione del template. Mantenuti i

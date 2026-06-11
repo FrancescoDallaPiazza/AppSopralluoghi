@@ -12,7 +12,7 @@ import {
   caricaTemplateCompleto, salvaComeNuovo, salvaComeNuovaVersione, salvaInPlace,
 } from '../lib/admin/templates';
 import {
-  newId, type ChecklistTemplate, type OpzioneVoce, type StatoLogico,
+  newId, type ChecklistTemplate, type OpzioneVoce,
   type VoceConfig, type VoceTemplate, type VoceTipo,
 } from '../lib/types';
 
@@ -30,12 +30,6 @@ const TIPI: { v: VoceTipo; label: string }[] = [
   { v: 'foto', label: 'Foto' },
   { v: 'rilievo', label: 'Rilievo' },
 ];
-const STATI: { v: StatoLogico; label: string }[] = [
-  { v: 'positivo', label: 'Positivo → conforme' },
-  { v: 'da_fare', label: 'Da fare → non conforme' },
-  { v: 'non_applicabile', label: 'Non applicabile' },
-  { v: 'neutro', label: 'Neutro (solo dato)' },
-];
 const haOpzioni = (t: VoceTipo) => t === 'scelta' || t === 'multiscelta';
 
 function configDefault(tipo: VoceTipo): VoceConfig {
@@ -44,14 +38,14 @@ function configDefault(tipo: VoceTipo): VoceConfig {
     case 'multiscelta':
       return {
         opzioni: [
-          { chiave: 'ok', etichetta: 'OK', stato: 'positivo' },
-          { chiave: 'da_fare', etichetta: 'Da programmare', stato: 'da_fare', genera_azione: true },
-          { chiave: 'na', etichetta: 'N/A', stato: 'non_applicabile' },
+          { chiave: 'ok', etichetta: 'OK' },
+          { chiave: 'da_fare', etichetta: 'Da programmare' },
+          { chiave: 'na', etichetta: 'N/A' },
         ],
       };
     case 'slider': return { min: 1, max: 5 };
     case 'foto': return { ripetibile: true };
-    case 'rilievo': return { ripetibile: true, azione_opzionale: true };
+    case 'rilievo': return { ripetibile: true };
     default: return {};
   }
 }
@@ -178,7 +172,7 @@ export default function TemplateEditor({
   const opzioniDi = (v: VoceTemplate) => v.config.opzioni ?? [];
   function setOpzioni(id: string, opz: OpzioneVoce[]) { patchConfig(id, { opzioni: opz }); }
   function aggiungiOpzione(v: VoceTemplate) {
-    setOpzioni(v.id, [...opzioniDi(v), { chiave: `opz${opzioniDi(v).length + 1}`, etichetta: '', stato: 'neutro' }]);
+    setOpzioni(v.id, [...opzioniDi(v), { chiave: `opz${opzioniDi(v).length + 1}`, etichetta: '' }]);
   }
   function patchOpzione(v: VoceTemplate, i: number, patch: Partial<OpzioneVoce>) {
     setOpzioni(v.id, opzioniDi(v).map((o, k) => (k === i ? { ...o, ...patch } : o)));
@@ -325,12 +319,6 @@ interface VoceCardProps {
 function VoceCard(p: VoceCardProps) {
   const { v, child } = p;
   const opz = p.opzioniDi(v);
-  const richiediFoto = v.config.richiedi_foto_se ?? [];
-
-  function toggleRichiediFoto(chiave: string, on: boolean) {
-    const next = on ? [...new Set([...richiediFoto, chiave])] : richiediFoto.filter((c) => c !== chiave);
-    p.patchConfig(v.id, { richiedi_foto_se: next });
-  }
 
   return (
     <div className={`bo-voce ${child ? 'child' : ''}`}>
@@ -392,59 +380,37 @@ function VoceCard(p: VoceCardProps) {
           onChange={(e) => p.patchVoce(v.id, { descrizione: e.target.value || null })} />
       </label>
 
+      {/* Scadenza ricorrente: in compilazione è proponibile su OGNI voce; qui si
+          imposta solo la periodicità di default suggerita (vuoto = 12 mesi). */}
+      <label className="bo-field">
+        <span>Periodicità scadenza ricorrente (mesi, default)</span>
+        <input type="number" min={1} placeholder="12"
+          value={v.config.scadenza?.periodicita_default_mesi ?? ''}
+          onChange={(e) => p.patchConfig(v.id, {
+            scadenza: e.target.value === ''
+              ? undefined
+              : { periodicita_default_mesi: Number(e.target.value) },
+          })} />
+      </label>
+
       {/* ---- config per tipo ---- */}
       {haOpzioni(v.tipo) && (
         <div className="bo-card flat" style={{ background: '#fff', marginBottom: 8 }}>
-          <div className="bo-field"><span>Opzioni</span></div>
+          <div className="bo-field"><span>Opzioni (risposte selezionabili)</span></div>
           {opz.map((o, i) => (
             <div className="bo-opz" key={i}>
               <input type="text" value={o.chiave} style={{ maxWidth: 110 }}
                 onChange={(e) => p.patchOpzione(v, i, { chiave: e.target.value })} placeholder="chiave" />
               <input type="text" value={o.etichetta}
                 onChange={(e) => p.patchOpzione(v, i, { etichetta: e.target.value })} placeholder="etichetta visibile" />
-              <select value={o.stato ?? 'neutro'}
-                onChange={(e) => p.patchOpzione(v, i, { stato: e.target.value as StatoLogico })}>
-                {STATI.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-              </select>
-              <label className="chk" title="Genera una cosa da fare">
-                <input type="checkbox" checked={!!o.genera_azione}
-                  onChange={(e) => p.patchOpzione(v, i, { genera_azione: e.target.checked })} />
-                azione
-              </label>
               <button className="bo-iconbtn" onClick={() => p.eliminaOpzione(v, i)}>✕</button>
             </div>
           ))}
           <button className="bo-btn ghost sm" onClick={() => p.aggiungiOpzione(v)}>+ Opzione</button>
-
-          <div className="bo-grid" style={{ marginTop: 12 }}>
-            <div>
-              <label className="chk">
-                <input type="checkbox" checked={!!v.config.scadenza?.abilitata}
-                  onChange={(e) => p.patchConfig(v.id, {
-                    scadenza: { ...v.config.scadenza, abilitata: e.target.checked },
-                  })} />
-                Abilita scadenza ricorrente
-              </label>
-              {v.config.scadenza?.abilitata && (
-                <label className="bo-field" style={{ marginTop: 8 }}>
-                  <span>Periodicità default (mesi)</span>
-                  <input type="number" min={1} value={v.config.scadenza?.periodicita_default_mesi ?? 12}
-                    onChange={(e) => p.patchConfig(v.id, {
-                      scadenza: { ...v.config.scadenza, periodicita_default_mesi: Number(e.target.value) },
-                    })} />
-                </label>
-              )}
-            </div>
-            <div>
-              <div className="bo-field"><span>Richiedi foto se l'opzione è…</span></div>
-              {opz.filter((o) => o.chiave.trim()).map((o) => (
-                <label className="chk" key={o.chiave} style={{ display: 'flex', marginBottom: 5 }}>
-                  <input type="checkbox" checked={richiediFoto.includes(o.chiave)}
-                    onChange={(e) => toggleRichiediFoto(o.chiave, e.target.checked)} />
-                  {o.etichetta || o.chiave}
-                </label>
-              ))}
-            </div>
+          <div className="bo-meta" style={{ marginTop: 8 }}>
+            L'opzione è solo la risposta descrittiva. In compilazione, su ogni voce,
+            il tecnico indica a parte l'esito (conforme / non conforme / N.A.), le
+            evidenze (note + foto) e le eventuali cose da fare.
           </div>
         </div>
       )}
@@ -465,17 +431,18 @@ function VoceCard(p: VoceCardProps) {
       )}
 
       {(v.tipo === 'foto' || v.tipo === 'rilievo') && (
-        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <label className="chk">
             <input type="checkbox" checked={!!v.config.ripetibile}
               onChange={(e) => p.patchConfig(v.id, { ripetibile: e.target.checked })} />
             Ripetibile
           </label>
           {v.tipo === 'rilievo' && (
-            <label className="chk">
-              <input type="checkbox" checked={!!v.config.azione_opzionale}
-                onChange={(e) => p.patchConfig(v.id, { azione_opzionale: e.target.checked })} />
-              Azione opzionale
+            <label className="bo-field" style={{ marginBottom: 0, flex: 1, minWidth: 200 }}>
+              <span>Etichetta bottone aggiunta</span>
+              <input type="text" value={v.config.etichetta_aggiunta ?? ''}
+                onChange={(e) => p.patchConfig(v.id, { etichetta_aggiunta: e.target.value || undefined })}
+                placeholder="Aggiungi rilievo" />
             </label>
           )}
         </div>
