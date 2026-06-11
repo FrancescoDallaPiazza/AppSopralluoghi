@@ -1093,4 +1093,14 @@ const CSS = `
 .compila .pick-actions{display:flex; gap:10px; margin-top:18px;}
 .compila .pick-ghost{flex-shrink:0; background:none; border:1.5px solid var(--line); color:var(--ink-soft); border-radius:12px; padding:0 16px; font-weight:700; font-size:14px; cursor:pointer; font-family:var(--disp);}
 .compila .pick-actions .cta{flex:1;}
+
+/* tablet/desktop: form in colonna comoda invece della strisciolina a 440px.
+   footer (.foot-inner) e bottom-sheet seguono la stessa larghezza, restando
+   centrati come il pannello. */
+@media(min-width:760px){
+  .compila .phone{max-width:720px;}
+  .compila .foot-inner{max-width:720px;}
+  .compila .sheet{max-width:720px;}
+  .compila main{padding:18px 22px 150px;}
+}
 `;

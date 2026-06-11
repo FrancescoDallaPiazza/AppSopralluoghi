@@ -236,6 +236,7 @@ export default function MieCoseDaFare({ tecnicoId, tecnicoNome, onApriSopralluog
             </p>
           )}
 
+          <div className="list">
           {lista.map((a) => {
             const late = inRitardo(a);
             const isOpen = aperta === a.id;
@@ -299,6 +300,7 @@ export default function MieCoseDaFare({ tecnicoId, tecnicoNome, onApriSopralluog
               </div>
             );
           })}
+          </div>
         </main>
       </div>
     </div>
@@ -347,8 +349,9 @@ const CSS = `
 .mcdf .muted{color:var(--ink-soft); font-size:13px; padding:10px 4px; line-height:1.5;}
 .mcdf .empty{text-align:center; color:var(--ink-soft); font-size:13px; padding:36px 12px;}
 
+.mcdf .list{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap:10px; align-items:start;}
 .mcdf .it{background:var(--card); border:1px solid var(--line); border-left:4px solid var(--no);
-  border-radius:14px; margin-bottom:10px; overflow:hidden; box-shadow:var(--shadow); transition:border-color .2s;}
+  border-radius:14px; overflow:hidden; box-shadow:var(--shadow); transition:border-color .2s;}
 .mcdf .it.scad{border-left-color:var(--hi);}
 .mcdf .it.done{border-left-color:var(--ok); opacity:.72;}
 .mcdf .it-head{padding:13px 14px; cursor:pointer;}
@@ -383,4 +386,17 @@ const CSS = `
 .mcdf .btn.primary{background:var(--ink); color:#fff; border-color:var(--ink);}
 .mcdf .btn.ok{background:var(--ok); color:#fff; border-color:var(--ok);}
 .mcdf .btn.ghost{background:#fbfaf7; color:var(--ink-soft);}
+
+/* tablet/desktop: il pannello si allarga e la lista diventa griglia di card.
+   auto-fill minmax sceglie da sé le colonne in base alla larghezza. */
+@media(min-width:760px){
+  .mcdf .phone{max-width:760px;}
+  .mcdf main{padding:18px 20px 48px;}
+  .mcdf .h-pad{padding:15px 20px 0;}
+}
+@media(min-width:1140px){
+  .mcdf .phone{max-width:1100px;}
+  .mcdf main{padding:22px 26px 56px;}
+  .mcdf .h-pad{padding:16px 26px 0;}
+}
 `;

@@ -32,12 +32,18 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ### UX trasversale
 
-- [ ] **App unica responsive (PC / tablet / phone)**. Oggi c'è una separazione
-  implicita tra "app da campo" (tecnico, pensata mobile) e back-office (admin,
-  pensato desktop). Unificare in un'unica esperienza che si adatti a qualsiasi
-  schermo: layout fluidi, breakpoints, controlli touch-friendly anche da PC
-  e viceversa. Toccare `index.html`, lo stile in `admin/ui.ts` e quello del
-  campo, le tabelle/griglie del back-office (oggi a larghezza fissa).
+- [ ] **App unica responsive (PC / tablet / phone)**. Approccio scelto:
+  hardening incrementale (non unificazione del guscio), app da campo prima.
+  - [x] **App da campo su schermi grandi** (fatto 2026-06-10). Le tre schermate
+    del tecnico non sono più la strisciolina fissa a 440px:
+    - *I miei sopralluoghi* e *Le mie cose da fare*: il pannello si allarga
+      (760px @≥760, 1100px @≥1140) e le card vanno in griglia 2/3 colonne
+      (`auto-fill minmax(min(100%,300px),1fr)`); riepilogo resta colonna 680px.
+    - *Compilazione*: colonna form comoda 720px @≥760 (footer + sheet allineati);
+      flusso inline invariato (scelta "solo colonna più larga").
+  - [ ] **Back-office su phone/tablet** (prossimo step). Tabella Disponibilità
+    sfora in orizzontale già su tablet; unica media query a 620px troppo debole;
+    max-width 1040px; touch target. Toccare `admin/ui.ts` e le griglie/tabelle.
 
 ### Integrazione gestionale
 

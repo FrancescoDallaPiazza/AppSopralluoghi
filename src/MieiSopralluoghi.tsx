@@ -326,6 +326,7 @@ export default function MieiSopralluoghi({
             </p>
           )}
 
+          <div className="list">
           {lista.map((s) => {
             const late = inRitardo(s);
             const fonte = [s.tipo_attivita, s.progressivo].filter(Boolean).join(' · ');
@@ -373,6 +374,7 @@ export default function MieiSopralluoghi({
               </div>
             );
           })}
+          </div>
         </main>
       </div>
     </div>
@@ -458,7 +460,7 @@ function RiepilogoView({
   return (
     <div className="misopr">
       <style>{CSS}</style>
-      <div className="phone">
+      <div className="phone narrow">
         <header>
           <div className="h-pad">
             <div className="rp-head">
@@ -593,7 +595,8 @@ const CSS = `
 .misopr .badge.pianificato{background:var(--na-bg); color:#555;}
 .misopr .badge.in_corso{background:#fbeccb; color:var(--hi-dark);}
 .misopr .badge.completato,.misopr .badge.sincronizzato{background:var(--ok-bg); color:var(--ok);}
-.misopr .it-wrap{margin-bottom:10px;}
+.misopr .list{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap:10px; align-items:start;}
+.misopr .it-wrap{margin-bottom:0;}
 .misopr .it-wrap .it{margin-bottom:0;}
 .misopr .report-bar{display:flex; align-items:center; gap:7px; padding:7px 6px 2px; flex-wrap:wrap;}
 .misopr .rb-lab{font-size:10.5px; font-weight:700; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; margin-right:auto;}
@@ -633,4 +636,20 @@ const CSS = `
 .misopr .rp-edit:active{transform:scale(.99);}
 .misopr .rp-edit:disabled{opacity:.6; cursor:default;}
 .misopr .rp-note{font-size:11.5px; color:var(--ink-soft); line-height:1.5; margin:10px 2px 0;}
+
+/* tablet/desktop: il pannello si allarga e la lista diventa griglia di card.
+   La griglia (auto-fill minmax) sceglie da sé il numero di colonne in base
+   alla larghezza disponibile, quindi qui basta sbloccare la larghezza. */
+@media(min-width:760px){
+  .misopr .phone{max-width:760px;}
+  .misopr main{padding:18px 20px 48px;}
+  .misopr .h-pad{padding:15px 20px 0;}
+}
+@media(min-width:1140px){
+  .misopr .phone{max-width:1100px;}
+  .misopr main{padding:22px 26px 56px;}
+  .misopr .h-pad{padding:16px 26px 0;}
+}
+/* il riepilogo è una colonna di lettura: resta stretto anche su schermi grandi */
+.misopr .phone.narrow{max-width:680px;}
 `;
