@@ -14,12 +14,11 @@ sposta in fondo nella sezione "Fatti di recente".
 Per attivare in produzione il **feed iCal sottoscrivibile** e la
 **ricalibrazione date** (commit `f776edf`):
 
-- [ ] Eseguire `supabase/migrations/014_calendario_token.sql` nell'**SQL Editor**
+- [x] Eseguire `supabase/migrations/014_calendario_token.sql` nell'**SQL Editor**
   di Supabase (aggiunge `tecnico.calendario_token` con default
   `gen_random_uuid()` + backfill).
-- [ ] Deployare la Edge Function **`calendario-ics`** dal Dashboard Supabase
-  (Edge Functions → New Function → incolla
-  `supabase/functions/calendario-ics/index.ts`). CORS già inline.
+- [x] Deployare la Edge Function **`calendario-ics`** dal Dashboard Supabase
+  (versione in produzione verificata = quella del repo, commit `f776edf`).
 - [ ] Verifica end-to-end: in back-office → Tecnici → scheda di un tecnico,
   copiare l'URL del feed iCal, incollarlo in Google Calendar ("Altri calendari
   → Da URL") e controllare che i sopralluoghi compaiano.
@@ -67,6 +66,37 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ### Checklist / Compilazione
 
+- [ ] **Rivisitazione dei template di checklist** verso una modalità di rilievo
+  unica. Le 3 checklist importate (1. *check-up iniziale azienda nuova*,
+  2. *simulazione di visita ispettiva*, 3. *ordine di lavoro*) sono solo
+  esempi: i contenuti possono essere stravolti. A prescindere dagli elementi
+  verificati, ogni voce deve usare **la stessa modalità di acquisizione del
+  rilievo**, che prevede:
+  - indicazione o meno dell'elemento da verificare (per check-up iniziale /
+    visita ispettiva si potrà riportare una serie di elementi da verificare);
+  - acquisizione di evidenze sull'elemento tramite **scrittura, nota vocale
+    e/o foto**;
+  - in uscita, indicazione di eventuali **SCADENZE DA MONITORARE**;
+  - in uscita, indicazione di eventuali **COSE DA FARE** con destinatario
+    **esterno (cliente)** o **interno (azienda)**.
+
+  **NB — è lavoro di template + UX, NON di modello dati.** Lo schema copre già
+  tutto (verificato 2026-06-11):
+  - elemento da verificare → `esito_voce.voce_testo` / `voce_sezione`;
+  - evidenze: scrittura → `esito_voce.note`; nota vocale → `NotaVocale.tsx`
+    (Web Speech API, **trascritta in testo** in `note`, on-device — l'audio NON
+    è salvato come file); foto → tabella `foto` + bucket `foto-sopralluoghi`;
+  - scadenze → `azione.tipo='scadenza_ricorrente'` (+ `data_scadenza`,
+    `periodicita_mesi`);
+  - cose da fare con destinatario → `azione.responsabile_tipo`
+    cliente / risorsa_interna / area (`responsabile_*_id`, CHECK di coerenza).
+
+  Quindi l'intervento è: (a) **uniformare la UX di compilazione** così che ogni
+  voce esponga sempre questa modalità (oggi dipende dalla config del template:
+  tipo voce, `genera_azione`, ecc.); (b) **ridisegnare/sostituire i contenuti**
+  delle 3 checklist d'esempio. Unica eccezione potenzialmente "nuovo schema":
+  se si vuole **conservare anche il file audio** originale (oltre alla
+  trascrizione) servirebbe una tabella `audio`/`allegato` gemella di `foto`.
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza
