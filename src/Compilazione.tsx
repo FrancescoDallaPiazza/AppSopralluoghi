@@ -212,6 +212,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
   const [sheet, setSheet] = useState<null | 'prev'>(null);
   const [annullando, setAnnullando] = useState(false);
+  // Capitoli a fisarmonica: tutti chiusi all'apertura (= sommario), si apre
+  // quello voluto. Chiave = nome sezione (o '—' per le voci senza sezione).
+  const [aperte, setAperte] = useState<Set<string>>(new Set());
   // scelta della checklist alla prima apertura (default = quella dell'incarico)
   const [tmplScelta, setTmplScelta] = useState<TemplateScelta[]>([]);
   const [tmplSel, setTmplSel] = useState<string | null>(null);
@@ -470,6 +473,20 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     }
     return out;
   }, [topVoci]);
+
+  const toggleSez = (k: string) =>
+    setAperte((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+
+  // Avanzamento di un capitolo: voci di primo livello non ripetibili con esito
+  // (stato o valore) sul totale delle non ripetibili. Stesso criterio del totale globale.
+  const avanzamentoSez = (vs: VoceTemplate[]) => {
+    const tot = vs.filter((v) => !isRipetibile(v));
+    const done = tot.filter((v) => {
+      const e = esitoTop.get(v.id);
+      return e != null && (e.stato != null || e.valore != null);
+    }).length;
+    return { done, tot: tot.length };
+  };
 
   // ---- completa ----
   async function completa() {
@@ -883,12 +900,24 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               </button>
             </div>
           )}
-          {sezioni.map((s) => (
-            <div key={s.sez ?? '—'}>
-              {s.sez && <div className="section-h">{s.sez}</div>}
-              {s.voci.map((v) => renderVoce(v, null))}
-            </div>
-          ))}
+          {sezioni.map((s) => {
+            const k = s.sez ?? '—';
+            const open = aperte.has(k);
+            const { done, tot } = avanzamentoSez(s.voci);
+            const completo = tot > 0 && done === tot;
+            return (
+              <div key={k} className="chapter">
+                <button type="button" aria-expanded={open}
+                  className={'section-h' + (open ? ' open' : '') + (completo ? ' done' : '')}
+                  onClick={() => toggleSez(k)}>
+                  <span className="ch-caret" aria-hidden>{open ? '▾' : '▸'}</span>
+                  <span className="ch-name">{s.sez ?? 'Altre voci'}</span>
+                  {tot > 0 && <span className="ch-count">{completo ? '✓ ' : ''}{done}/{tot}</span>}
+                </button>
+                {open && <div className="ch-body">{s.voci.map((v) => renderVoce(v, null))}</div>}
+              </div>
+            );
+          })}
         </main>
 
         <footer><div className="foot-inner">
@@ -975,8 +1004,16 @@ const CSS = `
 .compila .bar > i{display:block; height:100%; background:var(--hi); border-radius:999px; transition:width .35s;}
 
 .compila main{flex:1; padding:14px 14px 150px;}
-.compila .section-h{font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin:18px 4px 9px; display:flex; align-items:center; gap:8px;}
-.compila .section-h::after{content:""; flex:1; height:1px; background:var(--line);}
+.compila .chapter{margin-bottom:8px;}
+.compila .section-h{width:100%; text-align:left; font-family:var(--disp); cursor:pointer; font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); display:flex; align-items:center; gap:9px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:12px 13px;}
+.compila .section-h:active{transform:scale(.995);}
+.compila .section-h.open{border-bottom-left-radius:0; border-bottom-right-radius:0; margin-bottom:0;}
+.compila .section-h .ch-caret{font-size:10px; color:var(--hi-dark); width:11px; flex-shrink:0;}
+.compila .section-h .ch-name{flex:1; min-width:0; line-height:1.25;}
+.compila .section-h .ch-count{flex-shrink:0; font-size:11px; letter-spacing:.02em; font-weight:700; color:var(--ink-soft); background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:3px 9px;}
+.compila .section-h.done{color:var(--ink);}
+.compila .section-h.done .ch-count{color:var(--ok); background:var(--ok-bg); border-color:var(--ok);}
+.compila .ch-body{padding:11px 11px 4px; border:1px solid var(--line); border-top:none; border-radius:0 0 12px 12px; background:rgba(0,0,0,.015);}
 
 .compila .voce{background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:10px; overflow:hidden; box-shadow:var(--shadow); border-left:4px solid transparent;}
 .compila .voce.s-conforme{border-left-color:var(--ok);} .compila .voce.s-non_conforme{border-left-color:var(--no);} .compila .voce.s-non_applicabile{border-left-color:var(--na);}
