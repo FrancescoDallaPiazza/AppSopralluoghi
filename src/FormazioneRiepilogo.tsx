@@ -35,11 +35,12 @@ const CSS = `
 .fzr-hint{font-size:11.5px; color:#27508f; background:#eef3fc; border-radius:8px; padding:5px 8px; margin-top:5px; line-height:1.4;}
 `;
 
-export default function FormazioneRiepilogo({ clienteId }: { clienteId: string }) {
+export default function FormazioneRiepilogo({ clienteId }: { clienteId: string | null }) {
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
   const [riep, setRiep] = useState<RiepilogoCliente | null>(null);
 
   useEffect(() => {
+    if (!clienteId) { setStato('errore'); return; }
     let vivo = true;
     setStato('loading');
     valutaCliente(clienteId)
@@ -48,6 +49,7 @@ export default function FormazioneRiepilogo({ clienteId }: { clienteId: string }
     return () => { vivo = false; };
   }, [clienteId]);
 
+  if (!clienteId) return <div className="empty">Cliente non collegato a questo sopralluogo.</div>;
   if (stato === 'loading') return <p className="muted">Carico lo stato formativo…</p>;
   if (stato === 'errore' || !riep) {
     return <div className="empty">Serve la connessione per consultare la formazione del cliente.</div>;
