@@ -54,13 +54,13 @@ src/
   admin/                  # back-office (solo admin)
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
     CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx,
-    Disponibilita.tsx
+    Disponibilita.tsx, Formazione.tsx
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
     auth.ts, sopralluoghi.ts, azioni.ts, report.ts, prefetch.ts,
     compilazione.ts, onboarding.ts
     admin/ (anagrafiche, tecnici, aree, templates, assistita, cosedafare,
-            pianificazione, disponibilita)
+            pianificazione, disponibilita, formazione)
 supabase/
   migrations/             # schema + seed (vedi §5)
   functions/              # Edge Functions (vedi §4)
@@ -153,14 +153,29 @@ normalizzati a CRLF prima della consegna.
 - `sopralluogo_revisione` — versioni congelate di un sopralluogo (numero, data,
   autore, motivo, `snapshot` jsonb con esiti+azioni). Il sopralluogo ha il
   contatore `revisione_corrente` (1 = primo completamento). [migration 012]
+- **Modulo Formazione/Organigramma** [migration 015]:
+  - `corso_catalogo` — catalogo dei corsi (codice, ore, `aggiornamento_mesi`,
+    `ore_aggiornamento`, prerequisito): e' il "percorso previsto" editabile.
+  - `figura_sicurezza` + `figura_requisito` — le figure dell'organigramma e i
+    corsi richiesti da ciascuna (`per_categoria` = soddisfatto da un qualunque
+    corso della categoria, tipico di antincendio/primo soccorso).
+  - `persona` — personale del cliente (mansione, reparto, CF, override rischio).
+  - `nomina` — quali figure ricopre una persona (l'organigramma).
+  - `formazione` — gli attestati svolti (lo "stato attuale").
+  - `esonero` — esoneri/crediti decisi per una persona (motivazione + norma).
+  - `esonero_ammesso` — promemoria informativi mostrati in campo (seed dai casi
+    dell'Allegato III ASR 17/04/2025), editabili.
+  - `cliente.livello_rischio` (basso/medio/alto) per espandere le ore della
+    formazione specifica lavoratori.
 
 Migrazioni presenti: 001 schema+RLS+foto · 002 form model · 003–004 template/seed ·
 005 bucket report · 006 ruolo back-office · 007 cadenza · 008 contatti · 009 aree
 interne · 010 (notificata_il / periodicità / responsabile_area) · 011 ruolo
 `interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente) · 013
 trigger rigenerazione scadenze ricorrenti (vedi §8) · 014 `calendario_token` su
-`tecnico` (feed iCal pubblico).
-**Prossima libera: 015.**
+`tecnico` (feed iCal pubblico) · 015 organigramma sicurezza + formazione
+(catalogo/figure/requisiti/persone/nomine/attestati/esoneri + esoneri ammessi).
+**Prossima libera: 016.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -194,6 +209,23 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   modificabile; "Rev. N" sul report. Implementato — da verificare in produzione.
 
 **Implementate, da verificare in produzione**
+- **Modulo Formazione / Organigramma sicurezza** (migration 015): nuovo tab
+  back-office "Formazione". Per cliente: organigramma (persone + figure/nomine),
+  matrice dello stato formativo con semafori (conforme / in scadenza ≤6 mesi /
+  critico / esonerato), scadenza calcolata da data corso + `aggiornamento_mesi`
+  del catalogo, crediti automatici (generale permanente; corso condiviso da piu'
+  ruoli contato una volta; ore specifica espanse per rischio), esoneri decisi e
+  promemoria di esonero ammesso mostrati in campo (Caso 3: i crediti
+  dell'Allegato III sono per ora informativi). Genera le "cose da fare" per i gap
+  verso area interna o cliente, instradandole nello scadenzario esistente
+  (azioni senza sopralluogo di origine; nessuna email automatica). Editor in-app
+  del catalogo esoneri ammessi. Front-end + migration 015 (gia' applicata).
+  File: `src/lib/admin/formazione.ts` (tipi + motore + dati), `src/admin/
+  Formazione.tsx`, voce di menu in `src/admin/BackOffice.tsx`.
+  Limiti v1: cancellazione puntuale dei singoli attestati e segnalazione
+  automatica dell'adeguamento ASR entro 24/05/2027 non ancora presenti; la
+  matrice deterministica dei crediti (Allegato III, Caso 2) e' la fase 2.
+
 - **Ricalibrazione date successive in pianificazione**: quando in
   `admin/Pianificazione.tsx` si modifica la `data_pianificata` di un sopralluogo,
   se ci sono sedute successive `pianificato` con data valorizzata appare un
@@ -402,3 +434,13 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   che genera il feed RFC 5545, e in back-office (scheda tecnico) URL con copia,
   rigenera token, e guida alla sottoscrizione su Google/Outlook/Apple. Ordine
   di deploy: migration 014 → Edge Function dal Dashboard (CORS inline) → push.
+- Realizzato il **modulo Formazione / Organigramma sicurezza** (subapp): migration
+  015 (catalogo corsi, figure, requisiti, persone, nomine, attestati, esoneri e
+  catalogo "esoneri ammessi" + `cliente.livello_rischio`), strato dati e motore
+  in `src/lib/admin/formazione.ts` (semafori, crediti automatici, scadenze,
+  promemoria, generazione cose da fare), nuovo tab `src/admin/Formazione.tsx`,
+  voce di menu in `BackOffice.tsx`. I crediti dell'Allegato III ASR 17/04/2025
+  sono modellati come promemoria informativi in campo (Caso 3); la matrice
+  deterministica e' la fase 2. Nota numerazione: la migration nasce numerata 015
+  perche' la 014 era gia' occupata dal feed iCal. Ordine di deploy: migration 015
+  (SQL Editor, gia' applicata) → push dei file front-end (canale 1) → refresh PWA.
