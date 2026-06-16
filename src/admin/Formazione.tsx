@@ -30,6 +30,10 @@ const TIPI_ESONERO: TipoEsonero[] = [
 ];
 
 // foglio supplementare: semafori, metriche, chip, righe requisito, modali.
+const LABEL_OBBLIGO: Record<string, string> = {
+  sempre: 'sempre', condizionale: 'se ricorre', eventuale: 'eventuale',
+};
+
 const CSS_FZ = `
 .fz-metrics{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px;}
 .fz-metric{background:#fff; border:1px solid var(--line); border-radius:14px; padding:13px 15px;}
@@ -46,6 +50,17 @@ const CSS_FZ = `
 .fz-hint{display:flex; gap:7px; font-size:12px; color:#27508f; background:#eef3fc; border:1px solid #d7e3f7; padding:6px 9px; border-radius:9px; margin-top:6px; line-height:1.4;}
 .fz-cover{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:13.5px;}
 .fz-cover:first-child{border-top:none;}
+.fz-grp{margin-top:14px;}
+.fz-grp:first-of-type{margin-top:2px;}
+.fz-grp-h{font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
+.fz-fig{padding:9px 0; border-top:1px solid var(--line);}
+.fz-fig-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.fz-fig-nome{font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.fz-badge{font-size:9.5px; font-weight:800; padding:2px 7px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em;}
+.fz-badge.sempre{background:var(--ok-bg); color:var(--ok);}
+.fz-badge.condizionale{background:#fbf0d6; color:var(--hi-dark);}
+.fz-badge.eventuale{background:#eef1f4; color:var(--ink-soft);}
+.fz-guida{font-size:12px; color:var(--ink-soft); margin-top:4px; line-height:1.45; max-width:64ch;}
 .fz-av{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px; flex:0 0 auto;}
 .fz-modal-bg{position:fixed; inset:0; background:rgba(20,16,12,.42); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px;}
 .fz-modal{background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; width:min(560px,100%); max-height:90vh; overflow:auto;}
@@ -125,6 +140,18 @@ export default function Formazione() {
       }));
   }, [catalogo, riep]);
 
+  // raggruppamento per blocco logico (checklist ragionata)
+  const gruppiCopertura = useMemo(() => {
+    const out: { nome: string; righe: typeof copertura }[] = [];
+    for (const row of copertura) {
+      const g = row.figura.gruppo || 'Altre figure';
+      let grp = out.find((x) => x.nome === g);
+      if (!grp) { grp = { nome: g, righe: [] }; out.push(grp); }
+      grp.righe.push(row);
+    }
+    return out;
+  }, [copertura]);
+
   return (
     <>
       <style>{CSS_FZ}</style>
@@ -173,19 +200,33 @@ export default function Formazione() {
 
           {/* organigramma atteso */}
           <div className="bo-card">
-            <div className="bo-title" style={{ marginBottom: 8 }}>Organigramma atteso</div>
+            <div className="bo-title" style={{ marginBottom: 4 }}>Organigramma atteso</div>
+            <p className="bo-sub" style={{ marginTop: 0, marginBottom: 10 }}>
+              Checklist ragionata: figure per blocco, con quando scattano e cosa serve (fonte: quadro obblighi ASR 17/04/2025).
+            </p>
             {copertura.length === 0 && <div className="bo-sub" style={{ margin: 0 }}>Nessuna figura a catalogo (verifica il seed di figura_sicurezza).</div>}
-            {copertura.map(({ figura, persone }) => (
-              <div key={figura.codice} className="fz-cover">
-                <span>{figura.nome}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
-                  {persone.length > 0
-                    ? <span className="bo-pill attivo" title={persone.join(', ')}>{persone.length > 3 ? persone.length + ' persone' : persone.join(', ')}</span>
-                    : <span className="bo-pill archiviato">non assegnata</span>}
-                  <button className="bo-btn ghost sm" onClick={() => setAssegnaFigura(figura)}>
-                    {persone.length > 0 ? 'modifica' : 'assegna'}
-                  </button>
-                </span>
+            {gruppiCopertura.map((g) => (
+              <div key={g.nome} className="fz-grp">
+                <div className="fz-grp-h">{g.nome}</div>
+                {g.righe.map(({ figura, persone }) => (
+                  <div key={figura.codice} className="fz-fig">
+                    <div className="fz-fig-top">
+                      <span className="fz-fig-nome">
+                        {figura.nome}
+                        {figura.obbligo && <span className={'fz-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
+                        {persone.length > 0
+                          ? <span className="bo-pill attivo" title={persone.join(', ')}>{persone.length > 3 ? persone.length + ' persone' : persone.join(', ')}</span>
+                          : <span className="bo-pill archiviato">non assegnata</span>}
+                        <button className="bo-btn ghost sm" onClick={() => setAssegnaFigura(figura)}>
+                          {persone.length > 0 ? 'modifica' : 'assegna'}
+                        </button>
+                      </span>
+                    </div>
+                    {figura.guida && <div className="fz-guida">{figura.guida}</div>}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
