@@ -13,6 +13,7 @@ import {
   type AzioneConContesto, type TecnicoAssegnabile,
 } from './lib/azioni';
 import NotaVocale from './NotaVocale';
+import FormazioneRiepilogo from './FormazioneRiepilogo';
 import { newId, nomeCompleto } from './lib/types';
 import type { EsitoVoce, EsitoStato, Foto, Azione, VoceTemplate, AreaInterna } from './lib/types';
 import { annullaRevisione } from './lib/revisioni';
@@ -210,7 +211,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [inCoda, setInCoda] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
-  const [sheet, setSheet] = useState<null | 'prev'>(null);
+  const [sheet, setSheet] = useState<null | 'prev' | 'form'>(null);
   const [annullando, setAnnullando] = useState(false);
   // scelta della checklist alla prima apertura (default = quella dell'incarico)
   const [tmplScelta, setTmplScelta] = useState<TemplateScelta[]>([]);
@@ -898,6 +899,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               <span className="n">{statoPrev === 'ok' ? String(prevAperte) : '·'}</span>
               <span>Giro precedente<small>azioni aperte</small></span>
             </div>
+            <div className="chip form" onClick={() => setSheet('form')}>
+              <span className="n">i</span>
+              <span>Formazione<small>stato cliente</small></span>
+            </div>
           </div>
           <button className={'cta' + (salvataggio === 'fatto' ? ' done' : '')} disabled={salvataggio === 'corso' || salvataggio === 'fatto'} onClick={() => void completa()}>
             {salvataggio === 'fatto' && I.done}{ctaLabel}
@@ -933,6 +938,16 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {sheet === 'form' && (
+          <div className="sheet show">
+            <div className="sheet-grab" />
+            <div className="sheet-h"><h3>Formazione · stato del cliente</h3><button onClick={() => setSheet(null)}>×</button></div>
+            <div className="sheet-body">
+              <FormazioneRiepilogo clienteId={sopralluogo.cliente_id} />
             </div>
           </div>
         )}
