@@ -11,7 +11,7 @@ import {
   type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato,
   type StatoRequisito, type Persona, type Nomina, type Formazione, type Esonero,
   type EsoneroAmmesso, type AreaInterna, type LivelloRischio, type TipoEsonero,
-  type CosaDaFareProposta,
+  type CosaDaFareProposta, type FiguraSicurezza,
   caricaCatalogo, caricaAreeInterne, valutaCliente,
   salvaPersona, eliminaPersona, salvaNomina, eliminaNomina,
   salvaFormazione, salvaEsonero,
@@ -68,6 +68,7 @@ export default function Formazione() {
   const [editFormazione, setEditFormazione] = useState<Formazione | null>(null);
   const [editEsonero, setEditEsonero] = useState<Esonero | null>(null);
   const [editNominePersonaId, setEditNominePersonaId] = useState<string | null>(null);
+  const [assegnaFigura, setAssegnaFigura] = useState<FiguraSicurezza | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [catalogoOpen, setCatalogoOpen] = useState(false);
 
@@ -177,9 +178,14 @@ export default function Formazione() {
             {copertura.map(({ figura, persone }) => (
               <div key={figura.codice} className="fz-cover">
                 <span>{figura.nome}</span>
-                {persone.length > 0
-                  ? <span className="bo-pill attivo">{persone.join(', ')}</span>
-                  : <span className="bo-pill archiviato">non assegnata</span>}
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
+                  {persone.length > 0
+                    ? <span className="bo-pill attivo" title={persone.join(', ')}>{persone.length > 3 ? persone.length + ' persone' : persone.join(', ')}</span>
+                    : <span className="bo-pill archiviato">non assegnata</span>}
+                  <button className="bo-btn ghost sm" onClick={() => setAssegnaFigura(figura)}>
+                    {persone.length > 0 ? 'modifica' : 'assegna'}
+                  </button>
+                </span>
               </div>
             ))}
           </div>
@@ -228,6 +234,14 @@ export default function Formazione() {
           persona={riep.persone.find((p) => p.persona.id === editNominePersonaId)!.persona}
           figureAttuali={riep.persone.find((p) => p.persona.id === editNominePersonaId)!.figure.map((f) => f.codice)}
           onChiudi={() => { setEditNominePersonaId(null); ricarica(); }}
+        />
+      )}
+      {assegnaFigura && riep && (
+        <FormAssegnaFigura
+          figura={assegnaFigura}
+          persone={riep.persone}
+          clienteId={clienteId}
+          onChiudi={() => { setAssegnaFigura(null); ricarica(); }}
         />
       )}
       {editFormazione && catalogo && (
@@ -451,6 +465,70 @@ function FormNomine({ catalogo, persona, figureAttuali, onChiudi }: {
           </label>
         ))}
       </div>
+      <div className="bo-bar">
+        <button className="bo-btn" disabled={salvando} onClick={salva}>{salvando ? 'Salvo…' : 'Salva'}</button>
+        <button className="bo-btn ghost" onClick={onChiudi}>Annulla</button>
+      </div>
+    </Modale>
+  );
+}
+
+function FormAssegnaFigura({ figura, persone, clienteId, onChiudi }: {
+  figura: FiguraSicurezza; persone: PersonaValutata[]; clienteId: string; onChiudi: () => void;
+}) {
+  const titolari = persone.filter((p) => p.figure.some((f) => f.codice === figura.codice)).map((p) => p.persona.id);
+  const [sel, setSel] = useState<Set<string>>(new Set(titolari));
+  const [nuovoNome, setNuovoNome] = useState('');
+  const [nuovoCognome, setNuovoCognome] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  async function salva() {
+    setSalvando(true);
+    try {
+      const dopo = new Set(sel);
+      if (nuovoNome.trim()) {
+        const creata = await salvaPersona({ ...nuovaPersona(clienteId), nome: nuovoNome.trim(), cognome: nuovoCognome.trim() || null });
+        dopo.add(creata.id);
+      }
+      // aggiunte: chi e' selezionato ma non era titolare
+      for (const id of dopo) {
+        if (!titolari.includes(id)) {
+          await salvaNomina({ id: '', persona_id: id, figura_codice: figura.codice, data_nomina: null, attiva: true, note: null });
+        }
+      }
+      // rimozioni: chi era titolare ma non e' piu' selezionato
+      for (const id of titolari) {
+        if (!dopo.has(id)) {
+          await supabase.from('nomina').delete().eq('persona_id', id).eq('figura_codice', figura.codice);
+        }
+      }
+      onChiudi();
+    } finally { setSalvando(false); }
+  }
+
+  return (
+    <Modale titolo={'Assegna: ' + figura.nome}>
+      {persone.length > 0 ? (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {persone.map((p) => (
+            <label key={p.persona.id} className="chk" style={{ padding: '5px 0' }}>
+              <input type="checkbox" checked={sel.has(p.persona.id)} onChange={() => toggle(p.persona.id)} /> {nomePersona(p.persona)}
+            </label>
+          ))}
+        </div>
+      ) : (
+        <div className="bo-sub" style={{ marginTop: 0 }}>Nessuna persona ancora in organigramma: creane una qui sotto.</div>
+      )}
+
+      <div className="bo-card flat" style={{ marginTop: 10 }}>
+        <div className="bo-title" style={{ fontSize: 13.5, marginBottom: 8 }}>Crea e assegna una nuova persona</div>
+        <div className="bo-grid">
+          <label className="bo-field"><span>Nome</span><input type="text" value={nuovoNome} onChange={(e) => setNuovoNome(e.target.value)} /></label>
+          <label className="bo-field"><span>Cognome</span><input type="text" value={nuovoCognome} onChange={(e) => setNuovoCognome(e.target.value)} /></label>
+        </div>
+      </div>
+
       <div className="bo-bar">
         <button className="bo-btn" disabled={salvando} onClick={salva}>{salvando ? 'Salvo…' : 'Salva'}</button>
         <button className="bo-btn ghost" onClick={onChiudi}>Annulla</button>
