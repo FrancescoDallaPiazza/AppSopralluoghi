@@ -43,6 +43,10 @@ export interface FiguraSicurezza {
   nome: string;
   ordine: number;
   attiva: boolean;
+  gruppo?: string | null;
+  gruppo_ordine?: number | null;
+  guida?: string | null;
+  obbligo?: string | null;
 }
 
 export interface FiguraRequisito {
@@ -381,7 +385,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
 export async function caricaCatalogo(): Promise<Catalogo> {
   const [c, f, r, ea] = await Promise.all([
     supabase.from('corso_catalogo').select('*').order('categoria'),
-    supabase.from('figura_sicurezza').select('*').order('ordine'),
+    supabase.from('figura_sicurezza').select('*').order('gruppo_ordine', { nullsFirst: false }).order('ordine'),
     supabase.from('figura_requisito').select('*'),
     supabase.from('esonero_ammesso').select('*').order('ordine'),
   ]);
