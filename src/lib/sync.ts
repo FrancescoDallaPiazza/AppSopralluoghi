@@ -4,8 +4,12 @@
 // (gli id sono generati lato client, quindi niente conflitti di chiave).
 
 import { supabase, FOTO_BUCKET } from './supabase';
-import { db, enqueueRow, enqueueDelete } from './db';
+import { db, enqueueRow, enqueueDelete, type OutboxOp, type OrganigrammaConferma } from './db';
 import { newId, type EsitoVoce, type Foto, type Azione } from './types';
+import type {
+  Persona, Nomina, Formazione, Esonero,
+  CorsoCatalogo, FiguraSicurezza, FiguraRequisito, EsoneroAmmesso,
+} from './admin/formazione';
 
 // ---------- Foto: ridimensiona allo scatto, poi accoda ----------
 // Riduce a ~1600px sul lato lungo, JPEG ~0.8 -> ~200-400 KB invece dei MB del file pieno.
@@ -105,6 +109,138 @@ export async function rimuoviAzione(azioneId: string) {
     }
   }
   await enqueueDelete('azione', azioneId);
+}
+
+// ---------- Organigramma & formazione: salva/elimina locale + accoda ----------
+// Stesso principio degli esiti: scrittura locale immediata + upsert per id in
+// coda. In campo l'id viene generato lato client (offline-first), quindi le
+// figure/persone create senza rete si sincronizzano senza conflitti.
+
+function conId<T extends { id: string }>(x: T): T {
+  return x.id ? x : { ...x, id: newId() };
+}
+
+export async function salvaPersona(p: Persona): Promise<Persona> {
+  const r = conId(p);
+  await db.persone.put(r);
+  await enqueueRow('persona', r as unknown as Record<string, unknown>);
+  void runSync();
+  return r;
+}
+
+export async function salvaNomina(n: Nomina): Promise<Nomina> {
+  const r = conId(n);
+  await db.nomine.put(r);
+  await enqueueRow('nomina', r as unknown as Record<string, unknown>);
+  void runSync();
+  return r;
+}
+
+export async function salvaFormazione(f: Formazione): Promise<Formazione> {
+  const r = conId(f);
+  await db.formazioni.put(r);
+  await enqueueRow('formazione', r as unknown as Record<string, unknown>);
+  void runSync();
+  return r;
+}
+
+export async function salvaEsonero(e: Esonero): Promise<Esonero> {
+  const r = conId(e);
+  await db.esoneri.put(r);
+  await enqueueRow('esonero', r as unknown as Record<string, unknown>);
+  void runSync();
+  return r;
+}
+
+export async function salvaConfermaOrganigramma(c: OrganigrammaConferma): Promise<OrganigrammaConferma> {
+  const r = conId(c);
+  await db.conferme.put(r);
+  await enqueueRow('organigramma_conferma', r as unknown as Record<string, unknown>);
+  void runSync();
+  return r;
+}
+
+// Rimozione: pulizia locale + annullo degli upsert pendenti + delete in coda.
+async function rimuoviRiga(
+  table: NonNullable<OutboxOp['table']>,
+  dexieDelete: () => Promise<void>,
+  id: string,
+) {
+  await dexieDelete();
+  const ops = await db.outbox.where('kind').equals('row').toArray();
+  for (const o of ops) {
+    if (o.table === table && (o.payload as { id?: string } | undefined)?.id === id && o.seq != null) {
+      await db.outbox.delete(o.seq);
+    }
+  }
+  await enqueueDelete(table, id);
+  void runSync();
+}
+
+export async function eliminaNomina(id: string) { await rimuoviRiga('nomina', () => db.nomine.delete(id), id); }
+export async function eliminaFormazione(id: string) { await rimuoviRiga('formazione', () => db.formazioni.delete(id), id); }
+export async function eliminaEsonero(id: string) { await rimuoviRiga('esonero', () => db.esoneri.delete(id), id); }
+
+export async function eliminaPersona(id: string) {
+  const ns = await db.nomine.where('persona_id').equals(id).toArray();
+  for (const n of ns) await eliminaNomina(n.id);
+  const fs = await db.formazioni.where('persona_id').equals(id).toArray();
+  for (const f of fs) await eliminaFormazione(f.id);
+  const es = await db.esoneri.where('persona_id').equals(id).toArray();
+  for (const e of es) await eliminaEsonero(e.id);
+  await rimuoviRiga('persona', () => db.persone.delete(id), id);
+}
+
+// Cache locale dell'organigramma di un cliente (chiamata online; poi leggibile
+// offline). I cataloghi sono globali, le entita sono filtrate per cliente.
+export async function prefetchOrganigramma(clienteId: string): Promise<void> {
+  if (!navigator.onLine) return;
+  const [c, f, r, ea] = await Promise.all([
+    supabase.from('corso_catalogo').select('*'),
+    supabase.from('figura_sicurezza').select('*'),
+    supabase.from('figura_requisito').select('*'),
+    supabase.from('esonero_ammesso').select('*'),
+  ]);
+  if (!c.error && c.data) await db.corsi.bulkPut(c.data as CorsoCatalogo[]);
+  if (!f.error && f.data) await db.figure.bulkPut(f.data as FiguraSicurezza[]);
+  if (!r.error && r.data) await db.requisiti.bulkPut(r.data as FiguraRequisito[]);
+  if (!ea.error && ea.data) await db.esoneriAmmessi.bulkPut(ea.data as EsoneroAmmesso[]);
+
+  const pe = await supabase.from('persona').select('*').eq('cliente_id', clienteId);
+  if (pe.error || !pe.data) return;
+  const persone = pe.data as Persona[];
+  await db.persone.bulkPut(persone);
+  const ids = persone.map((p) => p.id);
+  if (ids.length) {
+    const [no, fo, es] = await Promise.all([
+      supabase.from('nomina').select('*').in('persona_id', ids),
+      supabase.from('formazione').select('*').in('persona_id', ids),
+      supabase.from('esonero').select('*').in('persona_id', ids),
+    ]);
+    if (!no.error && no.data) await db.nomine.bulkPut(no.data as Nomina[]);
+    if (!fo.error && fo.data) await db.formazioni.bulkPut(fo.data as Formazione[]);
+    if (!es.error && es.data) await db.esoneri.bulkPut(es.data as Esonero[]);
+  }
+}
+
+export interface OrganigrammaLocale {
+  corsi: CorsoCatalogo[]; figure: FiguraSicurezza[]; requisiti: FiguraRequisito[]; esoneriAmmessi: EsoneroAmmesso[];
+  persone: Persona[]; nomine: Nomina[]; formazioni: Formazione[]; esoneri: Esonero[];
+}
+
+export async function caricaOrganigrammaLocale(clienteId: string): Promise<OrganigrammaLocale> {
+  const persone = await db.persone.where('cliente_id').equals(clienteId).toArray();
+  const ids = new Set(persone.map((p) => p.id));
+  const [corsi, figure, requisiti, esoneriAmmessi, nomineAll, formAll, esonAll] = await Promise.all([
+    db.corsi.toArray(), db.figure.toArray(), db.requisiti.toArray(), db.esoneriAmmessi.toArray(),
+    db.nomine.toArray(), db.formazioni.toArray(), db.esoneri.toArray(),
+  ]);
+  return {
+    corsi, figure, requisiti, esoneriAmmessi, persone,
+    nomine: nomineAll.filter((n) => ids.has(n.persona_id)),
+    formazioni: formAll.filter((f) => ids.has(f.persona_id)),
+    esoneri: esonAll.filter((e) => ids.has(e.persona_id)),
+  };
 }
 
 // ---------- Drain della coda ----------

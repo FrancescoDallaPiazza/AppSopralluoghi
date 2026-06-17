@@ -4,13 +4,30 @@
 
 import Dexie, { type Table } from 'dexie';
 import type { Sopralluogo, ChecklistCompilata, EsitoVoce, Foto, Azione } from './types';
+import type {
+  Persona, Nomina, Formazione, Esonero,
+  CorsoCatalogo, FiguraSicurezza, FiguraRequisito, EsoneroAmmesso,
+} from './admin/formazione';
+
+// Conferma organigramma legata a un sopralluogo (vedi migration 019).
+export interface OrganigrammaConferma {
+  id: string;
+  sopralluogo_id: string;
+  cliente_id: string | null;
+  tecnico_id: string | null;
+  tecnico_nome: string | null;
+  tipo: 'compilato' | 'confermato' | 'variato';
+  data_conferma: string;
+  note: string | null;
+}
 
 // Un'operazione in coda: una riga da fare upsert, una foto da caricare, oppure
 // una riga da cancellare lato server (per id).
 export interface OutboxOp {
   seq?: number;                 // auto-increment, garantisce l'ordine
   kind: 'row' | 'photo' | 'delete';
-  table?: 'sopralluogo' | 'checklist_compilata' | 'esito_voce' | 'foto' | 'azione' | 'aggiornamento_azione' | 'sopralluogo_revisione';
+  table?: 'sopralluogo' | 'checklist_compilata' | 'esito_voce' | 'foto' | 'azione' | 'aggiornamento_azione' | 'sopralluogo_revisione'
+        | 'persona' | 'nomina' | 'formazione' | 'esonero' | 'organigramma_conferma';
   payload?: Record<string, unknown>;
   fotoId?: string;             // per kind 'photo': id della foto/blob da caricare
   id?: string;                 // per kind 'delete': id della riga da cancellare
@@ -39,6 +56,16 @@ class LocalDB extends Dexie {
   azioni!: Table<Azione, string>;
   contesto!: Table<ContestoSopralluogo, string>;
   outbox!: Table<OutboxOp, number>;
+  // organigramma & formazione (cache locale per consultazione/modifica offline)
+  persone!: Table<Persona, string>;
+  nomine!: Table<Nomina, string>;
+  formazioni!: Table<Formazione, string>;
+  esoneri!: Table<Esonero, string>;
+  corsi!: Table<CorsoCatalogo, string>;
+  figure!: Table<FiguraSicurezza, string>;
+  requisiti!: Table<FiguraRequisito, string>;
+  esoneriAmmessi!: Table<EsoneroAmmesso, string>;
+  conferme!: Table<OrganigrammaConferma, string>;
 
   constructor() {
     super('sopralluoghi');
@@ -54,6 +81,21 @@ class LocalDB extends Dexie {
     // v2: cache del contesto sopralluogo per il prefetch offline.
     this.version(2).stores({
       contesto: 'id',
+    });
+    // v3: organigramma & formazione, per consultazione e modifica offline.
+    // I cataloghi (corsi/figure/requisiti/esoneri ammessi) sono di sola lettura
+    // in campo: cache locale, niente coda. Le entita per-persona e la conferma
+    // si scrivono via outbox (upsert per id, come il resto).
+    this.version(3).stores({
+      persone: 'id, cliente_id, attivo',
+      nomine: 'id, persona_id, figura_codice',
+      formazioni: 'id, persona_id, corso_codice',
+      esoneri: 'id, persona_id',
+      corsi: 'codice, categoria',
+      figure: 'codice, gruppo_ordine, ordine',
+      requisiti: 'id, figura_codice, corso_codice',
+      esoneriAmmessi: 'id, corso_codice, figura_codice',
+      conferme: 'id, sopralluogo_id, cliente_id',
     });
   }
 }

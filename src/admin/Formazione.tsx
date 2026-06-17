@@ -34,6 +34,45 @@ const LABEL_OBBLIGO: Record<string, string> = {
   sempre: 'sempre', condizionale: 'se ricorre', eventuale: 'eventuale',
 };
 
+function periodoLabel(mesi: number | null): string {
+  if (!mesi) return '';
+  if (mesi % 12 === 0) { const a = mesi / 12; return a === 1 ? 'ogni anno' : `ogni ${a} anni`; }
+  return `ogni ${mesi} mesi`;
+}
+
+// Specifiche ragionate di un ruolo, ricavate dal catalogo (corsi richiesti,
+// periodicita di aggiornamento, esoneri ammessi). Restano sincronizzate con
+// cio' che si edita nel catalogo, niente testo duplicato.
+function calcolaSpec(figura: FiguraSicurezza, catalogo: Catalogo) {
+  const reqs = catalogo.requisiti.filter((r) => r.figura_codice === figura.codice);
+  const corsi = reqs
+    .map((r) => catalogo.corsi.find((c) => c.codice === r.corso_codice))
+    .filter((c): c is (typeof catalogo.corsi)[number] => !!c);
+
+  const formazione = corsi.map((c) => ({
+    nome: c.nome,
+    base: c.ore != null ? `${c.ore}h` : 'ore secondo attrezzatura/settore',
+    agg: c.aggiornamento_mesi
+      ? `aggiornamento ${c.ore_aggiornamento ?? '?'}h ${periodoLabel(c.aggiornamento_mesi)}`
+      : 'nessun aggiornamento periodico',
+    note: c.note,
+  }));
+
+  const periodi = Array.from(new Set(
+    corsi.filter((c) => c.aggiornamento_mesi).map((c) => periodoLabel(c.aggiornamento_mesi)),
+  ));
+  const scadenza = periodi.length
+    ? `Aggiornamento ${periodi.join(' / ')}; la scadenza decorre dalla data dell'attestato.`
+    : 'Nessuna scadenza periodica (formazione permanente).';
+
+  const codici = new Set(corsi.map((c) => c.codice));
+  const esoneri = catalogo.esoneriAmmessi.filter(
+    (e) => e.figura_codice === figura.codice || (e.corso_codice != null && codici.has(e.corso_codice)),
+  );
+
+  return { formazione, scadenza, esoneri };
+}
+
 const CSS_FZ = `
 .fz-metrics{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px;}
 .fz-metric{background:#fff; border:1px solid var(--line); border-radius:14px; padding:13px 15px;}
@@ -60,7 +99,15 @@ const CSS_FZ = `
 .fz-badge.sempre{background:var(--ok-bg); color:var(--ok);}
 .fz-badge.condizionale{background:#fbf0d6; color:var(--hi-dark);}
 .fz-badge.eventuale{background:#eef1f4; color:var(--ink-soft);}
-.fz-guida{font-size:12px; color:var(--ink-soft); margin-top:4px; line-height:1.45; max-width:64ch;}
+.fz-guida{font-size:12px; color:var(--ink-soft); margin-top:7px; line-height:1.45; max-width:66ch; font-style:italic;}
+.fz-assignee{margin-top:7px; padding:7px 11px; border-radius:9px; font-size:12.5px;}
+.fz-assignee.filled{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38;}
+.fz-assignee.empty{background:#f6f2ea; border:1px dashed var(--line); color:var(--ink-soft);}
+.fz-assignee-lab{font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:.04em; margin-right:7px;}
+.fz-specs{margin-top:9px; display:grid; gap:9px;}
+.fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
+.fz-spec-v{font-size:12px; color:var(--ink); line-height:1.45; max-width:72ch;}
+.fz-spec-note{color:var(--ink-soft);}
 .fz-av{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px; flex:0 0 auto;}
 .fz-modal-bg{position:fixed; inset:0; background:rgba(20,16,12,.42); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px;}
 .fz-modal{background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; width:min(560px,100%); max-height:90vh; overflow:auto;}
@@ -208,25 +255,60 @@ export default function Formazione() {
             {gruppiCopertura.map((g) => (
               <div key={g.nome} className="fz-grp">
                 <div className="fz-grp-h">{g.nome}</div>
-                {g.righe.map(({ figura, persone }) => (
+                {g.righe.map(({ figura, persone }) => {
+                  const spec = catalogo ? calcolaSpec(figura, catalogo) : null;
+                  return (
                   <div key={figura.codice} className="fz-fig">
                     <div className="fz-fig-top">
                       <span className="fz-fig-nome">
                         {figura.nome}
                         {figura.obbligo && <span className={'fz-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
                       </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
-                        {persone.length > 0
-                          ? <span className="bo-pill attivo" title={persone.join(', ')}>{persone.length > 3 ? persone.length + ' persone' : persone.join(', ')}</span>
-                          : <span className="bo-pill archiviato">non assegnata</span>}
-                        <button className="bo-btn ghost sm" onClick={() => setAssegnaFigura(figura)}>
-                          {persone.length > 0 ? 'modifica' : 'assegna'}
-                        </button>
-                      </span>
+                      <button className="bo-btn ghost sm" onClick={() => setAssegnaFigura(figura)}>
+                        {persone.length > 0 ? 'modifica' : 'assegna'}
+                      </button>
                     </div>
+
+                    <div className={'fz-assignee ' + (persone.length ? 'filled' : 'empty')} title={persone.join(', ')}>
+                      {persone.length > 0
+                        ? <span><span className="fz-assignee-lab">Assegnata a</span>{persone.length > 4 ? persone.length + ' persone' : persone.join(', ')}</span>
+                        : <span>Nessuna persona assegnata</span>}
+                    </div>
+
                     {figura.guida && <div className="fz-guida">{figura.guida}</div>}
+
+                    {spec && (
+                      <div className="fz-specs">
+                        <div className="fz-spec">
+                          <div className="fz-spec-t">Formazione richiesta (base + aggiornamento)</div>
+                          {spec.formazione.length === 0
+                            ? <div className="fz-spec-v">Nessun corso a catalogo per questa figura.</div>
+                            : spec.formazione.map((f, i) => (
+                                <div key={i} className="fz-spec-v">
+                                  <b>{f.nome}</b> &mdash; {f.base}; {f.agg}
+                                  {f.note ? <span className="fz-spec-note"> &middot; {f.note}</span> : null}
+                                </div>
+                              ))}
+                        </div>
+                        <div className="fz-spec">
+                          <div className="fz-spec-t">Eventuale scadenza</div>
+                          <div className="fz-spec-v">{spec.scadenza}</div>
+                        </div>
+                        <div className="fz-spec">
+                          <div className="fz-spec-t">Esoneri / crediti previsti</div>
+                          {spec.esoneri.length === 0
+                            ? <div className="fz-spec-v">Nessuno registrato.</div>
+                            : spec.esoneri.map((e) => (
+                                <div key={e.id} className="fz-spec-v">
+                                  {e.descrizione}{e.riferimento_norm ? <span className="fz-spec-note"> &mdash; {e.riferimento_norm}</span> : null}
+                                </div>
+                              ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ))}
           </div>
