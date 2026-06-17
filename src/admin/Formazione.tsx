@@ -120,6 +120,8 @@ const CSS_FZ = `
 .ev-box{border-top:1px solid var(--line); margin-top:8px; padding-top:8px;}
 .ev-eson-ok{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38; border-radius:9px; padding:9px 11px; font-size:12.5px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
 .ev-note{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+.ev-mod{padding-top:4px;}
+.ev-mod + .ev-mod{border-top:1px solid var(--line); margin-top:8px; padding-top:8px;}
 .fz-av{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px; flex:0 0 auto;}
 .fz-modal-bg{position:fixed; inset:0; background:rgba(20,16,12,.42); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px;}
 .fz-modal{background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; width:min(560px,100%); max-height:90vh; overflow:auto;}
@@ -638,12 +640,23 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
 }) {
   const codici = new Set(catalogo.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice));
   const reqs = pv.requisiti.filter((r) => codici.has(r.corso_codice));
+  const moduli = catalogo.esoneriAmmessi
+    .filter((a) => a.attivo && a.tipo === 'altro' && a.figura_codice === figura.codice)
+    .map((a) => ({ ammesso: a, corso: catalogo.corsi.find((c) => c.codice === a.corso_codice) }));
   return (
     <Modale titolo={'Evidenze: ' + figura.nome + ' \u2014 ' + nomePersona(pv.persona)}>
       {reqs.length === 0 && <div className="bo-sub" style={{ marginTop: 0 }}>Nessun corso richiesto per questo ruolo.</div>}
       {reqs.map((r) => (
         <EvidenzaRequisito key={r.corso_codice} r={r} persona={pv.persona} figura={figura} onCambia={onCambia} />
       ))}
+      {moduli.length > 0 && (
+        <div className="ev-card">
+          <div className="ev-head"><span><b>Modulo aggiuntivo</b></span></div>
+          {moduli.map((m) => (
+            <ModuloAggiuntivo key={m.ammesso.id} m={m} persona={pv.persona} onCambia={onCambia} />
+          ))}
+        </div>
+      )}
       <div className="bo-bar"><button className="bo-btn ghost" onClick={onChiudi}>Chiudi</button></div>
     </Modale>
   );
@@ -708,7 +721,7 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
       ) : (
         <>
           <div className="ev-step">1 &middot; Esonero / credito previsto?</div>
-          {r.promemoria.map((a) => (
+          {r.promemoria.filter((a) => a.tipo !== 'altro').map((a) => (
             <div key={a.id} className="fz-hint"><span aria-hidden="true">i</span><span>{a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}</span></div>
           ))}
           <div className="ev-choice">
@@ -747,6 +760,53 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Modulo formativo aggiuntivo e condizionato (es. modulo cantieri per impresa
+// affidataria): una spunta rende evidente se l'azienda ci ricade; se si', si
+// registra l'attestato del modulo come una normale formazione.
+function ModuloAggiuntivo({ m, persona, onCambia }: {
+  m: { ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined };
+  persona: Persona; onCambia: () => void;
+}) {
+  const [applicabile, setApplicabile] = useState(false);
+  const [data, setData] = useState('');
+  const [ore, setOre] = useState(m.corso?.ore != null ? String(m.corso.ore) : '');
+  const [ente, setEnte] = useState('');
+  const [allegato, setAllegato] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function registra() {
+    if (!data || !m.corso) return;
+    setBusy(true);
+    try {
+      await salvaFormazione({
+        id: '', persona_id: persona.id, corso_codice: m.corso.codice, corso_nome: m.corso.nome, categoria: m.corso.categoria,
+        data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
+        is_aggiornamento: false, scadenza: null, allegato_url: allegato.trim() || null, note: null,
+      });
+      onCambia();
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="ev-mod">
+      <div className="fz-hint"><span aria-hidden="true">i</span><span>{m.ammesso.descrizione}{m.ammesso.riferimento_norm ? ' \u2014 ' + m.ammesso.riferimento_norm : ''}</span></div>
+      <label className="chk"><input type="checkbox" checked={applicabile} onChange={(e) => setApplicabile(e.target.checked)} /> L'azienda ricade nell'obbligo di questo modulo aggiuntivo</label>
+      {applicabile && m.corso && (
+        <div className="ev-box">
+          <div className="bo-grid">
+            <label className="bo-field"><span>Data completamento *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
+            <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
+            <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
+            <label className="bo-field"><span>Allegato (link al documento)</span><input type="text" value={allegato} onChange={(e) => setAllegato(e.target.value)} placeholder="URL del PDF/foto attestato" /></label>
+          </div>
+          <button className="bo-btn sm" disabled={busy || !data} onClick={registra}>Registra modulo aggiuntivo</button>
+        </div>
+      )}
+      {applicabile && !m.corso && <div className="ev-note">Corso del modulo non trovato a catalogo.</div>}
     </div>
   );
 }
