@@ -380,6 +380,48 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
   return { persona: d.persona, figure, requisiti, stato: statoPersona, promemoria_figura: promemoriaFigura };
 }
 
+// Dati gia' in memoria (catalogo + entita per-persona) da cui assemblare il
+// riepilogo: e' la forma comune a online (caricata da Supabase) e offline
+// (letta dalla cache locale Dexie in campo).
+export interface DatiOrganigramma {
+  catalogo: Catalogo;
+  persone: Persona[];
+  nomine: Nomina[];
+  formazioni: Formazione[];
+  esoneri: Esonero[];
+}
+
+// Nucleo PURO di valutaCliente: dati il catalogo e le entita per-persona gia'
+// in memoria, filtra le persone non attive, valuta ciascuna con valutaPersona e
+// somma i conteggi di stato. Non tocca Supabase, quindi e' riusabile sia dal
+// back-office online sia dall'editor di campo offline (alimentato dalla cache
+// locale via caricaOrganigrammaLocale).
+export function assemblaRiepilogo(
+  clienteId: string,
+  rischio: LivelloRischio | null,
+  d: DatiOrganigramma,
+): RiepilogoCliente {
+  const valutate = d.persone
+    .filter((p) => p.attivo)
+    .map((p) =>
+      valutaPersona(
+        {
+          persona: p,
+          nomine: d.nomine.filter((n) => n.persona_id === p.id),
+          formazioni: d.formazioni.filter((f) => f.persona_id === p.id),
+          esoneri: d.esoneri.filter((e) => e.persona_id === p.id),
+        },
+        d.catalogo,
+        rischio,
+      ),
+    );
+
+  const conteggi: ConteggiStato = { conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0 };
+  for (const pv of valutate) for (const r of pv.requisiti) conteggi[r.stato]++;
+
+  return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi };
+}
+
 // ============================ CARICAMENTO DATI ============================
 
 export async function caricaCatalogo(): Promise<Catalogo> {
@@ -440,25 +482,7 @@ export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<
     caricaPerPersone<Esonero>('esonero', ids),
   ]);
 
-  const valutate = persone
-    .filter((p) => p.attivo)
-    .map((p) =>
-      valutaPersona(
-        {
-          persona: p,
-          nomine: nomine.filter((n) => n.persona_id === p.id),
-          formazioni: formazioni.filter((f) => f.persona_id === p.id),
-          esoneri: esoneri.filter((e) => e.persona_id === p.id),
-        },
-        catalogo,
-        rischio,
-      ),
-    );
-
-  const conteggi: ConteggiStato = { conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0 };
-  for (const pv of valutate) for (const r of pv.requisiti) conteggi[r.stato]++;
-
-  return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi };
+  return assemblaRiepilogo(clienteId, rischio, { catalogo, persone, nomine, formazioni, esoneri });
 }
 
 // ============================ CRUD ============================
