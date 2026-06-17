@@ -9,11 +9,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato,
-  type StatoRequisito, type Persona, type Nomina, type Formazione, type Esonero,
+  type Persona,
   type EsoneroAmmesso, type AreaInterna, type LivelloRischio, type TipoEsonero,
   type CosaDaFareProposta, type FiguraSicurezza,
   caricaCatalogo, caricaAreeInterne, valutaCliente,
-  salvaPersona, eliminaPersona, salvaNomina, eliminaNomina,
+  salvaPersona, eliminaPersona, salvaNomina,
   salvaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
@@ -22,9 +22,6 @@ import {
 
 interface ClienteLite { id: string; ragione_sociale: string; livello_rischio: LivelloRischio | null; }
 
-const TESTO_STATO: Record<StatoRequisito, string> = {
-  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato',
-};
 const TIPI_ESONERO: TipoEsonero[] = [
   'titolo_studio', 'abilitazione', 'ruolo_equipollente', 'credito_pregresso', 'altro',
 ];
@@ -32,6 +29,10 @@ const TIPI_ESONERO: TipoEsonero[] = [
 // foglio supplementare: semafori, metriche, chip, righe requisito, modali.
 const LABEL_OBBLIGO: Record<string, string> = {
   sempre: 'sempre', condizionale: 'se ricorre', eventuale: 'eventuale',
+};
+
+const LABEL_STATO: Record<string, string> = {
+  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato',
 };
 
 function periodoLabel(mesi: number | null): string {
@@ -107,10 +108,21 @@ const CSS_FZ = `
 .fz-assignee.empty{background:#f6f2ea; border:1px dashed var(--line); color:var(--ink-soft);}
 .fz-assignee-lab{font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:.04em; margin-right:7px;}
 .fz-fig-body{display:flex; gap:16px; align-items:flex-start; margin-top:7px; flex-wrap:wrap;}
-.fz-fig-main{flex:1 1 320px; min-width:0;}
-.fz-fig-people{flex:0 0 210px; display:flex; flex-direction:column; gap:8px;}
-.fz-person-box{background:#eaf4ee; border:1px solid #cfe6d8; border-radius:9px; padding:8px 10px; font-size:12.5px; color:#1f5b38; display:flex; align-items:center; justify-content:space-between; gap:8px;}
-.fz-person-box .nm{font-weight:600;}
+.fz-fig-main{flex:3 1 360px; min-width:0;}
+.fz-fig-people{flex:1 1 240px; min-width:0; max-width:340px; display:flex; flex-direction:column; gap:8px;}
+.fz-person-box{background:#eaf4ee; border:1px solid #cfe6d8; border-radius:9px; padding:8px 10px; font-size:12.5px; color:#1f5b38;}
+.fz-person-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.fz-person-box .nm{font-weight:700;}
+.fz-person-act{display:flex; gap:10px; align-items:center; flex:0 0 auto;}
+.fz-person-ev{display:flex; flex-direction:column; gap:5px; margin-top:6px;}
+.fz-ev-row{display:flex; align-items:flex-start; justify-content:space-between; gap:6px;}
+.fz-ev-corso{font-size:11px; line-height:1.25;}
+.fz-ev-det{font-size:10.5px; color:#3d6b4f; margin-top:1px;}
+.fz-st{font-size:9px; font-weight:800; padding:2px 6px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap; flex:0 0 auto;}
+.st-conforme{background:#e7f3ea; color:#1f7a3d;}
+.st-in_scadenza{background:#fbf0d6; color:#9a6206;}
+.st-critico{background:#fbe3e0; color:#a33227;}
+.st-esonerato{background:#eef1f4; color:#5b5f66;}
 .fz-person-empty{background:#f6f2ea; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
 .fz-specs{margin-top:9px; display:grid; gap:9px;}
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
@@ -135,10 +147,6 @@ const CSS_FZ = `
 .fz-modal{background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; width:min(560px,100%); max-height:90vh; overflow:auto;}
 `;
 
-function Sem({ stato }: { stato: StatoRequisito }) {
-  return <span className={`fz-sem ${stato}`}>{TESTO_STATO[stato]}</span>;
-}
-
 export default function Formazione() {
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
   const [clienti, setClienti] = useState<ClienteLite[]>([]);
@@ -149,9 +157,6 @@ export default function Formazione() {
   const [errore, setErrore] = useState<string | null>(null);
 
   const [editPersona, setEditPersona] = useState<Persona | null>(null);
-  const [editFormazione, setEditFormazione] = useState<Formazione | null>(null);
-  const [editEsonero, setEditEsonero] = useState<Esonero | null>(null);
-  const [editNominePersonaId, setEditNominePersonaId] = useState<string | null>(null);
   const [assegnaFigura, setAssegnaFigura] = useState<FiguraSicurezza | null>(null);
   const [evidenzeFor, setEvidenzeFor] = useState<{ personaId: string; figuraCodice: string } | null>(null);
   const [genOpen, setGenOpen] = useState(false);
@@ -281,6 +286,7 @@ export default function Formazione() {
                 {g.righe.map(({ figura, persone }) => {
                   const spec = catalogo ? calcolaSpec(figura, catalogo) : null;
                   const assegnate = riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? [];
+                  const reqCodici = new Set(catalogo?.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice) ?? []);
                   return (
                   <div key={figura.codice} className="fz-fig">
                     <div className="fz-fig-top">
@@ -330,8 +336,24 @@ export default function Formazione() {
                         {assegnate.length > 0
                           ? assegnate.map((pv) => (
                               <div key={pv.persona.id} className="fz-person-box">
-                                <span className="nm">{nomePersona(pv.persona)}</span>
-                                <button className="ev-link" onClick={() => setEvidenzeFor({ personaId: pv.persona.id, figuraCodice: figura.codice })}>evidenze</button>
+                                <div className="fz-person-head">
+                                  <span className="nm">{nomePersona(pv.persona)}</span>
+                                  <span className="fz-person-act">
+                                    <button className="ev-link" onClick={() => setEditPersona(pv.persona)}>modifica</button>
+                                    <button className="ev-link" onClick={() => setEvidenzeFor({ personaId: pv.persona.id, figuraCodice: figura.codice })}>evidenze</button>
+                                  </span>
+                                </div>
+                                <div className="fz-person-ev">
+                                  {pv.requisiti.filter((r) => reqCodici.has(r.corso_codice)).map((r) => (
+                                    <div key={r.corso_codice} className="fz-ev-item">
+                                      <div className="fz-ev-row">
+                                        <span className="fz-ev-corso">{r.corso_nome}</span>
+                                        <span className={'fz-st st-' + r.stato}>{LABEL_STATO[r.stato] ?? r.stato}</span>
+                                      </div>
+                                      {r.dettaglio && <div className="fz-ev-det">{r.dettaglio}</div>}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             ))
                           : <div className="fz-person-empty">Nessuna persona assegnata</div>}
@@ -353,15 +375,6 @@ export default function Formazione() {
           )}
 
           {riep.persone.length === 0 && <div className="bo-empty">Nessuna persona in organigramma. Aggiungine una per iniziare.</div>}
-          {riep.persone.map((pv) => (
-            <SchedaPersona
-              key={pv.persona.id} pv={pv}
-              onModificaPersona={() => setEditPersona(pv.persona)}
-              onModificaNomine={() => setEditNominePersonaId(pv.persona.id)}
-              onAggiungiAttestato={() => setEditFormazione(nuovaFormazione(pv.persona.id))}
-              onRegistraEsonero={(r) => setEditEsonero(nuovoEsonero(pv.persona.id, r))}
-            />
-          ))}
 
           <div style={{ marginTop: 18 }}>
             <button className="bo-btn ghost sm" onClick={() => setCatalogoOpen((v) => !v)}>
@@ -380,14 +393,6 @@ export default function Formazione() {
           onAnnulla={() => setEditPersona(null)}
           onSalva={async (p) => { await salvaPersona(p); setEditPersona(null); ricarica(); }}
           onElimina={editPersona.id ? async () => { if (confirm('Eliminare la persona e tutti i suoi dati formativi?')) { await eliminaPersona(editPersona.id); setEditPersona(null); ricarica(); } } : undefined}
-        />
-      )}
-      {editNominePersonaId && catalogo && riep && (
-        <FormNomine
-          catalogo={catalogo}
-          persona={riep.persone.find((p) => p.persona.id === editNominePersonaId)!.persona}
-          figureAttuali={riep.persone.find((p) => p.persona.id === editNominePersonaId)!.figure.map((f) => f.codice)}
-          onChiudi={() => { setEditNominePersonaId(null); ricarica(); }}
         />
       )}
       {assegnaFigura && riep && (
@@ -412,93 +417,11 @@ export default function Formazione() {
           />
         );
       })()}
-      {editFormazione && catalogo && (
-        <FormFormazione
-          catalogo={catalogo} formazione={editFormazione}
-          onAnnulla={() => setEditFormazione(null)}
-          onSalva={async (f) => { await salvaFormazione(f); setEditFormazione(null); ricarica(); }}
-        />
-      )}
-      {editEsonero && catalogo && (
-        <FormEsonero
-          catalogo={catalogo} esonero={editEsonero}
-          onAnnulla={() => setEditEsonero(null)}
-          onSalva={async (e) => { await salvaEsonero(e); setEditEsonero(null); ricarica(); }}
-        />
-      )}
     </>
   );
 }
 
 // ============================ SOTTO-COMPONENTI ============================
-
-function SchedaPersona({
-  pv, onModificaPersona, onModificaNomine, onAggiungiAttestato, onRegistraEsonero,
-}: {
-  pv: PersonaValutata;
-  onModificaPersona: () => void; onModificaNomine: () => void;
-  onAggiungiAttestato: () => void; onRegistraEsonero: (r: RequisitoValutato) => void;
-}) {
-  const [aperta, setAperta] = useState(true);
-  const iniziali = nomePersona(pv.persona).split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  const colAv = pv.stato === 'conforme' || pv.stato === 'esonerato'
-    ? { bg: 'var(--ok-bg)', fg: 'var(--ok)' }
-    : pv.stato === 'in_scadenza' ? { bg: '#fbf0d6', fg: 'var(--hi-dark)' } : { bg: 'var(--no-bg)', fg: 'var(--no)' };
-
-  return (
-    <div className="bo-card">
-      <div className="bo-row">
-        <div className="fz-av" style={{ background: colAv.bg, color: colAv.fg }}>{iniziali}</div>
-        <div className="grow">
-          <div className="bo-title">{nomePersona(pv.persona)}</div>
-          <div className="bo-meta" style={{ marginTop: 5 }}>
-            {pv.figure.length === 0 && <span style={{ color: 'var(--faint)' }}>nessuna figura</span>}
-            {pv.figure.map((f) => <span key={f.codice} className="fz-chip">{f.nome}</span>)}
-          </div>
-        </div>
-        <Sem stato={pv.stato} />
-        <button className="bo-btn ghost sm" onClick={() => setAperta((v) => !v)}>{aperta ? 'comprimi' : 'espandi'}</button>
-      </div>
-
-      {aperta && (
-        <>
-          <div className="bo-bar" style={{ marginTop: 12, marginBottom: 2 }}>
-            <button className="bo-btn ghost sm" onClick={onModificaPersona}>Dati persona</button>
-            <button className="bo-btn ghost sm" onClick={onModificaNomine}>Figure / nomine</button>
-            <button className="bo-btn ghost sm" onClick={onAggiungiAttestato}>+ Attestato</button>
-          </div>
-
-          {pv.requisiti.length === 0 && <div className="bo-sub" style={{ margin: '8px 0 0' }}>Nessun requisito: assegna almeno una figura.</div>}
-
-          {pv.requisiti.map((r) => (
-            <div key={r.corso_codice} className="fz-req">
-              <div className="grow">
-                <div className="bo-title" style={{ fontSize: 13.5 }}>
-                  {r.corso_nome}
-                  {r.ore != null && <span style={{ color: 'var(--ink-soft)', fontWeight: 400 }}> · {r.ore}h</span>}
-                  {!r.obbligatorio && <span style={{ color: 'var(--faint)', fontWeight: 400 }}> (facoltativo)</span>}
-                </div>
-                <div className="d">{r.dettaglio}</div>
-                {r.promemoria.map((a) => (
-                  <div key={a.id} className="fz-hint">
-                    <span aria-hidden="true">i</span>
-                    <span>{a.descrizione}{a.riferimento_norm ? ' — ' + a.riferimento_norm : ''}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                <Sem stato={r.stato} />
-                {r.stato !== 'esonerato' && r.promemoria.length > 0 && (
-                  <button className="bo-btn ghost sm" onClick={() => onRegistraEsonero(r)}>registra esonero</button>
-                )}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
 
 function PannelloGenerazione({
   riep, aree, clienteId, onChiudi, onFatto,
@@ -599,50 +522,6 @@ function FormPersona({ persona, onSalva, onAnnulla, onElimina }: {
   );
 }
 
-function FormNomine({ catalogo, persona, figureAttuali, onChiudi }: {
-  catalogo: Catalogo; persona: Persona; figureAttuali: string[]; onChiudi: () => void;
-}) {
-  const [sel, setSel] = useState<Set<string>>(new Set(figureAttuali));
-  const [salvando, setSalvando] = useState(false);
-  const toggle = (cod: string) => setSel((s) => { const n = new Set(s); if (n.has(cod)) n.delete(cod); else n.add(cod); return n; });
-
-  async function salva() {
-    setSalvando(true);
-    try {
-      const { data } = await supabase.from('nomina').select('*').eq('persona_id', persona.id);
-      const attuali = (data ?? []) as Nomina[];
-      const attualiCod = new Set(attuali.map((n) => n.figura_codice));
-      for (const cod of sel) {
-        if (!attualiCod.has(cod)) {
-          await salvaNomina({ id: '', persona_id: persona.id, figura_codice: cod, data_nomina: null, attiva: true, note: null });
-        }
-      }
-      for (const n of attuali) {
-        if (!sel.has(n.figura_codice)) await eliminaNomina(n.id);
-      }
-      onChiudi();
-    } finally { setSalvando(false); }
-  }
-
-  return (
-    <Modale titolo={'Figure di ' + nomePersona(persona)}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {catalogo.figure.filter((f) => f.attiva).map((f) => (
-          <label key={f.codice} className="chk" style={{ padding: '5px 0' }}>
-            <input type="checkbox" checked={sel.has(f.codice)} onChange={() => toggle(f.codice)} /> {f.nome}
-          </label>
-        ))}
-      </div>
-      <div className="bo-bar">
-        <button className="bo-btn" disabled={salvando} onClick={salva}>{salvando ? 'Salvo…' : 'Salva'}</button>
-        <button className="bo-btn ghost" onClick={onChiudi}>Annulla</button>
-      </div>
-    </Modale>
-  );
-}
-
-// Evidenze di un ruolo per una persona: una card per ogni corso richiesto,
-// con il workflow a cancello (prima l'esonero; se c'e' non si chiede altro).
 function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
   pv: PersonaValutata; figura: FiguraSicurezza; catalogo: Catalogo; onCambia: () => void; onChiudi: () => void;
 }) {
@@ -883,73 +762,6 @@ function FormAssegnaFigura({ figura, persone, clienteId, onChiudi }: {
   );
 }
 
-function FormFormazione({ catalogo, formazione, onSalva, onAnnulla }: {
-  catalogo: Catalogo; formazione: Formazione; onSalva: (f: Formazione) => void; onAnnulla: () => void;
-}) {
-  const [f, setF] = useState<Formazione>(formazione);
-  function scegliCorso(codice: string) {
-    const c = catalogo.corsi.find((x) => x.codice === codice);
-    setF({ ...f, corso_codice: codice || null, corso_nome: c?.nome ?? f.corso_nome, categoria: c?.categoria ?? f.categoria });
-  }
-  return (
-    <Modale titolo="Attestato / corso svolto">
-      <label className="bo-field"><span>Corso (dal catalogo)</span>
-        <select value={f.corso_codice ?? ''} onChange={(e) => scegliCorso(e.target.value)}>
-          <option value="">— libero / fuori catalogo —</option>
-          {catalogo.corsi.filter((c) => c.attivo).map((c) => <option key={c.codice} value={c.codice}>{c.nome}</option>)}
-        </select>
-      </label>
-      <label className="bo-field"><span>Nome corso *</span><input type="text" value={f.corso_nome} onChange={(e) => setF({ ...f, corso_nome: e.target.value })} /></label>
-      <div className="bo-grid">
-        <label className="bo-field"><span>Data completamento</span><input type="date" value={f.data_completamento ?? ''} onChange={(e) => setF({ ...f, data_completamento: e.target.value })} /></label>
-        <label className="bo-field"><span>Ore</span><input type="number" value={f.ore ?? ''} onChange={(e) => setF({ ...f, ore: e.target.value === '' ? null : Number(e.target.value) })} /></label>
-        <label className="bo-field"><span>Ente formatore</span><input type="text" value={f.ente_formatore ?? ''} onChange={(e) => setF({ ...f, ente_formatore: e.target.value })} /></label>
-        <label className="bo-field"><span>Scadenza (vuoto = calcolata)</span><input type="date" value={f.scadenza ?? ''} onChange={(e) => setF({ ...f, scadenza: e.target.value })} /></label>
-      </div>
-      <label className="chk" style={{ marginBottom: 12 }}><input type="checkbox" checked={f.is_aggiornamento} onChange={(e) => setF({ ...f, is_aggiornamento: e.target.checked })} /> è un aggiornamento</label>
-      <div className="bo-bar">
-        <button className="bo-btn" disabled={!f.corso_nome.trim()} onClick={() => onSalva(f)}>Salva</button>
-        <button className="bo-btn ghost" onClick={onAnnulla}>Annulla</button>
-      </div>
-    </Modale>
-  );
-}
-
-function FormEsonero({ catalogo, esonero, onSalva, onAnnulla }: {
-  catalogo: Catalogo; esonero: Esonero; onSalva: (e: Esonero) => void; onAnnulla: () => void;
-}) {
-  const [e, setE] = useState<Esonero>(esonero);
-  return (
-    <Modale titolo="Registra esonero / credito">
-      <div className="bo-grid">
-        <label className="bo-field"><span>Corso (vuoto = intera figura)</span>
-          <select value={e.corso_codice ?? ''} onChange={(ev) => setE({ ...e, corso_codice: ev.target.value || null })}>
-            <option value="">— intera figura —</option>
-            {catalogo.corsi.filter((c) => c.attivo).map((c) => <option key={c.codice} value={c.codice}>{c.nome}</option>)}
-          </select>
-        </label>
-        <label className="bo-field"><span>Figura (opzionale)</span>
-          <select value={e.figura_codice ?? ''} onChange={(ev) => setE({ ...e, figura_codice: ev.target.value || null })}>
-            <option value="">— qualunque —</option>
-            {catalogo.figure.map((f) => <option key={f.codice} value={f.codice}>{f.nome}</option>)}
-          </select>
-        </label>
-        <label className="bo-field"><span>Tipo</span>
-          <select value={e.tipo} onChange={(ev) => setE({ ...e, tipo: ev.target.value as TipoEsonero })}>
-            {TIPI_ESONERO.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </label>
-        <label className="bo-field"><span>Riferimento normativo</span><input type="text" value={e.riferimento_norm ?? ''} onChange={(ev) => setE({ ...e, riferimento_norm: ev.target.value })} /></label>
-      </div>
-      <label className="bo-field"><span>Motivazione *</span><textarea value={e.motivazione} onChange={(ev) => setE({ ...e, motivazione: ev.target.value })} /></label>
-      <div className="bo-bar">
-        <button className="bo-btn" disabled={!e.motivazione.trim() || (!e.corso_codice && !e.figura_codice)} onClick={() => onSalva(e)}>Salva</button>
-        <button className="bo-btn ghost" onClick={onAnnulla}>Annulla</button>
-      </div>
-    </Modale>
-  );
-}
-
 function EditorEsoneriAmmessi({ catalogo, onCambia }: { catalogo: Catalogo; onCambia: (ea: EsoneroAmmesso[]) => void; }) {
   const [lista, setLista] = useState<EsoneroAmmesso[]>(catalogo.esoneriAmmessi);
   const [edit, setEdit] = useState<EsoneroAmmesso | null>(null);
@@ -1018,10 +830,4 @@ function EditorEsoneriAmmessi({ catalogo, onCambia }: { catalogo: Catalogo; onCa
 
 function nuovaPersona(clienteId: string): Persona {
   return { id: '', cliente_id: clienteId, nome: '', cognome: null, codice_fiscale: null, mansione: null, reparto: null, data_assunzione: null, livello_rischio: null, attivo: true, note: null };
-}
-function nuovaFormazione(personaId: string): Formazione {
-  return { id: '', persona_id: personaId, corso_codice: null, corso_nome: '', categoria: null, data_completamento: null, ore: null, ente_formatore: null, is_aggiornamento: false, scadenza: null, allegato_url: null, note: null };
-}
-function nuovoEsonero(personaId: string, r?: RequisitoValutato): Esonero {
-  return { id: '', persona_id: personaId, corso_codice: r?.corso_codice ?? null, figura_codice: null, tipo: 'titolo_studio', motivazione: '', riferimento_norm: r?.promemoria[0]?.riferimento_norm ?? null, documento_url: null, data_riconoscimento: null, attivo: true, note: null };
 }
