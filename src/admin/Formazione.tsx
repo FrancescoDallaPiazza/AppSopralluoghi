@@ -106,6 +106,12 @@ const CSS_FZ = `
 .fz-assignee.filled{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38;}
 .fz-assignee.empty{background:#f6f2ea; border:1px dashed var(--line); color:var(--ink-soft);}
 .fz-assignee-lab{font-weight:800; text-transform:uppercase; font-size:10px; letter-spacing:.04em; margin-right:7px;}
+.fz-fig-body{display:flex; gap:16px; align-items:flex-start; margin-top:7px; flex-wrap:wrap;}
+.fz-fig-main{flex:1 1 320px; min-width:0;}
+.fz-fig-people{flex:0 0 210px; display:flex; flex-direction:column; gap:8px;}
+.fz-person-box{background:#eaf4ee; border:1px solid #cfe6d8; border-radius:9px; padding:8px 10px; font-size:12.5px; color:#1f5b38; display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.fz-person-box .nm{font-weight:600;}
+.fz-person-empty{background:#f6f2ea; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
 .fz-specs{margin-top:9px; display:grid; gap:9px;}
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
 .fz-spec-v{font-size:12px; color:var(--ink); line-height:1.45; max-width:72ch;}
@@ -274,6 +280,7 @@ export default function Formazione() {
                 <div className="fz-grp-h">{g.nome}</div>
                 {g.righe.map(({ figura, persone }) => {
                   const spec = catalogo ? calcolaSpec(figura, catalogo) : null;
+                  const assegnate = riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? [];
                   return (
                   <div key={figura.codice} className="fz-fig">
                     <div className="fz-fig-top">
@@ -286,49 +293,50 @@ export default function Formazione() {
                       </button>
                     </div>
 
-                    <div className={'fz-assignee ' + (persone.length ? 'filled' : 'empty')}>
-                      {persone.length > 0
-                        ? <div className="fz-assignee-list">
-                            <span className="fz-assignee-lab">Assegnata a</span>
-                            {(riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? []).map((pv) => (
-                              <span key={pv.persona.id} className="fz-assignee-chip">
-                                {nomePersona(pv.persona)}
-                                <button className="ev-link" onClick={() => setEvidenzeFor({ personaId: pv.persona.id, figuraCodice: figura.codice })}>evidenze</button>
-                              </span>
-                            ))}
-                          </div>
-                        : <span>Nessuna persona assegnata</span>}
-                    </div>
-
-                    {figura.guida && <div className="fz-guida">{figura.guida}</div>}
-
-                    {spec && (
-                      <div className="fz-specs">
-                        <div className="fz-spec">
-                          <div className="fz-spec-t">Formazione richiesta (base + aggiornamento)</div>
-                          {spec.formazione.length === 0
-                            ? <div className="fz-spec-v">Nessun corso a catalogo per questa figura.</div>
-                            : spec.formazione.map((f, i) => (
-                                <div key={i} className="fz-spec-v">
-                                  <b>{f.nome}</b> &mdash; {f.base}; {f.agg}
-                                  {f.note ? <span className="fz-spec-note"> &middot; {f.note}</span> : null}
-                                </div>
-                              ))}
-                        </div>
-                        <div className="fz-spec">
-                          <div className="fz-spec-t">Eventuale scadenza</div>
-                          <div className="fz-spec-v">{spec.scadenza}</div>
-                        </div>
-                        {(spec.haEsoneri || spec.haModuli) && (
-                          <div className="fz-spec">
-                            <div className="fz-spec-t">Esoneri / crediti previsti</div>
-                            <div className="fz-spec-v">
-                              {spec.haModuli ? 'Esoneri/crediti ed eventuale modulo aggiuntivo' : 'Esoneri/crediti'} si valutano per persona dal link evidenze.
+                    <div className="fz-fig-body">
+                      <div className="fz-fig-main">
+                        {figura.guida && <div className="fz-guida">{figura.guida}</div>}
+                        {spec && (
+                          <div className="fz-specs">
+                            <div className="fz-spec">
+                              <div className="fz-spec-t">Formazione richiesta (base + aggiornamento)</div>
+                              {spec.formazione.length === 0
+                                ? <div className="fz-spec-v">Nessun corso a catalogo per questa figura.</div>
+                                : spec.formazione.map((f, i) => (
+                                    <div key={i} className="fz-spec-v">
+                                      <b>{f.nome}</b> &mdash; {f.base}; {f.agg}
+                                      {f.note ? <span className="fz-spec-note"> &middot; {f.note}</span> : null}
+                                    </div>
+                                  ))}
                             </div>
+                            <div className="fz-spec">
+                              <div className="fz-spec-t">Eventuale scadenza</div>
+                              <div className="fz-spec-v">{spec.scadenza}</div>
+                            </div>
+                            {(spec.haEsoneri || spec.haModuli) && (
+                              <div className="fz-spec">
+                                <div className="fz-spec-t">Esoneri / crediti previsti</div>
+                                <div className="fz-spec-v">
+                                  {spec.haModuli ? 'Esoneri/crediti ed eventuale modulo aggiuntivo' : 'Esoneri/crediti'} si valutano per persona dal link evidenze.
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    )}
+
+                      <div className="fz-fig-people">
+                        <div className="fz-spec-t">Incaricati</div>
+                        {assegnate.length > 0
+                          ? assegnate.map((pv) => (
+                              <div key={pv.persona.id} className="fz-person-box">
+                                <span className="nm">{nomePersona(pv.persona)}</span>
+                                <button className="ev-link" onClick={() => setEvidenzeFor({ personaId: pv.persona.id, figuraCodice: figura.codice })}>evidenze</button>
+                              </div>
+                            ))
+                          : <div className="fz-person-empty">Nessuna persona assegnata</div>}
+                      </div>
+                    </div>
                   </div>
                   );
                 })}
