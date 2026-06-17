@@ -66,11 +66,13 @@ function calcolaSpec(figura: FiguraSicurezza, catalogo: Catalogo) {
     : 'Nessuna scadenza periodica (formazione permanente).';
 
   const codici = new Set(corsi.map((c) => c.codice));
-  const esoneri = catalogo.esoneriAmmessi.filter(
-    (e) => e.figura_codice === figura.codice || (e.corso_codice != null && codici.has(e.corso_codice)),
+  const rilevanti = catalogo.esoneriAmmessi.filter(
+    (e) => e.attivo && (e.figura_codice === figura.codice || (e.corso_codice != null && codici.has(e.corso_codice))),
   );
+  const haEsoneri = rilevanti.some((e) => e.tipo !== 'altro');
+  const haModuli = rilevanti.some((e) => e.tipo === 'altro');
 
-  return { formazione, scadenza, esoneri };
+  return { formazione, scadenza, haEsoneri, haModuli };
 }
 
 const CSS_FZ = `
@@ -317,16 +319,14 @@ export default function Formazione() {
                           <div className="fz-spec-t">Eventuale scadenza</div>
                           <div className="fz-spec-v">{spec.scadenza}</div>
                         </div>
-                        <div className="fz-spec">
-                          <div className="fz-spec-t">Esoneri / crediti previsti</div>
-                          {spec.esoneri.length === 0
-                            ? <div className="fz-spec-v">Nessuno registrato.</div>
-                            : spec.esoneri.map((e) => (
-                                <div key={e.id} className="fz-spec-v">
-                                  {e.descrizione}{e.riferimento_norm ? <span className="fz-spec-note"> &mdash; {e.riferimento_norm}</span> : null}
-                                </div>
-                              ))}
-                        </div>
+                        {(spec.haEsoneri || spec.haModuli) && (
+                          <div className="fz-spec">
+                            <div className="fz-spec-t">Esoneri / crediti previsti</div>
+                            <div className="fz-spec-v">
+                              {spec.haModuli ? 'Esoneri/crediti ed eventuale modulo aggiuntivo' : 'Esoneri/crediti'} si valutano per persona dal link evidenze.
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
