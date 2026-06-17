@@ -380,48 +380,6 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
   return { persona: d.persona, figure, requisiti, stato: statoPersona, promemoria_figura: promemoriaFigura };
 }
 
-// Dati gia' in memoria (catalogo + entita per-persona) da cui assemblare il
-// riepilogo: e' la forma comune a online (caricata da Supabase) e offline
-// (letta dalla cache locale Dexie in campo).
-export interface DatiOrganigramma {
-  catalogo: Catalogo;
-  persone: Persona[];
-  nomine: Nomina[];
-  formazioni: Formazione[];
-  esoneri: Esonero[];
-}
-
-// Nucleo PURO di valutaCliente: dati il catalogo e le entita per-persona gia'
-// in memoria, filtra le persone non attive, valuta ciascuna con valutaPersona e
-// somma i conteggi di stato. Non tocca Supabase, quindi e' riusabile sia dal
-// back-office online sia dall'editor di campo offline (alimentato dalla cache
-// locale via caricaOrganigrammaLocale).
-export function assemblaRiepilogo(
-  clienteId: string,
-  rischio: LivelloRischio | null,
-  d: DatiOrganigramma,
-): RiepilogoCliente {
-  const valutate = d.persone
-    .filter((p) => p.attivo)
-    .map((p) =>
-      valutaPersona(
-        {
-          persona: p,
-          nomine: d.nomine.filter((n) => n.persona_id === p.id),
-          formazioni: d.formazioni.filter((f) => f.persona_id === p.id),
-          esoneri: d.esoneri.filter((e) => e.persona_id === p.id),
-        },
-        d.catalogo,
-        rischio,
-      ),
-    );
-
-  const conteggi: ConteggiStato = { conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0 };
-  for (const pv of valutate) for (const r of pv.requisiti) conteggi[r.stato]++;
-
-  return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi };
-}
-
 // ============================ CARICAMENTO DATI ============================
 
 export async function caricaCatalogo(): Promise<Catalogo> {
@@ -466,7 +424,51 @@ async function caricaPerPersone<T>(tabella: string, personaIds: string[]): Promi
   return (data ?? []) as T[];
 }
 
+// Dati grezzi dell'organigramma di un cliente, gia' caricati da qualunque
+// sorgente: Supabase (online, back-office) oppure cache locale Dexie (offline,
+// campo). Alimentano la funzione di assemblaggio pura qui sotto.
+export interface DatiOrganigramma {
+  persone: Persona[];
+  nomine: Nomina[];
+  formazioni: Formazione[];
+  esoneri: Esonero[];
+}
+
+// Assemblaggio del riepilogo cliente: PURO. Dati il catalogo, il rischio del
+// cliente e i dati grezzi (persone + nomine + formazioni + esoneri), valuta ogni
+// persona attiva con il motore puro `valutaPersona` e aggrega i conteggi. Non
+// tocca la rete: la stessa logica serve il back-office (dati da Supabase) e la
+// compilazione di campo (dati dalla cache offline tramite caricaOrganigrammaLocale).
+export function assemblaRiepilogo(
+  clienteId: string,
+  rischio: LivelloRischio | null,
+  dati: DatiOrganigramma,
+  cat: Catalogo,
+): RiepilogoCliente {
+  const valutate = dati.persone
+    .filter((p) => p.attivo)
+    .map((p) =>
+      valutaPersona(
+        {
+          persona: p,
+          nomine: dati.nomine.filter((n) => n.persona_id === p.id),
+          formazioni: dati.formazioni.filter((f) => f.persona_id === p.id),
+          esoneri: dati.esoneri.filter((e) => e.persona_id === p.id),
+        },
+        cat,
+        rischio,
+      ),
+    );
+
+  const conteggi: ConteggiStato = { conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0 };
+  for (const pv of valutate) for (const r of pv.requisiti) conteggi[r.stato]++;
+
+  return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi };
+}
+
 // Valuta l'intero cliente: organigramma + stato formativo per persona.
+// Online-first: carica i dati da Supabase e delega l'assemblaggio alla funzione
+// pura `assemblaRiepilogo` (la medesima usata offline in campo).
 export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
   const catalogo = cat ?? (await caricaCatalogo());
 
@@ -482,7 +484,7 @@ export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<
     caricaPerPersone<Esonero>('esonero', ids),
   ]);
 
-  return assemblaRiepilogo(clienteId, rischio, { catalogo, persone, nomine, formazioni, esoneri });
+  return assemblaRiepilogo(clienteId, rischio, { persone, nomine, formazioni, esoneri }, catalogo);
 }
 
 // ============================ CRUD ============================
