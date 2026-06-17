@@ -14,7 +14,7 @@ import {
   type CosaDaFareProposta, type FiguraSicurezza,
   caricaCatalogo, caricaAreeInterne, valutaCliente,
   salvaPersona, eliminaPersona, salvaNomina, eliminaNomina,
-  salvaFormazione, salvaEsonero,
+  salvaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
   nomePersona,
@@ -108,6 +108,18 @@ const CSS_FZ = `
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
 .fz-spec-v{font-size:12px; color:var(--ink); line-height:1.45; max-width:72ch;}
 .fz-spec-note{color:var(--ink-soft);}
+.fz-assignee-list{display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center;}
+.fz-assignee-chip{display:inline-flex; align-items:center;}
+.ev-link{background:none; border:none; color:#2563aa; font-size:11px; cursor:pointer; padding:0 0 0 6px; text-decoration:underline;}
+.ev-card{border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:var(--card,#fff);}
+.ev-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; font-size:14px;}
+.ev-ore{color:var(--ink-soft); font-weight:400;}
+.ev-step{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin:8px 0 4px;}
+.ev-choice{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0;}
+.bo-btn.on{background:var(--ink); color:#fff;}
+.ev-box{border-top:1px solid var(--line); margin-top:8px; padding-top:8px;}
+.ev-eson-ok{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38; border-radius:9px; padding:9px 11px; font-size:12.5px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.ev-note{font-size:12px; color:var(--ink-soft); margin-top:4px;}
 .fz-av{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px; flex:0 0 auto;}
 .fz-modal-bg{position:fixed; inset:0; background:rgba(20,16,12,.42); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px;}
 .fz-modal{background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; width:min(560px,100%); max-height:90vh; overflow:auto;}
@@ -131,6 +143,7 @@ export default function Formazione() {
   const [editEsonero, setEditEsonero] = useState<Esonero | null>(null);
   const [editNominePersonaId, setEditNominePersonaId] = useState<string | null>(null);
   const [assegnaFigura, setAssegnaFigura] = useState<FiguraSicurezza | null>(null);
+  const [evidenzeFor, setEvidenzeFor] = useState<{ personaId: string; figuraCodice: string } | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [catalogoOpen, setCatalogoOpen] = useState(false);
 
@@ -269,9 +282,17 @@ export default function Formazione() {
                       </button>
                     </div>
 
-                    <div className={'fz-assignee ' + (persone.length ? 'filled' : 'empty')} title={persone.join(', ')}>
+                    <div className={'fz-assignee ' + (persone.length ? 'filled' : 'empty')}>
                       {persone.length > 0
-                        ? <span><span className="fz-assignee-lab">Assegnata a</span>{persone.length > 4 ? persone.length + ' persone' : persone.join(', ')}</span>
+                        ? <div className="fz-assignee-list">
+                            <span className="fz-assignee-lab">Assegnata a</span>
+                            {(riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? []).map((pv) => (
+                              <span key={pv.persona.id} className="fz-assignee-chip">
+                                {nomePersona(pv.persona)}
+                                <button className="ev-link" onClick={() => setEvidenzeFor({ personaId: pv.persona.id, figuraCodice: figura.codice })}>evidenze</button>
+                              </span>
+                            ))}
+                          </div>
                         : <span>Nessuna persona assegnata</span>}
                     </div>
 
@@ -367,6 +388,20 @@ export default function Formazione() {
           onChiudi={() => { setAssegnaFigura(null); ricarica(); }}
         />
       )}
+      {evidenzeFor && riep && catalogo && (() => {
+        const pv = riep.persone.find((p) => p.persona.id === evidenzeFor.personaId);
+        const figura = catalogo.figure.find((f) => f.codice === evidenzeFor.figuraCodice);
+        if (!pv || !figura) return null;
+        return (
+          <EvidenzeRuolo
+            pv={pv}
+            figura={figura}
+            catalogo={catalogo}
+            onCambia={ricarica}
+            onChiudi={() => setEvidenzeFor(null)}
+          />
+        );
+      })()}
       {editFormazione && catalogo && (
         <FormFormazione
           catalogo={catalogo} formazione={editFormazione}
@@ -593,6 +628,126 @@ function FormNomine({ catalogo, persona, figureAttuali, onChiudi }: {
         <button className="bo-btn ghost" onClick={onChiudi}>Annulla</button>
       </div>
     </Modale>
+  );
+}
+
+// Evidenze di un ruolo per una persona: una card per ogni corso richiesto,
+// con il workflow a cancello (prima l'esonero; se c'e' non si chiede altro).
+function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
+  pv: PersonaValutata; figura: FiguraSicurezza; catalogo: Catalogo; onCambia: () => void; onChiudi: () => void;
+}) {
+  const codici = new Set(catalogo.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice));
+  const reqs = pv.requisiti.filter((r) => codici.has(r.corso_codice));
+  return (
+    <Modale titolo={'Evidenze: ' + figura.nome + ' \u2014 ' + nomePersona(pv.persona)}>
+      {reqs.length === 0 && <div className="bo-sub" style={{ marginTop: 0 }}>Nessun corso richiesto per questo ruolo.</div>}
+      {reqs.map((r) => (
+        <EvidenzaRequisito key={r.corso_codice} r={r} persona={pv.persona} figura={figura} onCambia={onCambia} />
+      ))}
+      <div className="bo-bar"><button className="bo-btn ghost" onClick={onChiudi}>Chiudi</button></div>
+    </Modale>
+  );
+}
+
+function EvidenzaRequisito({ r, persona, figura, onCambia }: {
+  r: RequisitoValutato; persona: Persona; figura: FiguraSicurezza; onCambia: () => void;
+}) {
+  const [scelta, setScelta] = useState<'attesa' | 'esonero' | 'formazione'>('attesa');
+  const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
+  const [esonMot, setEsonMot] = useState('');
+  const [esonRif, setEsonRif] = useState(r.promemoria[0]?.riferimento_norm ?? '');
+  const [data, setData] = useState('');
+  const [ore, setOre] = useState(r.ore != null ? String(r.ore) : '');
+  const [ente, setEnte] = useState('');
+  const [allegato, setAllegato] = useState('');
+  const [agg, setAgg] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function registraEsonero() {
+    if (!esonMot.trim()) return;
+    setBusy(true);
+    try {
+      await salvaEsonero({
+        id: '', persona_id: persona.id, corso_codice: r.corso_codice, figura_codice: figura.codice,
+        tipo: esonTipo, motivazione: esonMot.trim(), riferimento_norm: esonRif.trim() || null,
+        documento_url: null, data_riconoscimento: null, attivo: true, note: null,
+      });
+      onCambia();
+    } finally { setBusy(false); }
+  }
+  async function rimuoviEson() {
+    if (!r.esonero_id) return;
+    setBusy(true);
+    try { await eliminaEsonero(r.esonero_id); onCambia(); } finally { setBusy(false); }
+  }
+  async function registraAttestato() {
+    if (!data) return;
+    setBusy(true);
+    try {
+      await salvaFormazione({
+        id: '', persona_id: persona.id, corso_codice: r.corso_codice, corso_nome: r.corso_nome, categoria: r.categoria,
+        data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
+        is_aggiornamento: agg, scadenza: null, allegato_url: allegato.trim() || null, note: null,
+      });
+      onCambia();
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="ev-card">
+      <div className="ev-head">
+        <span><b>{r.corso_nome}</b>{r.ore != null && <span className="ev-ore"> &middot; {r.ore}h</span>}</span>
+        <span className={'fz-badge ' + (r.stato === 'esonerato' ? 'eventuale' : r.stato === 'conforme' ? 'sempre' : 'condizionale')}>{r.stato}</span>
+      </div>
+
+      {r.esonero_id ? (
+        <div className="ev-eson-ok">
+          Esonero / credito registrato per questo requisito: l'attestato non e' richiesto.
+          <button className="bo-btn ghost sm" disabled={busy} onClick={rimuoviEson}>rimuovi esonero</button>
+        </div>
+      ) : (
+        <>
+          <div className="ev-step">1 &middot; Esonero / credito previsto?</div>
+          {r.promemoria.map((a) => (
+            <div key={a.id} className="fz-hint"><span aria-hidden="true">i</span><span>{a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}</span></div>
+          ))}
+          <div className="ev-choice">
+            <button className={'bo-btn ghost sm' + (scelta === 'esonero' ? ' on' : '')} onClick={() => setScelta('esonero')}>Si, c'e' un esonero/credito</button>
+            <button className={'bo-btn ghost sm' + (scelta === 'formazione' ? ' on' : '')} onClick={() => setScelta('formazione')}>No, registro la formazione</button>
+          </div>
+
+          {scelta === 'esonero' && (
+            <div className="ev-box">
+              <div className="bo-grid">
+                <label className="bo-field"><span>Tipo</span>
+                  <select value={esonTipo} onChange={(e) => setEsonTipo(e.target.value as TipoEsonero)}>{TIPI_ESONERO.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+                </label>
+                <label className="bo-field"><span>Riferimento normativo</span><input type="text" value={esonRif} onChange={(e) => setEsonRif(e.target.value)} /></label>
+              </div>
+              <label className="bo-field"><span>Motivazione *</span><textarea value={esonMot} onChange={(e) => setEsonMot(e.target.value)} /></label>
+              <button className="bo-btn sm" disabled={busy || !esonMot.trim()} onClick={registraEsonero}>Registra esonero / credito</button>
+            </div>
+          )}
+
+          {scelta === 'formazione' && (
+            <div className="ev-box">
+              <div className="ev-step">2 &middot; Formazione richiesta (base + aggiornamento)</div>
+              {r.formazione_id && <div className="ev-note">Attestato gia' presente: aggiungine un altro solo per l'aggiornamento o una correzione.</div>}
+              <div className="bo-grid">
+                <label className="bo-field"><span>Data completamento *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
+                <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
+                <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
+                <label className="bo-field"><span>Allegato (link al documento)</span><input type="text" value={allegato} onChange={(e) => setAllegato(e.target.value)} placeholder="URL del PDF/foto attestato" /></label>
+              </div>
+              <label className="chk" style={{ marginBottom: 10 }}><input type="checkbox" checked={agg} onChange={(e) => setAgg(e.target.checked)} /> e' un aggiornamento</label>
+              <button className="bo-btn sm" disabled={busy || !data} onClick={registraAttestato}>Registra attestato</button>
+              <div className="ev-step" style={{ marginTop: 12 }}>3 &middot; Scadenza</div>
+              <div className="ev-note">{r.scadenza ? 'Scadenza attuale: ' + r.scadenza : 'Nessuna scadenza attiva: verra\' calcolata dalla data dell\'attestato.'}</div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
