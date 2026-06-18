@@ -43,47 +43,6 @@ async function apriAllegato(path: string): Promise<void> {
   else window.alert('Allegato non disponibile (offline o permessi insufficienti).');
 }
 
-function periodoLabel(mesi: number | null): string {
-  if (!mesi) return '';
-  if (mesi % 12 === 0) { const a = mesi / 12; return a === 1 ? 'ogni anno' : `ogni ${a} anni`; }
-  return `ogni ${mesi} mesi`;
-}
-
-// Specifiche ragionate di un ruolo, ricavate dal catalogo (corsi richiesti,
-// periodicita di aggiornamento, esoneri ammessi). Restano sincronizzate con
-// cio' che si edita nel catalogo, niente testo duplicato.
-function calcolaSpec(figura: FiguraSicurezza, catalogo: Catalogo) {
-  const reqs = catalogo.requisiti.filter((r) => r.figura_codice === figura.codice);
-  const corsi = reqs
-    .map((r) => catalogo.corsi.find((c) => c.codice === r.corso_codice))
-    .filter((c): c is (typeof catalogo.corsi)[number] => !!c);
-
-  const formazione = corsi.map((c) => ({
-    nome: c.nome,
-    base: c.ore != null ? `${c.ore}h` : 'ore secondo attrezzatura/settore',
-    agg: c.aggiornamento_mesi
-      ? `aggiornamento ${c.ore_aggiornamento ?? '?'}h ${periodoLabel(c.aggiornamento_mesi)}`
-      : 'nessun aggiornamento periodico',
-    note: c.note,
-  }));
-
-  const periodi = Array.from(new Set(
-    corsi.filter((c) => c.aggiornamento_mesi).map((c) => periodoLabel(c.aggiornamento_mesi)),
-  ));
-  const scadenza = periodi.length
-    ? `Aggiornamento ${periodi.join(' / ')}; la scadenza decorre dalla data dell'attestato.`
-    : 'Nessuna scadenza periodica (formazione permanente).';
-
-  const codici = new Set(corsi.map((c) => c.codice));
-  const rilevanti = catalogo.esoneriAmmessi.filter(
-    (e) => e.attivo && (e.figura_codice === figura.codice || (e.corso_codice != null && codici.has(e.corso_codice))),
-  );
-  const haEsoneri = rilevanti.some((e) => e.tipo !== 'altro');
-  const haModuli = rilevanti.some((e) => e.tipo === 'altro');
-
-  return { formazione, scadenza, haEsoneri, haModuli };
-}
-
 const CSS_FZ = `
 .fz-metrics{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px;}
 .fz-metric{background:#fff; border:1px solid var(--line); border-radius:14px; padding:13px 15px;}
@@ -112,7 +71,7 @@ const CSS_FZ = `
 .fz-badge.sempre{background:var(--ok-bg); color:var(--ok);}
 .fz-badge.condizionale{background:#fbf0d6; color:var(--hi-dark);}
 .fz-badge.eventuale{background:#eef1f4; color:var(--ink-soft);}
-.fz-guida{font-size:12px; color:var(--ink-soft); margin-top:7px; line-height:1.45; max-width:66ch; font-style:italic;}
+.fz-guida{font-size:14.5px; color:var(--ink); margin-top:8px; line-height:1.55; max-width:80ch; font-weight:500;}
 .fz-assignee{margin-top:7px; padding:7px 11px; border-radius:9px; font-size:12.5px;}
 .fz-assignee.filled{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38;}
 .fz-assignee.empty{background:#f6f2ea; border:1px dashed var(--line); color:var(--ink-soft);}
@@ -135,10 +94,7 @@ const CSS_FZ = `
 .st-esonerato{background:#eef1f4; color:#5b5f66;}
 .st-facoltativo{background:#eef1f4; color:#5b5f66;}
 .fz-person-empty{background:#f6f2ea; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
-.fz-specs{margin-top:9px; display:grid; gap:9px;}
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
-.fz-spec-v{font-size:12px; color:var(--ink); line-height:1.45; max-width:72ch;}
-.fz-spec-note{color:var(--ink-soft);}
 .fz-assignee-list{display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center;}
 .fz-assignee-chip{display:inline-flex; align-items:center;}
 .ev-link{background:none; border:none; color:#2563aa; font-size:11px; cursor:pointer; padding:0 0 0 6px; text-decoration:underline;}
@@ -299,7 +255,6 @@ export default function Formazione() {
               <div key={g.nome} className="fz-grp">
                 <div className="fz-grp-h">{g.nome}</div>
                 {g.righe.map(({ figura, persone }) => {
-                  const spec = catalogo ? calcolaSpec(figura, catalogo) : null;
                   const assegnate = riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? [];
                   const reqCodici = new Set(catalogo?.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice) ?? []);
                   return (
@@ -317,33 +272,6 @@ export default function Formazione() {
                     <div className="fz-fig-body">
                       <div className="fz-fig-main">
                         {figura.guida && <div className="fz-guida">{figura.guida}</div>}
-                        {spec && (
-                          <div className="fz-specs">
-                            <div className="fz-spec">
-                              <div className="fz-spec-t">Formazione richiesta (base + aggiornamento)</div>
-                              {spec.formazione.length === 0
-                                ? <div className="fz-spec-v">Nessun corso a catalogo per questa figura.</div>
-                                : spec.formazione.map((f, i) => (
-                                    <div key={i} className="fz-spec-v">
-                                      <b>{f.nome}</b> &mdash; {f.base}; {f.agg}
-                                      {f.note ? <span className="fz-spec-note"> &middot; {f.note}</span> : null}
-                                    </div>
-                                  ))}
-                            </div>
-                            <div className="fz-spec">
-                              <div className="fz-spec-t">Eventuale scadenza</div>
-                              <div className="fz-spec-v">{spec.scadenza}</div>
-                            </div>
-                            {(spec.haEsoneri || spec.haModuli) && (
-                              <div className="fz-spec">
-                                <div className="fz-spec-t">Esoneri / crediti previsti</div>
-                                <div className="fz-spec-v">
-                                  {spec.haModuli ? 'Esoneri/crediti ed eventuale modulo aggiuntivo' : 'Esoneri/crediti'} si valutano per persona dal link evidenze.
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
 
                       <div className="fz-fig-people">
@@ -542,9 +470,16 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
 }) {
   const codici = new Set(catalogo.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice));
   const reqs = pv.requisiti.filter((r) => codici.has(r.corso_codice));
-  const moduli = catalogo.esoneriAmmessi
-    .filter((a) => a.attivo && a.tipo === 'altro' && a.figura_codice === figura.codice)
-    .map((a) => ({ ammesso: a, corso: catalogo.corsi.find((c) => c.codice === a.corso_codice) }));
+  // Tutti i moduli aggiuntivi della PERSONA (di ogni suo ruolo), non solo della
+  // figura corrente; nascosti quelli coperti da un esonero applicabile.
+  const moduli = pv.moduli
+    .filter((mv) => mv.stato !== 'esonerato')
+    .map((mv) => ({
+      valutato: mv,
+      ammesso: catalogo.esoneriAmmessi.find((a) => a.id === mv.ammesso_id),
+      corso: catalogo.corsi.find((c) => c.codice === mv.corso_codice),
+    }))
+    .filter((m): m is { valutato: ModuloValutato; ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined } => m.ammesso != null);
   return (
     <Modale titolo={'Evidenze: ' + figura.nome + ' \u2014 ' + nomePersona(pv.persona)}>
       {reqs.length === 0 && <div className="bo-sub" style={{ marginTop: 0 }}>Nessun corso richiesto per questo ruolo.</div>}
@@ -553,9 +488,9 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
       ))}
       {moduli.length > 0 && (
         <div className="ev-card">
-          <div className="ev-head"><span><b>Modulo aggiuntivo</b></span></div>
+          <div className="ev-head"><span><b>Moduli aggiuntivi</b></span></div>
           {moduli.map((m) => (
-            <ModuloAggiuntivo key={m.ammesso.id} m={m} persona={pv.persona} valutato={pv.moduli.find((mv) => mv.corso_codice === m.corso?.codice)} onCambia={onCambia} />
+            <ModuloAggiuntivo key={m.ammesso.id} m={{ ammesso: m.ammesso, corso: m.corso }} persona={pv.persona} valutato={m.valutato} onCambia={onCambia} />
           ))}
         </div>
       )}
