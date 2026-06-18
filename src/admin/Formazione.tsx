@@ -483,24 +483,26 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
   const reqs = pv.requisiti.filter((r) => codici.has(r.corso_codice));
   // Tutti i moduli aggiuntivi della PERSONA (di ogni suo ruolo), non solo della
   // figura corrente; nascosti quelli coperti da un esonero applicabile.
-  const moduli = pv.moduli
-    .filter((mv) => mv.stato !== 'esonerato')
-    .map((mv) => ({
-      valutato: mv,
-      ammesso: catalogo.esoneriAmmessi.find((a) => a.id === mv.ammesso_id),
-      corso: catalogo.corsi.find((c) => c.codice === mv.corso_codice),
+  // Moduli aggiuntivi di QUESTA figura: agganciati alla card della formazione e
+  // mostrati nel ramo "No, registro la formazione". Nascosti se coperti da esonero.
+  const moduliFigura = catalogo.esoneriAmmessi
+    .filter((a) => a.attivo && a.tipo === 'altro' && a.figura_codice === figura.codice)
+    .map((a) => ({
+      ammesso: a,
+      corso: catalogo.corsi.find((c) => c.codice === a.corso_codice),
+      valutato: pv.moduli.find((mv) => mv.corso_codice === a.corso_codice),
     }))
-    .filter((m): m is { valutato: ModuloValutato; ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined } => m.ammesso != null);
+    .filter((m) => !m.valutato || m.valutato.stato !== 'esonerato');
   return (
     <Modale titolo={'Evidenze: ' + figura.nome + ' \u2014 ' + nomePersona(pv.persona)}>
       {reqs.length === 0 && <div className="bo-sub" style={{ marginTop: 0 }}>Nessun corso richiesto per questo ruolo.</div>}
-      {reqs.map((r) => (
-        <EvidenzaRequisito key={r.corso_codice} r={r} persona={pv.persona} figura={figura} onCambia={onCambia} />
+      {reqs.map((r, i) => (
+        <EvidenzaRequisito key={r.corso_codice} r={r} persona={pv.persona} figura={figura} onCambia={onCambia} moduli={i === 0 ? moduliFigura : undefined} />
       ))}
-      {moduli.length > 0 && (
+      {reqs.length === 0 && moduliFigura.length > 0 && (
         <div className="ev-card">
           <div className="ev-head"><span><b>Moduli aggiuntivi</b></span></div>
-          {moduli.map((m) => (
+          {moduliFigura.map((m) => (
             <ModuloAggiuntivo key={m.ammesso.id} m={{ ammesso: m.ammesso, corso: m.corso }} persona={pv.persona} valutato={m.valutato} onCambia={onCambia} />
           ))}
         </div>
@@ -510,8 +512,9 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
   );
 }
 
-function EvidenzaRequisito({ r, persona, figura, onCambia }: {
+function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
   r: RequisitoValutato; persona: Persona; figura: FiguraSicurezza; onCambia: () => void;
+  moduli?: { ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined; valutato: ModuloValutato | undefined }[];
 }) {
   const [scelta, setScelta] = useState<'attesa' | 'esonero' | 'formazione'>('attesa');
   const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
@@ -618,6 +621,14 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
               <button className="bo-btn sm" disabled={busy || !data} onClick={registraAttestato}>Registra attestato</button>
               <div className="ev-step" style={{ marginTop: 12 }}>3 &middot; Scadenza</div>
               <div className="ev-note">{r.scadenza ? 'Scadenza attuale: ' + r.scadenza : 'Nessuna scadenza attiva: verra\' calcolata dalla data dell\'attestato.'}</div>
+              {moduli && moduli.length > 0 && (
+                <>
+                  <div className="ev-step" style={{ marginTop: 12 }}>4 &middot; Moduli aggiuntivi</div>
+                  {moduli.map((m) => (
+                    <ModuloAggiuntivo key={m.ammesso.id} m={{ ammesso: m.ammesso, corso: m.corso }} persona={persona} valutato={m.valutato} onCambia={onCambia} />
+                  ))}
+                </>
+              )}
             </div>
           )}
         </>
