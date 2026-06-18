@@ -188,7 +188,8 @@ condizionato (le righe cantieri da esonero a modulo della figura) · 021 bucket
 Storage privato `attestati` (allegati attestato, PDF/immagini) + policy · 022
 descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025) ·
 023 flag persona `formazione_pregressa` (regime transitorio ante ASR 2025).
-**Prossima libera: 024.**
+024 figura Medico competente (sorveglianza sanitaria, senza corso).
+**Prossima libera: 025.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
