@@ -71,7 +71,10 @@ const CSS_FZ = `
 .fz-badge.sempre{background:var(--ok-bg); color:var(--ok);}
 .fz-badge.condizionale{background:#fbf0d6; color:var(--hi-dark);}
 .fz-badge.eventuale{background:#eef1f4; color:var(--ink-soft);}
-.fz-guida{font-size:14.5px; color:var(--ink); margin-top:8px; line-height:1.55; max-width:80ch; font-weight:500;}
+.fz-guida{font-size:13.5px; color:var(--ink); margin:8px 0 0; padding-left:18px; line-height:1.5; max-width:80ch; font-weight:500;}
+.fz-guida li{margin:2px 0;}
+.fz-guida li.sub{list-style:none; font-weight:400; color:var(--ink-soft); position:relative; padding-left:14px;}
+.fz-guida li.sub::before{content:'\\2013'; position:absolute; left:2px;}
 .fz-assignee{margin-top:7px; padding:7px 11px; border-radius:9px; font-size:12.5px;}
 .fz-assignee.filled{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38;}
 .fz-assignee.empty{background:#f6f2ea; border:1px dashed var(--line); color:var(--ink-soft);}
@@ -273,7 +276,15 @@ export default function Formazione() {
 
                     <div className="fz-fig-body">
                       <div className="fz-fig-main">
-                        {figura.guida && <div className="fz-guida">{figura.guida}</div>}
+                        {figura.guida && (
+                          <ul className="fz-guida">
+                            {figura.guida.split('\n').map((l) => l.trim()).filter(Boolean).map((l, i) => (
+                              l.startsWith('- ')
+                                ? <li key={i} className="sub">{l.slice(2).trim()}</li>
+                                : <li key={i}>{l}</li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
 
                       <div className="fz-fig-people">

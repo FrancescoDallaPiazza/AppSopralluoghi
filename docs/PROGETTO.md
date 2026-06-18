@@ -185,8 +185,9 @@ ammessi) · 018 organigramma come checklist ragionata (`gruppo`/`gruppo_ordine`/
 `guida`/`obbligo` su figura + figura `operatore_attrezzatura`) · 019
 `organigramma_conferma` (conferma per sopralluogo) · 020 modulo cantieri
 condizionato (le righe cantieri da esonero a modulo della figura) · 021 bucket
-Storage privato `attestati` (allegati attestato, PDF/immagini) + policy.
-**Prossima libera: 022.**
+Storage privato `attestati` (allegati attestato, PDF/immagini) + policy · 022
+descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025).
+**Prossima libera: 023.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -569,6 +570,13 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   esonerati). `valutaModuli` considera ora gli esoneri: un modulo coperto da
   esonero/credito attivo risulta `esonerato` e viene nascosto. Nell'organigramma il box
   incaricato mostra comunque lo stato del modulo (semaforo + tag "modulo").
+- **Descrizioni figure a elenco puntato** (`supabase/migrations/022_organigramma_guida_bullets.sql`
+  + `src/admin/Formazione.tsx`): la `guida` di ogni figura passa da prosa a bullet
+  (quadro obblighi ASR 17/04/2025, allegato cliente), con sotto-voci (varianti ATECO,
+  ore per rischio, aggiornamenti per dimensione/gruppo) prefissate da "- ". Il
+  rendering nell'organigramma diventa `<ul>` con voci e sotto-voci. ASPP non e' nel
+  quadro allegato: la sua guida resta invariata. Rilascio: eseguire 022 in SQL Editor,
+  poi push di `Formazione.tsx` + refresh.
 - **Moduli aggiuntivi nel box incaricato** (`src/admin/Formazione.tsx`): nell'organigramma
   atteso, il box di ogni incaricato ora mostra i moduli aggiuntivi della figura
   (accanto ai requisiti) con il loro semaforo e un tag "modulo"; gli esonerati sono
