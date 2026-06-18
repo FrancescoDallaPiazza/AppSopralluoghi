@@ -188,8 +188,10 @@ condizionato (le righe cantieri da esonero a modulo della figura) · 021 bucket
 Storage privato `attestati` (allegati attestato, PDF/immagini) + policy · 022
 descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025) ·
 023 flag persona `formazione_pregressa` (regime transitorio ante ASR 2025).
-024 figura Medico competente (sorveglianza sanitaria, senza corso).
-**Prossima libera: 025.**
+024 figura Medico competente (sorveglianza sanitaria, senza corso) · 025
+descrizioni `guida` figure riscritte verbatim dall'allegato (supera 022) · 026
+Preposto a obbligo 'sempre' (ruolo scoperto se vuoto).
+**Prossima libera: 027.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -572,7 +574,19 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   esonerati). `valutaModuli` considera ora gli esoneri: un modulo coperto da
   esonero/credito attivo risulta `esonerato` e viene nascosto. Nell'organigramma il box
   incaricato mostra comunque lo stato del modulo (semaforo + tag "modulo").
-- **Formazione pregressa / regime transitorio ASR 2025** (`supabase/migrations/023_persona_formazione_pregressa.sql`,
+- **Medico competente + descrizioni verbatim + ruoli scoperti** (migrazioni 024/025/026,
+  `src/lib/admin/formazione.ts`, `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx`):
+  (1) nuova figura `medico_competente` (gruppo Sorveglianza sanitaria, obbligo
+  condizionale, senza corso: si registra la nomina); (2) la `guida` di ogni figura
+  riscritta ESATTAMENTE come nell'allegato cliente (UTF-8, sotto-voci con "- ",
+  supera la 022); (3) criticita' di organigramma: `assemblaRiepilogo` calcola
+  `figureScoperte` = figure obbligatorie (obbligo 'sempre') senza incaricato, con
+  RSPP escluso se il datore svolge l'RSPP (`dl_rspp` coperto); il back-office
+  nasconde il box RSPP in quel caso, mostra un banner rosso "ruolo obbligatorio
+  senza incaricato" e una metrica "Ruoli scoperti"; Preposto reso obbligatorio
+  (026). RSPP esterno / RLS territoriale si gestiscono aggiungendoli come persona.
+  (4) bugfix: nelle spunte "formazione pregressa" gli escape `\u...` erano in testo
+  JSX grezzo (mostrati alla lettera) -> sostituiti con caratteri reali. (`supabase/migrations/023_persona_formazione_pregressa.sql`,
   `src/lib/admin/formazione.ts`, `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx`):
   flag per persona `formazione_pregressa` (azienda gia' operante prima dell'ASR 2025).
   Nuovo stato requisito `da_verificare` (semaforo neutro). Logica motore nel ramo

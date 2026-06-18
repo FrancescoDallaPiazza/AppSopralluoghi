@@ -100,6 +100,7 @@ const CSS_FZ = `
 .st-da_verificare{background:#e8ebf0; color:#51607a;}
 .st-facoltativo{background:#eef1f4; color:#5b5f66;}
 .fz-person-empty{background:#f6f2ea; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
+.fz-person-crit{background:#fbe3e0; border:1px solid #e7b3ab; border-radius:9px; padding:8px 10px; font-size:12.5px; color:#a33227; font-weight:600;}
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
 .fz-assignee-list{display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center;}
 .fz-assignee-chip{display:inline-flex; align-items:center;}
@@ -240,6 +241,7 @@ export default function Formazione() {
             <div className="fz-metric"><div className="k">In scadenza</div><div className="v" style={{ color: 'var(--hi-dark)' }}>{riep.conteggi.in_scadenza}</div></div>
             <div className="fz-metric"><div className="k">Critici</div><div className="v" style={{ color: 'var(--no)' }}>{riep.conteggi.critico}</div></div>
             {riep.conteggi.da_verificare > 0 && <div className="fz-metric"><div className="k">Da verificare</div><div className="v" style={{ color: '#51607a' }}>{riep.conteggi.da_verificare}</div></div>}
+            {riep.figureScoperte.length > 0 && <div className="fz-metric"><div className="k">Ruoli scoperti</div><div className="v" style={{ color: 'var(--no)' }}>{riep.figureScoperte.length}</div></div>}
           </div>
 
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
@@ -265,6 +267,9 @@ export default function Formazione() {
                   const assegnate = riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? [];
                   const reqCodici = new Set(catalogo?.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice) ?? []);
                   const modCodiciFigura = new Set(catalogo?.esoneriAmmessi.filter((a) => a.attivo && a.tipo === 'altro' && a.figura_codice === figura.codice).map((a) => a.corso_codice) ?? []);
+                  const dlRsppCoperto = !!riep?.persone.some((pv) => pv.figure.some((f) => f.codice === 'dl_rspp'));
+                  if (figura.codice === 'rspp' && dlRsppCoperto) return null; // il datore svolge l'RSPP: box non proposto
+                  const scoperta = !!riep?.figureScoperte.some((f) => f.codice === figura.codice);
                   return (
                   <div key={figura.codice} className="fz-fig">
                     <div className="fz-fig-top">
@@ -324,7 +329,9 @@ export default function Formazione() {
                                 </div>
                               </div>
                             ))
-                          : <div className="fz-person-empty">Nessuna persona assegnata</div>}
+                          : scoperta
+                            ? <div className="fz-person-crit">Criticità: ruolo obbligatorio senza incaricato. Assegna una persona (anche RSPP esterno o RLS territoriale, aggiunti come persona).</div>
+                            : <div className="fz-person-empty">Nessuna persona assegnata</div>}
                       </div>
                     </div>
                   </div>

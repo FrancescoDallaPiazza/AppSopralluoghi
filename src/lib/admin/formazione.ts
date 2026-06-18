@@ -189,6 +189,7 @@ export interface RiepilogoCliente {
   livello_rischio: LivelloRischio | null;
   persone: PersonaValutata[];
   conteggi: ConteggiStato;
+  figureScoperte: FiguraSicurezza[];
 }
 
 // Catalogo di riferimento caricato una volta e passato al motore.
@@ -573,7 +574,17 @@ export function assemblaRiepilogo(
     }
   }
 
-  return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi };
+  // Figure obbligatorie (obbligo 'sempre') senza alcun incaricato attivo = ruoli
+  // scoperti (criticita' di organigramma). Eccezione: l'RSPP non e' richiesto se
+  // il datore svolge il ruolo di RSPP (figura dl_rspp coperta).
+  const coperte = new Set<string>();
+  for (const pv of valutate) for (const fg of pv.figure) coperte.add(fg.codice);
+  const dlRsppCoperto = coperte.has('dl_rspp');
+  const figureScoperte = cat.figure.filter(
+    (f) => f.attiva && f.obbligo === 'sempre' && !coperte.has(f.codice) && !(f.codice === 'rspp' && dlRsppCoperto),
+  );
+
+  return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi, figureScoperte };
 }
 
 // Valuta l'intero cliente: organigramma + stato formativo per persona.

@@ -183,7 +183,7 @@ function PersonaForm({
       </div>
       <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '2px 0 4px' }}>
         <input type="checkbox" checked={pregressa} onChange={(e) => setPregressa(e.target.checked)} />
-        <span>Formazione pregressa (azienda gia\u2019 operante prima dell\u2019ASR 2025): i requisiti senza attestato risultano \u201cda verificare\u201d invece di \u201ccritici\u201d.</span>
+        <span>Formazione pregressa (azienda già operante prima dell'ASR 2025): i requisiti senza attestato risultano "da verificare" invece di "critici".</span>
       </label>
       <div className="fzr-actions">
         <button className="fzr-btn primary" disabled={busy} onClick={() => void salva()}>{persona ? 'Salva' : 'Aggiungi'}</button>
