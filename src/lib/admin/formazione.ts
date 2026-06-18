@@ -70,6 +70,7 @@ export interface Persona {
   livello_rischio: LivelloRischio | null;
   attivo: boolean;
   note: string | null;
+  formazione_pregressa: boolean;
 }
 
 export interface Nomina {
@@ -130,7 +131,7 @@ export interface AreaInterna {
 
 // --- output del motore ---
 
-export type StatoRequisito = 'conforme' | 'in_scadenza' | 'critico' | 'esonerato' | 'facoltativo';
+export type StatoRequisito = 'conforme' | 'in_scadenza' | 'critico' | 'esonerato' | 'facoltativo' | 'da_verificare';
 
 export interface RequisitoValutato {
   figura_codici: string[];      // figure (della persona) che richiedono questo corso
@@ -180,6 +181,7 @@ export interface ConteggiStato {
   in_scadenza: number;
   critico: number;
   esonerato: number;
+  da_verificare: number;
 }
 
 export interface RiepilogoCliente {
@@ -201,6 +203,12 @@ export interface Catalogo {
 
 // Finestra di preavviso per lo stato "in scadenza" (scelta concordata: 6 mesi).
 export const MESI_PREAVVISO = 6;
+
+// Corso base datore di lavoro (DATORE_LAVORO): obbligo introdotto dall'ASR
+// 17/04/2025, prima applicazione entro il 19/05/2027. Fino a quella data il
+// requisito, se non ancora assolto, e' "in scadenza" (non critico).
+const CORSO_DATORE_BASE = 'DATORE_LAVORO';
+const SCAD_PRIMA_DATORE = '2027-05-19';
 
 // Ore di formazione specifica lavoratori per livello di rischio.
 const ORE_SPECIFICA: Record<LivelloRischio, number> = { basso: 4, medio: 8, alto: 12 };
@@ -246,7 +254,7 @@ export function dataIT(iso: string | null): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-const peso: Record<StatoRequisito, number> = { conforme: 0, esonerato: 0, facoltativo: 0, in_scadenza: 1, critico: 2 };
+const peso: Record<StatoRequisito, number> = { conforme: 0, esonerato: 0, facoltativo: 0, da_verificare: 1, in_scadenza: 2, critico: 3 };
 function peggiore(a: StatoRequisito, b: StatoRequisito): StatoRequisito {
   return peso[a] >= peso[b] ? a : b;
 }
@@ -423,10 +431,28 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     // 2) attestato corrispondente?
     const f = scegliFormazione({ corso_codice: r.corso_codice, per_categoria: r.per_categoria, categoria }, d.formazioni, byCodice);
     if (!f || !f.data_completamento) {
+      // Nessun attestato e nessun esonero registrato.
+      let stato: StatoRequisito = 'critico';
+      let dettaglio = 'Mai svolto';
+      let scadenza: string | null = null;
+      if (r.corso_codice === CORSO_DATORE_BASE) {
+        // Obbligo nuovo (ASR 2025): prima applicazione entro il 19/05/2027.
+        scadenza = SCAD_PRIMA_DATORE;
+        if (isoToDate(SCAD_PRIMA_DATORE)! < oggi()) {
+          stato = 'critico'; dettaglio = 'Prima formazione scaduta (termine ' + dataIT(SCAD_PRIMA_DATORE) + ')';
+        } else {
+          stato = 'in_scadenza'; dettaglio = 'Prima formazione entro il ' + dataIT(SCAD_PRIMA_DATORE);
+        }
+      } else if (d.persona.formazione_pregressa) {
+        // Persona con formazione pregressa (regime ante ASR 2025): non "mai svolto"
+        // ma "da verificare", finche' non si recupera/registra l'attestato.
+        stato = 'da_verificare';
+        dettaglio = 'Formazione pregressa dichiarata: attestato da recuperare e registrare';
+      }
       requisiti.push({
         figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
-        categoria, ore, obbligatorio: r.obbligatorio, stato: 'critico', scadenza: null,
-        dettaglio: 'Mai svolto', formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
+        categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza,
+        dettaglio, formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
       });
       continue;
     }
@@ -536,7 +562,7 @@ export function assemblaRiepilogo(
       ),
     );
 
-  const conteggi: ConteggiStato = { conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0 };
+  const conteggi: ConteggiStato = { conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0, da_verificare: 0 };
   for (const pv of valutate) {
     for (const r of pv.requisiti) {
       // I requisiti non assumono mai 'facoltativo' (e' uno stato dei soli moduli
@@ -586,6 +612,7 @@ export async function salvaPersona(p: Persona): Promise<Persona> {
     livello_rischio: p.livello_rischio,
     attivo: p.attivo,
     note: vuotoNull(p.note),
+    formazione_pregressa: p.formazione_pregressa,
   };
   const { data, error } = await supabase.from('persona').upsert(row).select().single();
   if (error) throw error;

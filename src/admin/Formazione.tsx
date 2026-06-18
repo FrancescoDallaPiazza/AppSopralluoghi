@@ -33,7 +33,7 @@ const LABEL_OBBLIGO: Record<string, string> = {
 };
 
 const LABEL_STATO: Record<string, string> = {
-  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo',
+  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo', da_verificare: 'Da verificare',
 };
 
 // Apre un allegato del bucket privato tramite signed URL temporaneo.
@@ -54,6 +54,7 @@ const CSS_FZ = `
 .fz-sem.critico{background:var(--no-bg); color:var(--no);}
 .fz-sem.esonerato{background:#e7eefb; color:#27508f;}
 .fz-sem.facoltativo{background:#eef1f4; color:#5b5f66;}
+.fz-sem.da_verificare{background:#e8ebf0; color:#51607a;}
 .fz-chip{font-size:11.5px; padding:3px 9px; border-radius:999px; border:1px solid var(--line); color:var(--ink-soft);}
 .fz-req{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line);}
 .fz-req .d{font-size:12px; color:var(--ink-soft); margin-top:2px;}
@@ -96,6 +97,7 @@ const CSS_FZ = `
 .st-in_scadenza{background:#fbf0d6; color:#9a6206;}
 .st-critico{background:#fbe3e0; color:#a33227;}
 .st-esonerato{background:#eef1f4; color:#5b5f66;}
+.st-da_verificare{background:#e8ebf0; color:#51607a;}
 .st-facoltativo{background:#eef1f4; color:#5b5f66;}
 .fz-person-empty{background:#f6f2ea; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
@@ -237,6 +239,7 @@ export default function Formazione() {
             <div className="fz-metric"><div className="k">Conformi</div><div className="v" style={{ color: 'var(--ok)' }}>{riep.conteggi.conforme}</div></div>
             <div className="fz-metric"><div className="k">In scadenza</div><div className="v" style={{ color: 'var(--hi-dark)' }}>{riep.conteggi.in_scadenza}</div></div>
             <div className="fz-metric"><div className="k">Critici</div><div className="v" style={{ color: 'var(--no)' }}>{riep.conteggi.critico}</div></div>
+            {riep.conteggi.da_verificare > 0 && <div className="fz-metric"><div className="k">Da verificare</div><div className="v" style={{ color: '#51607a' }}>{riep.conteggi.da_verificare}</div></div>}
           </div>
 
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
@@ -477,6 +480,10 @@ function FormPersona({ persona, onSalva, onAnnulla, onElimina }: {
           </select>
         </label>
       </div>
+      <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '6px 0 2px' }}>
+        <input type="checkbox" checked={p.formazione_pregressa} onChange={(e) => setP({ ...p, formazione_pregressa: e.target.checked })} />
+        <span>Formazione pregressa (azienda gia' operante prima dell'ASR 2025): i requisiti senza attestato risultano "da verificare" invece di "critici". Il corso datore di lavoro fa storia a se' (prima applicazione entro 19/05/2027).</span>
+      </label>
       <div className="bo-bar">
         <button className="bo-btn" disabled={!p.nome.trim()} onClick={() => onSalva(p)}>Salva</button>
         <button className="bo-btn ghost" onClick={onAnnulla}>Annulla</button>
@@ -584,7 +591,7 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
         <span><b>{r.corso_nome}</b>{r.ore != null && <span className="ev-ore"> &middot; {r.ore}h</span>}</span>
         <span className="ev-head-r">
           {r.allegato_url && <button type="button" className="ev-link" onClick={() => void apriAllegato(r.allegato_url!)}>vedi allegato</button>}
-          <span className={'fz-badge ' + (r.stato === 'esonerato' ? 'eventuale' : r.stato === 'conforme' ? 'sempre' : 'condizionale')}>{r.stato}</span>
+          <span className={'fz-badge ' + (r.stato === 'esonerato' || r.stato === 'da_verificare' ? 'eventuale' : r.stato === 'conforme' ? 'sempre' : 'condizionale')}>{LABEL_STATO[r.stato] ?? r.stato}</span>
         </span>
       </div>
 
@@ -847,5 +854,5 @@ function EditorEsoneriAmmessi({ catalogo, onCambia }: { catalogo: Catalogo; onCa
 // ---------- factory ----------
 
 function nuovaPersona(clienteId: string): Persona {
-  return { id: '', cliente_id: clienteId, nome: '', cognome: null, codice_fiscale: null, mansione: null, reparto: null, data_assunzione: null, livello_rischio: null, attivo: true, note: null };
+  return { id: '', cliente_id: clienteId, nome: '', cognome: null, codice_fiscale: null, mansione: null, reparto: null, data_assunzione: null, livello_rischio: null, attivo: true, note: null, formazione_pregressa: false };
 }

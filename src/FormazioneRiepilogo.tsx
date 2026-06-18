@@ -31,7 +31,7 @@ import { db, type OrganigrammaConferma } from './lib/db';
 import { newId } from './lib/types';
 
 const TXT: Record<StatoRequisito, string> = {
-  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo',
+  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo', da_verificare: 'Da verificare',
 };
 
 const TIPI_ESONERO: Array<{ v: TipoEsonero; l: string }> = [
@@ -62,6 +62,7 @@ const CSS = `
 .fzr-sem.in_scadenza{background:#fbf0d6; color:var(--hi-dark,#9a6206);}
 .fzr-sem.critico{background:var(--no-bg,#fbeae6); color:var(--no,#d8442f);}
 .fzr-sem.esonerato{background:#e8eefc; color:#27508f;}
+.fzr-sem.da_verificare{background:#e8ebf0; color:#51607a;}
 .fzr-p{border:1px solid var(--line,#e3ddd2); border-radius:12px; padding:12px; margin-bottom:10px; background:var(--card,#fff);}
 .fzr-p-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:6px;}
 .fzr-fig{color:var(--ink-soft,#5b5f66); font-size:11.5px; margin-top:2px;}
@@ -76,6 +77,7 @@ const CSS = `
 .fzr-dot.in_scadenza{background:var(--hi,#f4a012);}
 .fzr-dot.critico{background:var(--no,#d8442f);}
 .fzr-dot.esonerato{background:#3b6fd0;}
+.fzr-dot.da_verificare{background:#7a8aa6;}
 .fzr-d{color:var(--ink-soft,#5b5f66); font-size:11.5px; margin-top:2px;}
 .fzr-hint{font-size:11.5px; color:#27508f; background:#eef3fc; border-radius:8px; padding:5px 8px; margin-top:5px; line-height:1.4;}
 .fzr-edit-btn{flex:0 0 auto; background:none; border:1px solid var(--line,#e3ddd2); border-radius:8px; padding:3px 9px; font-size:11.5px; font-weight:700; color:var(--ink,#2a2c30); cursor:pointer;}
@@ -124,6 +126,7 @@ function PersonaForm({
   const [nome, setNome] = useState(persona?.nome ?? '');
   const [mansione, setMansione] = useState(persona?.mansione ?? '');
   const [cf, setCf] = useState(persona?.codice_fiscale ?? '');
+  const [pregressa, setPregressa] = useState(persona?.formazione_pregressa ?? false);
   const [busy, setBusy] = useState(false);
 
   async function salva() {
@@ -142,6 +145,7 @@ function PersonaForm({
         livello_rischio: persona?.livello_rischio ?? null,
         attivo: true,
         note: persona?.note ?? null,
+        formazione_pregressa: pregressa,
       };
       await salvaPersona(p);
       await onSaved();
@@ -177,6 +181,10 @@ function PersonaForm({
         <label>Codice fiscale (facoltativo)</label>
         <input type="text" value={cf} onChange={(e) => setCf(e.target.value)} />
       </div>
+      <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '2px 0 4px' }}>
+        <input type="checkbox" checked={pregressa} onChange={(e) => setPregressa(e.target.checked)} />
+        <span>Formazione pregressa (azienda gia\u2019 operante prima dell\u2019ASR 2025): i requisiti senza attestato risultano \u201cda verificare\u201d invece di \u201ccritici\u201d.</span>
+      </label>
       <div className="fzr-actions">
         <button className="fzr-btn primary" disabled={busy} onClick={() => void salva()}>{persona ? 'Salva' : 'Aggiungi'}</button>
         <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>
@@ -544,6 +552,7 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
           <span className="fzr-sem in_scadenza">{riep.conteggi.in_scadenza} in scadenza</span>
           <span className="fzr-sem critico">{riep.conteggi.critico} critici</span>
           {riep.conteggi.esonerato > 0 && <span className="fzr-sem esonerato">{riep.conteggi.esonerato} esonerati</span>}
+          {riep.conteggi.da_verificare > 0 && <span className="fzr-sem da_verificare">{riep.conteggi.da_verificare} da verificare</span>}
         </div>
         <button className="fzr-add" onClick={() => { setAddPersona((v) => !v); setEditPersona(null); }}>+ Persona</button>
       </div>

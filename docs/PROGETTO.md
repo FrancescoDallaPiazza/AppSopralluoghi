@@ -186,8 +186,9 @@ ammessi) · 018 organigramma come checklist ragionata (`gruppo`/`gruppo_ordine`/
 `organigramma_conferma` (conferma per sopralluogo) · 020 modulo cantieri
 condizionato (le righe cantieri da esonero a modulo della figura) · 021 bucket
 Storage privato `attestati` (allegati attestato, PDF/immagini) + policy · 022
-descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025).
-**Prossima libera: 023.**
+descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025) ·
+023 flag persona `formazione_pregressa` (regime transitorio ante ASR 2025).
+**Prossima libera: 024.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -570,6 +571,17 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   esonerati). `valutaModuli` considera ora gli esoneri: un modulo coperto da
   esonero/credito attivo risulta `esonerato` e viene nascosto. Nell'organigramma il box
   incaricato mostra comunque lo stato del modulo (semaforo + tag "modulo").
+- **Formazione pregressa / regime transitorio ASR 2025** (`supabase/migrations/023_persona_formazione_pregressa.sql`,
+  `src/lib/admin/formazione.ts`, `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx`):
+  flag per persona `formazione_pregressa` (azienda gia' operante prima dell'ASR 2025).
+  Nuovo stato requisito `da_verificare` (semaforo neutro). Logica motore nel ramo
+  "senza attestato/esonero": (a) corso datore `DATORE_LAVORO` = obbligo nuovo, prima
+  applicazione entro 19/05/2027 -> "in scadenza" fino a quella data poi "critico"
+  (costanti `CORSO_DATORE_BASE`/`SCAD_PRIMA_DATORE`); (b) altri requisiti, se la persona
+  ha `formazione_pregressa` -> "da verificare" invece di "critico"; (c) altrimenti
+  "critico". `ConteggiStato`/`peso` estesi; spunta nel form persona (back-office e
+  campo); metrica/chip "da verificare"; etichette e stili. Rilascio: eseguire 023 in
+  SQL Editor PRIMA del push.
 - **Descrizioni figure a elenco puntato** (`supabase/migrations/022_organigramma_guida_bullets.sql`
   + `src/admin/Formazione.tsx`): la `guida` di ogni figura passa da prosa a bullet
   (quadro obblighi ASR 17/04/2025, allegato cliente), con sotto-voci (varianti ATECO,
