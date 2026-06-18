@@ -568,3 +568,8 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   quelli della figura corrente. `valutaModuli` considera ora gli esoneri: un modulo
   coperto da esonero/credito attivo risulta `esonerato` e viene nascosto dal modale
   (i moduli restano visibili solo se non c'e' una condizione di esonero applicabile).
+- **Moduli aggiuntivi nel box incaricato** (`src/admin/Formazione.tsx`): nell'organigramma
+  atteso, il box di ogni incaricato ora mostra i moduli aggiuntivi della figura
+  (accanto ai requisiti) con il loro semaforo e un tag "modulo"; gli esonerati sono
+  nascosti. Cosi' lo stato del modulo (es. cantieri) e' visibile a colpo d'occhio per
+  persona, oltre che gestibile dal link "evidenze".

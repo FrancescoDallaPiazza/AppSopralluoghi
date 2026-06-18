@@ -87,6 +87,7 @@ const CSS_FZ = `
 .fz-ev-row{display:flex; align-items:flex-start; justify-content:space-between; gap:6px;}
 .fz-ev-corso{font-size:11px; line-height:1.25;}
 .fz-ev-det{font-size:10.5px; color:#3d6b4f; margin-top:1px;}
+.fz-mod-tag{font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); background:#eef1f4; border-radius:5px; padding:1px 5px; margin-left:5px;}
 .fz-st{font-size:9px; font-weight:800; padding:2px 6px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap; flex:0 0 auto;}
 .st-conforme{background:#e7f3ea; color:#1f7a3d;}
 .st-in_scadenza{background:#fbf0d6; color:#9a6206;}
@@ -257,6 +258,7 @@ export default function Formazione() {
                 {g.righe.map(({ figura, persone }) => {
                   const assegnate = riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? [];
                   const reqCodici = new Set(catalogo?.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice) ?? []);
+                  const modCodiciFigura = new Set(catalogo?.esoneriAmmessi.filter((a) => a.attivo && a.tipo === 'altro' && a.figura_codice === figura.codice).map((a) => a.corso_codice) ?? []);
                   return (
                   <div key={figura.codice} className="fz-fig">
                     <div className="fz-fig-top">
@@ -294,6 +296,15 @@ export default function Formazione() {
                                         <span className={'fz-st st-' + r.stato}>{LABEL_STATO[r.stato] ?? r.stato}</span>
                                       </div>
                                       {r.dettaglio && <div className="fz-ev-det">{r.dettaglio}</div>}
+                                    </div>
+                                  ))}
+                                  {pv.moduli.filter((mv) => modCodiciFigura.has(mv.corso_codice) && mv.stato !== 'esonerato').map((mv) => (
+                                    <div key={'mod-' + mv.corso_codice} className="fz-ev-item">
+                                      <div className="fz-ev-row">
+                                        <span className="fz-ev-corso">{mv.corso_nome}<span className="fz-mod-tag">modulo</span></span>
+                                        <span className={'fz-st st-' + mv.stato}>{LABEL_STATO[mv.stato] ?? mv.stato}</span>
+                                      </div>
+                                      {mv.dettaglio && <div className="fz-ev-det">{mv.dettaglio}</div>}
                                     </div>
                                   ))}
                                 </div>
