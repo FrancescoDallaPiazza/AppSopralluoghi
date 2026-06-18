@@ -562,3 +562,9 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   salva) e si conferma con "Salva" o si scarta con "Annulla", coerente con
   l'assegnazione del back-office. Risolve il caso "spunto una figura sbagliata e
   chiudendo resta salvata".
+- **Moduli aggiuntivi aggregati nel modale evidenze** (`src/lib/admin/formazione.ts`
+  + `src/admin/Formazione.tsx`): il modale evidenze (per figura) ora mostra TUTTI i
+  moduli condizionati della persona (di ogni suo ruolo, da `pv.moduli`), non solo
+  quelli della figura corrente. `valutaModuli` considera ora gli esoneri: un modulo
+  coperto da esonero/credito attivo risulta `esonerato` e viene nascosto dal modale
+  (i moduli restano visibili solo se non c'e' una condizione di esonero applicabile).
