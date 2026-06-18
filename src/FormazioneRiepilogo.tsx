@@ -202,6 +202,9 @@ function FigurePanel({
 }) {
   const [busy, setBusy] = useState(false);
   const nomineP = nomine.filter((n) => n.persona_id === persona.id);
+  const attiveCodici = new Set(nomineP.filter((n) => n.attiva).map((n) => n.figura_codice));
+  // Selezione IN STADIO: spuntare non salva; si conferma con "Salva", "Annulla" scarta.
+  const [sel, setSel] = useState<Set<string>>(() => new Set(attiveCodici));
 
   const gruppi = useMemo(() => {
     const fs = figure
@@ -217,21 +220,33 @@ function FigurePanel({
     return [...map.entries()];
   }, [figure]);
 
-  const haAttiva = (codice: string) => nomineP.some((n) => n.figura_codice === codice && n.attiva);
+  const toggleSel = (codice: string) => setSel((s) => {
+    const n = new Set(s);
+    if (n.has(codice)) n.delete(codice); else n.add(codice);
+    return n;
+  });
 
-  async function toggle(f: FiguraSicurezza) {
+  const sporco = sel.size !== attiveCodici.size || [...sel].some((c) => !attiveCodici.has(c));
+
+  async function salva() {
     if (busy) return;
     setBusy(true);
     try {
-      const attivaCorrente = nomineP.find((n) => n.figura_codice === f.codice && n.attiva);
-      if (attivaCorrente) {
-        await eliminaNomina(attivaCorrente.id);
-      } else {
-        const esistente = nomineP.find((n) => n.figura_codice === f.codice);
+      // aggiunte: selezionate ora ma non attive prima
+      for (const codice of sel) {
+        if (attiveCodici.has(codice)) continue;
+        const esistente = nomineP.find((n) => n.figura_codice === codice);
         if (esistente) await salvaNomina({ ...esistente, attiva: true });
-        else await salvaNomina({ id: newId(), persona_id: persona.id, figura_codice: f.codice, data_nomina: oggiISO(), attiva: true, note: null });
+        else await salvaNomina({ id: newId(), persona_id: persona.id, figura_codice: codice, data_nomina: oggiISO(), attiva: true, note: null });
+      }
+      // rimozioni: attive prima ma non piu' selezionate
+      for (const codice of attiveCodici) {
+        if (sel.has(codice)) continue;
+        const att = nomineP.find((n) => n.figura_codice === codice && n.attiva);
+        if (att) await eliminaNomina(att.id);
       }
       await onSaved();
+      onClose();
     } finally { setBusy(false); }
   }
 
@@ -242,14 +257,15 @@ function FigurePanel({
           <div className="fzr-grp">{g}</div>
           {fs.map((f) => (
             <label key={f.codice} className="fzr-fig-row">
-              <input type="checkbox" checked={haAttiva(f.codice)} disabled={busy} onChange={() => void toggle(f)} />
+              <input type="checkbox" checked={sel.has(f.codice)} disabled={busy} onChange={() => toggleSel(f.codice)} />
               <span>{f.nome}</span>
             </label>
           ))}
         </div>
       ))}
       <div className="fzr-actions" style={{ marginTop: 8 }}>
-        <button className="fzr-btn ghost" onClick={onClose}>Chiudi</button>
+        <button className="fzr-btn primary" disabled={busy || !sporco} onClick={() => void salva()}>Salva</button>
+        <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>
       </div>
     </div>
   );

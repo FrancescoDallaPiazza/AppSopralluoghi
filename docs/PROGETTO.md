@@ -548,7 +548,17 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   (signed URL via `urlFirmatoAttestato`). File: `src/lib/admin/formazione.ts`,
   `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx` (chiave `facoltativo`
   aggiunta al Record esaustivo `TXT`). Nessuna migration.
-- **Rifiniture UI organigramma atteso** (solo `src/admin/Formazione.tsx`): titoli
-  figura piu' grandi/evidenti e colorati (verde brand); selettore "livello di
-  rischio" del cliente evidenziato in giallo quando non impostato e avviso che
-  indica dove impostarlo (il menu rischio in alto, gia' esistente).
+- **Rifiniture UI organigramma atteso** (solo `src/admin/Formazione.tsx`): nome
+  figura dentro una pill rossa con testo bianco; selettore "livello di rischio"
+  del cliente evidenziato in giallo quando non impostato e avviso che indica dove
+  impostarlo (il menu rischio in alto, gia' esistente). Descrizione figura ridotta
+  alla sola guida sintetica (`figura.guida`), resa piu' grande/leggibile; rimossi i
+  "capitoli" ridondanti (Formazione richiesta / Eventuale scadenza / Esoneri) che
+  ripetevano le stesse informazioni, e con essi le funzioni ormai inutili
+  `calcolaSpec`/`periodoLabel`.
+- **Pannello Figure di campo: salvataggio in stadio** (solo `src/FormazioneRiepilogo.tsx`):
+  prima ogni spunta di figura salvava subito (`salvaNomina`/`eliminaNomina` al
+  toggle) e chiudere non annullava; ora la selezione e' in stadio (spuntare non
+  salva) e si conferma con "Salva" o si scarta con "Annulla", coerente con
+  l'assegnazione del back-office. Risolve il caso "spunto una figura sbagliata e
+  chiudendo resta salvata".
