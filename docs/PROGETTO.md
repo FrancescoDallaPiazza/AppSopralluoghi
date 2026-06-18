@@ -158,7 +158,9 @@ normalizzati a CRLF prima della consegna.
     `ore_aggiornamento`, prerequisito): e' il "percorso previsto" editabile.
   - `figura_sicurezza` + `figura_requisito` — le figure dell'organigramma e i
     corsi richiesti da ciascuna (`per_categoria` = soddisfatto da un qualunque
-    corso della categoria, tipico di antincendio/primo soccorso).
+    corso della categoria, tipico di antincendio/primo soccorso). Dalla 018 ogni
+    figura porta anche `gruppo`/`gruppo_ordine`/`guida`/`obbligo` (metadati della
+    "checklist ragionata"); aggiunta la figura `operatore_attrezzatura` (art. 73).
   - `persona` — personale del cliente (mansione, reparto, CF, override rischio).
   - `nomina` — quali figure ricopre una persona (l'organigramma).
   - `formazione` — gli attestati svolti (lo "stato attuale").
@@ -167,6 +169,8 @@ normalizzati a CRLF prima della consegna.
     dell'Allegato III ASR 17/04/2025), editabili.
   - `cliente.livello_rischio` (basso/medio/alto) per espandere le ore della
     formazione specifica lavoratori.
+  - `organigramma_conferma` — conferma tracciata dell'organigramma per singolo
+    sopralluogo (tecnico, data, `tipo` compilato/confermato/variato). [migration 019]
 
 Migrazioni presenti: 001 schema+RLS+foto · 002 form model · 003–004 template/seed ·
 005 bucket report · 006 ruolo back-office · 007 cadenza · 008 contatti · 009 aree
@@ -174,8 +178,14 @@ interne · 010 (notificata_il / periodicità / responsabile_area) · 011 ruolo
 `interno` · 012 revisioni (sopralluogo_revisione + revisione_corrente) · 013
 trigger rigenerazione scadenze ricorrenti (vedi §8) · 014 `calendario_token` su
 `tecnico` (feed iCal pubblico) · 015 organigramma sicurezza + formazione
-(catalogo/figure/requisiti/persone/nomine/attestati/esoneri + esoneri ammessi).
-**Prossima libera: 016.**
+(catalogo/figure/requisiti/persone/nomine/attestati/esoneri + esoneri ammessi) ·
+016 corso `DATORE_LAVORO` 16h + requisito + esonero-credito · 017 allineamento
+catalogo al quadro obblighi (Dirigente 16→12h, corso `CANTIERI` 6h, esoneri
+ammessi) · 018 organigramma come checklist ragionata (`gruppo`/`gruppo_ordine`/
+`guida`/`obbligo` su figura + figura `operatore_attrezzatura`) · 019
+`organigramma_conferma` (conferma per sopralluogo) · 020 modulo cantieri
+condizionato (le righe cantieri da esonero a modulo della figura).
+**Prossima libera: 021.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -209,22 +219,53 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   modificabile; "Rev. N" sul report. Implementato — da verificare in produzione.
 
 **Implementate, da verificare in produzione**
-- **Modulo Formazione / Organigramma sicurezza** (migration 015): nuovo tab
-  back-office "Formazione". Per cliente: organigramma (persone + figure/nomine),
-  matrice dello stato formativo con semafori (conforme / in scadenza ≤6 mesi /
-  critico / esonerato), scadenza calcolata da data corso + `aggiornamento_mesi`
-  del catalogo, crediti automatici (generale permanente; corso condiviso da piu'
-  ruoli contato una volta; ore specifica espanse per rischio), esoneri decisi e
-  promemoria di esonero ammesso mostrati in campo (Caso 3: i crediti
-  dell'Allegato III sono per ora informativi). Genera le "cose da fare" per i gap
-  verso area interna o cliente, instradandole nello scadenzario esistente
-  (azioni senza sopralluogo di origine; nessuna email automatica). Editor in-app
-  del catalogo esoneri ammessi. Front-end + migration 015 (gia' applicata).
-  File: `src/lib/admin/formazione.ts` (tipi + motore + dati), `src/admin/
-  Formazione.tsx`, voce di menu in `src/admin/BackOffice.tsx`.
-  Limiti v1: cancellazione puntuale dei singoli attestati e segnalazione
-  automatica dell'adeguamento ASR entro 24/05/2027 non ancora presenti; la
-  matrice deterministica dei crediti (Allegato III, Caso 2) e' la fase 2.
+- **Modulo Formazione / Organigramma sicurezza** (migration 015-020): tab
+  back-office "Formazione". Per cliente, l'organigramma "atteso" è una
+  **checklist ragionata**: le figure sono raggruppate per blocco logico (Vertice
+  e deleghe, SPP, Vigilanza, Rappresentanza, Emergenze, Lavoratori, Abilitazioni
+  attrezzature) con etichetta d'obbligo (sempre / se ricorre / eventuale) e testo
+  guida (migration 018). Ogni figura ha un layout a due colonne: a sinistra le
+  specifiche del ruolo derivate dal catalogo (formazione richiesta base +
+  aggiornamento, eventuale scadenza, puntatore agli esoneri/crediti previsti); a
+  destra la colonna "Incaricati", un box per persona con link *modifica*
+  (anagrafica) ed *evidenze*, e sotto le righe di stato per ogni corso richiesto
+  (semaforo conforme / in scadenza ≤6 mesi / critico / esonerato).
+  La modale **evidenze** per (persona, ruolo) segue un **workflow a cancello**:
+  1) esonero/credito previsto? (con i promemoria del catalogo) — se sì si registra
+  l'esonero e basta; 2) altrimenti la formazione richiesta (attestato: data →
+  scadenza, ore, ente, allegato come URL); 3) la scadenza. In fondo, il **modulo
+  aggiuntivo cantieri** (non un esonero) con spunta di applicabilità: se l'azienda
+  ricade nell'obbligo si registra l'attestato del corso `CANTIERI` (migration
+  017/020). Catalogo allineato al quadro obblighi: Datore di lavoro 16h
+  (migration 016), Dirigente 12h.
+  Il motore `valutaPersona` (in `formazione.ts`) è **puro**; un requisito senza
+  attestato e senza esonero risulta `critico` a prescindere da `obbligatorio` —
+  per questo il modulo cantieri NON è modellato come requisito (darebbe falsi
+  gap), ma come modulo condizionato gestito in UI. Il pulsante "Genera cose da
+  fare per i gap" crea righe nella stessa tabella `azione` dello scadenzario,
+  instradabili a risorsa interna o cliente (nessuna email automatica).
+  File: `src/lib/admin/formazione.ts` (tipi + motore puro + dati, figure ordinate
+  per `gruppo_ordine`), `src/admin/Formazione.tsx`, voce di menu in
+  `src/admin/BackOffice.tsx`.
+  Limiti: l'allegato attestato è oggi un URL (upload reale = lavoro aperto §8);
+  il modulo cantieri è evidenza salvabile ma senza semaforo (§8); i crediti
+  dell'Allegato III restano promemoria informativi (matrice deterministica = fase 2).
+
+- **Organigramma compilabile offline in campo** (migration 019): durante il
+  sopralluogo lo sheet "Formazione" (`FormazioneRiepilogo.tsx`) permette di
+  consultare E compilare l'organigramma anche da zero, offline. Legge dalla cache
+  locale (`caricaOrganigrammaLocale`) e valuta con la pura `assemblaRiepilogo`
+  (stessi semafori del back-office); con rete fa `prefetchOrganigramma` e mette in
+  cache il livello di rischio del cliente. Il tecnico puo' aggiungere/modificare/
+  rimuovere persone, assegnare/togliere figure (nomine), e per ogni requisito
+  registrare/aggiornare l'attestato o registrare/rimuovere un esonero: tutte
+  scritture offline via `sync.ts` con rivalutazione immediata dei semafori. A fine
+  consultazione una **conferma tracciata** (tecnico + data + tipo compilato/
+  confermato/variato) finisce su `organigramma_conferma`. Lo "Scarica per offline"
+  (`prefetch.ts`) precarica anche catalogo + persone dei clienti coinvolti.
+  File: `src/FormazioneRiepilogo.tsx`, innesto in `src/Compilazione.tsx` (sheet +
+  props tecnico/sopralluogo), `src/lib/prefetch.ts`; fondamenta `src/lib/db.ts` v3
+  + `src/lib/sync.ts` (invariati) + migration 019.
 
 - **Ricalibrazione date successive in pianificazione**: quando in
   `admin/Pianificazione.tsx` si modifica la `data_pianificata` di un sopralluogo,
@@ -363,6 +404,18 @@ Possibili affinamenti della scelta checklist (non bloccanti):
 - consentire il cambio di checklist su un sopralluogo già avviato ma ancora senza
   esiti compilati (oggi, creata la compilazione, il template è congelato).
 
+Lavori aperti del modulo Formazione/Organigramma (il 6.A — organigramma
+compilabile offline in campo — è stato realizzato, vedi §6):
+- **Upload reale degli attestati**: oggi l'allegato è un campo URL; per caricare
+  PDF/foto servono un bucket Storage (`attestati`) e il controllo file nella
+  modale evidenze (e nel modulo cantieri).
+- **Semaforo per il modulo cantieri** (opzionale): oggi è evidenza salvabile
+  senza stato; per dargli un semaforo serve la nozione di "requisito condizionale"
+  nel motore (facoltativo → neutro invece che critico).
+- **Interruttore di attivazione per-sopralluogo** (opzionale): oggi lo sheet
+  Formazione è sempre disponibile via chip e la conferma fa da segnale
+  per-sopralluogo; se servisse renderlo opt-in è un'aggiunta a parte.
+
 Decisioni da prendere:
 - Contenuto email di `notifica-sopralluogo`: elenco testuale (attuale) o anche
   link/allegato del report interno.
@@ -444,3 +497,27 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   deterministica e' la fase 2. Nota numerazione: la migration nasce numerata 015
   perche' la 014 era gia' occupata dal feed iCal. Ordine di deploy: migration 015
   (SQL Editor, gia' applicata) → push dei file front-end (canale 1) → refresh PWA.
+- Evoluzione del **modulo Formazione**: catalogo allineato al quadro obblighi
+  formativi (migration 016 Datore di lavoro 16h; 017 Dirigente 16→12h, corso
+  `CANTIERI`, esoneri ammessi). L'organigramma atteso è diventato una **checklist
+  ragionata** (migration 018: blocchi logici, obbligo e guida per figura; figura
+  `operatore_attrezzatura`), con layout a due colonne e **modale evidenze a
+  cancello** (esonero → formazione → scadenza) più modulo cantieri condizionato
+  (migration 020). Rimosse le schede persona in coda e i vecchi modali
+  per-persona; la modifica anagrafica è ora sul link "modifica" del box
+  incaricato. Posate inoltre le **fondamenta per l'organigramma offline in
+  campo** (migration 019 `organigramma_conferma` + `db.ts` v3 + `sync.ts`),
+  ancora inerti finché non c'è l'editor di campo (§8, 6.A). Migration 016-020
+  applicate. File: `src/admin/Formazione.tsx`, `src/lib/admin/formazione.ts`,
+  `src/lib/db.ts`, `src/lib/sync.ts`.
+- **Organigramma compilabile offline in campo** (realizza il 6.A): lo sheet
+  "Formazione" del sopralluogo è passato da sola-lettura/online a **offline-first
+  ed editabile**, fino alla compilazione da zero. Estratta da `valutaCliente` la
+  funzione pura `assemblaRiepilogo` (riusata online e offline). In campo si
+  possono aggiungere/modificare/rimuovere persone, assegnare/togliere figure, e
+  registrare attestati/esoneri (scritture offline via `sync.ts`), con conferma
+  tracciata su `organigramma_conferma`. Lo "Scarica per offline" precarica anche
+  catalogo + persone. `db.ts`/`sync.ts` invariati; nessuna nuova migration
+  (la 019 era già applicata) — rilascio solo canale 1. File:
+  `src/FormazioneRiepilogo.tsx`, `src/Compilazione.tsx`, `src/lib/prefetch.ts`,
+  `src/lib/admin/formazione.ts`.
