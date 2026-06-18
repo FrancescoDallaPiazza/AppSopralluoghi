@@ -548,3 +548,7 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   (signed URL via `urlFirmatoAttestato`). File: `src/lib/admin/formazione.ts`,
   `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx` (chiave `facoltativo`
   aggiunta al Record esaustivo `TXT`). Nessuna migration.
+- **Rifiniture UI organigramma atteso** (solo `src/admin/Formazione.tsx`): titoli
+  figura piu' grandi/evidenti e colorati (verde brand); selettore "livello di
+  rischio" del cliente evidenziato in giallo quando non impostato e avviso che
+  indica dove impostarlo (il menu rischio in alto, gia' esistente).
