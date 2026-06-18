@@ -27,7 +27,7 @@ export interface Tecnico {
   capienza_ore_settimana: number | null;
   attivo: boolean;
   ruolo: RuoloTecnico;
-  // Token segreto per il feed iCal sottoscrivibile (migration 013). Costruisce
+  // Token segreto per il feed iCal sottoscrivibile (migration 014). Costruisce
   // un URL pubblico verso la Edge Function `calendario-ics`; rigenerarlo
   // invalida l'URL precedente.
   calendario_token?: string;
