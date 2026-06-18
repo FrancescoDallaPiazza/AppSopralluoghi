@@ -130,7 +130,7 @@ export interface AreaInterna {
 
 // --- output del motore ---
 
-export type StatoRequisito = 'conforme' | 'in_scadenza' | 'critico' | 'esonerato';
+export type StatoRequisito = 'conforme' | 'in_scadenza' | 'critico' | 'esonerato' | 'facoltativo';
 
 export interface RequisitoValutato {
   figura_codici: string[];      // figure (della persona) che richiedono questo corso
@@ -144,7 +144,26 @@ export interface RequisitoValutato {
   dettaglio: string;            // testo breve di spiegazione
   formazione_id: string | null;
   esonero_id: string | null;
+  allegato_url: string | null; // path attestato nel bucket privato (se presente)
   promemoria: EsoneroAmmesso[]; // possibili esoneri da mostrare in campo
+}
+
+// Modulo formativo condizionato (es. cantieri): non e' un obbligo della figura
+// ma un corso aggiuntivo che si applica solo a certe imprese. Valutato a parte,
+// con stato 'facoltativo' (neutro) quando non registrato, cosi' non genera falsi
+// gap. Non entra nei conteggi ne' nello stato peggiore della persona.
+export interface ModuloValutato {
+  ammesso_id: string;          // esonero_ammesso.id che descrive il modulo
+  figura_codice: string;
+  corso_codice: string;
+  corso_nome: string;
+  categoria: string;
+  ore: number | null;
+  stato: StatoRequisito;       // 'facoltativo' se non registrato, altrimenti reale
+  scadenza: string | null;
+  dettaglio: string;
+  formazione_id: string | null;
+  allegato_url: string | null;
 }
 
 export interface PersonaValutata {
@@ -152,6 +171,7 @@ export interface PersonaValutata {
   figure: { codice: string; nome: string }[];
   requisiti: RequisitoValutato[];
   stato: StatoRequisito;        // peggiore tra i requisiti (esonerato non peggiora)
+  moduli: ModuloValutato[];     // moduli condizionati (cantieri, ...), valutati a parte
   promemoria_figura: EsoneroAmmesso[]; // ammessi legati alla figura (senza corso)
 }
 
@@ -226,9 +246,23 @@ export function dataIT(iso: string | null): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-const peso: Record<StatoRequisito, number> = { conforme: 0, esonerato: 0, in_scadenza: 1, critico: 2 };
+const peso: Record<StatoRequisito, number> = { conforme: 0, esonerato: 0, facoltativo: 0, in_scadenza: 1, critico: 2 };
 function peggiore(a: StatoRequisito, b: StatoRequisito): StatoRequisito {
   return peso[a] >= peso[b] ? a : b;
+}
+
+// Stato + testo a partire dalla scadenza calcolata di un attestato gia' svolto.
+// Estratto per riuso tra i requisiti obbligatori e i moduli condizionati.
+function statoDaScadenza(scad: string | null, dataComp: string): { stato: StatoRequisito; dettaglio: string } {
+  if (!scad) {
+    return { stato: 'conforme', dettaglio: 'Svolto il ' + dataIT(dataComp) + ' - non scade' };
+  }
+  const ds = isoToDate(scad)!;
+  const limite = oggi();
+  const soglia = new Date(limite.getFullYear(), limite.getMonth() + MESI_PREAVVISO, limite.getDate());
+  if (ds < limite) return { stato: 'critico', dettaglio: 'Scaduto il ' + dataIT(scad) };
+  if (ds <= soglia) return { stato: 'in_scadenza', dettaglio: 'Scade il ' + dataIT(scad) };
+  return { stato: 'conforme', dettaglio: 'Valido fino al ' + dataIT(scad) };
 }
 
 // ============================ MOTORE (puro) ============================
@@ -261,6 +295,46 @@ function scegliFormazione(
   // la piu' recente per data_completamento (null in coda)
   candidate.sort((a, b) => (b.data_completamento ?? '').localeCompare(a.data_completamento ?? ''));
   return candidate[0];
+}
+
+// Valuta i moduli condizionati (es. cantieri): esoneri_ammessi tipo 'altro' con
+// corso e figura, agganciati alle figure della persona. Non sono obblighi: se
+// non registrati restano 'facoltativo' (neutro), altrimenti seguono la scadenza
+// reale. Dedup per codice corso. Non concorrono a conteggi/stato persona.
+function valutaModuli(
+  figureSet: Set<string>,
+  formazioni: Formazione[],
+  byCodice: Map<string, CorsoCatalogo>,
+  cat: Catalogo,
+): ModuloValutato[] {
+  const out = new Map<string, ModuloValutato>();
+  for (const a of cat.esoneriAmmessi) {
+    if (!a.attivo || a.tipo !== 'altro' || !a.corso_codice || !a.figura_codice) continue;
+    if (!figureSet.has(a.figura_codice)) continue;
+    if (out.has(a.corso_codice)) continue;
+    const corso = byCodice.get(a.corso_codice);
+    if (!corso) continue;
+    const categoria = corso.categoria ?? '';
+    const f = scegliFormazione({ corso_codice: a.corso_codice, per_categoria: false, categoria }, formazioni, byCodice);
+    if (!f || !f.data_completamento) {
+      out.set(a.corso_codice, {
+        ammesso_id: a.id, figura_codice: a.figura_codice, corso_codice: a.corso_codice,
+        corso_nome: corso.nome, categoria, ore: corso.ore ?? null,
+        stato: 'facoltativo', scadenza: null, dettaglio: 'Modulo condizionato: non registrato',
+        formazione_id: null, allegato_url: null,
+      });
+    } else {
+      const aggMesi = corso.aggiornamento_mesi ?? null;
+      const scad = f.scadenza ?? (aggMesi ? addMesi(f.data_completamento, aggMesi) : null);
+      const { stato, dettaglio } = statoDaScadenza(scad, f.data_completamento);
+      out.set(a.corso_codice, {
+        ammesso_id: a.id, figura_codice: a.figura_codice, corso_codice: a.corso_codice,
+        corso_nome: corso.nome, categoria, ore: corso.ore ?? null,
+        stato, scadenza: scad, dettaglio, formazione_id: f.id, allegato_url: f.allegato_url,
+      });
+    }
+  }
+  return [...out.values()].sort((x, y) => x.corso_nome.localeCompare(y.corso_nome));
 }
 
 export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null): PersonaValutata {
@@ -321,7 +395,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
         categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
         dettaglio: 'Esonero: ' + eson.motivazione + (eson.riferimento_norm ? ' (' + eson.riferimento_norm + ')' : ''),
-        formazione_id: null, esonero_id: eson.id, promemoria,
+        formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
       });
       continue;
     }
@@ -332,7 +406,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       requisiti.push({
         figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
         categoria, ore, obbligatorio: r.obbligatorio, stato: 'critico', scadenza: null,
-        dettaglio: 'Mai svolto', formazione_id: f?.id ?? null, esonero_id: null, promemoria,
+        dettaglio: 'Mai svolto', formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
       });
       continue;
     }
@@ -340,31 +414,11 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     // 3) calcolo scadenza e stato
     const aggMesi = corso?.aggiornamento_mesi ?? null;
     const scad = f.scadenza ?? (aggMesi ? addMesi(f.data_completamento, aggMesi) : null);
-
-    let stato: StatoRequisito;
-    let dettaglio: string;
-    if (!scad) {
-      stato = 'conforme';
-      dettaglio = 'Svolto il ' + dataIT(f.data_completamento) + ' - non scade';
-    } else {
-      const ds = isoToDate(scad)!;
-      const limite = oggi();
-      const soglia = new Date(limite.getFullYear(), limite.getMonth() + MESI_PREAVVISO, limite.getDate());
-      if (ds < limite) {
-        stato = 'critico';
-        dettaglio = 'Scaduto il ' + dataIT(scad);
-      } else if (ds <= soglia) {
-        stato = 'in_scadenza';
-        dettaglio = 'Scade il ' + dataIT(scad);
-      } else {
-        stato = 'conforme';
-        dettaglio = 'Valido fino al ' + dataIT(scad);
-      }
-    }
+    const { stato, dettaglio } = statoDaScadenza(scad, f.data_completamento);
     requisiti.push({
       figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,
-      dettaglio, formazione_id: f.id, esonero_id: null, promemoria,
+      dettaglio, formazione_id: f.id, esonero_id: null, allegato_url: f.allegato_url, promemoria,
     });
   }
 
@@ -377,7 +431,9 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     (a) => a.attivo && !a.corso_codice && a.figura_codice && figureSet.has(a.figura_codice),
   );
 
-  return { persona: d.persona, figure, requisiti, stato: statoPersona, promemoria_figura: promemoriaFigura };
+  const moduli = valutaModuli(figureSet, d.formazioni, byCodice, cat);
+
+  return { persona: d.persona, figure, requisiti, stato: statoPersona, moduli, promemoria_figura: promemoriaFigura };
 }
 
 // ============================ CARICAMENTO DATI ============================

@@ -6,10 +6,10 @@
 // piccolo foglio supplementare per semafori/metriche/modali (scoping .bo).
 
 import { useEffect, useMemo, useState } from 'react';
-import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, contentTypeAttestato, pathAttestato } from '../lib/supabase';
+import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, contentTypeAttestato, pathAttestato, urlFirmatoAttestato } from '../lib/supabase';
 import { newId } from '../lib/types';
 import {
-  type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato,
+  type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato, type ModuloValutato,
   type Persona,
   type EsoneroAmmesso, type AreaInterna, type LivelloRischio, type TipoEsonero,
   type CosaDaFareProposta, type FiguraSicurezza,
@@ -33,8 +33,15 @@ const LABEL_OBBLIGO: Record<string, string> = {
 };
 
 const LABEL_STATO: Record<string, string> = {
-  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato',
+  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo',
 };
+
+// Apre un allegato del bucket privato tramite signed URL temporaneo.
+async function apriAllegato(path: string): Promise<void> {
+  const u = await urlFirmatoAttestato(path);
+  if (u) window.open(u, '_blank', 'noopener');
+  else window.alert('Allegato non disponibile (offline o permessi insufficienti).');
+}
 
 function periodoLabel(mesi: number | null): string {
   if (!mesi) return '';
@@ -87,6 +94,7 @@ const CSS_FZ = `
 .fz-sem.in_scadenza{background:#fbf0d6; color:var(--hi-dark);}
 .fz-sem.critico{background:var(--no-bg); color:var(--no);}
 .fz-sem.esonerato{background:#e7eefb; color:#27508f;}
+.fz-sem.facoltativo{background:#eef1f4; color:#5b5f66;}
 .fz-chip{font-size:11.5px; padding:3px 9px; border-radius:999px; border:1px solid var(--line); color:var(--ink-soft);}
 .fz-req{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line);}
 .fz-req .d{font-size:12px; color:var(--ink-soft); margin-top:2px;}
@@ -124,6 +132,7 @@ const CSS_FZ = `
 .st-in_scadenza{background:#fbf0d6; color:#9a6206;}
 .st-critico{background:#fbe3e0; color:#a33227;}
 .st-esonerato{background:#eef1f4; color:#5b5f66;}
+.st-facoltativo{background:#eef1f4; color:#5b5f66;}
 .fz-person-empty{background:#f6f2ea; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
 .fz-specs{margin-top:9px; display:grid; gap:9px;}
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
@@ -141,6 +150,9 @@ const CSS_FZ = `
 .ev-box{border-top:1px solid var(--line); margin-top:8px; padding-top:8px;}
 .ev-eson-ok{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38; border-radius:9px; padding:9px 11px; font-size:12.5px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
 .ev-note{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+.ev-head-r{display:flex; align-items:center; gap:8px;}
+.ev-row{display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:2px 0 8px;}
+.ev-det{font-size:12px; color:var(--ink-soft);}
 .ev-mod{padding-top:4px;}
 .ev-mod + .ev-mod{border-top:1px solid var(--line); margin-top:8px; padding-top:8px;}
 .fz-av{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px; flex:0 0 auto;}
@@ -541,7 +553,7 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
         <div className="ev-card">
           <div className="ev-head"><span><b>Modulo aggiuntivo</b></span></div>
           {moduli.map((m) => (
-            <ModuloAggiuntivo key={m.ammesso.id} m={m} persona={pv.persona} onCambia={onCambia} />
+            <ModuloAggiuntivo key={m.ammesso.id} m={m} persona={pv.persona} valutato={pv.moduli.find((mv) => mv.corso_codice === m.corso?.codice)} onCambia={onCambia} />
           ))}
         </div>
       )}
@@ -608,7 +620,10 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
     <div className="ev-card">
       <div className="ev-head">
         <span><b>{r.corso_nome}</b>{r.ore != null && <span className="ev-ore"> &middot; {r.ore}h</span>}</span>
-        <span className={'fz-badge ' + (r.stato === 'esonerato' ? 'eventuale' : r.stato === 'conforme' ? 'sempre' : 'condizionale')}>{r.stato}</span>
+        <span className="ev-head-r">
+          {r.allegato_url && <button type="button" className="ev-link" onClick={() => void apriAllegato(r.allegato_url!)}>vedi allegato</button>}
+          <span className={'fz-badge ' + (r.stato === 'esonerato' ? 'eventuale' : r.stato === 'conforme' ? 'sempre' : 'condizionale')}>{r.stato}</span>
+        </span>
       </div>
 
       {r.esonero_id ? (
@@ -666,9 +681,9 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
 // Modulo formativo aggiuntivo e condizionato (es. modulo cantieri per impresa
 // affidataria): una spunta rende evidente se l'azienda ci ricade; se si', si
 // registra l'attestato del modulo come una normale formazione.
-function ModuloAggiuntivo({ m, persona, onCambia }: {
+function ModuloAggiuntivo({ m, persona, valutato, onCambia }: {
   m: { ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined };
-  persona: Persona; onCambia: () => void;
+  persona: Persona; valutato?: ModuloValutato; onCambia: () => void;
 }) {
   const [applicabile, setApplicabile] = useState(false);
   const [data, setData] = useState('');
@@ -676,6 +691,7 @@ function ModuloAggiuntivo({ m, persona, onCambia }: {
   const [ente, setEnte] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const allegatoModulo = valutato?.allegato_url ?? null;
 
   async function registra() {
     if (!data || !m.corso) return;
@@ -703,6 +719,15 @@ function ModuloAggiuntivo({ m, persona, onCambia }: {
   return (
     <div className="ev-mod">
       <div className="fz-hint"><span aria-hidden="true">i</span><span>{m.ammesso.descrizione}{m.ammesso.riferimento_norm ? ' \u2014 ' + m.ammesso.riferimento_norm : ''}</span></div>
+      {valutato && (
+        <div className="ev-row">
+          <span className={'fz-st st-' + valutato.stato}>{LABEL_STATO[valutato.stato] ?? valutato.stato}</span>
+          <span className="ev-det">{valutato.dettaglio}</span>
+          {allegatoModulo && (
+            <button type="button" className="ev-link" onClick={() => void apriAllegato(allegatoModulo)}>vedi allegato</button>
+          )}
+        </div>
+      )}
       <label className="chk"><input type="checkbox" checked={applicabile} onChange={(e) => setApplicabile(e.target.checked)} /> L'azienda ricade nell'obbligo di questo modulo aggiuntivo</label>
       {applicabile && m.corso && (
         <div className="ev-box">

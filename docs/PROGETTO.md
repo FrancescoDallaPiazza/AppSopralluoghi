@@ -248,10 +248,11 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   File: `src/lib/admin/formazione.ts` (tipi + motore puro + dati, figure ordinate
   per `gruppo_ordine`), `src/admin/Formazione.tsx`, voce di menu in
   `src/admin/BackOffice.tsx`.
-  Limiti: il modulo cantieri è evidenza salvabile ma senza semaforo (§8); i
-  crediti dell'Allegato III restano promemoria informativi (matrice
-  deterministica = fase 2). L'allegato attestato è ora un **file reale** caricato
-  su Storage (bucket privato `attestati`, migration 021), non più un URL.
+  Limiti: i crediti dell'Allegato III restano promemoria informativi (matrice
+  deterministica = fase 2). L'allegato attestato è un **file reale** caricato su
+  Storage (bucket privato `attestati`, migration 021), visualizzabile via signed
+  URL ("vedi allegato"). Il **modulo cantieri** ha ora un **semaforo** (stato
+  neutro `facoltativo` se non registrato, altrimenti conforme/in scadenza/critico).
 
 - **Organigramma compilabile offline in campo** (migration 019): durante il
   sopralluogo lo sheet "Formazione" (`FormazioneRiepilogo.tsx`) permette di
@@ -404,11 +405,8 @@ Possibili affinamenti della scelta checklist (non bloccanti):
   esiti compilati (oggi, creata la compilazione, il template è congelato).
 
 Lavori aperti del modulo Formazione/Organigramma (il 6.A — organigramma
-compilabile offline in campo — e l'upload reale degli attestati sono stati
-realizzati, vedi §6 e Cronologia):
-- **Semaforo per il modulo cantieri** (opzionale): oggi è evidenza salvabile
-  senza stato; per dargli un semaforo serve la nozione di "requisito condizionale"
-  nel motore (facoltativo → neutro invece che critico).
+compilabile offline in campo —, l'upload reale degli attestati e il semaforo del
+modulo cantieri sono stati realizzati, vedi §6 e Cronologia):
 - **Interruttore di attivazione per-sopralluogo** (opzionale): oggi lo sheet
   Formazione è sempre disponibile via chip e la conferma fa da segnale
   per-sopralluogo; se servisse renderlo opt-in è un'aggiunta a parte.
@@ -537,3 +535,16 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   (`salvaFormazioneConAllegato` + drain), `src/FormazioneRiepilogo.tsx` (campo),
   `src/admin/Formazione.tsx` (back-office). Ordine di rilascio: migration 021 →
   push dei 5 file → refresh PWA.
+- **Semaforo modulo cantieri + visualizzazione allegato** (solo codice, canale 1):
+  nuovo stato neutro `facoltativo` in `StatoRequisito` (peso 0, non peggiora la
+  persona). I moduli condizionati (cantieri = `esonero_ammesso` tipo 'altro' con
+  corso+figura) sono ora valutati a parte (`ModuloValutato` + `PersonaValutata.moduli`
+  via la nuova `valutaModuli`): se non registrati restano `facoltativo` (neutro,
+  niente falso gap), altrimenti seguono la scadenza reale. Non entrano nei
+  `conteggi` né nello stato peggiore della persona. Estratto il helper puro
+  `statoDaScadenza` (riuso tra requisiti e moduli). Esposto `allegato_url` su
+  `RequisitoValutato`/`ModuloValutato`: in back-office (`EvidenzaRequisito` e
+  `ModuloAggiuntivo`) compaiono il semaforo del modulo e il link "vedi allegato"
+  (signed URL via `urlFirmatoAttestato`). File: `src/lib/admin/formazione.ts`,
+  `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx` (chiave `facoltativo`
+  aggiunta al Record esaustivo `TXT`). Nessuna migration.

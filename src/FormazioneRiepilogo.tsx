@@ -31,7 +31,7 @@ import { db, type OrganigrammaConferma } from './lib/db';
 import { newId } from './lib/types';
 
 const TXT: Record<StatoRequisito, string> = {
-  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato',
+  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo',
 };
 
 const TIPI_ESONERO: Array<{ v: TipoEsonero; l: string }> = [
