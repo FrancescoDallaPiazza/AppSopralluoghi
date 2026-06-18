@@ -562,12 +562,13 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   salva) e si conferma con "Salva" o si scarta con "Annulla", coerente con
   l'assegnazione del back-office. Risolve il caso "spunto una figura sbagliata e
   chiudendo resta salvata".
-- **Moduli aggiuntivi aggregati nel modale evidenze** (`src/lib/admin/formazione.ts`
-  + `src/admin/Formazione.tsx`): il modale evidenze (per figura) ora mostra TUTTI i
-  moduli condizionati della persona (di ogni suo ruolo, da `pv.moduli`), non solo
-  quelli della figura corrente. `valutaModuli` considera ora gli esoneri: un modulo
-  coperto da esonero/credito attivo risulta `esonerato` e viene nascosto dal modale
-  (i moduli restano visibili solo se non c'e' una condizione di esonero applicabile).
+- **Moduli aggiuntivi nella card formazione del requisito** (`src/lib/admin/formazione.ts`
+  + `src/admin/Formazione.tsx`): i moduli condizionati (es. cantieri) non sono piu' in una
+  card separata; sono innestati nella card della formazione del requisito (passo 4) e
+  compaiono solo nel ramo "No, registro la formazione" (servono solo se non si e'
+  esonerati). `valutaModuli` considera ora gli esoneri: un modulo coperto da
+  esonero/credito attivo risulta `esonerato` e viene nascosto. Nell'organigramma il box
+  incaricato mostra comunque lo stato del modulo (semaforo + tag "modulo").
 - **Moduli aggiuntivi nel box incaricato** (`src/admin/Formazione.tsx`): nell'organigramma
   atteso, il box di ogni incaricato ora mostra i moduli aggiuntivi della figura
   (accanto ai requisiti) con il loro semaforo e un tag "modulo"; gli esonerati sono
