@@ -25,17 +25,30 @@ export interface OrganigrammaConferma {
 // una riga da cancellare lato server (per id).
 export interface OutboxOp {
   seq?: number;                 // auto-increment, garantisce l'ordine
-  kind: 'row' | 'photo' | 'delete';
+  kind: 'row' | 'photo' | 'delete' | 'attestato';
   table?: 'sopralluogo' | 'checklist_compilata' | 'esito_voce' | 'foto' | 'azione' | 'aggiornamento_azione' | 'sopralluogo_revisione'
         | 'persona' | 'nomina' | 'formazione' | 'esonero' | 'organigramma_conferma';
   payload?: Record<string, unknown>;
   fotoId?: string;             // per kind 'photo': id della foto/blob da caricare
+  attestatoId?: string;        // per kind 'attestato': id del blob allegato da caricare
   id?: string;                 // per kind 'delete': id della riga da cancellare
 }
 
 export interface FotoBlob {
   id: string;                  // = foto.id
   blob: Blob;
+}
+
+// Allegato attestato in attesa di upload (gemello di FotoBlob): il file, il path
+// di destinazione nel bucket attestati e il suo content-type. Si svuota dopo
+// l'upload in runSync. Non si ridimensiona: un attestato e' un documento legale,
+// si conserva l'originale (a differenza delle foto).
+export interface AttestatoBlob {
+  id: string;                  // = fileId (univoco per upload)
+  formazione_id: string;       // per la pulizia quando si elimina la formazione
+  blob: Blob;
+  path: string;                // path completo nel bucket attestati
+  contentType: string;
 }
 
 // Contesto di un sopralluogo (cliente, tipo attività) messo in cache dal
@@ -53,6 +66,7 @@ class LocalDB extends Dexie {
   esiti!: Table<EsitoVoce, string>;
   foto!: Table<Foto, string>;
   fotoBlob!: Table<FotoBlob, string>;
+  attestatoBlob!: Table<AttestatoBlob, string>;
   azioni!: Table<Azione, string>;
   contesto!: Table<ContestoSopralluogo, string>;
   outbox!: Table<OutboxOp, number>;
@@ -96,6 +110,12 @@ class LocalDB extends Dexie {
       requisiti: 'id, figura_codice, corso_codice',
       esoneriAmmessi: 'id, corso_codice, figura_codice',
       conferme: 'id, sopralluogo_id, cliente_id',
+    });
+    // v4: blob degli allegati attestato in attesa di upload (bucket privato
+    // "attestati", migration 021). Indicizzato anche per formazione_id, cosi'
+    // eliminando una formazione si annullano gli upload ancora pendenti.
+    this.version(4).stores({
+      attestatoBlob: 'id, formazione_id',
     });
   }
 }

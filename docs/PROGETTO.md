@@ -184,8 +184,9 @@ catalogo al quadro obblighi (Dirigente 16→12h, corso `CANTIERI` 6h, esoneri
 ammessi) · 018 organigramma come checklist ragionata (`gruppo`/`gruppo_ordine`/
 `guida`/`obbligo` su figura + figura `operatore_attrezzatura`) · 019
 `organigramma_conferma` (conferma per sopralluogo) · 020 modulo cantieri
-condizionato (le righe cantieri da esonero a modulo della figura).
-**Prossima libera: 021.**
+condizionato (le righe cantieri da esonero a modulo della figura) · 021 bucket
+Storage privato `attestati` (allegati attestato, PDF/immagini) + policy.
+**Prossima libera: 022.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -247,9 +248,10 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   File: `src/lib/admin/formazione.ts` (tipi + motore puro + dati, figure ordinate
   per `gruppo_ordine`), `src/admin/Formazione.tsx`, voce di menu in
   `src/admin/BackOffice.tsx`.
-  Limiti: l'allegato attestato è oggi un URL (upload reale = lavoro aperto §8);
-  il modulo cantieri è evidenza salvabile ma senza semaforo (§8); i crediti
-  dell'Allegato III restano promemoria informativi (matrice deterministica = fase 2).
+  Limiti: il modulo cantieri è evidenza salvabile ma senza semaforo (§8); i
+  crediti dell'Allegato III restano promemoria informativi (matrice
+  deterministica = fase 2). L'allegato attestato è ora un **file reale** caricato
+  su Storage (bucket privato `attestati`, migration 021), non più un URL.
 
 - **Organigramma compilabile offline in campo** (migration 019): durante il
   sopralluogo lo sheet "Formazione" (`FormazioneRiepilogo.tsx`) permette di
@@ -402,10 +404,8 @@ Possibili affinamenti della scelta checklist (non bloccanti):
   esiti compilati (oggi, creata la compilazione, il template è congelato).
 
 Lavori aperti del modulo Formazione/Organigramma (il 6.A — organigramma
-compilabile offline in campo — è stato realizzato, vedi §6):
-- **Upload reale degli attestati**: oggi l'allegato è un campo URL; per caricare
-  PDF/foto servono un bucket Storage (`attestati`) e il controllo file nella
-  modale evidenze (e nel modulo cantieri).
+compilabile offline in campo — e l'upload reale degli attestati sono stati
+realizzati, vedi §6 e Cronologia):
 - **Semaforo per il modulo cantieri** (opzionale): oggi è evidenza salvabile
   senza stato; per dargli un semaforo serve la nozione di "requisito condizionale"
   nel motore (facoltativo → neutro invece che critico).
@@ -523,3 +523,17 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   rigenerazione automatica delle scadenze ricorrenti tolta dai lavori aperti (§8)
   e §9 aggiornata. Corretto il path stale del feed iCal in §6 (`014_calendario_token.sql`,
   non 013). Migration 020 confermata applicata; prossima libera 021.
+- **Upload reale degli attestati (offline-first)**: l'allegato dell'attestato è
+  passato da campo URL a **file vero** (PDF/immagine) caricato su Storage. Nuovo
+  bucket privato `attestati` (migration 021, max 20 MB, signed URL per la
+  lettura). In campo l'upload è **offline-first**, gemello della pipeline foto: il
+  file vive come blob in Dexie (`attestatoBlob`) + coda outbox `kind:'attestato'`,
+  e al ritorno della rete `runSync` lo carica e scrive il path su
+  `formazione.allegato_url`; eliminando una formazione si annullano gli upload
+  pendenti. In back-office l'upload è online diretto (id generato lato client →
+  upload → `salvaFormazione`). File: `supabase/migrations/021_attestati_storage.sql`,
+  `src/lib/supabase.ts` (bucket + helper path/content-type + `urlFirmatoAttestato`),
+  `src/lib/db.ts` (Dexie v4 + `attestatoBlob`), `src/lib/sync.ts`
+  (`salvaFormazioneConAllegato` + drain), `src/FormazioneRiepilogo.tsx` (campo),
+  `src/admin/Formazione.tsx` (back-office). Ordine di rilascio: migration 021 →
+  push dei 5 file → refresh PWA.

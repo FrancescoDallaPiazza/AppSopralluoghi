@@ -23,10 +23,10 @@ import {
 } from './lib/admin/formazione';
 import {
   caricaOrganigrammaLocale, prefetchOrganigramma, type OrganigrammaLocale,
-  salvaFormazione, salvaEsonero, eliminaEsonero, salvaConfermaOrganigramma,
+  salvaFormazione, salvaFormazioneConAllegato, salvaEsonero, eliminaEsonero, salvaConfermaOrganigramma,
   salvaPersona, eliminaPersona, salvaNomina, eliminaNomina,
 } from './lib/sync';
-import { supabase } from './lib/supabase';
+import { supabase, MAX_ATTESTATO_BYTES } from './lib/supabase';
 import { db, type OrganigrammaConferma } from './lib/db';
 import { newId } from './lib/types';
 
@@ -271,6 +271,7 @@ function EditorRequisito({
   const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
   const [esonMot, setEsonMot] = useState('');
   const [esonRif, setEsonRif] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (req.esonero_id) {
@@ -295,6 +296,7 @@ function EditorRequisito({
 
   async function salvaAttestato() {
     if (!dataAtt) { window.alert('Indica la data di completamento dell\u2019attestato.'); return; }
+    if (file && file.size > MAX_ATTESTATO_BYTES) { window.alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
     setBusy(true);
     try {
       const f: Formazione = {
@@ -311,7 +313,8 @@ function EditorRequisito({
         allegato_url: null,
         note: null,
       };
-      await salvaFormazione(f);
+      if (file) await salvaFormazioneConAllegato(f, file);
+      else await salvaFormazione(f);
       await onSaved();
       onClose();
     } finally { setBusy(false); }
@@ -363,6 +366,16 @@ function EditorRequisito({
               <input type="text" value={enteAtt} onChange={(e) => setEnteAtt(e.target.value)} />
             </div>
           </div>
+          <div className="fzr-field">
+            <label>Allegato (PDF o foto, facoltativo)</label>
+            <input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </div>
+          {file && (
+            <div className="fzr-d">
+              Allegato: {file.name} ({Math.round(file.size / 1024)} KB)
+              {!navigator.onLine ? ' \u00b7 verra\u2019 caricato al ritorno della rete' : ''}
+            </div>
+          )}
           <div className="fzr-actions">
             <button className="fzr-btn primary" disabled={busy} onClick={() => void salvaAttestato()}>Salva attestato</button>
             <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>

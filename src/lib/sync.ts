@@ -3,7 +3,7 @@
 // riconnessione la coda viene svuotata in ordine, con upsert per uuid
 // (gli id sono generati lato client, quindi niente conflitti di chiave).
 
-import { supabase, FOTO_BUCKET } from './supabase';
+import { supabase, FOTO_BUCKET, ATTESTATI_BUCKET, estensioneAttestato, contentTypeAttestato, pathAttestato } from './supabase';
 import { db, enqueueRow, enqueueDelete, type OutboxOp, type OrganigrammaConferma } from './db';
 import { newId, type EsitoVoce, type Foto, type Azione } from './types';
 import type {
@@ -144,6 +144,33 @@ export async function salvaFormazione(f: Formazione): Promise<Formazione> {
   return r;
 }
 
+// Salva una formazione con un FILE allegato (PDF/immagine), offline-first:
+//  - il file viene salvato come blob locale e accodato come 'attestato';
+//  - la riga formazione porta subito allegato_url = path (cosi' l'UI lo riflette
+//    anche offline) e viene accodata come una riga normale;
+//  - al drain runSync carica il blob nel bucket attestati e poi lo elimina.
+// Gemello della pipeline foto, ma senza ridimensionare: un attestato e' un
+// documento legale, si conserva l'originale.
+export async function salvaFormazioneConAllegato(
+  f: Formazione,
+  file: Blob & { name?: string; type?: string },
+): Promise<Formazione> {
+  const base = conId(f);
+  const fileId = newId();
+  const ext = estensioneAttestato(file);
+  const path = pathAttestato(base.id, fileId, ext);
+  const contentType = contentTypeAttestato(file);
+
+  await db.attestatoBlob.put({ id: fileId, formazione_id: base.id, blob: file, path, contentType });
+
+  const r: Formazione = { ...base, allegato_url: path };
+  await db.formazioni.put(r);
+  await enqueueRow('formazione', r as unknown as Record<string, unknown>);
+  await db.outbox.add({ kind: 'attestato', attestatoId: fileId });
+  void runSync();
+  return r;
+}
+
 export async function salvaEsonero(e: Esonero): Promise<Esonero> {
   const r = conId(e);
   await db.esoneri.put(r);
@@ -178,7 +205,20 @@ async function rimuoviRiga(
 }
 
 export async function eliminaNomina(id: string) { await rimuoviRiga('nomina', () => db.nomine.delete(id), id); }
-export async function eliminaFormazione(id: string) { await rimuoviRiga('formazione', () => db.formazioni.delete(id), id); }
+export async function eliminaFormazione(id: string) {
+  // Annulla gli upload allegato ancora in coda per questa formazione e libera i
+  // blob locali. Gli oggetti gia' caricati su Storage restano (orfani), stessa
+  // limitazione documentata per le foto: non incide sulla correttezza.
+  const blobs = await db.attestatoBlob.where('formazione_id').equals(id).toArray();
+  if (blobs.length) {
+    const ops = await db.outbox.where('kind').equals('attestato').toArray();
+    for (const b of blobs) {
+      for (const o of ops) if (o.attestatoId === b.id && o.seq != null) await db.outbox.delete(o.seq);
+      await db.attestatoBlob.delete(b.id);
+    }
+  }
+  await rimuoviRiga('formazione', () => db.formazioni.delete(id), id);
+}
 export async function eliminaEsonero(id: string) { await rimuoviRiga('esonero', () => db.esoneri.delete(id), id); }
 
 export async function eliminaPersona(id: string) {
@@ -266,6 +306,14 @@ export async function runSync(): Promise<void> {
           const row = await supabase.from('foto').upsert(foto);
           if (row.error) throw row.error;
           await db.fotoBlob.delete(op.fotoId); // blob salito: libera spazio locale
+        }
+      } else if (op.kind === 'attestato' && op.attestatoId) {
+        const ab = await db.attestatoBlob.get(op.attestatoId);
+        if (ab) {
+          const up = await supabase.storage.from(ATTESTATI_BUCKET)
+            .upload(ab.path, ab.blob, { upsert: true, contentType: ab.contentType });
+          if (up.error) throw up.error;
+          await db.attestatoBlob.delete(op.attestatoId); // blob salito: libera spazio locale
         }
       } else if (op.kind === 'row' && op.table && op.payload) {
         const row = await supabase.from(op.table).upsert(op.payload);

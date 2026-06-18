@@ -6,7 +6,8 @@
 // piccolo foglio supplementare per semafori/metriche/modali (scoping .bo).
 
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, contentTypeAttestato, pathAttestato } from '../lib/supabase';
+import { newId } from '../lib/types';
 import {
   type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato,
   type Persona,
@@ -559,7 +560,7 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
   const [data, setData] = useState('');
   const [ore, setOre] = useState(r.ore != null ? String(r.ore) : '');
   const [ente, setEnte] = useState('');
-  const [allegato, setAllegato] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [agg, setAgg] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -582,12 +583,22 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
   }
   async function registraAttestato() {
     if (!data) return;
+    if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
     setBusy(true);
     try {
+      const fid = newId();
+      let allegatoUrl: string | null = null;
+      if (file) {
+        const path = pathAttestato(fid, newId(), estensioneAttestato(file));
+        const up = await supabase.storage.from(ATTESTATI_BUCKET)
+          .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
+        if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); return; }
+        allegatoUrl = path;
+      }
       await salvaFormazione({
-        id: '', persona_id: persona.id, corso_codice: r.corso_codice, corso_nome: r.corso_nome, categoria: r.categoria,
+        id: fid, persona_id: persona.id, corso_codice: r.corso_codice, corso_nome: r.corso_nome, categoria: r.categoria,
         data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
-        is_aggiornamento: agg, scadenza: null, allegato_url: allegato.trim() || null, note: null,
+        is_aggiornamento: agg, scadenza: null, allegato_url: allegatoUrl, note: null,
       });
       onCambia();
     } finally { setBusy(false); }
@@ -637,8 +648,9 @@ function EvidenzaRequisito({ r, persona, figura, onCambia }: {
                 <label className="bo-field"><span>Data completamento *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
                 <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
                 <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
-                <label className="bo-field"><span>Allegato (link al documento)</span><input type="text" value={allegato} onChange={(e) => setAllegato(e.target.value)} placeholder="URL del PDF/foto attestato" /></label>
+                <label className="bo-field"><span>Allegato (PDF o foto)</span><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
               </div>
+              {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
               <label className="chk" style={{ marginBottom: 10 }}><input type="checkbox" checked={agg} onChange={(e) => setAgg(e.target.checked)} /> e' un aggiornamento</label>
               <button className="bo-btn sm" disabled={busy || !data} onClick={registraAttestato}>Registra attestato</button>
               <div className="ev-step" style={{ marginTop: 12 }}>3 &middot; Scadenza</div>
@@ -662,17 +674,27 @@ function ModuloAggiuntivo({ m, persona, onCambia }: {
   const [data, setData] = useState('');
   const [ore, setOre] = useState(m.corso?.ore != null ? String(m.corso.ore) : '');
   const [ente, setEnte] = useState('');
-  const [allegato, setAllegato] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function registra() {
     if (!data || !m.corso) return;
+    if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
     setBusy(true);
     try {
+      const fid = newId();
+      let allegatoUrl: string | null = null;
+      if (file) {
+        const path = pathAttestato(fid, newId(), estensioneAttestato(file));
+        const up = await supabase.storage.from(ATTESTATI_BUCKET)
+          .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
+        if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); return; }
+        allegatoUrl = path;
+      }
       await salvaFormazione({
-        id: '', persona_id: persona.id, corso_codice: m.corso.codice, corso_nome: m.corso.nome, categoria: m.corso.categoria,
+        id: fid, persona_id: persona.id, corso_codice: m.corso.codice, corso_nome: m.corso.nome, categoria: m.corso.categoria,
         data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
-        is_aggiornamento: false, scadenza: null, allegato_url: allegato.trim() || null, note: null,
+        is_aggiornamento: false, scadenza: null, allegato_url: allegatoUrl, note: null,
       });
       onCambia();
     } finally { setBusy(false); }
@@ -688,8 +710,9 @@ function ModuloAggiuntivo({ m, persona, onCambia }: {
             <label className="bo-field"><span>Data completamento *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
             <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
             <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
-            <label className="bo-field"><span>Allegato (link al documento)</span><input type="text" value={allegato} onChange={(e) => setAllegato(e.target.value)} placeholder="URL del PDF/foto attestato" /></label>
+            <label className="bo-field"><span>Allegato (PDF o foto)</span><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
           </div>
+          {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
           <button className="bo-btn sm" disabled={busy || !data} onClick={registra}>Registra modulo aggiuntivo</button>
         </div>
       )}
