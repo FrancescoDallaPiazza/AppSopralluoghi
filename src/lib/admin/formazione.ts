@@ -517,7 +517,15 @@ export function assemblaRiepilogo(
     );
 
   const conteggi: ConteggiStato = { conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0 };
-  for (const pv of valutate) for (const r of pv.requisiti) conteggi[r.stato]++;
+  for (const pv of valutate) {
+    for (const r of pv.requisiti) {
+      // I requisiti non assumono mai 'facoltativo' (e' uno stato dei soli moduli
+      // condizionati, contati a parte), ma il tipo StatoRequisito ora lo include:
+      // si salta esplicitamente per restringere l'indice alle chiavi di ConteggiStato.
+      if (r.stato === 'facoltativo') continue;
+      conteggi[r.stato]++;
+    }
+  }
 
   return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi };
 }
