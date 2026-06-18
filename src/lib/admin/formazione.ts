@@ -299,11 +299,13 @@ function scegliFormazione(
 
 // Valuta i moduli condizionati (es. cantieri): esoneri_ammessi tipo 'altro' con
 // corso e figura, agganciati alle figure della persona. Non sono obblighi: se
-// non registrati restano 'facoltativo' (neutro), altrimenti seguono la scadenza
-// reale. Dedup per codice corso. Non concorrono a conteggi/stato persona.
+// coperti da un esonero/credito attivo risultano 'esonerato'; se non registrati
+// restano 'facoltativo' (neutro); altrimenti seguono la scadenza reale. Dedup
+// per codice corso. Non concorrono a conteggi/stato persona.
 function valutaModuli(
   figureSet: Set<string>,
   formazioni: Formazione[],
+  esoneriAttivi: Esonero[],
   byCodice: Map<string, CorsoCatalogo>,
   cat: Catalogo,
 ): ModuloValutato[] {
@@ -315,6 +317,24 @@ function valutaModuli(
     const corso = byCodice.get(a.corso_codice);
     if (!corso) continue;
     const categoria = corso.categoria ?? '';
+
+    // esonero/credito che copre questo modulo? (per corso, o per figura senza corso)
+    const eson = esoneriAttivi.find(
+      (e) =>
+        (e.corso_codice && e.corso_codice === a.corso_codice && (!e.figura_codice || figureSet.has(e.figura_codice))) ||
+        (!e.corso_codice && e.figura_codice && e.figura_codice === a.figura_codice),
+    );
+    if (eson) {
+      out.set(a.corso_codice, {
+        ammesso_id: a.id, figura_codice: a.figura_codice, corso_codice: a.corso_codice,
+        corso_nome: corso.nome, categoria, ore: corso.ore ?? null,
+        stato: 'esonerato', scadenza: null,
+        dettaglio: 'Esonero: ' + eson.motivazione + (eson.riferimento_norm ? ' (' + eson.riferimento_norm + ')' : ''),
+        formazione_id: null, allegato_url: null,
+      });
+      continue;
+    }
+
     const f = scegliFormazione({ corso_codice: a.corso_codice, per_categoria: false, categoria }, formazioni, byCodice);
     if (!f || !f.data_completamento) {
       out.set(a.corso_codice, {
@@ -431,7 +451,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     (a) => a.attivo && !a.corso_codice && a.figura_codice && figureSet.has(a.figura_codice),
   );
 
-  const moduli = valutaModuli(figureSet, d.formazioni, byCodice, cat);
+  const moduli = valutaModuli(figureSet, d.formazioni, esoneriAttivi, byCodice, cat);
 
   return { persona: d.persona, figure, requisiti, stato: statoPersona, moduli, promemoria_figura: promemoriaFigura };
 }
