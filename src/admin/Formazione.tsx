@@ -106,7 +106,7 @@ const CSS_FZ = `
 .fz-grp-h{font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}
 .fz-fig{padding:9px 0; border-top:1px solid var(--line);}
 .fz-fig-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
-.fz-fig-nome{font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.fz-fig-nome{font-size:16px; font-weight:800; color:#1f5b34; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
 .fz-badge{font-size:9.5px; font-weight:800; padding:2px 7px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em;}
 .fz-badge.sempre{background:var(--ok-bg); color:var(--ok);}
 .fz-badge.condizionale{background:#fbf0d6; color:var(--hi-dark);}
@@ -254,7 +254,8 @@ export default function Formazione() {
           {clienti.map((c) => <option key={c.id} value={c.id}>{c.ragione_sociale}</option>)}
         </select>
         {cliente && (
-          <select value={cliente.livello_rischio ?? ''} style={{ width: 'auto' }}
+          <select value={cliente.livello_rischio ?? ''}
+            style={{ width: 'auto', ...(cliente.livello_rischio ? {} : { borderColor: 'var(--hi-dark)', background: '#fbf0d6', fontWeight: 700 }) }}
             onChange={(e) => setRischio((e.target.value || null) as LivelloRischio | null)} title="Livello di rischio">
             <option value="">rischio: n.d.</option>
             <option value="basso">rischio basso</option>
@@ -283,7 +284,7 @@ export default function Formazione() {
           </div>
 
           {!cliente.livello_rischio && (
-            <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate.</div>
+            <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate. Impostalo dal menù a tendina "rischio" in alto, accanto al nome del cliente.</div>
           )}
 
           {/* organigramma atteso */}
