@@ -291,7 +291,7 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   guida sintetica alla sottoscrizione. Ordine di deploy: migration 014 →
   Edge Function `calendario-ics` (dal Dashboard, CORS inline) → push del
   front-end.
-  File: `supabase/migrations/013_calendario_token.sql`,
+  File: `supabase/migrations/014_calendario_token.sql`,
   `supabase/functions/calendario-ics/index.ts`,
   `src/lib/types.ts` (campo `calendario_token` su `Tecnico`),
   `src/lib/admin/tecnici.ts` (`leggiCalendarioToken`,
@@ -386,9 +386,6 @@ Richieste/auspici delle istruzioni iniziali non ancora realizzati:
   `azione.werp_attivita_id`, ID Werp cliente) ma nessuna sincronizzazione attiva.
   Da chiarire col fornitore il canale (API REST / accesso DB / import-export).
   → DA FARE / DA DEFINIRE.
-- **Rigenerazione automatica delle scadenze ricorrenti**: alla verifica di una
-  scadenza ricorrente non si crea ancora in automatico il ciclo successivo.
-  → DA FARE (minore).
 
 Possibili affinamenti della vista disponibilità (non bloccanti):
 - includere le ferie/indisponibilità del tecnico (oggi il carico è solo dalle
@@ -440,7 +437,7 @@ push/badge in-app; esclusione festività/patroni locali in pianificazione.
 | 3. Non conforme + note + foto + COSE DA FARE (cliente/interno) | Coperto |
 | 3. Invio esiti al cliente (con COSE DA FARE) | Coperto |
 | 3. Invio esiti alla risorsa interna (cose dirette) | Coperto |
-| 3. Scadenzario | Coperto (rigenerazione ciclo successivo: da fare) |
+| 3. Scadenzario | Coperto (rigenerazione ciclo successivo via trigger, migration 013) |
 | 3. COSE DA FARE aggiornabili nel tempo | Coperto |
 | 4. Sopralluogo successivo: input = stato COSE DA FARE aggiornato (giro prec.) | Coperto (con "Verifica e chiudi") |
 | 4. Check-list scelta + stesso workflow | Coperto (selettore per seduta, default = incarico) |
@@ -521,3 +518,8 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   (la 019 era già applicata) — rilascio solo canale 1. File:
   `src/FormazioneRiepilogo.tsx`, `src/Compilazione.tsx`, `src/lib/prefetch.ts`,
   `src/lib/admin/formazione.ts`.
+- **Allineamento documentazione** (nessun codice): verificato in produzione che il
+  trigger `azione_rigenera_scadenza_ricorrente` (migration 013) è installato →
+  rigenerazione automatica delle scadenze ricorrenti tolta dai lavori aperti (§8)
+  e §9 aggiornata. Corretto il path stale del feed iCal in §6 (`014_calendario_token.sql`,
+  non 013). Migration 020 confermata applicata; prossima libera 021.
