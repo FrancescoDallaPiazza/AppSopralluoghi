@@ -19,6 +19,7 @@ import {
 } from './sopralluoghi';
 import { prefetchTemplatePerTipo, prefetchTemplatesAttivi } from './compilazione';
 import { prefetchAzioniIncarichi } from './azioni';
+import { prefetchOrganigramma } from './sync';
 import type { Sopralluogo } from './types';
 
 const META_KEY = 'prefetch:meta';
@@ -99,6 +100,16 @@ export async function prefetchOffline(tecnicoId: string): Promise<RisultatoPrefe
   // 3) azioni aperte del giro precedente (best-effort)
   const incarichi = [...new Set(daFare.map((s) => s.incarico_id))];
   try { await prefetchAzioniIncarichi(incarichi); } catch { /* best-effort */ }
+
+  // 4) organigramma sicurezza + formazione per i clienti coinvolti (best-effort):
+  // cataloghi + persone/nomine/attestati/esoneri, cosi' la consultazione e la
+  // compilazione dell'organigramma funzionano anche offline.
+  const clientiOrg = [...new Set(
+    daFare.map((s) => s.cliente_id).filter((c): c is string => !!c),
+  )];
+  for (const c of clientiOrg) {
+    try { await prefetchOrganigramma(c); } catch { /* best-effort */ }
+  }
 
   const meta: PrefetchMeta = {
     quando: new Date().toISOString(),

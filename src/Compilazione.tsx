@@ -319,6 +319,13 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     return m;
   }, [voci]);
 
+  // nome del tecnico corrente (per la conferma organigramma); best-effort dalla
+  // lista assegnabili, altrimenti null (la conferma traccia comunque il tecnico_id).
+  const tecnicoNomeConferma = useMemo(() => {
+    const t = tecnici.find((x) => x.id === tecnicoId);
+    return t ? nomeCompleto(t) : null;
+  }, [tecnici, tecnicoId]);
+
   const esitoTop = useMemo(() => {
     const m = new Map<string, EsitoVoce>(); // voceId -> esito (parent null, non rilievo)
     for (const e of esiti) if (e.parent_esito_id === null && e.voce_template_id) m.set(e.voce_template_id, e);
@@ -947,7 +954,12 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             <div className="sheet-grab" />
             <div className="sheet-h"><h3>Formazione · stato del cliente</h3><button onClick={() => setSheet(null)}>×</button></div>
             <div className="sheet-body">
-              <FormazioneRiepilogo clienteId={sopralluogo.cliente_id} />
+              <FormazioneRiepilogo
+                clienteId={sopralluogo.cliente_id}
+                sopralluogoId={sopralluogo.id}
+                tecnicoId={tecnicoId}
+                tecnicoNome={tecnicoNomeConferma}
+              />
             </div>
           </div>
         )}
