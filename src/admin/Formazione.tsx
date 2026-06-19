@@ -18,7 +18,7 @@ import {
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
-  nomePersona, MARCA_PREGRESSA,
+  nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA,
 } from '../lib/admin/formazione';
 import {
   registraSnapshotOrganigramma, caricaRevisioniOrganigramma, caricaRevisioneOrganigramma,
@@ -451,7 +451,8 @@ export default function Formazione() {
           figura={assegnaFigura}
           persone={riep.persone}
           clienteId={clienteId}
-          haFormazione={!!catalogo?.requisiti.some((r) => r.figura_codice === assegnaFigura.codice)}
+          chiediPregressa={!!catalogo?.requisiti.some((r) => r.figura_codice === assegnaFigura.codice
+            && !CATEGORIE_NO_PREGRESSA.has(catalogo.corsi.find((c) => c.codice === r.corso_codice)?.categoria ?? ''))}
           onChiudi={() => { setAssegnaFigura(null); dopoModifica(); }}
           onAssegnaConPregressa={async (personaId) => { setAssegnaFigura(null); await dopoModifica(); setPregressaPersonaId(personaId); }}
         />
@@ -917,8 +918,8 @@ function ModuloAggiuntivo({ m, persona, valutato, onCambia }: {
   );
 }
 
-function FormAssegnaFigura({ figura, persone, clienteId, haFormazione, onChiudi, onAssegnaConPregressa }: {
-  figura: FiguraSicurezza; persone: PersonaValutata[]; clienteId: string; haFormazione: boolean; onChiudi: () => void;
+function FormAssegnaFigura({ figura, persone, clienteId, chiediPregressa, onChiudi, onAssegnaConPregressa }: {
+  figura: FiguraSicurezza; persone: PersonaValutata[]; clienteId: string; chiediPregressa: boolean; onChiudi: () => void;
   onAssegnaConPregressa?: (personaId: string) => void;
 }) {
   const titolari = persone.filter((p) => p.figure.some((f) => f.codice === figura.codice)).map((p) => p.persona.id);
@@ -958,10 +959,10 @@ function FormAssegnaFigura({ figura, persone, clienteId, haFormazione, onChiudi,
         }
       }
       // Se ho assegnato qualcuno per la prima volta a questo ruolo E il ruolo
-      // prevede formazione sicurezza, chiedo subito se ha formazione pregressa.
-      // Per le figure SENZA percorso formativo (es. Medico competente: si registra
-      // solo la nomina) salto il passo e chiudo.
-      if (haFormazione && aggiunte.length > 0) {
+      // prevede formazione soggetta al regime pregressa (ASR 2025), chiedo subito
+      // se ha formazione pregressa. Escluse: figure senza corsi (es. Medico
+      // competente) e ruoli con regime proprio (antincendio, primo soccorso).
+      if (chiediPregressa && aggiunte.length > 0) {
         setNuove(aggiunte);
         setRisposte(Object.fromEntries(aggiunte.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>);
         setStep('pregressa');
@@ -1247,11 +1248,12 @@ function primaFiguraDi(r: RequisitoValutato, figure: { codice: string; nome: str
 function EvidenzePregresse({ pv, clienteId, onCambia, onChiudi }: {
   pv: PersonaValutata; clienteId: string; onCambia: () => void; onChiudi: () => void;
 }) {
-  // Da recuperare = requisiti senza attestato/esonero: con la persona marcata
-  // "formazione pregressa" sono "da verificare"; eventuali "critico" (es. corso
-  // datore) restano comunque da gestire. Gli altri sono gia' coperti.
-  const daRecuperare = pv.requisiti.filter((r) => r.stato === 'da_verificare' || r.stato === 'critico');
-  const coperti = pv.requisiti.filter((r) => r.stato !== 'da_verificare' && r.stato !== 'critico');
+  // Antincendio e primo soccorso sono esclusi dal flusso pregressa (regime
+  // proprio): non compaiono in questa modale. Tra i restanti, "da recuperare" =
+  // senza attestato/esonero ("da verificare" o "critico"); gli altri sono coperti.
+  const soggetti = pv.requisiti.filter((r) => !CATEGORIE_NO_PREGRESSA.has(r.categoria));
+  const daRecuperare = soggetti.filter((r) => r.stato === 'da_verificare' || r.stato === 'critico');
+  const coperti = soggetti.filter((r) => r.stato !== 'da_verificare' && r.stato !== 'critico');
 
   // Raggruppa i requisiti da recuperare per RUOLO (ogni requisito una volta sola,
   // sotto la prima figura della persona che lo richiede).

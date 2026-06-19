@@ -514,6 +514,18 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Antincendio e primo soccorso fuori dal regime "formazione pregressa"**
+  (`src/lib/admin/formazione.ts`, `src/admin/Formazione.tsx`): la formazione
+  pregressa e' il regime transitorio dell'ASR 17/04/2025; antincendio (DM
+  02/09/2021) e primo soccorso (DM 388/2003) hanno regimi propri e ne sono
+  esclusi. Nuova costante `CATEGORIE_NO_PREGRESSA = {antincendio, primo_soccorso}`.
+  Effetti: nel motore un attestato mancante per queste categorie resta "critico"
+  (mai "da verificare") anche se la persona ha `formazione_pregressa`; il pannello
+  "Evidenze pregresse" non li elenca; in assegnazione il passo "Formazione
+  pregressa? SI/NO" compare solo se la figura ha almeno un requisito soggetto
+  (nuova prop `chiediPregressa`, che sostituisce `haFormazione` e copre anche le
+  figure senza corsi). Front-end + motore puro, nessuna migration. Build `tsc -b`
+  + `vite build` puliti.
 - **Ruoli a percorsi multipli: corso scelto per persona/attestato** (`src/lib/admin/formazione.ts`,
   `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx`): per i ruoli con piu'
   percorsi alternativi nella stessa categoria (Addetto antincendio liv. 1/2/3,

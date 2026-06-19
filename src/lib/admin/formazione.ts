@@ -217,6 +217,13 @@ const SCAD_PRIMA_DATORE = '2027-05-19';
 // dicitura scritta dal consulente al posto del nome modulare ASR 2025 a catalogo.
 export const MARCA_PREGRESSA = 'Evidenza pregressa';
 
+// Categorie di corso NON soggette al regime transitorio "formazione pregressa"
+// dell'ASR 17/04/2025: antincendio (DM 02/09/2021) e primo soccorso (DM 388/2003)
+// hanno regimi propri e non prevedono il concetto di formazione pregressa "da
+// verificare". Per questi, un attestato mancante e' direttamente critico (non
+// "da verificare") e non vanno proposti nel flusso pregressa.
+export const CATEGORIE_NO_PREGRESSA = new Set(['antincendio', 'primo_soccorso']);
+
 // Ore di formazione specifica lavoratori per livello di rischio.
 const ORE_SPECIFICA: Record<LivelloRischio, number> = { basso: 4, medio: 8, alto: 12 };
 
@@ -464,9 +471,10 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         } else {
           stato = 'in_scadenza'; dettaglio = 'Prima formazione entro il ' + dataIT(SCAD_PRIMA_DATORE);
         }
-      } else if (d.persona.formazione_pregressa) {
+      } else if (d.persona.formazione_pregressa && !CATEGORIE_NO_PREGRESSA.has(categoria)) {
         // Persona con formazione pregressa (regime ante ASR 2025): non "mai svolto"
         // ma "da verificare", finche' non si recupera/registra l'attestato.
+        // Antincendio e primo soccorso sono esclusi: regime proprio, restano critici.
         stato = 'da_verificare';
         dettaglio = 'Formazione pregressa dichiarata: attestato da recuperare e registrare';
       }
