@@ -5,7 +5,7 @@
 // promemoria. Stile allineato al back-office (classi .bo-* di ui.ts) + un
 // piccolo foglio supplementare per semafori/metriche/modali (scoping .bo).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, contentTypeAttestato, pathAttestato, urlFirmatoAttestato } from '../lib/supabase';
 import { newId } from '../lib/types';
 import {
@@ -567,25 +567,44 @@ function Modale({ titolo, children }: { titolo: string; children: any }) {
 }
 
 // Data di nomina editabile nel box di assegnazione: aggiorna la nomina esistente
-// (per id) senza toccare gli altri campi. Se manca la nomina (caso anomalo) il
-// campo resta disabilitato.
+// (per id) senza toccare gli altri campi. Il salvataggio avviene all'USCITA dal
+// campo (onBlur), non a ogni tasto: i campi date nativi formano una data valida
+// gia' alla prima cifra dell'anno (es. "0002"), e salvare/ricaricare a ogni
+// onChange azzererebbe il valore mentre si digita. Se manca la nomina (caso
+// anomalo) il campo resta disabilitato.
 function NominaDataInline({ nominaId, data, onSaved }: {
   nominaId: string | null; data: string | null; onSaved: () => void;
 }) {
   const [v, setV] = useState(data ?? '');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setV(data ?? ''); }, [data]);
-  async function salva(nuovo: string) {
-    setV(nuovo);
+  const editing = useRef(false);
+  // Allinea al valore salvato solo quando NON si sta editando (evita reset a meta' digitazione).
+  useEffect(() => { if (!editing.current) setV(data ?? ''); }, [data]);
+
+  async function commit() {
+    editing.current = false;
+    const nuovo = v || null;
+    if ((data ?? '') === (nuovo ?? '')) return;     // nessuna modifica
     if (!nominaId) return;
+    if (nuovo) {                                     // guardia anno plausibile
+      const anno = Number(nuovo.slice(0, 4));
+      if (!(anno >= 1990 && anno <= 2100)) return;   // data incompleta/assurda: ignora
+    }
     setBusy(true);
-    try { await aggiornaDataNomina(nominaId, nuovo || null); onSaved(); }
+    try { await aggiornaDataNomina(nominaId, nuovo); onSaved(); }
     finally { setBusy(false); }
   }
+
   return (
     <label className="fz-nomina">
       <span>Data di nomina</span>
-      <input type="date" value={v} disabled={busy || !nominaId} onChange={(e) => salva(e.target.value)} />
+      <input
+        type="date" value={v} disabled={busy || !nominaId}
+        min="1990-01-01" max="2100-12-31"
+        onFocus={() => { editing.current = true; }}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={commit}
+      />
     </label>
   );
 }
