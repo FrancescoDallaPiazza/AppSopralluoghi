@@ -698,6 +698,10 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, alternative, moduli }
   // Requisito a percorsi multipli (es. antincendio liv.1/2/3, primo soccorso
   // gruppo A / B-C): il consulente sceglie QUI il corso effettivo della persona.
   const multiPath = alternative.length > 1;
+  // Antincendio (DM 02/09/2021) e primo soccorso (DM 388/2003) sono fuori dal
+  // regime ASR 2025: gli esoneri/crediti (Allegato III) non si applicano, quindi
+  // niente cancello esonero - si va diretti alla registrazione della formazione.
+  const noEsonero = CATEGORIE_NO_PREGRESSA.has(r.categoria);
   const [scelta, setScelta] = useState<'attesa' | 'esonero' | 'formazione'>('attesa');
   const [corsoScelto, setCorsoScelto] = useState('');
   const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
@@ -789,31 +793,35 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, alternative, moduli }
               <button className="bo-btn ghost sm" disabled={busy} onClick={rimuoviAttestato}>rimuovi attestato</button>
             </div>
           )}
-          <div className="ev-step">1 &middot; Esonero / credito previsto?</div>
-          {r.promemoria.filter((a) => a.tipo !== 'altro').map((a) => (
-            <div key={a.id} className="fz-hint"><span aria-hidden="true">i</span><span>{a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}</span></div>
-          ))}
-          <div className="ev-choice">
-            <button className={'bo-btn ghost sm' + (scelta === 'esonero' ? ' on' : '')} onClick={() => setScelta('esonero')}>Si, c'e' un esonero/credito</button>
-            <button className={'bo-btn ghost sm' + (scelta === 'formazione' ? ' on' : '')} onClick={() => setScelta('formazione')}>No, registro la formazione</button>
-          </div>
-
-          {scelta === 'esonero' && (
-            <div className="ev-box">
-              <div className="bo-grid">
-                <label className="bo-field"><span>Tipo</span>
-                  <select value={esonTipo} onChange={(e) => setEsonTipo(e.target.value as TipoEsonero)}>{TIPI_ESONERO.map((t) => <option key={t} value={t}>{t}</option>)}</select>
-                </label>
-                <label className="bo-field"><span>Riferimento normativo</span><input type="text" value={esonRif} onChange={(e) => setEsonRif(e.target.value)} /></label>
+          {!noEsonero && (
+            <>
+              <div className="ev-step">1 &middot; Esonero / credito previsto?</div>
+              {r.promemoria.filter((a) => a.tipo !== 'altro').map((a) => (
+                <div key={a.id} className="fz-hint"><span aria-hidden="true">i</span><span>{a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}</span></div>
+              ))}
+              <div className="ev-choice">
+                <button className={'bo-btn ghost sm' + (scelta === 'esonero' ? ' on' : '')} onClick={() => setScelta('esonero')}>Si, c'e' un esonero/credito</button>
+                <button className={'bo-btn ghost sm' + (scelta === 'formazione' ? ' on' : '')} onClick={() => setScelta('formazione')}>No, registro la formazione</button>
               </div>
-              <label className="bo-field"><span>Motivazione *</span><textarea value={esonMot} onChange={(e) => setEsonMot(e.target.value)} /></label>
-              <button className="bo-btn sm" disabled={busy || !esonMot.trim()} onClick={registraEsonero}>Registra esonero / credito</button>
-            </div>
+
+              {scelta === 'esonero' && (
+                <div className="ev-box">
+                  <div className="bo-grid">
+                    <label className="bo-field"><span>Tipo</span>
+                      <select value={esonTipo} onChange={(e) => setEsonTipo(e.target.value as TipoEsonero)}>{TIPI_ESONERO.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+                    </label>
+                    <label className="bo-field"><span>Riferimento normativo</span><input type="text" value={esonRif} onChange={(e) => setEsonRif(e.target.value)} /></label>
+                  </div>
+                  <label className="bo-field"><span>Motivazione *</span><textarea value={esonMot} onChange={(e) => setEsonMot(e.target.value)} /></label>
+                  <button className="bo-btn sm" disabled={busy || !esonMot.trim()} onClick={registraEsonero}>Registra esonero / credito</button>
+                </div>
+              )}
+            </>
           )}
 
-          {scelta === 'formazione' && (
+          {(noEsonero || scelta === 'formazione') && (
             <div className="ev-box">
-              <div className="ev-step">2 &middot; Formazione richiesta (base + aggiornamento)</div>
+              <div className="ev-step">{noEsonero ? '1' : '2'} &middot; Formazione richiesta (base + aggiornamento)</div>
               {r.formazione_id && <div className="ev-note">Attestato gia' presente: aggiungine un altro solo per l'aggiornamento o una correzione.</div>}
               {multiPath && (
                 <label className="bo-field" style={{ marginBottom: 8 }}><span>Corso svolto (livello/gruppo) *</span>
@@ -832,11 +840,11 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, alternative, moduli }
               {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
               <label className="chk" style={{ marginBottom: 10 }}><input type="checkbox" checked={agg} onChange={(e) => setAgg(e.target.checked)} /> e' un aggiornamento</label>
               <button className="bo-btn sm" disabled={busy || !data || (multiPath && !corsoScelto)} onClick={registraAttestato}>Registra attestato</button>
-              <div className="ev-step" style={{ marginTop: 12 }}>3 &middot; Scadenza</div>
+              <div className="ev-step" style={{ marginTop: 12 }}>{noEsonero ? '2' : '3'} &middot; Scadenza</div>
               <div className="ev-note">{r.scadenza ? 'Scadenza attuale: ' + r.scadenza : 'Nessuna scadenza attiva: verra\' calcolata dalla data dell\'attestato.'}</div>
               {moduli && moduli.length > 0 && (
                 <>
-                  <div className="ev-step" style={{ marginTop: 12 }}>4 &middot; Moduli aggiuntivi</div>
+                  <div className="ev-step" style={{ marginTop: 12 }}>{noEsonero ? '3' : '4'} &middot; Moduli aggiuntivi</div>
                   {moduli.map((m) => (
                     <ModuloAggiuntivo key={m.ammesso.id} m={{ ammesso: m.ammesso, corso: m.corso }} persona={persona} valutato={m.valutato} onCambia={onCambia} />
                   ))}

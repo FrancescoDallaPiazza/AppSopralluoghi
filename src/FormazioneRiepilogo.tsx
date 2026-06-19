@@ -19,7 +19,7 @@ import {
   type RiepilogoCliente, type RequisitoValutato, type StatoRequisito,
   type LivelloRischio, type TipoEsonero, type Formazione, type Esonero,
   type Persona, type Nomina, type FiguraSicurezza,
-  assemblaRiepilogo, nomePersona,
+  assemblaRiepilogo, nomePersona, CATEGORIE_NO_PREGRESSA,
 } from './lib/admin/formazione';
 import { costruisciSnapshot, firmaOrganigramma } from './lib/admin/organigramma-revisioni';
 import {
@@ -296,6 +296,9 @@ function EditorRequisito({
   // Requisito a percorsi multipli (antincendio liv.1/2/3, primo soccorso A / B-C):
   // il corso effettivo lo sceglie qui chi compila, non lo decide l'app.
   const multiPath = alternative.length > 1;
+  // Antincendio (DM 02/09/2021) e primo soccorso (DM 388/2003) sono fuori dal
+  // regime ASR 2025: nessun esonero/credito Allegato III, quindi niente tab esonero.
+  const noEsonero = CATEGORIE_NO_PREGRESSA.has(req.categoria);
   const [tab, setTab] = useState<'att' | 'eson'>('att');
   const [corsoScelto, setCorsoScelto] = useState('');
   const [dataAtt, setDataAtt] = useState('');
@@ -386,10 +389,12 @@ function EditorRequisito({
 
   return (
     <div className="fzr-ed">
-      <div className="fzr-tabs">
-        <button className={tab === 'att' ? 'on' : ''} onClick={() => setTab('att')}>Attestato</button>
-        <button className={tab === 'eson' ? 'on' : ''} onClick={() => setTab('eson')}>Esonero</button>
-      </div>
+      {!noEsonero && (
+        <div className="fzr-tabs">
+          <button className={tab === 'att' ? 'on' : ''} onClick={() => setTab('att')}>Attestato</button>
+          <button className={tab === 'eson' ? 'on' : ''} onClick={() => setTab('eson')}>Esonero</button>
+        </div>
+      )}
 
       {tab === 'att' ? (
         <>

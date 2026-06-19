@@ -514,6 +514,14 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Antincendio / primo soccorso: niente cancello esonero**
+  (`src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx`): per le categorie
+  `CATEGORIE_NO_PREGRESSA` (antincendio DM 02/09/2021, primo soccorso DM
+  388/2003) il modale evidenze non mostra piu' il passo "1 - Esonero/credito
+  previsto?" (back-office) ne' il tab "Esonero" (campo): essendo fuori dal
+  regime ASR 2025 non hanno crediti/esoneri dell'Allegato III. Si va diretti
+  alla registrazione della formazione, con gli step rinumerati (1 Formazione /
+  2 Scadenza / 3 Moduli). Front-end puro: canale 1, nessuna migration.
 - **Deploy in produzione (2026-06-19)**: andati live i due bundle che erano in
   sospeso lato deploy.
   1. *Sessione Formazione / Organigramma* — migration 023

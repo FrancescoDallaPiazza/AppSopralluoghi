@@ -158,6 +158,10 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## ✅ Fatti di recente
 
+- [x] **2026-06-19** Antincendio / primo soccorso: rimosso il cancello
+  esonero/credito (back-office + campo) per le categorie fuori dal regime
+  ASR 2025; si registra direttamente la formazione. Canale 1.
+
 - [x] **2026-06-19** Assegnazione ruolo: alla prima assegnazione di una persona a
   una figura, passo *Formazione pregressa? SI/NO* — SI apre le evidenze pregresse
   (e imposta il flag persona), NO prosegue con la formazione ASR 2025. Solo
