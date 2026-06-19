@@ -17,6 +17,8 @@ Per attivare in produzione lo **snapshot versionato dell'organigramma + PDF**
 - [ ] Eseguire `supabase/migrations/027_organigramma_revisioni.sql` nell'**SQL
   Editor** di Supabase (tabella `organigramma_revisione` + trigger di
   numerazione + RLS).
+- [ ] Eseguire `supabase/migrations/028_cliente_rls_territoriale.sql` nell'**SQL
+  Editor** (colonna `cliente.rls_territoriale` per la spunta RLST).
 - [ ] Deployare la Edge Function **`organigramma-pdf`** dal Dashboard Supabase
   (CORS inline; nessun import condiviso). Verificare che `PDFBOLT_API_KEY` sia
   già tra i secrets (lo è per i report).
@@ -154,6 +156,18 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-06-19** Organigramma back-office: box criticita' ruolo scoperto
+  ridotto a "Criticita': ruolo obbligatorio senza incaricato"; box RLS con spunta
+  **RLS territoriale (RLST)** (`cliente.rls_territoriale`, **migration 028** da
+  eseguire): se attiva l'RLS non e' piu' un ruolo scoperto. Motore, snapshot e
+  firma aggiornati. Build pulita.
+
+- [x] **2026-06-19** Back-office formazione: pulsante *rimuovi attestato* per
+  requisito; pannello dedicato *Evidenze pregresse* (si apre attivando la spunta
+  formazione pregressa, o dal bottone nella scheda persona) per registrare gli
+  attestati pregressi con data + scadenza manuale, oppure creare una cosa da fare
+  per recuperarli. Solo `src/admin/Formazione.tsx`, nessuna migration. Build pulita.
 
 - [x] **2026-06-19** Snapshot versionato dell'organigramma sicurezza + PDF a
   richiesta (Parte 3). Migration 027 (`organigramma_revisione` + trigger di

@@ -105,7 +105,11 @@ function nomeDa(p: { nome?: string | null; cognome?: string | null }): string {
 // include lo stato calcolato (che dipende dalla data odierna): cosi' lo scorrere
 // del tempo da solo non genera revisioni; solo una modifica reale lo fa. Include
 // tutte le persone (anche disattivate) per cogliere l'attivazione/disattivazione.
-export function firmaOrganigramma(dati: DatiOrganigramma, rischio: LivelloRischio | null): string {
+export function firmaOrganigramma(
+  dati: DatiOrganigramma,
+  rischio: LivelloRischio | null,
+  rlsTerritoriale = false,
+): string {
   const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id);
   const persone = [...dati.persone].sort(byId).map((p) => [
     p.id, p.nome, p.cognome, p.mansione, p.reparto, p.livello_rischio, p.attivo, p.formazione_pregressa,
@@ -118,7 +122,7 @@ export function firmaOrganigramma(dati: DatiOrganigramma, rischio: LivelloRischi
   const esoneri = [...dati.esoneri].sort(byId).map((e) => [
     e.persona_id, e.corso_codice, e.figura_codice, e.tipo, e.attivo, e.motivazione, e.riferimento_norm,
   ]);
-  return JSON.stringify({ rischio, persone, nomine, formazioni, esoneri });
+  return JSON.stringify({ rischio, rlsTerritoriale, persone, nomine, formazioni, esoneri });
 }
 
 // ============================ DATA-ACCESS (online) ============================
@@ -139,9 +143,9 @@ export async function registraSnapshotOrganigramma(
     origine?: string;
   },
 ): Promise<EsitoSnapshot> {
-  const { rischio, dati } = await caricaDatiOrganigramma(clienteId);
-  const riep = assemblaRiepilogo(clienteId, rischio, dati, opts.catalogo);
-  const firma = firmaOrganigramma(dati, rischio);
+  const { rischio, rlsTerritoriale, dati } = await caricaDatiOrganigramma(clienteId);
+  const riep = assemblaRiepilogo(clienteId, rischio, dati, opts.catalogo, { rlsTerritoriale });
+  const firma = firmaOrganigramma(dati, rischio, rlsTerritoriale);
 
   const ultima = await supabase
     .from('organigramma_revisione')

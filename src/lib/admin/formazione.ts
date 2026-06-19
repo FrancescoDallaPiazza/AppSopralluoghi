@@ -547,6 +547,7 @@ export function assemblaRiepilogo(
   rischio: LivelloRischio | null,
   dati: DatiOrganigramma,
   cat: Catalogo,
+  opts?: { rlsTerritoriale?: boolean },
 ): RiepilogoCliente {
   const valutate = dati.persone
     .filter((p) => p.attivo)
@@ -575,13 +576,17 @@ export function assemblaRiepilogo(
   }
 
   // Figure obbligatorie (obbligo 'sempre') senza alcun incaricato attivo = ruoli
-  // scoperti (criticita' di organigramma). Eccezione: l'RSPP non e' richiesto se
-  // il datore svolge il ruolo di RSPP (figura dl_rspp coperta).
+  // scoperti (criticita' di organigramma). Eccezioni: l'RSPP non e' richiesto se
+  // il datore svolge il ruolo di RSPP (dl_rspp coperta); l'RLS non e' scoperto se
+  // l'azienda dichiara di essere coperta dal rappresentante territoriale (RLST).
   const coperte = new Set<string>();
   for (const pv of valutate) for (const fg of pv.figure) coperte.add(fg.codice);
   const dlRsppCoperto = coperte.has('dl_rspp');
+  const rlsTerritoriale = opts?.rlsTerritoriale ?? false;
   const figureScoperte = cat.figure.filter(
-    (f) => f.attiva && f.obbligo === 'sempre' && !coperte.has(f.codice) && !(f.codice === 'rspp' && dlRsppCoperto),
+    (f) => f.attiva && f.obbligo === 'sempre' && !coperte.has(f.codice)
+      && !(f.codice === 'rspp' && dlRsppCoperto)
+      && !(f.codice === 'rls' && rlsTerritoriale),
   );
 
   return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi, figureScoperte };
@@ -592,10 +597,11 @@ export function assemblaRiepilogo(
 // da `valutaCliente` per essere riusato dallo snapshot versionato (revisioni).
 export async function caricaDatiOrganigramma(
   clienteId: string,
-): Promise<{ rischio: LivelloRischio | null; dati: DatiOrganigramma }> {
-  const cli = await supabase.from('cliente').select('livello_rischio').eq('id', clienteId).single();
+): Promise<{ rischio: LivelloRischio | null; rlsTerritoriale: boolean; dati: DatiOrganigramma }> {
+  const cli = await supabase.from('cliente').select('livello_rischio, rls_territoriale').eq('id', clienteId).single();
   if (cli.error) throw cli.error;
   const rischio = (cli.data?.livello_rischio ?? null) as LivelloRischio | null;
+  const rlsTerritoriale = (cli.data?.rls_territoriale ?? false) as boolean;
 
   const persone = await caricaPersone(clienteId);
   const ids = persone.map((p) => p.id);
@@ -604,7 +610,7 @@ export async function caricaDatiOrganigramma(
     caricaPerPersone<Formazione>('formazione', ids),
     caricaPerPersone<Esonero>('esonero', ids),
   ]);
-  return { rischio, dati: { persone, nomine, formazioni, esoneri } };
+  return { rischio, rlsTerritoriale, dati: { persone, nomine, formazioni, esoneri } };
 }
 
 // Valuta l'intero cliente: organigramma + stato formativo per persona.
@@ -612,8 +618,8 @@ export async function caricaDatiOrganigramma(
 // pura `assemblaRiepilogo` (la medesima usata offline in campo).
 export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
   const catalogo = cat ?? (await caricaCatalogo());
-  const { rischio, dati } = await caricaDatiOrganigramma(clienteId);
-  return assemblaRiepilogo(clienteId, rischio, dati, catalogo);
+  const { rischio, rlsTerritoriale, dati } = await caricaDatiOrganigramma(clienteId);
+  return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale });
 }
 
 // ============================ CRUD ============================

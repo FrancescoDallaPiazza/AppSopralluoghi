@@ -201,8 +201,9 @@ descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025) �
 024 figura Medico competente (sorveglianza sanitaria, senza corso) · 025
 descrizioni `guida` figure riscritte verbatim dall'allegato (supera 022) · 026
 Preposto a obbligo 'sempre' (ruolo scoperto se vuoto) · 027 `organigramma_revisione`
-(snapshot versionato dell'organigramma per cliente + trigger di numerazione).
-**Prossima libera: 028.**
+(snapshot versionato dell'organigramma per cliente + trigger di numerazione) ·
+028 `cliente.rls_territoriale` (RLS coperto dal rappresentante territoriale).
+**Prossima libera: 029.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -513,6 +514,21 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- Organigramma back-office: (1) il box di criticita' per ruolo obbligatorio scoperto
+  ora riporta solo "Criticita': ruolo obbligatorio senza incaricato."; (2) il box
+  dell'RLS ha una spunta **"RLS territoriale (RLST)"** (`cliente.rls_territoriale`,
+  migration 028): se attiva, l'RLS non e' piu' segnalato come ruolo scoperto
+  (coperto dal rappresentante territoriale). `assemblaRiepilogo` riceve un flag
+  opzionale `rlsTerritoriale` (retrocompatibile) che esclude l'RLS dai ruoli
+  scoperti; propagato a `valutaCliente`, allo snapshot e alla firma.
+- Back-office formazione: (1) pulsante **"rimuovi attestato"** per requisito (elimina
+  la formazione errata via `eliminaFormazione`); (2) **pannello "Evidenze pregresse"**
+  dedicato che si apre quando si attiva la spunta `formazione_pregressa` su una persona
+  (o dal bottone nella scheda persona): elenca i corsi richiesti non coperti e per
+  ciascuno consente di registrare l'attestato pregresso con **data + scadenza manuale**
+  (il motore usa `f.scadenza` se valorizzata), oppure di creare una **cosa da fare**
+  ("Recuperare e registrare attestato pregresso") verso il cliente. Solo
+  `src/admin/Formazione.tsx`; nessuna migration.
 - Snapshot versionato dell'organigramma sicurezza + PDF a richiesta (§7-bis):
   migration 027 (`organigramma_revisione` + trigger numerazione), Edge Function
   `organigramma-pdf`, nuovo modulo `organigramma-revisioni.ts`, snapshot
