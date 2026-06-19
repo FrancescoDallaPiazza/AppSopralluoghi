@@ -1389,6 +1389,7 @@ function SezioneRuoloPregresso({ ruoloNome, requisiti, persona, clienteId, onCam
           <div className="ev-choice" style={{ marginTop: 8 }}>
             <button className="bo-btn sm" disabled={busy} onClick={salva}>Salva attestati pregressi</button>
             <button className="bo-btn ghost sm" disabled={busy} onClick={nessunAttestato}>Nessun attestato: crea cosa da fare</button>
+            <button type="button" className="bo-btn ghost sm" disabled={busy} onClick={() => { setRighe([rigaPregressaVuota()]); setEsito(null); }}>Annulla</button>
           </div>
         </div>
       )}
