@@ -155,6 +155,12 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## ✅ Fatti di recente
 
+- [x] **2026-06-19** Back-office formazione: pulsante *rimuovi attestato* per
+  requisito; pannello dedicato *Evidenze pregresse* (si apre attivando la spunta
+  formazione pregressa, o dal bottone nella scheda persona) per registrare gli
+  attestati pregressi con data + scadenza manuale, oppure creare una cosa da fare
+  per recuperarli. Solo `src/admin/Formazione.tsx`, nessuna migration. Build pulita.
+
 - [x] **2026-06-19** Snapshot versionato dell'organigramma sicurezza + PDF a
   richiesta (Parte 3). Migration 027 (`organigramma_revisione` + trigger di
   numerazione per cliente), Edge Function `organigramma-pdf` (PDFBolt, bucket

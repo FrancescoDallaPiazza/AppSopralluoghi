@@ -513,6 +513,14 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- Back-office formazione: (1) pulsante **"rimuovi attestato"** per requisito (elimina
+  la formazione errata via `eliminaFormazione`); (2) **pannello "Evidenze pregresse"**
+  dedicato che si apre quando si attiva la spunta `formazione_pregressa` su una persona
+  (o dal bottone nella scheda persona): elenca i corsi richiesti non coperti e per
+  ciascuno consente di registrare l'attestato pregresso con **data + scadenza manuale**
+  (il motore usa `f.scadenza` se valorizzata), oppure di creare una **cosa da fare**
+  ("Recuperare e registrare attestato pregresso") verso il cliente. Solo
+  `src/admin/Formazione.tsx`; nessuna migration.
 - Snapshot versionato dell'organigramma sicurezza + PDF a richiesta (§7-bis):
   migration 027 (`organigramma_revisione` + trigger numerazione), Edge Function
   `organigramma-pdf`, nuovo modulo `organigramma-revisioni.ts`, snapshot

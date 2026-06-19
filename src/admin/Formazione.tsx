@@ -15,7 +15,7 @@ import {
   type CosaDaFareProposta, type FiguraSicurezza,
   caricaCatalogo, caricaAreeInterne, valutaCliente,
   salvaPersona, eliminaPersona, salvaNomina,
-  salvaFormazione, salvaEsonero, eliminaEsonero,
+  salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
   nomePersona,
@@ -145,6 +145,7 @@ export default function Formazione() {
   const [catalogoOpen, setCatalogoOpen] = useState(false);
   const [storicoOpen, setStoricoOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [pregressaPersonaId, setPregressaPersonaId] = useState<string | null>(null);
 
   const cliente = useMemo(() => clienti.find((c) => c.id === clienteId) ?? null, [clienti, clienteId]);
 
@@ -401,7 +402,16 @@ export default function Formazione() {
         <FormPersona
           persona={editPersona}
           onAnnulla={() => setEditPersona(null)}
-          onSalva={async (p) => { await salvaPersona(p); setEditPersona(null); dopoModifica(); }}
+          onSalva={async (p) => {
+            const eraPregressa = editPersona?.formazione_pregressa ?? false;
+            await salvaPersona(p);
+            setEditPersona(null);
+            await dopoModifica();
+            // Alla prima attivazione della "formazione pregressa" apri il pannello
+            // dedicato per caricare le evidenze pregresse / creare le cose da fare.
+            if (p.formazione_pregressa && !eraPregressa) setPregressaPersonaId(p.id);
+          }}
+          onEvidenzePregresse={editPersona.id ? () => { const id = editPersona.id; setEditPersona(null); setPregressaPersonaId(id); } : undefined}
           onElimina={editPersona.id ? async () => { if (confirm('Eliminare la persona e tutti i suoi dati formativi?')) { await eliminaPersona(editPersona.id); setEditPersona(null); dopoModifica(); } } : undefined}
         />
       )}
@@ -435,6 +445,19 @@ export default function Formazione() {
           onChiudi={() => setStoricoOpen(false)}
         />
       )}
+
+      {pregressaPersonaId && riep && clienteId && (() => {
+        const pv = riep.persone.find((p) => p.persona.id === pregressaPersonaId);
+        if (!pv) return null;
+        return (
+          <EvidenzePregresse
+            pv={pv}
+            clienteId={clienteId}
+            onCambia={dopoModifica}
+            onChiudi={() => setPregressaPersonaId(null)}
+          />
+        );
+      })()}
     </>
   );
 }
@@ -511,8 +534,8 @@ function Modale({ titolo, children }: { titolo: string; children: any }) {
   );
 }
 
-function FormPersona({ persona, onSalva, onAnnulla, onElimina }: {
-  persona: Persona; onSalva: (p: Persona) => void; onAnnulla: () => void; onElimina?: () => void;
+function FormPersona({ persona, onSalva, onAnnulla, onElimina, onEvidenzePregresse }: {
+  persona: Persona; onSalva: (p: Persona) => void; onAnnulla: () => void; onElimina?: () => void; onEvidenzePregresse?: () => void;
 }) {
   const [p, setP] = useState<Persona>(persona);
   return (
@@ -534,6 +557,12 @@ function FormPersona({ persona, onSalva, onAnnulla, onElimina }: {
         <input type="checkbox" checked={p.formazione_pregressa} onChange={(e) => setP({ ...p, formazione_pregressa: e.target.checked })} />
         <span>Formazione pregressa (azienda gia' operante prima dell'ASR 2025): i requisiti senza attestato risultano "da verificare" invece di "critici". Il corso datore di lavoro fa storia a se' (prima applicazione entro 19/05/2027).</span>
       </label>
+      {p.formazione_pregressa && persona.id && onEvidenzePregresse && (
+        <div className="ev-note" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
+          <span>Carica gli attestati pregressi (data + scadenza) o segna quelli non disponibili.</span>
+          <button type="button" className="bo-btn ghost sm" onClick={onEvidenzePregresse}>Evidenze pregresse</button>
+        </div>
+      )}
       <div className="bo-bar">
         <button className="bo-btn" disabled={!p.nome.trim()} onClick={() => onSalva(p)}>Salva</button>
         <button className="bo-btn ghost" onClick={onAnnulla}>Annulla</button>
@@ -612,6 +641,12 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
     setBusy(true);
     try { await eliminaEsonero(r.esonero_id); onCambia(); } finally { setBusy(false); }
   }
+  async function rimuoviAttestato() {
+    if (!r.formazione_id) return;
+    if (!confirm('Eliminare l\u2019attestato registrato per questo requisito? L\u2019operazione non si puo\u2019 annullare.')) return;
+    setBusy(true);
+    try { await eliminaFormazione(r.formazione_id); onCambia(); } finally { setBusy(false); }
+  }
   async function registraAttestato() {
     if (!data) return;
     if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
@@ -652,6 +687,12 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
         </div>
       ) : (
         <>
+          {r.formazione_id && (
+            <div className="ev-eson-ok" style={{ marginBottom: 8 }}>
+              Attestato registrato per questo requisito{r.scadenza ? ' \u2014 scadenza ' + r.scadenza : ''}.
+              <button className="bo-btn ghost sm" disabled={busy} onClick={rimuoviAttestato}>rimuovi attestato</button>
+            </div>
+          )}
           <div className="ev-step">1 &middot; Esonero / credito previsto?</div>
           {r.promemoria.filter((a) => a.tipo !== 'altro').map((a) => (
             <div key={a.id} className="fz-hint"><span aria-hidden="true">i</span><span>{a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}</span></div>
@@ -1015,6 +1056,124 @@ function VistaSnapshot({ snap, numero, onIndietro }: { snap: SnapshotOrganigramm
         </div>
       ))}
     </>
+  );
+}
+
+// ---------- evidenze pregresse (formazione ante ASR 2025) ----------
+
+function EvidenzePregresse({ pv, clienteId, onCambia, onChiudi }: {
+  pv: PersonaValutata; clienteId: string; onCambia: () => void; onChiudi: () => void;
+}) {
+  // Da recuperare = requisiti senza attestato/esonero: con la persona marcata
+  // "formazione pregressa" sono "da verificare"; eventuali "critico" (es. corso
+  // datore) restano comunque da gestire. Gli altri sono gia' coperti.
+  const daRecuperare = pv.requisiti.filter((r) => r.stato === 'da_verificare' || r.stato === 'critico');
+  const coperti = pv.requisiti.filter((r) => r.stato !== 'da_verificare' && r.stato !== 'critico');
+  return (
+    <Modale titolo={'Evidenze pregresse \u2014 ' + nomePersona(pv.persona)}>
+      <div className="bo-sub" style={{ marginTop: 0 }}>
+        Per ogni corso richiesto registra l'attestato pregresso (data di effettuazione e scadenza).
+        Se l'attestato non e' disponibile, crea una cosa da fare per recuperarlo.
+      </div>
+      {daRecuperare.length === 0 && (
+        <div className="ev-eson-ok" style={{ marginBottom: 8 }}>Nessun corso da recuperare: tutti i requisiti risultano coperti.</div>
+      )}
+      {daRecuperare.map((r) => (
+        <RigaPregressa key={r.corso_codice} r={r} persona={pv.persona} clienteId={clienteId} onCambia={onCambia} />
+      ))}
+      {coperti.length > 0 && (
+        <details style={{ marginTop: 6 }}>
+          <summary className="bo-sub" style={{ cursor: 'pointer', margin: '6px 0' }}>Requisiti gia' coperti ({coperti.length})</summary>
+          {coperti.map((r) => (
+            <div key={r.corso_codice} className="ev-card" style={{ opacity: 0.85 }}>
+              <div className="ev-head">
+                <span><b>{r.corso_nome}</b></span>
+                <span className={'fz-badge ' + (r.stato === 'esonerato' ? 'eventuale' : r.stato === 'conforme' ? 'sempre' : 'condizionale')}>{LABEL_STATO[r.stato] ?? r.stato}</span>
+              </div>
+            </div>
+          ))}
+        </details>
+      )}
+      <div className="bo-bar"><button className="bo-btn ghost" onClick={onChiudi}>Chiudi</button></div>
+    </Modale>
+  );
+}
+
+function RigaPregressa({ r, persona, clienteId, onCambia }: {
+  r: RequisitoValutato; persona: Persona; clienteId: string; onCambia: () => void;
+}) {
+  const [modo, setModo] = useState<'attesa' | 'evidenza' | 'fatta'>('attesa');
+  const [data, setData] = useState('');
+  const [scad, setScad] = useState('');
+  const [ore, setOre] = useState(r.ore != null ? String(r.ore) : '');
+  const [ente, setEnte] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [esito, setEsito] = useState<string | null>(null);
+
+  async function registra() {
+    if (!data) return;
+    if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
+    setBusy(true);
+    try {
+      const fid = newId();
+      let allegatoUrl: string | null = null;
+      if (file) {
+        const path = pathAttestato(fid, newId(), estensioneAttestato(file));
+        const up = await supabase.storage.from(ATTESTATI_BUCKET)
+          .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
+        if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); return; }
+        allegatoUrl = path;
+      }
+      await salvaFormazione({
+        id: fid, persona_id: persona.id, corso_codice: r.corso_codice, corso_nome: r.corso_nome, categoria: r.categoria,
+        data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
+        is_aggiornamento: false, scadenza: scad || null, allegato_url: allegatoUrl, note: 'Evidenza pregressa',
+      });
+      setEsito('Evidenza pregressa registrata.'); setModo('fatta'); onCambia();
+    } finally { setBusy(false); }
+  }
+
+  async function nonDisponibile() {
+    setBusy(true);
+    try {
+      await generaCoseDaFare([{
+        persona_id: persona.id, persona_nome: nomePersona(persona),
+        descrizione: 'Recuperare e registrare attestato pregresso - ' + nomePersona(persona) + ': ' + r.corso_nome,
+        scadenza: r.scadenza, priorita: 'media',
+      }], { includiInScadenza: false, versoArea: false, areaId: null, clienteId });
+      setEsito('Cosa da fare creata (verso il cliente).'); setModo('fatta'); onCambia();
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="ev-card">
+      <div className="ev-head">
+        <span><b>{r.corso_nome}</b>{r.ore != null && <span className="ev-ore"> &middot; {r.ore}h</span>}</span>
+        <span className={'fz-badge ' + (r.stato === 'da_verificare' ? 'eventuale' : 'condizionale')}>{LABEL_STATO[r.stato] ?? r.stato}</span>
+      </div>
+      {esito && <div className="ev-eson-ok" style={{ marginTop: 6 }}>{esito}</div>}
+      {modo !== 'fatta' && (
+        <div className="ev-choice">
+          <button className={'bo-btn ghost sm' + (modo === 'evidenza' ? ' on' : '')} onClick={() => setModo('evidenza')}>Ho l'attestato: registra</button>
+          <button className="bo-btn ghost sm" disabled={busy} onClick={nonDisponibile}>Non disponibile: crea cosa da fare</button>
+        </div>
+      )}
+      {modo === 'evidenza' && (
+        <div className="ev-box">
+          <div className="bo-grid">
+            <label className="bo-field"><span>Data effettuazione *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
+            <label className="bo-field"><span>Scadenza</span><input type="date" value={scad} onChange={(e) => setScad(e.target.value)} /></label>
+            <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
+            <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
+            <label className="bo-field"><span>Allegato (PDF o foto)</span><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+          </div>
+          {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
+          <div className="ev-note">Lascia "Scadenza" vuota per calcolarla automaticamente dalla data di effettuazione.</div>
+          <button className="bo-btn sm" disabled={busy || !data} onClick={registra}>Registra evidenza pregressa</button>
+        </div>
+      )}
+    </div>
   );
 }
 
