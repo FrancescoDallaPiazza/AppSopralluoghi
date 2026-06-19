@@ -529,8 +529,14 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   pulsante **"Nessun attestato: crea cosa da fare"** genera UNA cosa da fare
   "Attestati per il ruolo &lt;ruolo&gt; da recuperare (&lt;persona&gt;)" verso il
   cliente, gestita come tutte le altre dello scadenzario. Rimossa la vecchia
-  `RigaPregressa` per-corso. Front-end puro, nessuna migration ne' Edge Function
-  (canale 1). Build `tsc -b` + `vite build` puliti.
+  `RigaPregressa` per-corso. **Relabel organigramma**: nel motore puro
+  (`src/lib/admin/formazione.ts`), quando un requisito risulta coperto da
+  un'evidenza pregressa (nota con prefisso `MARCA_PREGRESSA`), la riga
+  dell'organigramma mostra la **dicitura libera** scritta dal consulente al posto
+  del nome modulare ASR 2025 a catalogo, con nel dettaglio "pregresso, copre:
+  &lt;modulo ASR 2025&gt;". Vale sia in back-office sia in campo (stesso motore).
+  Front-end + motore puro, nessuna migration ne' Edge Function (canale 1). Build
+  `tsc -b` + `vite build` puliti.
 - Assegnazione ruolo (back-office): assegnando una persona **per la prima volta**
   a una figura, dopo il salvataggio compare il passo **"Formazione pregressa? SI/NO"**.
   SI -> imposta `formazione_pregressa` sulla persona e apre il pannello *Evidenze

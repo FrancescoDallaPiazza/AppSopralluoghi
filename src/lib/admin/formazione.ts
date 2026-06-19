@@ -211,6 +211,12 @@ export const MESI_PREAVVISO = 6;
 const CORSO_DATORE_BASE = 'DATORE_LAVORO';
 const SCAD_PRIMA_DATORE = '2027-05-19';
 
+// Marcatore (prefisso di `formazione.note`) che identifica un attestato inserito
+// come EVIDENZA PREGRESSA (formazione ante ASR 2025, dicitura libera). Quando un
+// requisito risulta coperto da un'evidenza pregressa, l'organigramma mostra la
+// dicitura scritta dal consulente al posto del nome modulare ASR 2025 a catalogo.
+export const MARCA_PREGRESSA = 'Evidenza pregressa';
+
 // Ore di formazione specifica lavoratori per livello di rischio.
 const ORE_SPECIFICA: Record<LivelloRischio, number> = { basso: 4, medio: 8, alto: 12 };
 
@@ -462,10 +468,16 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     const aggMesi = corso?.aggiornamento_mesi ?? null;
     const scad = f.scadenza ?? (aggMesi ? addMesi(f.data_completamento, aggMesi) : null);
     const { stato, dettaglio } = statoDaScadenza(scad, f.data_completamento);
+    // Evidenza pregressa: l'attestato e' un corso degli accordi precedenti con
+    // dicitura libera. Mostriamo QUELLA dicitura al posto del nome modulare ASR
+    // 2025 a catalogo, indicando nel dettaglio quale requisito ASR 2025 copre.
+    const pregressa = (f.note ?? '').startsWith(MARCA_PREGRESSA) && f.corso_nome.trim() !== '';
+    const nomeMostrato = pregressa ? f.corso_nome.trim() : corsoNome;
+    const dettaglioMostrato = pregressa ? dettaglio + ' \u00b7 pregresso, copre: ' + corsoNome : dettaglio;
     requisiti.push({
-      figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
+      figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: nomeMostrato,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,
-      dettaglio, formazione_id: f.id, esonero_id: null, allegato_url: f.allegato_url, promemoria,
+      dettaglio: dettaglioMostrato, formazione_id: f.id, esonero_id: null, allegato_url: f.allegato_url, promemoria,
     });
   }
 

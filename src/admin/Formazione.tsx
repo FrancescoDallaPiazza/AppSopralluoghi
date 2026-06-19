@@ -18,7 +18,7 @@ import {
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
-  nomePersona,
+  nomePersona, MARCA_PREGRESSA,
 } from '../lib/admin/formazione';
 import {
   registraSnapshotOrganigramma, caricaRevisioniOrganigramma, caricaRevisioneOrganigramma,
@@ -1249,7 +1249,7 @@ function SezioneRuoloPregresso({ ruoloNome, requisiti, persona, clienteId, onCam
       id: newId(), persona_id: persona.id, corso_codice: req.corso_codice, corso_nome: riga.tipo.trim(),
       categoria: req.categoria, data_completamento: riga.data, ore: riga.ore === '' ? null : Number(riga.ore),
       ente_formatore: null, is_aggiornamento: false, scadenza: riga.scad || null, allegato_url: allegatoUrl,
-      note: 'Evidenza pregressa (ante ASR 2025) - ruolo ' + ruoloNome,
+      note: MARCA_PREGRESSA + ' (ante ASR 2025) - ruolo ' + ruoloNome,
     };
   }
 
