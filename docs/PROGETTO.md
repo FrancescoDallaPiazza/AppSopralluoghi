@@ -514,6 +514,20 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Ruoli a percorsi multipli: corso scelto per persona/attestato** (`src/lib/admin/formazione.ts`,
+  `src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx`): per i ruoli con piu'
+  percorsi alternativi nella stessa categoria (Addetto antincendio liv. 1/2/3,
+  Addetto primo soccorso gruppo A / B-C) l'app non assume piu' un livello. Nel
+  motore, un requisito `per_categoria` con piu' corsi a catalogo e' "multiPath":
+  senza attestato la riga mostra "&lt;ruolo&gt; (corso da scegliere)" (niente piu'
+  "livello 2" arbitrario del seed); con attestato mostra il corso EFFETTIVO
+  registrato (livello/gruppo svolto), non il segnaposto del requisito. In fase di
+  registrazione attestato (back-office `EvidenzaRequisito` e campo
+  `EditorRequisito`) compare un selettore "Corso svolto (livello/gruppo)" con le
+  alternative di categoria; la scelta determina `corso_codice`/`corso_nome`/ore
+  della formazione e il salvataggio e' bloccato finche' non si sceglie. Il
+  lavoratore specifico resta fuori (un solo corso, ore derivate dal rischio).
+  Front-end + motore puro, nessuna migration. Build `tsc -b` + `vite build` puliti.
 - **Assegnazione figure senza formazione: niente passo "pregressa"** (`src/admin/Formazione.tsx`):
   la procedura di assegnazione mostrava sempre il passo "Formazione pregressa? SI/NO"
   anche per le figure prive di percorso formativo (es. Medico competente, dove si
