@@ -285,14 +285,19 @@ function FigurePanel({
 
 // ---------- editor inline di un singolo requisito (attestato / esonero) ----------
 function EditorRequisito({
-  personaId, req, onSaved, onClose,
+  personaId, req, alternative, onSaved, onClose,
 }: {
   personaId: string;
   req: RequisitoValutato;
+  alternative: { codice: string; nome: string; ore: number | null; categoria: string | null }[];
   onSaved: () => Promise<void>;
   onClose: () => void;
 }) {
+  // Requisito a percorsi multipli (antincendio liv.1/2/3, primo soccorso A / B-C):
+  // il corso effettivo lo sceglie qui chi compila, non lo decide l'app.
+  const multiPath = alternative.length > 1;
   const [tab, setTab] = useState<'att' | 'eson'>('att');
+  const [corsoScelto, setCorsoScelto] = useState('');
   const [dataAtt, setDataAtt] = useState('');
   const [oreAtt, setOreAtt] = useState(req.ore != null ? String(req.ore) : '');
   const [enteAtt, setEnteAtt] = useState('');
@@ -301,6 +306,12 @@ function EditorRequisito({
   const [esonRif, setEsonRif] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function scegliCorso(codice: string) {
+    setCorsoScelto(codice);
+    const c = alternative.find((x) => x.codice === codice);
+    if (c && c.ore != null) setOreAtt(String(c.ore));
+  }
 
   if (req.esonero_id) {
     return (
@@ -324,14 +335,16 @@ function EditorRequisito({
 
   async function salvaAttestato() {
     if (!dataAtt) { window.alert('Indica la data di completamento dell\u2019attestato.'); return; }
+    if (multiPath && !corsoScelto) { window.alert('Scegli il corso (livello/gruppo) effettivamente svolto.'); return; }
     if (file && file.size > MAX_ATTESTATO_BYTES) { window.alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
     setBusy(true);
     try {
+      const scelto = multiPath ? alternative.find((c) => c.codice === corsoScelto) : null;
       const f: Formazione = {
         id: req.formazione_id ?? newId(),
         persona_id: personaId,
-        corso_codice: req.corso_codice,
-        corso_nome: req.corso_nome,
+        corso_codice: scelto?.codice ?? req.corso_codice,
+        corso_nome: scelto?.nome ?? req.corso_nome,
         categoria: req.categoria || null,
         data_completamento: dataAtt,
         ore: oreAtt.trim() ? Number(oreAtt) : (req.ore ?? null),
@@ -380,6 +393,15 @@ function EditorRequisito({
 
       {tab === 'att' ? (
         <>
+          {multiPath && (
+            <div className="fzr-field">
+              <label>Corso svolto (livello/gruppo)</label>
+              <select value={corsoScelto} onChange={(e) => scegliCorso(e.target.value)}>
+                <option value="">— scegli il corso —</option>
+                {alternative.map((c) => <option key={c.codice} value={c.codice}>{c.nome}{c.ore != null ? ' (' + c.ore + 'h)' : ''}</option>)}
+              </select>
+            </div>
+          )}
           <div className="fzr-field">
             <label>Data completamento</label>
             <input type="date" value={dataAtt} onChange={(e) => setDataAtt(e.target.value)} />
@@ -654,6 +676,7 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
                     <EditorRequisito
                       personaId={pv.persona.id}
                       req={r}
+                      alternative={(org?.corsi ?? []).filter((c) => (c.categoria ?? '') === r.categoria)}
                       onSaved={ricaricaLocale}
                       onClose={() => setEditKey(null)}
                     />

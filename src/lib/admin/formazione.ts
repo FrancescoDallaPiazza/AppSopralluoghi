@@ -414,6 +414,15 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     const corso = byCodice.get(r.corso_codice);
     const categoria = corso?.categoria ?? '';
     const corsoNome = corso?.nome ?? r.corso_codice;
+    // Requisito a percorsi multipli: per_categoria con piu' corsi nella stessa
+    // categoria (es. antincendio liv.1/2/3, primo soccorso gruppo A / B-C). Per
+    // questi NON si assume un livello: senza attestato la riga dice "corso da
+    // scegliere" e il livello/gruppo lo sceglie il consulente registrando
+    // l'attestato della persona. (Il lavoratore specifico NON e' qui: e' un solo
+    // corso le cui ore si derivano dal rischio.)
+    const altCategoria = cat.corsi.filter((c) => (c.categoria ?? '') === categoria);
+    const multiPath = r.per_categoria && altCategoria.length > 1;
+    const corsoNomeNeutro = multiPath ? ((corsoNome.split(' - ')[0] ?? corsoNome) + ' (corso da scegliere)') : corsoNome;
 
     // ore: caso LAV_SPEC -> espanse per rischio
     let ore = corso?.ore ?? null;
@@ -461,8 +470,11 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         stato = 'da_verificare';
         dettaglio = 'Formazione pregressa dichiarata: attestato da recuperare e registrare';
       }
+      if (multiPath && dettaglio === 'Mai svolto') {
+        dettaglio = 'Corso da scegliere e registrare (livello/gruppo)';
+      }
       requisiti.push({
-        figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
+        figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNomeNeutro,
         categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza,
         dettaglio, formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
       });
@@ -476,9 +488,13 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     // Evidenza pregressa: l'attestato e' un corso degli accordi precedenti con
     // dicitura libera. Mostriamo QUELLA dicitura al posto del nome modulare ASR
     // 2025 a catalogo, indicando nel dettaglio quale requisito ASR 2025 copre.
+    // Etichetta mostrata: per i requisiti a percorsi multipli (e per le evidenze
+    // pregresse a dicitura libera) si mostra il corso EFFETTIVO dell'attestato
+    // (livello/gruppo realmente svolto), non il segnaposto del requisito.
     const pregressa = (f.note ?? '').startsWith(MARCA_PREGRESSA) && f.corso_nome.trim() !== '';
-    const nomeMostrato = pregressa ? f.corso_nome.trim() : corsoNome;
-    const dettaglioMostrato = pregressa ? dettaglio + ' \u00b7 pregresso, copre: ' + corsoNome : dettaglio;
+    const usaNomeAttestato = (pregressa || multiPath) && f.corso_nome.trim() !== '';
+    const nomeMostrato = usaNomeAttestato ? f.corso_nome.trim() : corsoNome;
+    const dettaglioMostrato = pregressa ? dettaglio + ' \u00b7 pregresso, copre: ' + (corsoNome.split(' - ')[0] ?? corsoNome) : dettaglio;
     requisiti.push({
       figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: nomeMostrato,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,

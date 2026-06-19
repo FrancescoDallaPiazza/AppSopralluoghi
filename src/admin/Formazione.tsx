@@ -670,7 +670,11 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
     <Modale titolo={'Evidenze: ' + figura.nome + ' \u2014 ' + nomePersona(pv.persona)}>
       {reqs.length === 0 && <div className="bo-sub" style={{ marginTop: 0 }}>Nessun corso richiesto per questo ruolo.</div>}
       {reqs.map((r, i) => (
-        <EvidenzaRequisito key={r.corso_codice} r={r} persona={pv.persona} figura={figura} onCambia={onCambia} moduli={i === 0 ? moduliFigura : undefined} />
+        <EvidenzaRequisito
+          key={r.corso_codice} r={r} persona={pv.persona} figura={figura} onCambia={onCambia}
+          alternative={catalogo.corsi.filter((c) => (c.categoria ?? '') === r.categoria)}
+          moduli={i === 0 ? moduliFigura : undefined}
+        />
       ))}
       {reqs.length === 0 && moduliFigura.length > 0 && (
         <div className="ev-card">
@@ -685,11 +689,16 @@ function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
   );
 }
 
-function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
+function EvidenzaRequisito({ r, persona, figura, onCambia, alternative, moduli }: {
   r: RequisitoValutato; persona: Persona; figura: FiguraSicurezza; onCambia: () => void;
+  alternative: Catalogo['corsi'];
   moduli?: { ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined; valutato: ModuloValutato | undefined }[];
 }) {
+  // Requisito a percorsi multipli (es. antincendio liv.1/2/3, primo soccorso
+  // gruppo A / B-C): il consulente sceglie QUI il corso effettivo della persona.
+  const multiPath = alternative.length > 1;
   const [scelta, setScelta] = useState<'attesa' | 'esonero' | 'formazione'>('attesa');
+  const [corsoScelto, setCorsoScelto] = useState('');
   const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
   const [esonMot, setEsonMot] = useState('');
   const [esonRif, setEsonRif] = useState(r.promemoria[0]?.riferimento_norm ?? '');
@@ -699,6 +708,12 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
   const [file, setFile] = useState<File | null>(null);
   const [agg, setAgg] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  function scegliCorso(codice: string) {
+    setCorsoScelto(codice);
+    const c = alternative.find((x) => x.codice === codice);
+    if (c && c.ore != null) setOre(String(c.ore));
+  }
 
   async function registraEsonero() {
     if (!esonMot.trim()) return;
@@ -725,6 +740,7 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
   }
   async function registraAttestato() {
     if (!data) return;
+    if (multiPath && !corsoScelto) { alert('Scegli il corso (livello/gruppo) effettivamente svolto.'); return; }
     if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
     setBusy(true);
     try {
@@ -737,8 +753,11 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
         if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); return; }
         allegatoUrl = path;
       }
+      // corso effettivo: quello scelto (percorsi multipli) o quello del requisito.
+      const scelto = multiPath ? alternative.find((c) => c.codice === corsoScelto) : null;
       await salvaFormazione({
-        id: fid, persona_id: persona.id, corso_codice: r.corso_codice, corso_nome: r.corso_nome, categoria: r.categoria,
+        id: fid, persona_id: persona.id,
+        corso_codice: scelto?.codice ?? r.corso_codice, corso_nome: scelto?.nome ?? r.corso_nome, categoria: r.categoria,
         data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
         is_aggiornamento: agg, scadenza: null, allegato_url: allegatoUrl, note: null,
       });
@@ -795,6 +814,14 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
             <div className="ev-box">
               <div className="ev-step">2 &middot; Formazione richiesta (base + aggiornamento)</div>
               {r.formazione_id && <div className="ev-note">Attestato gia' presente: aggiungine un altro solo per l'aggiornamento o una correzione.</div>}
+              {multiPath && (
+                <label className="bo-field" style={{ marginBottom: 8 }}><span>Corso svolto (livello/gruppo) *</span>
+                  <select value={corsoScelto} onChange={(e) => scegliCorso(e.target.value)}>
+                    <option value="">— scegli il corso —</option>
+                    {alternative.map((c) => <option key={c.codice} value={c.codice}>{c.nome}{c.ore != null ? ' (' + c.ore + 'h)' : ''}</option>)}
+                  </select>
+                </label>
+              )}
               <div className="bo-grid">
                 <label className="bo-field"><span>Data completamento *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
                 <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
@@ -803,7 +830,7 @@ function EvidenzaRequisito({ r, persona, figura, onCambia, moduli }: {
               </div>
               {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
               <label className="chk" style={{ marginBottom: 10 }}><input type="checkbox" checked={agg} onChange={(e) => setAgg(e.target.checked)} /> e' un aggiornamento</label>
-              <button className="bo-btn sm" disabled={busy || !data} onClick={registraAttestato}>Registra attestato</button>
+              <button className="bo-btn sm" disabled={busy || !data || (multiPath && !corsoScelto)} onClick={registraAttestato}>Registra attestato</button>
               <div className="ev-step" style={{ marginTop: 12 }}>3 &middot; Scadenza</div>
               <div className="ev-note">{r.scadenza ? 'Scadenza attuale: ' + r.scadenza : 'Nessuna scadenza attiva: verra\' calcolata dalla data dell\'attestato.'}</div>
               {moduli && moduli.length > 0 && (
