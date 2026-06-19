@@ -514,6 +514,19 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **RLS: toggle Interno / RLS territoriale + data di nomina nei box** (`src/admin/Formazione.tsx`,
+  `src/lib/admin/formazione.ts`): accanto all'etichetta della figura **RLS** un
+  selettore segmentato **Interno / RLS territoriale** (sostituisce la vecchia
+  spunta nel box vuoto) pilota `cliente.rls_territoriale` (migration 028); il box
+  di assegnazione standard ("assegna"/Incaricati) vale per entrambe le scelte —
+  in modalita' territoriale il ruolo non e' "scoperto" (coperto dal rappresentante
+  territoriale) ma si puo' comunque registrare un nominativo. Inoltre **ogni box
+  incaricato dell'organigramma** ora mostra la **data di nomina** editabile inline:
+  `PersonaValutata.figure` espone `nomina_id` + `data_nomina` (dal motore puro),
+  nuovo helper `aggiornaDataNomina(id, data)` che aggiorna solo quel campo della
+  nomina esistente, e componente `NominaDataInline`. Vale per tutte le figure.
+  Front-end + motore puro, nessuna migration ne' Edge Function (canale 1). Build
+  `tsc -b` + `vite build` puliti.
 - **Evidenze pregresse a campi liberi, raggruppate per ruolo** (`src/admin/Formazione.tsx`):
   per una persona con `formazione_pregressa` il pannello *Evidenze pregresse* NON
   propone piu' i corsi modulari dell'ASR 2025 (che non corrispondono ai percorsi

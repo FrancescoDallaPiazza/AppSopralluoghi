@@ -169,7 +169,7 @@ export interface ModuloValutato {
 
 export interface PersonaValutata {
   persona: Persona;
-  figure: { codice: string; nome: string }[];
+  figure: { codice: string; nome: string; nomina_id: string | null; data_nomina: string | null }[];
   requisiti: RequisitoValutato[];
   stato: StatoRequisito;        // peggiore tra i requisiti (esonerato non peggiora)
   moduli: ModuloValutato[];     // moduli condizionati (cantieri, ...), valutati a parte
@@ -376,10 +376,15 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
   const byCodice = new Map(cat.corsi.map((c) => [c.codice, c]));
   const figureCodici = d.nomine.filter((n) => n.attiva).map((n) => n.figura_codice);
   const figureSet = new Set(figureCodici);
+  const nominaByFigura = new Map(d.nomine.filter((n) => n.attiva).map((n) => [n.figura_codice, n]));
   const figure = cat.figure
     .filter((f) => figureSet.has(f.codice))
     .sort((a, b) => a.ordine - b.ordine)
-    .map((f) => ({ codice: f.codice, nome: f.nome }));
+    .map((f) => ({
+      codice: f.codice, nome: f.nome,
+      nomina_id: nominaByFigura.get(f.codice)?.id ?? null,
+      data_nomina: nominaByFigura.get(f.codice)?.data_nomina ?? null,
+    }));
 
   const rischio = d.persona.livello_rischio ?? rischioCliente;
 
@@ -677,6 +682,13 @@ export async function salvaNomina(n: Nomina): Promise<Nomina> {
 
 export async function eliminaNomina(id: string): Promise<void> {
   const { error } = await supabase.from('nomina').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// Aggiorna solo la data di nomina di una nomina esistente (per id), senza
+// toccare gli altri campi. Usata dai box di assegnazione dell'organigramma.
+export async function aggiornaDataNomina(id: string, data_nomina: string | null): Promise<void> {
+  const { error } = await supabase.from('nomina').update({ data_nomina: vuotoNull(data_nomina) }).eq('id', id);
   if (error) throw error;
 }
 

@@ -14,7 +14,7 @@ import {
   type EsoneroAmmesso, type AreaInterna, type LivelloRischio, type TipoEsonero,
   type CosaDaFareProposta, type FiguraSicurezza,
   caricaCatalogo, caricaAreeInterne, valutaCliente,
-  salvaPersona, eliminaPersona, salvaNomina,
+  salvaPersona, eliminaPersona, salvaNomina, aggiornaDataNomina,
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
@@ -77,6 +77,13 @@ const CSS_FZ = `
 .fz-badge.sempre{background:var(--ok-bg); color:var(--ok);}
 .fz-badge.condizionale{background:#fbf0d6; color:var(--hi-dark);}
 .fz-badge.eventuale{background:#eef1f4; color:var(--ink-soft);}
+.fz-seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fff;}
+.fz-seg-b{appearance:none; border:0; background:transparent; cursor:pointer; font-size:11px; font-weight:700; padding:4px 10px; color:var(--ink-soft); line-height:1.3;}
+.fz-seg-b + .fz-seg-b{border-left:1px solid var(--line);}
+.fz-seg-b.on{background:var(--ink); color:#fff;}
+.fz-nomina{display:flex; align-items:center; gap:8px; margin-top:7px; font-size:11.5px; color:#1f5b38;}
+.fz-nomina span{font-weight:700; text-transform:uppercase; font-size:10px; letter-spacing:.04em; white-space:nowrap;}
+.fz-nomina input{font-size:12px; padding:3px 6px; border:1px solid #cfe6d8; border-radius:7px; background:#fff; color:var(--ink);}
 .fz-guida{font-size:13.5px; color:var(--ink); margin:8px 0 0; padding-left:18px; line-height:1.5; max-width:80ch; font-weight:500;}
 .fz-guida li{margin:2px 0;}
 .fz-guida li.sub{list-style:none; font-weight:400; color:var(--ink-soft); position:relative; padding-left:14px;}
@@ -322,6 +329,12 @@ export default function Formazione() {
                       <span className="fz-fig-nome">
                         <span className="fz-fig-pill">{figura.nome}</span>
                         {figura.obbligo && <span className={'fz-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
+                        {figura.codice === 'rls' && (
+                          <span className="fz-seg" role="group" aria-label="Tipo RLS">
+                            <button type="button" className={'fz-seg-b' + (!cliente?.rls_territoriale ? ' on' : '')} onClick={() => impostaRlsTerritoriale(false)}>Interno</button>
+                            <button type="button" className={'fz-seg-b' + (cliente?.rls_territoriale ? ' on' : '')} onClick={() => impostaRlsTerritoriale(true)}>RLS territoriale</button>
+                          </span>
+                        )}
                       </span>
                       <button className="bo-btn ghost sm" onClick={() => setAssegnaFigura(figura)}>
                         {persone.length > 0 ? 'modifica' : 'assegna'}
@@ -344,7 +357,9 @@ export default function Formazione() {
                       <div className="fz-fig-people">
                         <div className="fz-spec-t">Incaricati</div>
                         {assegnate.length > 0
-                          ? assegnate.map((pv) => (
+                          ? assegnate.map((pv) => {
+                              const fg = pv.figure.find((x) => x.codice === figura.codice);
+                              return (
                               <div key={pv.persona.id} className="fz-person-box">
                                 <div className="fz-person-head">
                                   <span className="nm">{nomePersona(pv.persona)}</span>
@@ -353,6 +368,7 @@ export default function Formazione() {
                                     <button className="ev-link" onClick={() => setEvidenzeFor({ personaId: pv.persona.id, figuraCodice: figura.codice })}>evidenze</button>
                                   </span>
                                 </div>
+                                <NominaDataInline nominaId={fg?.nomina_id ?? null} data={fg?.data_nomina ?? null} onSaved={dopoModifica} />
                                 <div className="fz-person-ev">
                                   {pv.requisiti.filter((r) => reqCodici.has(r.corso_codice)).map((r) => (
                                     <div key={r.corso_codice} className="fz-ev-item">
@@ -374,19 +390,12 @@ export default function Formazione() {
                                   ))}
                                 </div>
                               </div>
-                            ))
+                              );
+                            })
                           : figura.codice === 'rls'
-                            ? (
-                              <div className={cliente?.rls_territoriale ? 'fz-person-empty' : 'fz-person-crit'}>
-                                {cliente?.rls_territoriale
-                                  ? 'RLS territoriale (RLST): ruolo coperto dal rappresentante territoriale.'
-                                  : 'Criticità: ruolo obbligatorio senza incaricato.'}
-                                <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
-                                  <input type="checkbox" checked={!!cliente?.rls_territoriale} onChange={(e) => impostaRlsTerritoriale(e.target.checked)} />
-                                  <span>RLS territoriale (RLST): nessun RLS interno, l'azienda e' coperta dal rappresentante territoriale.</span>
-                                </label>
-                              </div>
-                            )
+                            ? (cliente?.rls_territoriale
+                                ? <div className="fz-person-empty">RLS territoriale (RLST): ruolo coperto dal rappresentante territoriale. Puoi comunque registrarne il nominativo con &laquo;assegna&raquo;.</div>
+                                : <div className="fz-person-crit">Criticità: ruolo obbligatorio senza incaricato (RLS interno).</div>)
                             : scoperta
                               ? <div className="fz-person-crit">Criticità: ruolo obbligatorio senza incaricato.</div>
                               : <div className="fz-person-empty">Nessuna persona assegnata</div>}
@@ -554,6 +563,30 @@ function Modale({ titolo, children }: { titolo: string; children: any }) {
         {children}
       </div>
     </div>
+  );
+}
+
+// Data di nomina editabile nel box di assegnazione: aggiorna la nomina esistente
+// (per id) senza toccare gli altri campi. Se manca la nomina (caso anomalo) il
+// campo resta disabilitato.
+function NominaDataInline({ nominaId, data, onSaved }: {
+  nominaId: string | null; data: string | null; onSaved: () => void;
+}) {
+  const [v, setV] = useState(data ?? '');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setV(data ?? ''); }, [data]);
+  async function salva(nuovo: string) {
+    setV(nuovo);
+    if (!nominaId) return;
+    setBusy(true);
+    try { await aggiornaDataNomina(nominaId, nuovo || null); onSaved(); }
+    finally { setBusy(false); }
+  }
+  return (
+    <label className="fz-nomina">
+      <span>Data di nomina</span>
+      <input type="date" value={v} disabled={busy || !nominaId} onChange={(e) => salva(e.target.value)} />
+    </label>
   );
 }
 
