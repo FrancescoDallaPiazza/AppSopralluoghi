@@ -514,6 +514,20 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Deploy in produzione (2026-06-19)**: andati live i due bundle che erano in
+  sospeso lato deploy.
+  1. *Sessione Formazione / Organigramma* — migration 023
+     (`persona.formazione_pregressa`) e 024 (figura Medico competente)
+     verificate/applicate nell'SQL Editor; push su `main` di
+     `src/lib/admin/formazione.ts`, `src/admin/Formazione.tsx`,
+     `src/FormazioneRiepilogo.tsx` + refresh forzato PWA.
+  2. *Snapshot versionato dell'organigramma* (§7-bis) — migration 027
+     (`organigramma_revisione` + trigger numerazione) e 028
+     (`cliente.rls_territoriale`) eseguite; Edge Function `organigramma-pdf`
+     deployata dal Dashboard (CORS inline, `PDFBOLT_API_KEY` gia' nei secrets);
+     sorgenti pushati. Storico organigramma + esportazione PDF verificati in
+     back-office.
+  Voci di deploy in `TODO.md` §A (snapshot) chiuse. Prossima migration libera: 029.
 - **Antincendio e primo soccorso fuori dal regime "formazione pregressa"**
   (`src/lib/admin/formazione.ts`, `src/admin/Formazione.tsx`): la formazione
   pregressa e' il regime transitorio dell'ASR 17/04/2025; antincendio (DM

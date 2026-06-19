@@ -14,18 +14,19 @@ sposta in fondo nella sezione "Fatti di recente".
 Per attivare in produzione lo **snapshot versionato dell'organigramma + PDF**
 (Parte 3, vedi `PROGETTO.md` §7-bis), nell'ordine:
 
-- [ ] Eseguire `supabase/migrations/027_organigramma_revisioni.sql` nell'**SQL
+- [x] Eseguire `supabase/migrations/027_organigramma_revisioni.sql` nell'**SQL
   Editor** di Supabase (tabella `organigramma_revisione` + trigger di
   numerazione + RLS).
-- [ ] Eseguire `supabase/migrations/028_cliente_rls_territoriale.sql` nell'**SQL
+- [x] Eseguire `supabase/migrations/028_cliente_rls_territoriale.sql` nell'**SQL
   Editor** (colonna `cliente.rls_territoriale` per la spunta RLST).
-- [ ] Deployare la Edge Function **`organigramma-pdf`** dal Dashboard Supabase
+- [x] Deployare la Edge Function **`organigramma-pdf`** dal Dashboard Supabase
   (CORS inline; nessun import condiviso). Verificare che `PDFBOLT_API_KEY` sia
   già tra i secrets (lo è per i report).
-- [ ] Push dei sorgenti su `main` (Vercel auto-deploy) + refresh forzato PWA.
-- [ ] Verifica: in back-office → Formazione → cliente, fare una modifica e
+- [x] Push dei sorgenti su `main` (Vercel auto-deploy) + refresh forzato PWA.
+- [x] Verifica: in back-office → Formazione → cliente, fare una modifica e
   controllare che *Storico organigramma* mostri la nuova revisione; provare
   *Esporta PDF organigramma* e il *PDF* di una revisione dallo storico.
+- [x] Deploy completato e verificato in produzione il **2026-06-19**.
 
 Per attivare in produzione il **feed iCal sottoscrivibile** e la
 **ricalibrazione date** (commit `f776edf`):
