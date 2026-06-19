@@ -514,6 +514,13 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- Assegnazione ruolo (back-office): assegnando una persona **per la prima volta**
+  a una figura, dopo il salvataggio compare il passo **"Formazione pregressa? SI/NO"**.
+  SI -> imposta `formazione_pregressa` sulla persona e apre il pannello *Evidenze
+  pregresse* (carica attestati con data+scadenza o crea cose da fare); NO -> si
+  prosegue con i corsi previsti dall'ASR 2025 (requisiti gia' a carico). Solo
+  `src/admin/Formazione.tsx` (riusa la spunta `formazione_pregressa` e il pannello
+  evidenze pregresse), nessuna migration.
 - Organigramma back-office: (1) il box di criticita' per ruolo obbligatorio scoperto
   ora riporta solo "Criticita': ruolo obbligatorio senza incaricato."; (2) il box
   dell'RLS ha una spunta **"RLS territoriale (RLST)"** (`cliente.rls_territoriale`,

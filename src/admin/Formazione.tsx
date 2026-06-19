@@ -441,6 +441,7 @@ export default function Formazione() {
           persone={riep.persone}
           clienteId={clienteId}
           onChiudi={() => { setAssegnaFigura(null); dopoModifica(); }}
+          onAssegnaConPregressa={async (personaId) => { setAssegnaFigura(null); await dopoModifica(); setPregressaPersonaId(personaId); }}
         />
       )}
       {evidenzeFor && riep && catalogo && (() => {
@@ -834,28 +835,38 @@ function ModuloAggiuntivo({ m, persona, valutato, onCambia }: {
   );
 }
 
-function FormAssegnaFigura({ figura, persone, clienteId, onChiudi }: {
+function FormAssegnaFigura({ figura, persone, clienteId, onChiudi, onAssegnaConPregressa }: {
   figura: FiguraSicurezza; persone: PersonaValutata[]; clienteId: string; onChiudi: () => void;
+  onAssegnaConPregressa?: (personaId: string) => void;
 }) {
   const titolari = persone.filter((p) => p.figure.some((f) => f.codice === figura.codice)).map((p) => p.persona.id);
   const [sel, setSel] = useState<Set<string>>(new Set(titolari));
   const [nuovoNome, setNuovoNome] = useState('');
   const [nuovoCognome, setNuovoCognome] = useState('');
   const [salvando, setSalvando] = useState(false);
+  // passo 2: per le persone appena assegnate si chiede se hanno formazione pregressa
+  const [step, setStep] = useState<'assegna' | 'pregressa'>('assegna');
+  const [nuove, setNuove] = useState<Persona[]>([]);
+  const [risposte, setRisposte] = useState<Record<string, 'si' | 'no'>>({});
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const setRisp = (id: string, v: 'si' | 'no') => setRisposte((r) => ({ ...r, [id]: v }));
 
   async function salva() {
     setSalvando(true);
     try {
       const dopo = new Set(sel);
+      const aggiunte: Persona[] = [];
       if (nuovoNome.trim()) {
         const creata = await salvaPersona({ ...nuovaPersona(clienteId), nome: nuovoNome.trim(), cognome: nuovoCognome.trim() || null });
         dopo.add(creata.id);
+        aggiunte.push(creata);
       }
       // aggiunte: chi e' selezionato ma non era titolare
       for (const id of dopo) {
         if (!titolari.includes(id)) {
           await salvaNomina({ id: '', persona_id: id, figura_codice: figura.codice, data_nomina: null, attiva: true, note: null });
+          const pv = persone.find((p) => p.persona.id === id);
+          if (pv && !aggiunte.some((a) => a.id === id)) aggiunte.push(pv.persona);
         }
       }
       // rimozioni: chi era titolare ma non e' piu' selezionato
@@ -864,8 +875,59 @@ function FormAssegnaFigura({ figura, persone, clienteId, onChiudi }: {
           await supabase.from('nomina').delete().eq('persona_id', id).eq('figura_codice', figura.codice);
         }
       }
+      // Se ho assegnato qualcuno per la prima volta a questo ruolo, chiedo subito
+      // se ha formazione pregressa. Altrimenti chiudo e basta.
+      if (aggiunte.length > 0) {
+        setNuove(aggiunte);
+        setRisposte(Object.fromEntries(aggiunte.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>);
+        setStep('pregressa');
+        setSalvando(false);
+        return;
+      }
       onChiudi();
     } finally { setSalvando(false); }
+  }
+
+  async function confermaPregressa() {
+    setSalvando(true);
+    try {
+      const siIds = nuove.filter((p) => risposte[p.id] === 'si').map((p) => p.id);
+      for (const p of nuove) {
+        if (risposte[p.id] === 'si') await salvaPersona({ ...p, formazione_pregressa: true });
+      }
+      const primoSi = siIds[0];
+      // Se almeno una persona ha formazione pregressa, apro le evidenze pregresse
+      // (le altre restano apribili dalla scheda persona). Se nessuna, chiudo:
+      // restano i corsi previsti dall'ASR 2025 come requisiti da svolgere.
+      if (primoSi && onAssegnaConPregressa) onAssegnaConPregressa(primoSi);
+      else onChiudi();
+    } finally { setSalvando(false); }
+  }
+
+  if (step === 'pregressa') {
+    return (
+      <Modale titolo="Formazione pregressa?">
+        <div className="bo-sub" style={{ marginTop: 0 }}>
+          Per ogni persona appena assegnata a "{figura.nome}": ha gia' una formazione pregressa
+          (azienda operante prima dell'ASR 2025)? Se <b>SI</b> carichi subito le evidenze;
+          se <b>NO</b> si procede con la formazione prevista dall'ASR 2025.
+        </div>
+        {nuove.map((p) => (
+          <div key={p.id} className="ev-card">
+            <div className="ev-head" style={{ alignItems: 'center' }}>
+              <span><b>{nomePersona(p)}</b></span>
+              <span className="ev-choice">
+                <button className={'bo-btn ghost sm' + (risposte[p.id] === 'si' ? ' on' : '')} onClick={() => setRisp(p.id, 'si')}>Si, formazione pregressa</button>
+                <button className={'bo-btn ghost sm' + (risposte[p.id] === 'no' ? ' on' : '')} onClick={() => setRisp(p.id, 'no')}>No, formazione ASR 2025</button>
+              </span>
+            </div>
+          </div>
+        ))}
+        <div className="bo-bar">
+          <button className="bo-btn" disabled={salvando} onClick={confermaPregressa}>{salvando ? 'Salvo…' : 'Conferma'}</button>
+        </div>
+      </Modale>
+    );
   }
 
   return (

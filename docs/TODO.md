@@ -157,6 +157,11 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## ✅ Fatti di recente
 
+- [x] **2026-06-19** Assegnazione ruolo: alla prima assegnazione di una persona a
+  una figura, passo *Formazione pregressa? SI/NO* — SI apre le evidenze pregresse
+  (e imposta il flag persona), NO prosegue con la formazione ASR 2025. Solo
+  `src/admin/Formazione.tsx`, nessuna migration.
+
 - [x] **2026-06-19** Organigramma back-office: box criticita' ruolo scoperto
   ridotto a "Criticita': ruolo obbligatorio senza incaricato"; box RLS con spunta
   **RLS territoriale (RLST)** (`cliente.rls_territoriale`, **migration 028** da
