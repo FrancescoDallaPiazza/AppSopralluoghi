@@ -10,7 +10,7 @@ import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, c
 import { newId } from '../lib/types';
 import {
   type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato, type ModuloValutato,
-  type Persona,
+  type Persona, type Formazione,
   type EsoneroAmmesso, type AreaInterna, type LivelloRischio, type TipoEsonero,
   type CosaDaFareProposta, type FiguraSicurezza,
   caricaCatalogo, caricaAreeInterne, valutaCliente,
@@ -119,6 +119,8 @@ const CSS_FZ = `
 .ev-box{border-top:1px solid var(--line); margin-top:8px; padding-top:8px;}
 .ev-eson-ok{background:#eaf4ee; border:1px solid #cfe6d8; color:#1f5b38; border-radius:9px; padding:9px 11px; font-size:12.5px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
 .ev-note{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+.ev-prerow{border-top:1px dashed var(--line); margin-top:8px; padding-top:8px;}
+.ev-prerow:first-child{border-top:0; margin-top:0; padding-top:0;}
 .ev-head-r{display:flex; align-items:center; gap:8px;}
 .ev-row{display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:2px 0 8px;}
 .ev-det{font-size:12px; color:var(--ink-soft);}
@@ -1142,6 +1144,23 @@ function VistaSnapshot({ snap, numero, onIndietro }: { snap: SnapshotOrganigramm
 }
 
 // ---------- evidenze pregresse (formazione ante ASR 2025) ----------
+// Per una persona con "formazione pregressa" (azienda gia' operante prima
+// dell'ASR 2025) NON si propongono i corsi modulari dell'ASR 2025: la persona
+// avra' verosimilmente seguito i percorsi degli accordi precedenti, con
+// denominazioni e durate diverse. Per ogni RUOLO scoperto si raccolgono gli
+// attestati in forma libera (tipo corso, ore, data, scadenza, allegato
+// facoltativo) con un "+" per aggiungere righe. Salvando, gli attestati coprono
+// i requisiti del ruolo (semaforo conforme / in scadenza in base alla scadenza
+// inserita o calcolata). Se per un ruolo non si inserisce nulla, si crea UNA
+// cosa da fare: "Attestati per il ruolo <ruolo> da recuperare", instradata e
+// gestita come tutte le altre cose da fare dello scadenzario.
+
+// Prima figura della persona (in ordine) che richiede il requisito: serve a
+// collocare ogni requisito sotto un solo ruolo.
+function primaFiguraDi(r: RequisitoValutato, figure: { codice: string; nome: string }[]): string | null {
+  for (const f of figure) if (r.figura_codici.includes(f.codice)) return f.codice;
+  return r.figura_codici[0] ?? null;
+}
 
 function EvidenzePregresse({ pv, clienteId, onCambia, onChiudi }: {
   pv: PersonaValutata; clienteId: string; onCambia: () => void; onChiudi: () => void;
@@ -1151,17 +1170,41 @@ function EvidenzePregresse({ pv, clienteId, onCambia, onChiudi }: {
   // datore) restano comunque da gestire. Gli altri sono gia' coperti.
   const daRecuperare = pv.requisiti.filter((r) => r.stato === 'da_verificare' || r.stato === 'critico');
   const coperti = pv.requisiti.filter((r) => r.stato !== 'da_verificare' && r.stato !== 'critico');
+
+  // Raggruppa i requisiti da recuperare per RUOLO (ogni requisito una volta sola,
+  // sotto la prima figura della persona che lo richiede).
+  const sezioni = pv.figure
+    .map((f) => ({
+      codice: f.codice,
+      nome: f.nome,
+      requisiti: daRecuperare.filter((r) => primaFiguraDi(r, pv.figure) === f.codice),
+    }))
+    .filter((s) => s.requisiti.length > 0);
+
+  // Sicurezza: requisiti non agganciati ad alcuna figura della persona.
+  const collocati = new Set(sezioni.flatMap((s) => s.requisiti.map((r) => r.corso_codice)));
+  const orfani = daRecuperare.filter((r) => !collocati.has(r.corso_codice));
+  if (orfani.length) sezioni.push({ codice: '__altri__', nome: 'Altri requisiti', requisiti: orfani });
+
   return (
     <Modale titolo={'Evidenze pregresse \u2014 ' + nomePersona(pv.persona)}>
       <div className="bo-sub" style={{ marginTop: 0 }}>
-        Per ogni corso richiesto registra l'attestato pregresso (data di effettuazione e scadenza).
-        Se l'attestato non e' disponibile, crea una cosa da fare per recuperarlo.
+        Persona con formazione pregressa: non si registrano i corsi dell'ASR 2025. Per ogni ruolo
+        inserisci gli attestati degli accordi precedenti (tipo corso, ore, data, scadenza) usando il
+        "+" per aggiungere righe. Se per un ruolo non hai attestati, crea una cosa da fare per recuperarli.
       </div>
-      {daRecuperare.length === 0 && (
-        <div className="ev-eson-ok" style={{ marginBottom: 8 }}>Nessun corso da recuperare: tutti i requisiti risultano coperti.</div>
+      {sezioni.length === 0 && (
+        <div className="ev-eson-ok" style={{ marginBottom: 8 }}>Nessun ruolo da recuperare: tutti i requisiti risultano coperti.</div>
       )}
-      {daRecuperare.map((r) => (
-        <RigaPregressa key={r.corso_codice} r={r} persona={pv.persona} clienteId={clienteId} onCambia={onCambia} />
+      {sezioni.map((s) => (
+        <SezioneRuoloPregresso
+          key={s.codice}
+          ruoloNome={s.nome}
+          requisiti={s.requisiti}
+          persona={pv.persona}
+          clienteId={clienteId}
+          onCambia={onCambia}
+        />
       ))}
       {coperti.length > 0 && (
         <details style={{ marginTop: 6 }}>
@@ -1181,78 +1224,117 @@ function EvidenzePregresse({ pv, clienteId, onCambia, onChiudi }: {
   );
 }
 
-function RigaPregressa({ r, persona, clienteId, onCambia }: {
-  r: RequisitoValutato; persona: Persona; clienteId: string; onCambia: () => void;
+interface RigaPregressaInput { tipo: string; ore: string; data: string; scad: string; file: File | null; }
+function rigaPregressaVuota(): RigaPregressaInput { return { tipo: '', ore: '', data: '', scad: '', file: null }; }
+
+function SezioneRuoloPregresso({ ruoloNome, requisiti, persona, clienteId, onCambia }: {
+  ruoloNome: string; requisiti: RequisitoValutato[]; persona: Persona; clienteId: string; onCambia: () => void;
 }) {
-  const [modo, setModo] = useState<'attesa' | 'evidenza' | 'fatta'>('attesa');
-  const [data, setData] = useState('');
-  const [scad, setScad] = useState('');
-  const [ore, setOre] = useState(r.ore != null ? String(r.ore) : '');
-  const [ente, setEnte] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [righe, setRighe] = useState<RigaPregressaInput[]>([rigaPregressaVuota()]);
   const [busy, setBusy] = useState(false);
   const [esito, setEsito] = useState<string | null>(null);
+  const [fatto, setFatto] = useState(false);
 
-  async function registra() {
-    if (!data) return;
-    if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
+  function aggiornaRiga(i: number, patch: Partial<RigaPregressaInput>) {
+    setRighe((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+  }
+  function aggiungiRiga() { setRighe((rs) => [...rs, rigaPregressaVuota()]); }
+  function rimuoviRiga(i: number) { setRighe((rs) => (rs.length <= 1 ? rs : rs.filter((_, k) => k !== i))); }
+
+  // Costruisce una riga formazione da un attestato pregresso, agganciata al
+  // corso_codice del requisito del ruolo (cosi' il motore la riconosce e il
+  // semaforo del requisito passa da "da verificare" a conforme/in scadenza).
+  function buildFormazione(req: RequisitoValutato, riga: RigaPregressaInput, allegatoUrl: string | null): Formazione {
+    return {
+      id: newId(), persona_id: persona.id, corso_codice: req.corso_codice, corso_nome: riga.tipo.trim(),
+      categoria: req.categoria, data_completamento: riga.data, ore: riga.ore === '' ? null : Number(riga.ore),
+      ente_formatore: null, is_aggiornamento: false, scadenza: riga.scad || null, allegato_url: allegatoUrl,
+      note: 'Evidenza pregressa (ante ASR 2025) - ruolo ' + ruoloNome,
+    };
+  }
+
+  async function salva() {
+    const valide = righe.filter((r) => r.tipo.trim() !== '' && r.data !== '');
+    if (!valide.length) {
+      alert('Inserisci almeno un attestato (tipo corso e data) oppure usa "Nessun attestato: crea cosa da fare".');
+      return;
+    }
+    for (const r of valide) {
+      if (r.file && r.file.size > MAX_ATTESTATO_BYTES) { alert('Un allegato supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
+    }
     setBusy(true);
     try {
-      const fid = newId();
-      let allegatoUrl: string | null = null;
-      if (file) {
-        const path = pathAttestato(fid, newId(), estensioneAttestato(file));
-        const up = await supabase.storage.from(ATTESTATI_BUCKET)
-          .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
-        if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); return; }
-        allegatoUrl = path;
+      // upload allegati una volta per riga; l'URL si riusa se la riga copre piu' requisiti
+      const urls: (string | null)[] = [];
+      for (const r of valide) {
+        if (r.file) {
+          const path = pathAttestato(newId(), newId(), estensioneAttestato(r.file));
+          const up = await supabase.storage.from(ATTESTATI_BUCKET)
+            .upload(path, r.file, { upsert: true, contentType: contentTypeAttestato(r.file) });
+          if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); setBusy(false); return; }
+          urls.push(path);
+        } else urls.push(null);
       }
-      await salvaFormazione({
-        id: fid, persona_id: persona.id, corso_codice: r.corso_codice, corso_nome: r.corso_nome, categoria: r.categoria,
-        data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
-        is_aggiornamento: false, scadenza: scad || null, allegato_url: allegatoUrl, note: 'Evidenza pregressa',
+      // copri ogni requisito del ruolo (se meno righe che requisiti, l'ultima riga si ripete)
+      const creazioni: Formazione[] = requisiti.map((req, i) => {
+        const ri = Math.min(i, valide.length - 1);
+        return buildFormazione(req, valide[ri]!, urls[ri] ?? null);
       });
-      setEsito('Evidenza pregressa registrata.'); setModo('fatta'); onCambia();
+      // righe in eccesso oltre i requisiti: non vanno perse, agganciate al primo requisito
+      for (let j = requisiti.length; j < valide.length; j++) {
+        creazioni.push(buildFormazione(requisiti[0]!, valide[j]!, urls[j] ?? null));
+      }
+      for (const f of creazioni) await salvaFormazione(f);
+      setEsito('Attestati pregressi registrati per il ruolo ' + ruoloNome + '.'); setFatto(true); onCambia();
     } finally { setBusy(false); }
   }
 
-  async function nonDisponibile() {
+  async function nessunAttestato() {
     setBusy(true);
     try {
       await generaCoseDaFare([{
         persona_id: persona.id, persona_nome: nomePersona(persona),
-        descrizione: 'Recuperare e registrare attestato pregresso - ' + nomePersona(persona) + ': ' + r.corso_nome,
-        scadenza: r.scadenza, priorita: 'media',
+        descrizione: 'Attestati per il ruolo ' + ruoloNome + ' da recuperare (' + nomePersona(persona) + ')',
+        scadenza: null, priorita: 'media',
       }], { includiInScadenza: false, versoArea: false, areaId: null, clienteId });
-      setEsito('Cosa da fare creata (verso il cliente).'); setModo('fatta'); onCambia();
+      setEsito('Cosa da fare creata (verso il cliente): attestati per il ruolo ' + ruoloNome + ' da recuperare.');
+      setFatto(true); onCambia();
     } finally { setBusy(false); }
   }
 
   return (
     <div className="ev-card">
       <div className="ev-head">
-        <span><b>{r.corso_nome}</b>{r.ore != null && <span className="ev-ore"> &middot; {r.ore}h</span>}</span>
-        <span className={'fz-badge ' + (r.stato === 'da_verificare' ? 'eventuale' : 'condizionale')}>{LABEL_STATO[r.stato] ?? r.stato}</span>
+        <span><b>{ruoloNome}</b> <span className="fz-badge eventuale" style={{ marginLeft: 6 }}>DA VERIFICARE</span></span>
+        <span className="bo-sub" style={{ margin: 0 }}>{requisiti.length} requisit{requisiti.length === 1 ? 'o' : 'i'} del ruolo</span>
       </div>
       {esito && <div className="ev-eson-ok" style={{ marginTop: 6 }}>{esito}</div>}
-      {modo !== 'fatta' && (
-        <div className="ev-choice">
-          <button className={'bo-btn ghost sm' + (modo === 'evidenza' ? ' on' : '')} onClick={() => setModo('evidenza')}>Ho l'attestato: registra</button>
-          <button className="bo-btn ghost sm" disabled={busy} onClick={nonDisponibile}>Non disponibile: crea cosa da fare</button>
-        </div>
-      )}
-      {modo === 'evidenza' && (
+      {!fatto && (
         <div className="ev-box">
-          <div className="bo-grid">
-            <label className="bo-field"><span>Data effettuazione *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
-            <label className="bo-field"><span>Scadenza</span><input type="date" value={scad} onChange={(e) => setScad(e.target.value)} /></label>
-            <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
-            <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
-            <label className="bo-field"><span>Allegato (PDF o foto)</span><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+          {righe.map((r, i) => (
+            <div key={i} className="ev-prerow">
+              <div className="bo-grid">
+                <label className="bo-field" style={{ gridColumn: '1 / -1' }}><span>Tipo corso *</span>
+                  <input type="text" value={r.tipo} placeholder="es. Datore di lavoro-RSPP (accordo precedente)" onChange={(e) => aggiornaRiga(i, { tipo: e.target.value })} /></label>
+                <label className="bo-field"><span>Ore</span><input type="number" value={r.ore} onChange={(e) => aggiornaRiga(i, { ore: e.target.value })} /></label>
+                <label className="bo-field"><span>Data effettuazione *</span><input type="date" value={r.data} onChange={(e) => aggiornaRiga(i, { data: e.target.value })} /></label>
+                <label className="bo-field"><span>Scadenza</span><input type="date" value={r.scad} onChange={(e) => aggiornaRiga(i, { scad: e.target.value })} /></label>
+                <label className="bo-field"><span>Allegato (PDF o foto)</span><input type="file" accept="application/pdf,image/*" onChange={(e) => aggiornaRiga(i, { file: e.target.files?.[0] ?? null })} /></label>
+              </div>
+              {r.file && <div className="ev-note">Allegato: {r.file.name} ({Math.round(r.file.size / 1024)} KB)</div>}
+              {righe.length > 1 && (
+                <button type="button" className="bo-btn ghost sm" style={{ marginTop: 6 }} onClick={() => rimuoviRiga(i)}>Rimuovi riga</button>
+              )}
+            </div>
+          ))}
+          <div className="ev-choice" style={{ marginTop: 8 }}>
+            <button type="button" className="bo-btn ghost sm" onClick={aggiungiRiga}>+ Aggiungi attestato</button>
           </div>
-          {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
-          <div className="ev-note">Lascia "Scadenza" vuota per calcolarla automaticamente dalla data di effettuazione.</div>
-          <button className="bo-btn sm" disabled={busy || !data} onClick={registra}>Registra evidenza pregressa</button>
+          <div className="ev-note">Lascia "Scadenza" vuota per calcolarla automaticamente dalla data di effettuazione. Compila almeno "Tipo corso" e "Data" perche' una riga venga salvata.</div>
+          <div className="ev-choice" style={{ marginTop: 8 }}>
+            <button className="bo-btn sm" disabled={busy} onClick={salva}>Salva attestati pregressi</button>
+            <button className="bo-btn ghost sm" disabled={busy} onClick={nessunAttestato}>Nessun attestato: crea cosa da fare</button>
+          </div>
         </div>
       )}
     </div>

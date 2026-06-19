@@ -514,6 +514,23 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Evidenze pregresse a campi liberi, raggruppate per ruolo** (`src/admin/Formazione.tsx`):
+  per una persona con `formazione_pregressa` il pannello *Evidenze pregresse* NON
+  propone piu' i corsi modulari dell'ASR 2025 (che non corrispondono ai percorsi
+  degli accordi precedenti). I requisiti "da verificare"/"critico" sono ora
+  raggruppati per **ruolo** (figura) e per ciascun ruolo si inseriscono gli
+  attestati in forma libera: *tipo corso* (testo), *ore*, *data effettuazione*,
+  *scadenza* e allegato facoltativo, con un **"+ Aggiungi attestato"** per nuove
+  righe. Al salvataggio ogni riga diventa una `formazione` agganciata ai
+  `corso_codice` dei requisiti del ruolo (una riga sola copre tutti i requisiti
+  del ruolo; piu' righe vengono distribuite e quelle in eccesso comunque salvate),
+  cosi' i semafori passano da "da verificare" a conforme/in scadenza in base alla
+  scadenza inserita o calcolata. Se per un ruolo non si inserisce nulla, il
+  pulsante **"Nessun attestato: crea cosa da fare"** genera UNA cosa da fare
+  "Attestati per il ruolo &lt;ruolo&gt; da recuperare (&lt;persona&gt;)" verso il
+  cliente, gestita come tutte le altre dello scadenzario. Rimossa la vecchia
+  `RigaPregressa` per-corso. Front-end puro, nessuna migration ne' Edge Function
+  (canale 1). Build `tsc -b` + `vite build` puliti.
 - Assegnazione ruolo (back-office): assegnando una persona **per la prima volta**
   a una figura, dopo il salvataggio compare il passo **"Formazione pregressa? SI/NO"**.
   SI -> imposta `formazione_pregressa` sulla persona e apre il pannello *Evidenze
