@@ -451,6 +451,7 @@ export default function Formazione() {
           figura={assegnaFigura}
           persone={riep.persone}
           clienteId={clienteId}
+          haFormazione={!!catalogo?.requisiti.some((r) => r.figura_codice === assegnaFigura.codice)}
           onChiudi={() => { setAssegnaFigura(null); dopoModifica(); }}
           onAssegnaConPregressa={async (personaId) => { setAssegnaFigura(null); await dopoModifica(); setPregressaPersonaId(personaId); }}
         />
@@ -889,8 +890,8 @@ function ModuloAggiuntivo({ m, persona, valutato, onCambia }: {
   );
 }
 
-function FormAssegnaFigura({ figura, persone, clienteId, onChiudi, onAssegnaConPregressa }: {
-  figura: FiguraSicurezza; persone: PersonaValutata[]; clienteId: string; onChiudi: () => void;
+function FormAssegnaFigura({ figura, persone, clienteId, haFormazione, onChiudi, onAssegnaConPregressa }: {
+  figura: FiguraSicurezza; persone: PersonaValutata[]; clienteId: string; haFormazione: boolean; onChiudi: () => void;
   onAssegnaConPregressa?: (personaId: string) => void;
 }) {
   const titolari = persone.filter((p) => p.figure.some((f) => f.codice === figura.codice)).map((p) => p.persona.id);
@@ -929,9 +930,11 @@ function FormAssegnaFigura({ figura, persone, clienteId, onChiudi, onAssegnaConP
           await supabase.from('nomina').delete().eq('persona_id', id).eq('figura_codice', figura.codice);
         }
       }
-      // Se ho assegnato qualcuno per la prima volta a questo ruolo, chiedo subito
-      // se ha formazione pregressa. Altrimenti chiudo e basta.
-      if (aggiunte.length > 0) {
+      // Se ho assegnato qualcuno per la prima volta a questo ruolo E il ruolo
+      // prevede formazione sicurezza, chiedo subito se ha formazione pregressa.
+      // Per le figure SENZA percorso formativo (es. Medico competente: si registra
+      // solo la nomina) salto il passo e chiudo.
+      if (haFormazione && aggiunte.length > 0) {
         setNuove(aggiunte);
         setRisposte(Object.fromEntries(aggiunte.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>);
         setStep('pregressa');

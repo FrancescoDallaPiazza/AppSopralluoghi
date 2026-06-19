@@ -514,6 +514,12 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Assegnazione figure senza formazione: niente passo "pregressa"** (`src/admin/Formazione.tsx`):
+  la procedura di assegnazione mostrava sempre il passo "Formazione pregressa? SI/NO"
+  anche per le figure prive di percorso formativo (es. Medico competente, dove si
+  registra solo la nomina). Ora il passo compare solo se la figura ha almeno un
+  `figura_requisito` (nuova prop `haFormazione`); per le altre, assegnata la nomina,
+  si chiude. Front-end puro, nessuna migration. Build `tsc -b` + `vite build` puliti.
 - **RLS: toggle Interno / RLS territoriale + data di nomina nei box** (`src/admin/Formazione.tsx`,
   `src/lib/admin/formazione.ts`): accanto all'etichetta della figura **RLS** un
   selettore segmentato **Interno / RLS territoriale** (sostituisce la vecchia
