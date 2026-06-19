@@ -21,10 +21,11 @@ import {
   type Persona, type Nomina, type FiguraSicurezza,
   assemblaRiepilogo, nomePersona,
 } from './lib/admin/formazione';
+import { costruisciSnapshot, firmaOrganigramma } from './lib/admin/organigramma-revisioni';
 import {
   caricaOrganigrammaLocale, prefetchOrganigramma, type OrganigrammaLocale,
   salvaFormazione, salvaFormazioneConAllegato, salvaEsonero, eliminaEsonero, salvaConfermaOrganigramma,
-  salvaPersona, eliminaPersona, salvaNomina, eliminaNomina,
+  salvaPersona, eliminaPersona, salvaNomina, eliminaNomina, accodaRevisioneOrganigramma,
 } from './lib/sync';
 import { supabase, MAX_ATTESTATO_BYTES } from './lib/supabase';
 import { db, type OrganigrammaConferma } from './lib/db';
@@ -43,6 +44,9 @@ const TIPI_ESONERO: Array<{ v: TipoEsonero; l: string }> = [
 ];
 
 const RK_KEY = (clienteId: string) => 'formazione:rischio:' + clienteId;
+// Firma dell'ultimo snapshot organigramma salvato da QUESTO dispositivo: dedup
+// locale (offline-safe) per non duplicare la revisione se nulla e' cambiato.
+const FIRMA_KEY = (clienteId: string) => 'organigramma:firma:' + clienteId;
 const oggiISO = () => new Date().toISOString().slice(0, 10);
 
 function leggiRischioLocale(clienteId: string): LivelloRischio | null {
@@ -525,6 +529,38 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
       const salvata = await salvaConfermaOrganigramma(c);
       setConferma(salvata);
       setNota('');
+
+      // Snapshot versionato dell'organigramma (Parte 3): congela lo stato
+      // corrente come revisione. Dedup locale per firma: niente revisione se
+      // nulla e' cambiato dall'ultima salvata su questo dispositivo. Offline-safe
+      // (accodata via outbox); non deve far fallire la conferma in caso di errore.
+      try {
+        if (riep && org && clienteId) {
+          const rischioFirma = leggiRischioLocale(clienteId);
+          const firma = firmaOrganigramma(
+            { persone: org.persone, nomine: org.nomine, formazioni: org.formazioni, esoneri: org.esoneri },
+            rischioFirma,
+          );
+          let firmaNota: string | null = null;
+          try { firmaNota = localStorage.getItem(FIRMA_KEY(clienteId)); } catch { /* no storage */ }
+          if (firma !== firmaNota) {
+            let clienteNome = '';
+            try { clienteNome = (await db.contesto.get(sopralluogoId))?.cliente_nome ?? ''; } catch { /* best-effort */ }
+            await accodaRevisioneOrganigramma({
+              id: newId(),
+              cliente_id: clienteId,
+              creata_il: new Date().toISOString(),
+              autore: tecnicoNome,
+              autore_tecnico_id: tecnicoId,
+              origine: 'campo',
+              firma,
+              snapshot: costruisciSnapshot(riep, clienteNome),
+            });
+            try { localStorage.setItem(FIRMA_KEY(clienteId), firma); } catch { /* no storage */ }
+          }
+        }
+      } catch { /* lo snapshot non deve far fallire la conferma */ }
+
       setConfMsg(tipo === 'variato' ? 'Variazione registrata.' : tipo === 'compilato' ? 'Organigramma compilato.' : 'Organigramma confermato.');
     } catch {
       setConfMsg('Salvataggio non riuscito, riprova.');

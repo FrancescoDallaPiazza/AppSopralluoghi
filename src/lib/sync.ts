@@ -187,6 +187,16 @@ export async function salvaConfermaOrganigramma(c: OrganigrammaConferma): Promis
   return r;
 }
 
+// Accoda uno snapshot di revisione dell'organigramma (Parte 3), offline-first.
+// La riga e' costruita dal chiamante (gia' valutato lo stato locale + firma): qui
+// si limita ad accodarla. Il progressivo `numero` NON va incluso nel payload:
+// lo assegna il trigger lato DB all'upsert (cosi' l'update di un eventuale
+// re-invio non lo azzera). L'ordine di coda fa salire prima le righe modificate.
+export async function accodaRevisioneOrganigramma(riga: Record<string, unknown>): Promise<void> {
+  await enqueueRow('organigramma_revisione', riga);
+  void runSync();
+}
+
 // Rimozione: pulizia locale + annullo degli upsert pendenti + delete in coda.
 async function rimuoviRiga(
   table: NonNullable<OutboxOp['table']>,

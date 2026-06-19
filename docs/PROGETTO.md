@@ -96,6 +96,11 @@ normalizzati a CRLF prima della consegna.
 - **Dominio email**: `overallgroup.info` (mittente noreply@overallgroup.info).
 - **Edge Functions**:
   - `genera-report` — report HTML/PDF (varianti cliente / interno) + invio.
+  - `organigramma-pdf` — riassunto PDF dell'organigramma sicurezza di un cliente
+    (figure + incaricati + stato + ruoli scoperti + data). Accetta `riepilogo`
+    (snapshot corrente dal client), `revisione_id` (una revisione archiviata) o
+    `cliente_id` (ultima revisione). PDF via PDFBolt, bucket `report`, signed URL
+    7 giorni; ripiega su HTML se `PDFBOLT_API_KEY` manca. CORS inline. [migration 027]
   - `notifica-azione` — **solo re-invio manuale** dal back-office (riceve un
     `azione_id` esplicito). Le chiamate del vecchio webhook su `azione` vengono
     ignorate, per non generare email doppie.
@@ -171,6 +176,11 @@ normalizzati a CRLF prima della consegna.
     formazione specifica lavoratori.
   - `organigramma_conferma` — conferma tracciata dell'organigramma per singolo
     sopralluogo (tecnico, data, `tipo` compilato/confermato/variato). [migration 019]
+  - `organigramma_revisione` — storia versionata dell'organigramma per cliente:
+    snapshot completo (figure + incaricati + stato + ruoli scoperti) congelato a
+    ogni modifica, con `numero` progressivo per cliente (assegnato da trigger,
+    cosi' funziona anche offline), `firma` dei fatti per dedup, `origine`
+    (back-office / campo) e `autore`. Alimenta storico e PDF. [migration 027]
 
 Migrazioni presenti: 001 schema+RLS+foto · 002 form model · 003–004 template/seed ·
 005 bucket report · 006 ruolo back-office · 007 cadenza · 008 contatti · 009 aree
@@ -190,8 +200,9 @@ descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025) �
 023 flag persona `formazione_pregressa` (regime transitorio ante ASR 2025).
 024 figura Medico competente (sorveglianza sanitaria, senza corso) · 025
 descrizioni `guida` figure riscritte verbatim dall'allegato (supera 022) · 026
-Preposto a obbligo 'sempre' (ruolo scoperto se vuoto).
-**Prossima libera: 027.**
+Preposto a obbligo 'sempre' (ruolo scoperto se vuoto) · 027 `organigramma_revisione`
+(snapshot versionato dell'organigramma per cliente + trigger di numerazione).
+**Prossima libera: 028.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -385,6 +396,56 @@ Possibile estensione futura: un visualizzatore della storia delle revisioni
 
 ---
 
+## 7-bis. Snapshot versionato dell'organigramma + PDF — implementato
+
+Storia versionata dell'organigramma sicurezza per cliente, con esportazione PDF
+a richiesta. Distinto dalle revisioni del sopralluogo (§7): qui l'oggetto
+versionato è l'**organigramma di un cliente**, non un singolo sopralluogo.
+
+- **Snapshot automatico a ogni modifica.** Ogni mutazione dell'organigramma
+  congela uno snapshot completo (figure + incaricati + stato formativo + ruoli
+  scoperti) in `organigramma_revisione`. Lo snapshot è "pronto da rendere": lo
+  storico e il PDF lo leggono senza ricalcolare.
+- **Dedup per firma dei fatti.** Lo snapshot porta una `firma` deterministica
+  dei soli fatti che lo definiscono (persone, nomine, attestati, esoneri,
+  rischio). Una nuova revisione nasce solo se la firma differisce dall'ultima:
+  aprire la scheda o ri-salvare senza variazioni non crea revisioni a vuoto. La
+  firma **non** include lo stato calcolato (che dipende dalla data odierna),
+  così lo scorrere del tempo da solo non genera revisioni.
+- **Numerazione lato DB.** Il progressivo `numero` per cliente è assegnato da un
+  trigger BEFORE INSERT (`organigramma_revisione_numera`): online (back-office)
+  e offline (campo, dove il numero arriva null dalla coda) condividono lo stesso
+  meccanismo. Il payload outbox **non** include `numero` (l'update di un
+  re-invio non deve azzerarlo).
+- **Back-office (online).** Dopo ogni mutazione, `dopoModifica()` chiama
+  `registraSnapshotOrganigramma` (ricarica i dati, assembla con la pura
+  `assemblaRiepilogo`, dedup lato server, insert) e poi ricarica l'UI. Pulsanti
+  *Esporta PDF organigramma* (snapshot corrente) e *Storico organigramma* (lista
+  revisioni + apertura sola lettura + PDF della singola revisione).
+- **Campo (offline).** Alla conferma organigramma, lo snapshot è costruito dallo
+  stato LOCALE già valutato e accodato via outbox (`accodaRevisioneOrganigramma`);
+  dedup locale per firma in `localStorage` (`organigramma:firma:<clienteId>`).
+  Non si rilegge il server: le modifiche offline potrebbero non essere ancora
+  sincronizzate.
+- **PDF.** Edge Function `organigramma-pdf` (gemella di `genera-report`):
+  PDFBolt, bucket `report`, signed URL 7 giorni, fallback HTML. Accetta
+  `riepilogo` (export corrente dal client), `revisione_id` o `cliente_id`.
+
+File: migration `027_organigramma_revisioni.sql`; Edge Function
+`supabase/functions/organigramma-pdf/index.ts`; `src/lib/admin/organigramma-revisioni.ts`
+(snapshot puri, firma, data-access, helper PDF); `src/lib/admin/formazione.ts`
+(`caricaDatiOrganigramma` estratto); `src/lib/db.ts` (tabella in outbox);
+`src/lib/sync.ts` (`accodaRevisioneOrganigramma`); `src/admin/Formazione.tsx`
+(snapshot automatico, PDF, storico); `src/FormazioneRiepilogo.tsx` (snapshot alla
+conferma di campo).
+
+Ordine di deploy: **migration 027** sull'SQL Editor → Edge Function
+`organigramma-pdf` dal Dashboard (CORS inline) → push dei sorgenti su `main`.
+Verificare che `PDFBOLT_API_KEY` sia già presente tra i secrets (lo è per i
+report).
+
+---
+
 ## 8. Lavori aperti e lacune
 
 Richieste/auspici delle istruzioni iniziali non ancora realizzati:
@@ -452,6 +513,12 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- Snapshot versionato dell'organigramma sicurezza + PDF a richiesta (§7-bis):
+  migration 027 (`organigramma_revisione` + trigger numerazione), Edge Function
+  `organigramma-pdf`, nuovo modulo `organigramma-revisioni.ts`, snapshot
+  automatico in back-office (dedup per firma lato server) e in campo (alla
+  conferma, dedup locale via localStorage), storico + esportazione PDF nel
+  back-office. Build `tsc -b` + `vite build` puliti. Prossima migration: 028.
 - Punti 2/3/4 della roadmap completati; poi punto 1 (email digest per sopralluogo)
   realizzato e verificato end-to-end (deploy Edge Functions dal Dashboard con CORS
   inline + webhook su `sopralluogo`).

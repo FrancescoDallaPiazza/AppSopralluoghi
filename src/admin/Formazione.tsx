@@ -20,6 +20,11 @@ import {
   proponiCoseDaFare, generaCoseDaFare,
   nomePersona,
 } from '../lib/admin/formazione';
+import {
+  registraSnapshotOrganigramma, caricaRevisioniOrganigramma, caricaRevisioneOrganigramma,
+  costruisciSnapshot, esportaPdfOrganigramma,
+  type RevisioneOrganigramma, type SnapshotOrganigramma,
+} from '../lib/admin/organigramma-revisioni';
 
 interface ClienteLite { id: string; ragione_sociale: string; livello_rischio: LivelloRischio | null; }
 
@@ -138,6 +143,8 @@ export default function Formazione() {
   const [evidenzeFor, setEvidenzeFor] = useState<{ personaId: string; figuraCodice: string } | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [catalogoOpen, setCatalogoOpen] = useState(false);
+  const [storicoOpen, setStoricoOpen] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const cliente = useMemo(() => clienti.find((c) => c.id === clienteId) ?? null, [clienti, clienteId]);
 
@@ -173,12 +180,38 @@ export default function Formazione() {
   }
   useEffect(() => { ricarica(); /* eslint-disable-next-line */ }, [clienteId, catalogo]);
 
+  // Dopo ogni MODIFICA dell'organigramma: snapshot automatico versionato (con
+  // dedup lato server: niente revisione se nulla e' cambiato) e poi ricarica.
+  // Le ricariche di sola lettura (cambio cliente, primo caricamento) restano su
+  // `ricarica()` e non generano snapshot.
+  async function dopoModifica() {
+    if (clienteId && catalogo && cliente) {
+      try {
+        await registraSnapshotOrganigramma(clienteId, { catalogo, clienteNome: cliente.ragione_sociale });
+      } catch (e) { console.warn('snapshot organigramma non riuscito', e); }
+    }
+    await ricarica();
+  }
+
+  // Esporta in PDF il riassunto dell'organigramma corrente (via Edge Function).
+  async function esportaPdf() {
+    if (!riep || !cliente) return;
+    setPdfBusy(true);
+    try {
+      const snap = costruisciSnapshot(riep, cliente.ragione_sociale);
+      const url = await esportaPdfOrganigramma({ riepilogo: snap });
+      window.open(url, '_blank', 'noopener');
+    } catch (e: any) {
+      alert('PDF non generato: ' + (e?.message ?? String(e)));
+    } finally { setPdfBusy(false); }
+  }
+
   async function setRischio(v: LivelloRischio | null) {
     if (!clienteId) return;
     const { error } = await supabase.from('cliente').update({ livello_rischio: v }).eq('id', clienteId);
     if (error) { setErrore(error.message); return; }
     setClienti((arr) => arr.map((c) => (c.id === clienteId ? { ...c, livello_rischio: v } : c)));
-    ricarica();
+    dopoModifica();
   }
 
   // copertura delle figure (organigramma atteso)
@@ -247,6 +280,8 @@ export default function Formazione() {
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
             <button className="bo-btn" onClick={() => setEditPersona(nuovaPersona(clienteId))}>+ Aggiungi persona</button>
             <button className="bo-btn ghost" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length}>Genera cose da fare per i gap</button>
+            <button className="bo-btn ghost" onClick={esportaPdf} disabled={pdfBusy}>{pdfBusy ? 'Genero PDF…' : 'Esporta PDF organigramma'}</button>
+            <button className="bo-btn ghost" onClick={() => setStoricoOpen(true)}>Storico organigramma</button>
           </div>
 
           {!cliente.livello_rischio && (
@@ -366,8 +401,8 @@ export default function Formazione() {
         <FormPersona
           persona={editPersona}
           onAnnulla={() => setEditPersona(null)}
-          onSalva={async (p) => { await salvaPersona(p); setEditPersona(null); ricarica(); }}
-          onElimina={editPersona.id ? async () => { if (confirm('Eliminare la persona e tutti i suoi dati formativi?')) { await eliminaPersona(editPersona.id); setEditPersona(null); ricarica(); } } : undefined}
+          onSalva={async (p) => { await salvaPersona(p); setEditPersona(null); dopoModifica(); }}
+          onElimina={editPersona.id ? async () => { if (confirm('Eliminare la persona e tutti i suoi dati formativi?')) { await eliminaPersona(editPersona.id); setEditPersona(null); dopoModifica(); } } : undefined}
         />
       )}
       {assegnaFigura && riep && (
@@ -375,7 +410,7 @@ export default function Formazione() {
           figura={assegnaFigura}
           persone={riep.persone}
           clienteId={clienteId}
-          onChiudi={() => { setAssegnaFigura(null); ricarica(); }}
+          onChiudi={() => { setAssegnaFigura(null); dopoModifica(); }}
         />
       )}
       {evidenzeFor && riep && catalogo && (() => {
@@ -387,11 +422,19 @@ export default function Formazione() {
             pv={pv}
             figura={figura}
             catalogo={catalogo}
-            onCambia={ricarica}
+            onCambia={dopoModifica}
             onChiudi={() => setEvidenzeFor(null)}
           />
         );
       })()}
+
+      {storicoOpen && cliente && (
+        <StoricoOrganigramma
+          clienteId={clienteId}
+          clienteNome={cliente.ragione_sociale}
+          onChiudi={() => setStoricoOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -855,6 +898,123 @@ function EditorEsoneriAmmessi({ catalogo, onCambia }: { catalogo: Catalogo; onCa
         </Modale>
       )}
     </div>
+  );
+}
+
+// ---------- storico revisioni organigramma ----------
+
+function StoricoOrganigramma({ clienteId, clienteNome, onChiudi }: {
+  clienteId: string; clienteNome: string; onChiudi: () => void;
+}) {
+  const [lista, setLista] = useState<RevisioneOrganigramma[] | null>(null);
+  const [errore, setErrore] = useState<string | null>(null);
+  const [aperta, setAperta] = useState<SnapshotOrganigramma | null>(null);
+  const [apertaNum, setApertaNum] = useState<number | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try { setLista(await caricaRevisioniOrganigramma(clienteId)); }
+      catch (e: any) { setErrore(e?.message ?? String(e)); }
+    })();
+  }, [clienteId]);
+
+  async function apri(r: RevisioneOrganigramma) {
+    setBusy('apri-' + r.id);
+    try {
+      const full = await caricaRevisioneOrganigramma(r.id);
+      setAperta(full.snapshot); setApertaNum(full.numero ?? null);
+    } catch (e: any) { setErrore(e?.message ?? String(e)); }
+    finally { setBusy(null); }
+  }
+  async function pdf(r: RevisioneOrganigramma) {
+    setBusy('pdf-' + r.id);
+    try { const url = await esportaPdfOrganigramma({ revisione_id: r.id }); window.open(url, '_blank', 'noopener'); }
+    catch (e: any) { alert('PDF non generato: ' + (e?.message ?? String(e))); }
+    finally { setBusy(null); }
+  }
+
+  return (
+    <div className="fz-modal-bg">
+      <div className="fz-modal" style={{ width: 'min(720px,100%)' }}>
+        <div className="bo-row" style={{ marginBottom: 10 }}>
+          <div className="bo-title grow" style={{ fontSize: 16 }}>Storico organigramma &mdash; {clienteNome}</div>
+          <button className="bo-btn ghost sm" onClick={onChiudi}>chiudi</button>
+        </div>
+        {errore && <div className="bo-err">{errore}</div>}
+        {!aperta && (
+          <>
+            {lista === null && <div className="bo-empty">Carico&hellip;</div>}
+            {lista && lista.length === 0 && <div className="bo-empty">Nessuna revisione registrata: la prima nascera' alla prossima modifica dell'organigramma.</div>}
+            {lista && lista.map((r) => (
+              <div key={r.id} className="fz-cover">
+                <span style={{ fontSize: 12.5 }}>
+                  <b>Rev. {r.numero ?? '—'}</b> &middot; {new Date(r.creata_il).toLocaleString('it-IT')}
+                  {r.autore ? ' \u00b7 ' + r.autore : ''}
+                  <span className="fz-mod-tag" style={{ marginLeft: 6 }}>{r.origine === 'campo' ? 'campo' : 'back-office'}</span>
+                </span>
+                <span style={{ display: 'flex', gap: 6, flex: '0 0 auto' }}>
+                  <button className="bo-btn ghost sm" disabled={busy === 'apri-' + r.id} onClick={() => apri(r)}>{busy === 'apri-' + r.id ? '…' : 'apri'}</button>
+                  <button className="bo-btn ghost sm" disabled={busy === 'pdf-' + r.id} onClick={() => pdf(r)}>{busy === 'pdf-' + r.id ? '…' : 'PDF'}</button>
+                </span>
+              </div>
+            ))}
+          </>
+        )}
+        {aperta && (
+          <VistaSnapshot snap={aperta} numero={apertaNum} onIndietro={() => { setAperta(null); setApertaNum(null); }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function VistaSnapshot({ snap, numero, onIndietro }: { snap: SnapshotOrganigramma; numero: number | null; onIndietro: () => void; }) {
+  return (
+    <>
+      <div className="bo-bar" style={{ marginTop: 0, marginBottom: 10 }}>
+        <button className="bo-btn ghost sm" onClick={onIndietro}>&larr; elenco</button>
+        <span className="bo-sp" />
+        <span className="bo-sub" style={{ margin: 0 }}>
+          Rev. {numero ?? '—'} &middot; {new Date(snap.generato_il).toLocaleString('it-IT')}
+          {snap.livello_rischio ? ' \u00b7 rischio ' + snap.livello_rischio : ''}
+        </span>
+      </div>
+      <div className="fz-metrics">
+        <div className="fz-metric"><div className="k">Persone</div><div className="v">{snap.persone.length}</div></div>
+        <div className="fz-metric"><div className="k">Conformi</div><div className="v" style={{ color: 'var(--ok)' }}>{snap.conteggi.conforme}</div></div>
+        <div className="fz-metric"><div className="k">In scadenza</div><div className="v" style={{ color: 'var(--hi-dark)' }}>{snap.conteggi.in_scadenza}</div></div>
+        <div className="fz-metric"><div className="k">Critici</div><div className="v" style={{ color: 'var(--no)' }}>{snap.conteggi.critico}</div></div>
+      </div>
+      {snap.figure_scoperte.length > 0 && (
+        <div className="fz-person-crit" style={{ marginBottom: 10 }}>
+          Ruoli scoperti: {snap.figure_scoperte.map((f) => f.nome).join(', ')}
+        </div>
+      )}
+      {snap.persone.map((p, i) => (
+        <div key={i} className="fz-person-box" style={{ marginBottom: 8 }}>
+          <div className="fz-person-head">
+            <span className="nm">{p.nome}{p.mansione ? ' \u2014 ' + p.mansione : ''}</span>
+            <span className={'fz-st st-' + p.stato}>{LABEL_STATO[p.stato] ?? p.stato}</span>
+          </div>
+          {p.figure.length > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>{p.figure.map((f) => f.nome).join(' \u00b7 ')}</div>}
+          <div className="fz-person-ev">
+            {p.requisiti.map((r, j) => (
+              <div key={j} className="fz-ev-row">
+                <span className="fz-ev-corso">{r.corso_nome}{r.dettaglio ? ' \u2014 ' + r.dettaglio : ''}</span>
+                <span className={'fz-st st-' + r.stato}>{LABEL_STATO[r.stato] ?? r.stato}</span>
+              </div>
+            ))}
+            {p.moduli.map((m, j) => (
+              <div key={'m' + j} className="fz-ev-row">
+                <span className="fz-ev-corso">{m.corso_nome}<span className="fz-mod-tag">modulo</span></span>
+                <span className={'fz-st st-' + m.stato}>{LABEL_STATO[m.stato] ?? m.stato}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
 

@@ -587,12 +587,12 @@ export function assemblaRiepilogo(
   return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi, figureScoperte };
 }
 
-// Valuta l'intero cliente: organigramma + stato formativo per persona.
-// Online-first: carica i dati da Supabase e delega l'assemblaggio alla funzione
-// pura `assemblaRiepilogo` (la medesima usata offline in campo).
-export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
-  const catalogo = cat ?? (await caricaCatalogo());
-
+// Carica i dati grezzi dell'organigramma di un cliente da Supabase (rischio +
+// persone/nomine/formazioni/esoneri), pronti per `assemblaRiepilogo`. Estratto
+// da `valutaCliente` per essere riusato dallo snapshot versionato (revisioni).
+export async function caricaDatiOrganigramma(
+  clienteId: string,
+): Promise<{ rischio: LivelloRischio | null; dati: DatiOrganigramma }> {
   const cli = await supabase.from('cliente').select('livello_rischio').eq('id', clienteId).single();
   if (cli.error) throw cli.error;
   const rischio = (cli.data?.livello_rischio ?? null) as LivelloRischio | null;
@@ -604,8 +604,16 @@ export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<
     caricaPerPersone<Formazione>('formazione', ids),
     caricaPerPersone<Esonero>('esonero', ids),
   ]);
+  return { rischio, dati: { persone, nomine, formazioni, esoneri } };
+}
 
-  return assemblaRiepilogo(clienteId, rischio, { persone, nomine, formazioni, esoneri }, catalogo);
+// Valuta l'intero cliente: organigramma + stato formativo per persona.
+// Online-first: carica i dati da Supabase e delega l'assemblaggio alla funzione
+// pura `assemblaRiepilogo` (la medesima usata offline in campo).
+export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
+  const catalogo = cat ?? (await caricaCatalogo());
+  const { rischio, dati } = await caricaDatiOrganigramma(clienteId);
+  return assemblaRiepilogo(clienteId, rischio, dati, catalogo);
 }
 
 // ============================ CRUD ============================

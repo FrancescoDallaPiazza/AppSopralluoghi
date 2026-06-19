@@ -11,6 +11,20 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+Per attivare in produzione lo **snapshot versionato dell'organigramma + PDF**
+(Parte 3, vedi `PROGETTO.md` §7-bis), nell'ordine:
+
+- [ ] Eseguire `supabase/migrations/027_organigramma_revisioni.sql` nell'**SQL
+  Editor** di Supabase (tabella `organigramma_revisione` + trigger di
+  numerazione + RLS).
+- [ ] Deployare la Edge Function **`organigramma-pdf`** dal Dashboard Supabase
+  (CORS inline; nessun import condiviso). Verificare che `PDFBOLT_API_KEY` sia
+  già tra i secrets (lo è per i report).
+- [ ] Push dei sorgenti su `main` (Vercel auto-deploy) + refresh forzato PWA.
+- [ ] Verifica: in back-office → Formazione → cliente, fare una modifica e
+  controllare che *Storico organigramma* mostri la nuova revisione; provare
+  *Esporta PDF organigramma* e il *PDF* di una revisione dallo storico.
+
 Per attivare in produzione il **feed iCal sottoscrivibile** e la
 **ricalibrazione date** (commit `f776edf`):
 
@@ -110,8 +124,9 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ### Revisioni
 
-- [ ] Visualizzatore della storia delle revisioni (`caricaRevisioni` è già
-  pronto): leggere gli snapshot archiviati direttamente dall'app.
+- [ ] Visualizzatore della storia delle revisioni del **sopralluogo**
+  (`caricaRevisioni` è già pronto): leggere gli snapshot archiviati dall'app.
+  Nota: lo storico dell'**organigramma** per cliente è già fatto (vedi Fatti).
 
 ### Notifiche
 
@@ -139,6 +154,16 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-06-19** Snapshot versionato dell'organigramma sicurezza + PDF a
+  richiesta (Parte 3). Migration 027 (`organigramma_revisione` + trigger di
+  numerazione per cliente), Edge Function `organigramma-pdf` (PDFBolt, bucket
+  `report`), nuovo modulo `src/lib/admin/organigramma-revisioni.ts`. Back-office:
+  snapshot automatico dopo ogni modifica con dedup per firma lato server,
+  pulsanti *Esporta PDF organigramma* e *Storico organigramma* (lista + vista
+  sola lettura + PDF della singola revisione). Campo: snapshot alla conferma,
+  costruito dallo stato locale, accodato via outbox, dedup locale (localStorage).
+  Build `tsc -b` + `vite build` puliti. **Da deployare** (vedi sezione A).
 
 - [x] **2026-06-11** Editor template riallineato alla modalità di rilievo unica
   (Fase C). Rimossi i knob senza più effetto a runtime: `stato`/`genera_azione`

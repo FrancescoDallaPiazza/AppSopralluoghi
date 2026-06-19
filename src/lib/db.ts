@@ -27,7 +27,7 @@ export interface OutboxOp {
   seq?: number;                 // auto-increment, garantisce l'ordine
   kind: 'row' | 'photo' | 'delete' | 'attestato';
   table?: 'sopralluogo' | 'checklist_compilata' | 'esito_voce' | 'foto' | 'azione' | 'aggiornamento_azione' | 'sopralluogo_revisione'
-        | 'persona' | 'nomina' | 'formazione' | 'esonero' | 'organigramma_conferma';
+        | 'persona' | 'nomina' | 'formazione' | 'esonero' | 'organigramma_conferma' | 'organigramma_revisione';
   payload?: Record<string, unknown>;
   fotoId?: string;             // per kind 'photo': id della foto/blob da caricare
   attestatoId?: string;        // per kind 'attestato': id del blob allegato da caricare
