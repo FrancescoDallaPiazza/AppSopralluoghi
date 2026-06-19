@@ -1330,7 +1330,7 @@ function SezioneRuoloPregresso({ ruoloNome, requisiti, persona, clienteId, onCam
           <div className="ev-choice" style={{ marginTop: 8 }}>
             <button type="button" className="bo-btn ghost sm" onClick={aggiungiRiga}>+ Aggiungi attestato</button>
           </div>
-          <div className="ev-note">Lascia "Scadenza" vuota per calcolarla automaticamente dalla data di effettuazione. Compila almeno "Tipo corso" e "Data" perche' una riga venga salvata.</div>
+          <div className="ev-note">Compila almeno "Tipo corso" e "Data" perche' una riga venga salvata. Se lasci "Scadenza" vuota, viene calcolata sommando alla data di effettuazione la periodicita' di aggiornamento del corso corrispondente a catalogo (per i ruoli principali e' la stessa tra gli accordi); inseriscila a mano se l'attestato pregresso ha una scadenza diversa o se preferisci fissarla tu. Se quel corso non prevede aggiornamento, resta valido a tempo indeterminato.</div>
           <div className="ev-choice" style={{ marginTop: 8 }}>
             <button className="bo-btn sm" disabled={busy} onClick={salva}>Salva attestati pregressi</button>
             <button className="bo-btn ghost sm" disabled={busy} onClick={nessunAttestato}>Nessun attestato: crea cosa da fare</button>
