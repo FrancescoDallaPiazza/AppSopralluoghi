@@ -3,7 +3,11 @@
 // coda "outbox" di operazioni da spingere al server alla riconnessione.
 
 import Dexie, { type Table } from 'dexie';
-import type { Sopralluogo, ChecklistCompilata, EsitoVoce, Foto, Azione } from './types';
+import type {
+  Sopralluogo, ChecklistCompilata, EsitoVoce, Foto, Azione,
+  Sede, BoxCatalogo, BoxSezione, VoceTemplate, ChecklistTemplateBox,
+  SopralluogoBox, ComponenteSito,
+} from './types';
 import type {
   Persona, Nomina, Formazione, Esonero,
   CorsoCatalogo, FiguraSicurezza, FiguraRequisito, EsoneroAmmesso,
@@ -27,7 +31,8 @@ export interface OutboxOp {
   seq?: number;                 // auto-increment, garantisce l'ordine
   kind: 'row' | 'photo' | 'delete' | 'attestato';
   table?: 'sopralluogo' | 'checklist_compilata' | 'esito_voce' | 'foto' | 'azione' | 'aggiornamento_azione' | 'sopralluogo_revisione'
-        | 'persona' | 'nomina' | 'formazione' | 'esonero' | 'organigramma_conferma' | 'organigramma_revisione';
+        | 'persona' | 'nomina' | 'formazione' | 'esonero' | 'organigramma_conferma' | 'organigramma_revisione'
+        | 'sopralluogo_box' | 'componente_sito';
   payload?: Record<string, unknown>;
   fotoId?: string;             // per kind 'photo': id della foto/blob da caricare
   attestatoId?: string;        // per kind 'attestato': id del blob allegato da caricare
@@ -80,6 +85,15 @@ class LocalDB extends Dexie {
   requisiti!: Table<FiguraRequisito, string>;
   esoneriAmmessi!: Table<EsoneroAmmesso, string>;
   conferme!: Table<OrganigrammaConferma, string>;
+  // modello box-argomento (migration 029-032): catalogo (sola lettura, cache di
+  // prefetch) + composizione/componenti del sopralluogo (read+write via outbox).
+  sediLocali!: Table<Sede, string>;
+  boxCatalogo!: Table<BoxCatalogo, string>;
+  boxSezioni!: Table<BoxSezione, string>;
+  vociBox!: Table<VoceTemplate, string>;
+  templateBox!: Table<ChecklistTemplateBox, string>;
+  sopralluogoBox!: Table<SopralluogoBox, string>;
+  componenti!: Table<ComponenteSito, string>;
 
   constructor() {
     super('sopralluoghi');
@@ -116,6 +130,19 @@ class LocalDB extends Dexie {
     // eliminando una formazione si annullano gli upload ancora pendenti.
     this.version(4).stores({
       attestatoBlob: 'id, formazione_id',
+    });
+    // v5: modello box-argomento (migration 029-032). Catalogo (sede/box/sezioni/
+    // voci/composizione default) in cache di sola lettura per la compilazione
+    // offline; la composizione effettiva del giro (sopralluogoBox) e i componenti
+    // di sede si scrivono via outbox (upsert per id, come il resto).
+    this.version(5).stores({
+      sediLocali: 'id, cliente_id',
+      boxCatalogo: 'id, codice, tipo, attivo',
+      boxSezioni: 'id, box_id',
+      vociBox: 'id, sezione_id, parent_voce_id',
+      templateBox: 'id, template_id, box_id',
+      sopralluogoBox: 'id, sopralluogo_id, box_id',
+      componenti: 'id, sede_id, box_id',
     });
   }
 }

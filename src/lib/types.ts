@@ -73,6 +73,8 @@ export interface Incarico {
   // calcolato dalla cadenza sul periodo. Se null, incarico a "numero fisso".
   cadenza_valore: number | null;
   cadenza_unita: CadenzaUnita | null;
+  // Sede di default dell'incarico (migration 029): il sopralluogo la eredita.
+  sede_id?: string | null;
 }
 
 // --- modello "form configurabile" (vedi migration 002) ---
@@ -99,6 +101,9 @@ export interface VoceConfig {
 export interface VoceTemplate {
   id: string;
   template_id: string;
+  // Modello box (migration 030): se valorizzato, la voce appartiene a una
+  // box_sezione invece che a un template piatto (template_id null lato DB).
+  sezione_id?: string | null;
   codice: string | null;
   sezione: string | null;
   ordine: number;
@@ -135,6 +140,7 @@ export interface Sopralluogo {
   stato: SopralluogoStato;
   werp_attivita_id: string | null;
   revisione_corrente?: number;   // versione corrente (1 = primo completamento)
+  sede_id?: string | null;       // sede ispezionata (migration 029)
 }
 
 export interface ChecklistCompilata {
@@ -158,6 +164,9 @@ export interface EsitoVoce {
   valore: unknown | null;   // chiave opzione | string | number | string[] (multiscelta)
   note: string | null;
   genera_azione: boolean;
+  // Sezioni ripetibili (migration 032): esito riferito a un componente del
+  // registro di sede; null per le sezioni singole e i template legacy.
+  componente_id?: string | null;
 }
 
 export interface Foto {
@@ -189,6 +198,8 @@ export interface Azione {
   periodicita_mesi: number | null;
   werp_attivita_id: string | null;
   notificata_il: string | null;
+  // Cosa da fare/scadenza riferita a un componente di sede (migration 032).
+  componente_id?: string | null;
 }
 
 // Area/funzione interna (Formazione, Preventivi, …): destinatario di una
@@ -198,6 +209,83 @@ export interface AreaInterna {
   nome: string;
   email: string | null;
   attiva: boolean;
+}
+
+// =====================================================================
+// Modello "box-argomento" (migration 029-032): composizione modulare del
+// sopralluogo. Il box e' un livello sopra al motore voci; le voci di un box
+// restano VoceTemplate (con sezione_id valorizzato).
+// =====================================================================
+
+// Sede/sito del cliente (migration 029): un cliente ha 1..N sedi; i componenti
+// e le cose da fare pregresse si filtrano per sede.
+export interface Sede {
+  id: string;
+  cliente_id: string;
+  nome: string;
+  indirizzo: string | null;
+  attivo: boolean;
+}
+
+// generico = box a voci; smart = incapsula un subapp (es. organigramma);
+// fisso = vista calcolata iniettata sempre (es. cose da fare pregresse).
+export type BoxTipo = 'generico' | 'smart' | 'fisso';
+
+export interface BoxCatalogo {
+  id: string;
+  codice: string;
+  nome: string;
+  descrizione: string | null;
+  tipo: BoxTipo;
+  ref_smart: string | null;   // per 'smart': es. 'organigramma'
+  ordine_default: number;
+  versione: number;           // congelata nella composizione
+  attivo: boolean;
+}
+
+export interface BoxSezione {
+  id: string;
+  box_id: string;
+  codice: string;
+  nome: string;
+  ordine: number;
+  ripetibile: boolean;        // true = N componenti per sezione
+  etichetta_componente: string | null;  // testo del bottone "+ Aggiungi ..."
+}
+
+// Composizione di default salvata sul template (migration 031, D2).
+export interface ChecklistTemplateBox {
+  id: string;
+  template_id: string;
+  box_id: string;
+  box_versione: number;
+  ordine: number;
+}
+
+export type SopralluogoBoxOrigine =
+  | 'template' | 'aggiunto_ufficio' | 'aggiunto_campo' | 'fisso';
+
+// Composizione effettiva e congelata del singolo sopralluogo (migration 031).
+export interface SopralluogoBox {
+  id: string;
+  sopralluogo_id: string;
+  box_id: string;
+  box_versione: number;
+  ordine: number;
+  origine: SopralluogoBoxOrigine;
+}
+
+// Registro persistente dei componenti di una sezione ripetibile (migration 032):
+// appartiene alla sede e si ri-verifica a ogni sopralluogo.
+export interface ComponenteSito {
+  id: string;
+  sede_id: string;
+  box_id: string;
+  sezione_codice: string;
+  etichetta: string;
+  matricola: string | null;
+  ubicazione: string | null;
+  attivo: boolean;
 }
 
 export const newId = (): string => crypto.randomUUID();
