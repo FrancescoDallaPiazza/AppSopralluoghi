@@ -26,6 +26,7 @@ import {
 
 export interface DatiCompilazione {
   compilataId: string;
+  templateId: string;    // template congelato della compilazione (per i box del template)
   voci: VoceTemplate[];   // intero albero del template (flat, con parent_voce_id)
   esiti: EsitoVoce[];     // top-level non ripetibili + eventuali esistenti (incl. figli/rilievi)
 }
@@ -265,7 +266,7 @@ async function creaCompilazione(
   await avviaSopralluogo(sopralluogo);
   void runSync();
 
-  return { compilataId: compilata.id, voci, esiti };
+  return { compilataId: compilata.id, templateId, voci, esiti };
 }
 
 // ---- API principale ----
@@ -301,7 +302,7 @@ export async function apriCompilazione(
   if (compilata) {
     const voci = await caricaVoci(compilata.template_id);
     const esiti = await caricaEsitiEsistenti(compilata.id);
-    return { modo: 'pronto', compilataId: compilata.id, voci, esiti };
+    return { modo: 'pronto', compilataId: compilata.id, templateId: compilata.template_id, voci, esiti };
   }
 
   // 2b) nuova compilazione -> scelta del template (default = quello dell'incarico)
@@ -343,7 +344,7 @@ export async function iniziaCompilazione(
   if (esistente) {
     const voci = await caricaVoci(esistente.template_id);
     const esiti = await caricaEsitiEsistenti(esistente.id);
-    return { compilataId: esistente.id, voci, esiti };
+    return { compilataId: esistente.id, templateId: esistente.template_id, voci, esiti };
   }
   return creaCompilazione(sopralluogo, template.id, template.versione);
 }

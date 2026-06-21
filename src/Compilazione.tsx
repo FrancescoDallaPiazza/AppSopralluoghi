@@ -13,6 +13,8 @@ import {
   type AzioneConContesto, type TecnicoAssegnabile,
 } from './lib/azioni';
 import FormazioneRiepilogo from './FormazioneRiepilogo';
+import BoxGenerico from './BoxGenerico';
+import { assicuraComposizione } from './lib/box';
 import { nomeCompleto } from './lib/types';
 import type { Azione, VoceTemplate, AreaInterna } from './lib/types';
 import { renderVoce, I, type ContestoVoci, type Resp, type Bozza, type BozzaScad } from './vociRender';
@@ -162,6 +164,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
         }
         // pronto: ripresa o ripiego offline sul template dell'incarico
         setCompilataId(r.compilataId); setVoci(r.voci); motore.setEsiti(r.esiti);
+        // Composizione box del giro (dal template + box fissi): idempotente,
+        // no-op finche' il catalogo box e' vuoto. I box si montano sotto.
+        try { await assicuraComposizione(sopralluogo.id, r.templateId); } catch { /* offline: dal locale */ }
         try {
           const tutte = await db.azioni.toArray();
           const { bz, sc } = bozzeDaAzioni(tutte, sopralluogo.id, tecnicoId);
@@ -182,6 +187,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     try {
       const d = await iniziaCompilazione(sopralluogo, { id: sel.id, versione: sel.versione });
       setCompilataId(d.compilataId); setVoci(d.voci); motore.setEsiti(d.esiti);
+      try { await assicuraComposizione(sopralluogo.id, d.templateId); } catch { /* offline: dal locale */ }
       try {
         const tutte = await db.azioni.toArray();
         const { bz, sc } = bozzeDaAzioni(tutte, sopralluogo.id, tecnicoId);
@@ -407,6 +413,19 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               {s.voci.map((v) => renderVoce(ctx, v, null))}
             </div>
           ))}
+
+          {/* Box generici del modello box-argomento, sullo stesso motore: le loro
+              cose-da-fare confluiscono in completa(). No-op finche' il catalogo box
+              e' vuoto. Smart/fisso instradati altrove (prossimo step). */}
+          <BoxGenerico
+            sopralluogoId={sopralluogo.id}
+            compilataId={compilataId}
+            sedeId={sopralluogo.sede_id ?? null}
+            motore={motore}
+            aree={aree}
+            tecnici={tecnici}
+            tecnicoId={tecnicoId}
+          />
         </main>
 
         <footer><div className="foot-inner">

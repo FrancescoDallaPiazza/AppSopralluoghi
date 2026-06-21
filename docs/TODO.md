@@ -168,16 +168,22 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     `COLONNE_ESITO` (la ripresa da server non perde il legame col componente).
     Verificato `tsc -b` + `vite build`. `BoxGenerico` non ancora montato (come fu
     `vociRender` all'1a): pronto per l'aggancio.
-  - [ ] **Prossimo — aggancio + seed prototipo**: montare `<BoxGenerico>` in
-    `Compilazione` dopo le sezioni piatte (passando `motore` + `compilataId`/`sedeId`/
-    `aree`/`tecnici`/`tecnicoId`) e chiamare `assicuraComposizione(sopralluogoId, templateId)`
-    all'apertura (threading del `templateId` nei due path apertura/confermaScelta).
-    Mount low-risk: no-op finché il catalogo box è vuoto. Da fare insieme al **seed**
-    di un box prototipo (Cap. 4 Impianti) come migration 033 (Canale 3) per renderlo
-    dimostrabile end-to-end. Poi instradare smart (organigramma → `FormazioneRiepilogo`)
-    e fisso ("cose da fare pregresse"). Rifinitura futura: passare `componente_id`
-    anche a `generaAzione`/`InputAzione` (oggi l'azione-box lo eredita via
-    `origine_esito_id` → `esito.componente_id`).
+  - [x] **Aggancio + seed prototipo** (Canale 1 + 3): `<BoxGenerico>` montato in
+    `Compilazione` dopo le sezioni piatte (riceve `motore` + `compilataId`/`sedeId`/
+    `aree`/`tecnici`/`tecnicoId`); `assicuraComposizione(sopralluogoId, templateId)`
+    chiamata all'apertura in entrambi i path (threading del `templateId` aggiunto a
+    `DatiCompilazione`/`apriCompilazione`). Migration **033** semina il box prototipo
+    GENERICO "Impianti" (Cap. 4): sezione singola *Generale* (con una figlia
+    condizionata su "no") + sezione ripetibile *Quadri elettrici* ("+ Aggiungi
+    quadro"), agganciato a tutti i template attivi via `checklist_template_box`
+    (restringibile cancellando le righe). Catena: seed → `prefetchCatalogoBox`
+    (gia' in `prefetch.ts`) → `assicuraComposizione` → `BoxGenerico`. Verificato
+    `tsc -b` + `vite build`; SQL validato con pglast (ASCII-only, idempotente).
+  - [ ] **Prossimo — box smart e fisso**: instradare nell'apertura i box non
+    generici saltati da `BoxGenerico`: smart (`ref_smart='organigramma'` →
+    `FormazioneRiepilogo`) e fisso ("cose da fare pregresse", vista calcolata per
+    sede). Rifinitura: passare `componente_id` anche a `generaAzione`/`InputAzione`
+    (oggi l'azione-box lo eredita via `origine_esito_id` → `esito.componente_id`).
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza

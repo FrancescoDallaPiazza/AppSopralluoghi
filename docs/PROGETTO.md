@@ -209,8 +209,9 @@ Preposto a obbligo 'sempre' (ruolo scoperto se vuoto) · 027 `organigramma_revis
 vincolo XOR `voce_template_owner_chk` · 031 `checklist_template_box` (composizione
 di default sul template) + `sopralluogo_box` (composizione congelata del giro) ·
 032 `componente_sito` (registro componenti per sede) + `esito_voce.componente_id`
-+ `azione.componente_id`.
-**Prossima libera: 033.**
++ `azione.componente_id` · 033 seed del box prototipo generico "Impianti" (Cap. 4)
+nel catalogo box + aggancio ai template attivi.
+**Prossima libera: 034.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -521,6 +522,23 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modello box, aggancio in apertura + seed prototipo "Impianti"**
+  (`src/Compilazione.tsx`, `src/lib/compilazione.ts`, `033_box_seed_impianti.sql`):
+  `BoxGenerico` ora e' montato in `Compilazione` sotto le sezioni piatte, sullo
+  stesso `motore` (le cose-da-fare dei box confluiscono in `completa()`).
+  All'apertura del sopralluogo si chiama `assicuraComposizione(sopralluogoId,
+  templateId)` in entrambi i path (ripresa/scelta): il `templateId` e' stato
+  aggiunto a `DatiCompilazione` e propagato da `apriCompilazione`/`iniziaCompilazione`/
+  `creaCompilazione`. La migration 033 semina il primo box reale, GENERICO,
+  "Impianti" (Cap. 4): sezione singola *Generale* (DICO, libretto con figlia
+  condizionata su "no", verifica di terra calendarizzabile 24m) e sezione
+  RIPETIBILE *Quadri elettrici* (a norma + termografica 12m, con "+ Aggiungi
+  quadro"), agganciato a tutti i template attivi via `checklist_template_box`.
+  La catena e' completa: seed -> `prefetchCatalogoBox` (gia' in `prefetch.ts`)
+  -> `assicuraComposizione` (crea le righe `sopralluogo_box`, outbox) ->
+  `BoxGenerico` (rende e semina gli esiti per sezione/componente). Verificato
+  `tsc -b` + `vite build`; SQL validato con pglast (ASCII-only, idempotente con
+  UUID fissi + ON CONFLICT DO NOTHING).
 - **Modello box, approccio A: motore voci condiviso + `BoxGenerico`**
   (`src/lib/useCompilazioneVoci.ts`, `src/Compilazione.tsx`, `src/BoxGenerico.tsx`,
   `src/lib/compilazione.ts`): il motore di compilazione (esiti + cose-da-fare in
