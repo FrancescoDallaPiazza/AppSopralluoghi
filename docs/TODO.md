@@ -119,6 +119,21 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
   Unica eccezione potenzialmente "nuovo schema": se si vuole **conservare anche
   il file audio** originale (oltre alla trascrizione) servirebbe una tabella
   `audio`/`allegato` gemella di `foto`.
+- [ ] **Modello "box-argomento" (composizione modulare del sopralluogo)** —
+  evoluzione concordata della rivisitazione qui sopra: il sopralluogo si compone da
+  un catalogo di box riusabili (Impianti, Antincendio, …), con box generici a voci,
+  box *smart* (Organigramma → incapsula il subapp Formazione) e box *fissi* (Cose da
+  fare pregresse). Schema dati concordato in **`docs/MODELLO_BOX.md`** (decisioni
+  D1A/D2/D3/D4 recepite). Footprint, migration da **029**:
+  - nuove tabelle: `sede`, `box_catalogo`, `box_sezione`, `checklist_template_box`,
+    `sopralluogo_box`, `componente_sito` (registro componenti persistente per sede);
+  - colonne: `voce_template.sezione_id`, `esito_voce.componente_id`,
+    `azione.componente_id`, `incarico.sede_id`, `sopralluogo.sede_id`;
+  - `mostra_se` generalizzato a cascata (un solo motore condizionale: copre
+    condizionali piatti e alberi); sezioni **ripetibili** con N componenti
+    (etichetta + matricola/ubicazione opzionali);
+  - scadenze RENTRI come config `fascia→data` localizzata (niente motore nuovo).
+  Riusa il motore voci esistente, nessun fork. Prossimo passo: generare le migration.
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza
