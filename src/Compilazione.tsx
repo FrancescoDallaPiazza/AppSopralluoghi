@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { liveQuery } from 'dexie';
 import { db } from './lib/db';
-import { salvaEsito, rimuoviEsito, rimuoviAzione, runSync } from './lib/sync';
+import { rimuoviAzione, runSync } from './lib/sync';
 import {
   apriCompilazione, iniziaCompilazione, generaAzione, completaSopralluogo,
-  nuovoEsito, figliDi, isRipetibile,
+  isRipetibile,
   type TemplateScelta,
 } from './lib/compilazione';
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
@@ -13,9 +13,10 @@ import {
   type AzioneConContesto, type TecnicoAssegnabile,
 } from './lib/azioni';
 import FormazioneRiepilogo from './FormazioneRiepilogo';
-import { newId, nomeCompleto } from './lib/types';
-import type { EsitoVoce, EsitoStato, Azione, VoceTemplate, AreaInterna } from './lib/types';
+import { nomeCompleto } from './lib/types';
+import type { Azione, VoceTemplate, AreaInterna } from './lib/types';
 import { renderVoce, I, type ContestoVoci, type Resp, type Bozza, type BozzaScad } from './vociRender';
+import { useCompilazioneVoci } from './lib/useCompilazioneVoci';
 import { annullaRevisione } from './lib/revisioni';
 
 // ---------- helpers ----------
@@ -24,18 +25,11 @@ const isoPiuMesi = (mesi: number) => {
   d.setMonth(d.getMonth() + mesi);
   return d.toISOString().slice(0, 10);
 };
-const isoPiuGiorni = (n: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
-};
 const fmt = (d: string) => {
   if (!d) return '—';
   const [y, m, g] = d.split('-');
   return `${g}/${m}/${y}`;
 };
-
-const nuovaBozza = (): Bozza => ({ id: newId(), descrizione: '', responsabile: 'cliente', tecnicoTargetId: null, areaId: null, scadenza: isoPiuGiorni(30), priorita: 'media' });
 
 // ---------- giro precedente: server + overlay locale ----------
 function useGiroPrecedente(incaricoId: string | null, sopralluogoId: string) {
@@ -117,9 +111,8 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [erroreMsg, setErroreMsg] = useState<string | null>(null);
   const [compilataId, setCompilataId] = useState<string>('');
   const [voci, setVoci] = useState<VoceTemplate[]>([]);
-  const [esiti, setEsiti] = useState<EsitoVoce[]>([]);
-  const [bozze, setBozze] = useState<Record<string, Bozza[]>>({});
-  const [scad, setScad] = useState<Record<string, BozzaScad>>({});
+  const motore = useCompilazioneVoci();
+  const { esiti, bozze, scad } = motore;
   const [aree, setAree] = useState<AreaInterna[]>([]);
   const [tecnici, setTecnici] = useState<TecnicoAssegnabile[]>([]);
   const [inCoda, setInCoda] = useState(0);
@@ -168,11 +161,11 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           return;
         }
         // pronto: ripresa o ripiego offline sul template dell'incarico
-        setCompilataId(r.compilataId); setVoci(r.voci); setEsiti(r.esiti);
+        setCompilataId(r.compilataId); setVoci(r.voci); motore.setEsiti(r.esiti);
         try {
           const tutte = await db.azioni.toArray();
           const { bz, sc } = bozzeDaAzioni(tutte, sopralluogo.id, tecnicoId);
-          if (vivo) { setBozze(bz); setScad(sc); }
+          if (vivo) { motore.setBozze(bz); motore.setScad(sc); }
         } catch { /* offline o nessuna azione locale: si parte da vuoto */ }
         if (vivo) setFase('ok');
       })
@@ -188,11 +181,11 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     setAvviando(true); setFase('loading');
     try {
       const d = await iniziaCompilazione(sopralluogo, { id: sel.id, versione: sel.versione });
-      setCompilataId(d.compilataId); setVoci(d.voci); setEsiti(d.esiti);
+      setCompilataId(d.compilataId); setVoci(d.voci); motore.setEsiti(d.esiti);
       try {
         const tutte = await db.azioni.toArray();
         const { bz, sc } = bozzeDaAzioni(tutte, sopralluogo.id, tecnicoId);
-        setBozze(bz); setScad(sc);
+        motore.setBozze(bz); motore.setScad(sc);
       } catch { /* nessuna azione locale */ }
       setFase('ok');
     } catch (e) {
@@ -226,13 +219,6 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     return () => { vivo = false; };
   }, []);
 
-  // ---- indici ----
-  const voceById = useMemo(() => {
-    const m = new Map<string, VoceTemplate>();
-    for (const v of voci) m.set(v.id, v);
-    return m;
-  }, [voci]);
-
   // nome del tecnico corrente (per la conferma organigramma); best-effort dalla
   // lista assegnabili, altrimenti null (la conferma traccia comunque il tecnico_id).
   const tecnicoNomeConferma = useMemo(() => {
@@ -240,145 +226,18 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     return t ? nomeCompleto(t) : null;
   }, [tecnici, tecnicoId]);
 
-  const esitoTop = useMemo(() => {
-    const m = new Map<string, EsitoVoce>(); // voceId -> esito (parent null, non rilievo)
-    for (const e of esiti) if (e.parent_esito_id === null && e.voce_template_id) m.set(e.voce_template_id, e);
-    return m;
-  }, [esiti]);
-
-  const esitoFiglio = useMemo(() => {
-    const m = new Map<string, EsitoVoce>(); // `${voceId}:${parentEsitoId}` -> esito
-    for (const e of esiti) if (e.parent_esito_id && e.voce_template_id) m.set(`${e.voce_template_id}:${e.parent_esito_id}`, e);
-    return m;
-  }, [esiti]);
-
-  const rilieviByVoce = useMemo(() => {
-    const m = new Map<string, EsitoVoce[]>();
-    for (const e of esiti) {
-      if (e.voce_tipo === 'rilievo' && e.voce_template_id) {
-        const arr = m.get(e.voce_template_id) ?? []; arr.push(e); m.set(e.voce_template_id, arr);
-      }
-    }
-    return m;
-  }, [esiti]);
-
-  // ---- mutazioni esiti ----
-  const upsertEsiti = (next: EsitoVoce[]) => setEsiti(next);
-  const sostituisci = (e: EsitoVoce) => setEsiti((arr) => arr.map((x) => (x.id === e.id ? e : x)));
-
-  async function ensureFigli(voce: VoceTemplate, parentEsito: EsitoVoce, chiave: string) {
-    const figli = figliDi(voci, voce.id).filter((f) => f.mostra_se_chiave === chiave && !isRipetibile(f));
-    const nuovi: EsitoVoce[] = [];
-    for (const f of figli) {
-      if (!esitoFiglio.has(`${f.id}:${parentEsito.id}`)) {
-        const e = nuovoEsito(compilataId, f, parentEsito.id);
-        nuovi.push(e);
-      }
-    }
-    if (nuovi.length) {
-      upsertEsiti([...esiti, ...nuovi]);
-      for (const e of nuovi) await salvaEsito(e);
-    }
-  }
-
-  async function setScelta(esito: EsitoVoce, voce: VoceTemplate, chiave: string) {
-    const corrente = esito.valore === chiave ? null : chiave;
-    // L'opzione è solo INPUT descrittivo: NON deriva più l'esito (conforme/NC/NA),
-    // che ora è un gesto esplicito in fondo alla card (vedi setEsito).
-    const agg: EsitoVoce = { ...esito, valore: corrente };
-    sostituisci(agg);
-    await salvaEsito(agg);
-    // rivela le eventuali domande condizionate per l'opzione scelta
-    if (corrente) await ensureFigli(voce, agg, corrente);
-  }
-
-  // Esito esplicito (conforme / non conforme / N.A.): gesto distinto dall'input,
-  // in coda alla card. Ricliccare lo stesso esito lo azzera. Quando si marca
-  // "non conforme" e non c'è ancora una cosa da fare, ne propongo una vuota come
-  // promemoria (resta rimovibile: le cose da fare non sono obbligatorie).
-  async function setEsito(esito: EsitoVoce, stato: EsitoStato) {
-    const next = esito.stato === stato ? null : stato;
-    const agg: EsitoVoce = { ...esito, stato: next };
-    sostituisci(agg);
-    await salvaEsito(agg);
-    if (next === 'non_conforme') {
-      setBozze((b) => (b[esito.id]?.length ? b : { ...b, [esito.id]: [nuovaBozza()] }));
-    }
-  }
-
-  async function setMulti(esito: EsitoVoce, voce: VoceTemplate, chiave: string) {
-    const arr = Array.isArray(esito.valore) ? [...(esito.valore as string[])] : [];
-    const i = arr.indexOf(chiave);
-    if (i >= 0) arr.splice(i, 1); else arr.push(chiave);
-    const agg = { ...esito, valore: arr.length ? arr : null };
-    sostituisci(agg); await salvaEsito(agg);
-    void voce;
-  }
-
-  async function setValoreSemplice(esito: EsitoVoce, valore: unknown) {
-    const agg = { ...esito, valore: valore === '' ? null : valore };
-    sostituisci(agg); await salvaEsito(agg);
-  }
-  async function setNota(esito: EsitoVoce, note: string) {
-    sostituisci({ ...esito, note });
-  }
-  async function salvaNota(esito: EsitoVoce) { await salvaEsito(esito); }
-
-  // cose da fare come LISTA per esito: aggiungi / rimuovi / modifica una bozza.
-  const aggiungiBozza = (esitoId: string) =>
-    setBozze((b) => ({ ...b, [esitoId]: [...(b[esitoId] ?? []), nuovaBozza()] }));
-  const rimuoviBozza = (esitoId: string, bozzaId: string) =>
-    setBozze((b) => ({ ...b, [esitoId]: (b[esitoId] ?? []).filter((x) => x.id !== bozzaId) }));
-  const setBozza = (esitoId: string, bozzaId: string, patch: Partial<Bozza>) =>
-    setBozze((b) => ({
-      ...b,
-      [esitoId]: (b[esitoId] ?? []).map((x) => (x.id === bozzaId ? { ...x, ...patch } : x)),
-    }));
-  const toggleScad = (id: string, mesiDefault?: number) =>
-    setScad((s) => {
-      const n = { ...s };
-      if (n[id]) delete n[id];
-      else { const m = mesiDefault ?? 12; n[id] = { responsabile: 'cliente', tecnicoTargetId: null, areaId: null, mesi: m, data: isoPiuMesi(m) }; }
-      return n;
-    });
-  const setScadPatch = (id: string, patch: Partial<BozzaScad>) =>
-    setScad((s) => {
-      const cur = s[id]; if (!cur) return s;
-      const merged = { ...cur, ...patch };
-      if (patch.mesi != null) merged.data = isoPiuMesi(patch.mesi);
-      return { ...s, [id]: merged };
-    });
-
-  // ---- rilievi ----
-  async function aggiungiRilievo(voce: VoceTemplate) {
-    const e = nuovoEsito(compilataId, voce);
-    e.valore = '';
-    // ordine crescente per istanza: i rilievi restano in ordine di creazione
-    // (il primo creato = "Rilievo 1"), invece di un ordine casuale per id.
-    const esistenti = rilieviByVoce.get(voce.id) ?? [];
-    const maxOrd = esistenti.reduce((m, x) => Math.max(m, x.ordine ?? 0), voce.ordine - 1);
-    e.ordine = maxOrd + 1;
-    upsertEsiti([...esiti, e]);
-    await salvaEsito(e);
-  }
-  async function rimuoviRilievo(esito: EsitoVoce) {
-    if (!confirm('Eliminare questo rilievo? Verranno rimosse anche le sue foto e l’eventuale cosa da fare collegata.')) return;
-    await rimuoviEsito(esito.id);
-    setEsiti((arr) => arr.filter((x) => x.id !== esito.id));
-    setBozze((b) => { const n = { ...b }; delete n[esito.id]; return n; });
-    setScad((s) => { const n = { ...s }; delete n[esito.id]; return n; });
-  }
-  async function setRilievoTesto(esito: EsitoVoce, testo: string) {
-    sostituisci({ ...esito, valore: testo });
-  }
-  async function salvaRilievo(esito: EsitoVoce) { await salvaEsito(esito); }
+  // Contesto della checklist piatta: componente null. Il motore esiti/cose-da-fare/
+  // scadenze e' condiviso (useCompilazioneVoci); i box generici useranno lo stesso
+  // motore con buildCtx per (box, componente), confluendo nello stesso store letto
+  // da completa().
+  const ctx: ContestoVoci = motore.buildCtx({ compilataId, voci, componenteId: null, aree, tecnici, tecnicoId });
 
   // ---- sintesi ----
   const topVoci = useMemo(() => voci.filter((v) => v.parent_voce_id === null), [voci]);
   const totale = topVoci.filter((v) => !isRipetibile(v)).length;
   const fatte = topVoci.filter((v) => {
     if (isRipetibile(v)) return false;
-    const e = esitoTop.get(v.id);
+    const e = ctx.esitoTop.get(v.id);
     return e != null && (e.stato != null || e.valore != null);
   }).length;
   const nAzioni = Object.values(bozze).reduce((acc, l) => acc + l.length, 0) + Object.keys(scad).length;
@@ -508,18 +367,6 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
 
   const ctaLabel = salvataggio === 'fatto' ? (online ? 'Sincronizzato' : 'Salvato · sincronizzo dopo')
     : salvataggio === 'corso' ? 'Salvo…' : 'Completa e sincronizza';
-
-  // Contesto per il motore di render condiviso (./vociRender): stato + handler.
-  // Single source of truth: renderVoce/renderRilievo/renderEvidenze/renderEsito/
-  // renderBozzeAzione/renderScadenza vivono in vociRender e operano su questo ctx.
-  // Oggetto semplice (no useMemo): gli handler si rigenerano a ogni render, come
-  // facevano le funzioni interne prima dell'estrazione.
-  const ctx: ContestoVoci = {
-    esitoTop, esitoFiglio, rilieviByVoce, voci, bozze, scad, aree, tecnici, tecnicoId,
-    setScelta, setMulti, setValoreSemplice, setNota, salvaNota, setEsito,
-    aggiungiRilievo, rimuoviRilievo, setRilievoTesto, salvaRilievo,
-    aggiungiBozza, rimuoviBozza, setBozza, toggleScad, setScadPatch,
-  };
 
   return (
     <div className="compila">

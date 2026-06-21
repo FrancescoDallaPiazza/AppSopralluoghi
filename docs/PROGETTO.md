@@ -521,6 +521,26 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modello box, approccio A: motore voci condiviso + `BoxGenerico`**
+  (`src/lib/useCompilazioneVoci.ts`, `src/Compilazione.tsx`, `src/BoxGenerico.tsx`,
+  `src/lib/compilazione.ts`): il motore di compilazione (esiti + cose-da-fare in
+  bozza + scadenze), prima incapsulato in `Compilazione`, è estratto nell'hook
+  `useCompilazioneVoci`. L'hook possiede lo stato GLOBALE del giro e offre
+  `buildCtx({ voci, componenteId, … })` — un `ContestoVoci` con le mappe indice
+  filtrate per componente e handler che marcano i nuovi esiti con quel
+  `componente_id` — e `assicuraEsiti` (semina idempotente delle voci-box, presenza
+  letta da Dexie). Identità esito estesa: nei box ripetibili lo stesso
+  `voce_template_id` convive per N componenti, distinti da `componente_id` (gli id
+  sono uuid: nessuna collisione nello stesso store). `Compilazione` riscritto per
+  usare l'hook (817→664 righe), comportamento del flusso piatto invariato;
+  `completaSopralluogo` legge lo stato dell'hook, quindi le cose-da-fare dei box
+  vi confluiscono senza logica duplicata. Nuovo `BoxGenerico` monta `renderVoce`
+  per i box generici (sezioni singole = componente null; ripetibili = una scheda
+  per componente + "+"), saltando smart/fisso (instradati dall'apertura). Fix:
+  `componente_id` aggiunto a `COLONNE_ESITO` (il select di `esito_voce`), così la
+  ripresa da server non perde il legame col componente. Verificato `tsc -b` +
+  `vite build`. `BoxGenerico` non ancora montato: pronto per l'aggancio in apertura
+  (`assicuraComposizione` + mount) insieme al seed del box prototipo. Nessuna migration.
 - **Modello box, loader di composizione + widening** (`src/lib/box.ts`,
   `src/lib/types.ts`): aggiunti a `box.ts` il caricatore `caricaBoxComposti`
   (dalla composizione congelata `sopralluogo_box`, tutto da catalogo in cache:

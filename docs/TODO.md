@@ -153,17 +153,31 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     del registro di sede, offline+outbox); tipi `BoxComposto`/`SezioneComposta`.
     `VoceTemplate.template_id` allargato a `string | null` (le voci-box hanno NULL).
     Verificato `tsc -b`.
-  - [ ] **Prossimo — `BoxGenerico.tsx`**: monta `renderVoce(ctx, …)` per sezione
-    (ripetibili = una scheda per componente + "+"), su un `ctx` con identità esito
-    estesa per `componente_id`. **Fork da decidere**: il motore esiti+cose-da-fare+
-    scadenze vive dentro `Compilazione` e le bozze sono persistite in `completaSopralluogo`.
-    Opzioni: (A) estrarre il motore in un hook condiviso `useCompilazioneVoci` che
-    Compilazione e BoxGenerico riusano (single source, tocca il core di Compilazione);
-    (B) BoxGenerico con stato/handler propri che scrivono tramite gli stessi primitivi
-    (`salvaEsito`/`nuovoEsito`) e confluiscono nello stesso store letto da `completa()`.
-    Raccomandata la **(A)** per non duplicare la logica delle cose-da-fare (cuore
-    del valore dell'app) e non rischiare perdita dati offline. Poi: aggancio in
-    apertura (`assicuraComposizione` + elenco box, instradando smart/fisso).
+  - [x] **Motore condiviso (approccio A) + `BoxGenerico.tsx`** (Canale 1): il motore
+    esiti+cose-da-fare+scadenze, prima dentro `Compilazione`, è estratto nell'hook
+    **`src/lib/useCompilazioneVoci.ts`**: possiede lo stato GLOBALE del giro
+    (`esiti`/`bozze`/`scad`) ed espone `buildCtx({ voci, componenteId, … })` (un
+    `ContestoVoci` con mappe filtrate per componente e handler che marcano i nuovi
+    esiti con lo stesso `componente_id`) e `assicuraEsiti` (semina idempotente delle
+    voci-box, presenza letta da Dexie). `Compilazione.tsx` riscritto per usarlo
+    (817→664 righe), comportamento del flusso piatto invariato; `completa()` legge
+    lo stato dell'hook, quindi le cose-da-fare dei box vi confluiscono. Nuovo
+    **`src/BoxGenerico.tsx`**: monta `renderVoce` per i box generici (sezioni singole
+    = componente null; ripetibili = una scheda per componente + "+", con
+    `aggiungiComponente`), saltando smart/fisso. Fix: `componente_id` aggiunto a
+    `COLONNE_ESITO` (la ripresa da server non perde il legame col componente).
+    Verificato `tsc -b` + `vite build`. `BoxGenerico` non ancora montato (come fu
+    `vociRender` all'1a): pronto per l'aggancio.
+  - [ ] **Prossimo — aggancio + seed prototipo**: montare `<BoxGenerico>` in
+    `Compilazione` dopo le sezioni piatte (passando `motore` + `compilataId`/`sedeId`/
+    `aree`/`tecnici`/`tecnicoId`) e chiamare `assicuraComposizione(sopralluogoId, templateId)`
+    all'apertura (threading del `templateId` nei due path apertura/confermaScelta).
+    Mount low-risk: no-op finché il catalogo box è vuoto. Da fare insieme al **seed**
+    di un box prototipo (Cap. 4 Impianti) come migration 033 (Canale 3) per renderlo
+    dimostrabile end-to-end. Poi instradare smart (organigramma → `FormazioneRiepilogo`)
+    e fisso ("cose da fare pregresse"). Rifinitura futura: passare `componente_id`
+    anche a `generaAzione`/`InputAzione` (oggi l'azione-box lo eredita via
+    `origine_esito_id` → `esito.componente_id`).
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza

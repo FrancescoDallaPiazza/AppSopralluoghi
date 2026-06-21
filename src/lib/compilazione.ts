@@ -52,7 +52,7 @@ const COLONNE_VOCE =
 
 const COLONNE_ESITO =
   'id, checklist_compilata_id, voce_template_id, voce_tipo, voce_testo, voce_sezione, ' +
-  'ordine, parent_esito_id, stato, valore, note, genera_azione';
+  'ordine, parent_esito_id, stato, valore, note, genera_azione, componente_id';
 
 // ---- helper modello ----
 export const isRipetibile = (v: VoceTemplate) => v.tipo === 'rilievo';
