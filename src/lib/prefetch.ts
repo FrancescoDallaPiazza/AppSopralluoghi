@@ -20,6 +20,7 @@ import {
 import { prefetchTemplatePerTipo, prefetchTemplatesAttivi } from './compilazione';
 import { prefetchAzioniIncarichi } from './azioni';
 import { prefetchOrganigramma } from './sync';
+import { prefetchCatalogoBox, prefetchSediComponenti, prefetchComposizioni } from './box';
 import type { Sopralluogo } from './types';
 
 const META_KEY = 'prefetch:meta';
@@ -110,6 +111,13 @@ export async function prefetchOffline(tecnicoId: string): Promise<RisultatoPrefe
   for (const c of clientiOrg) {
     try { await prefetchOrganigramma(c); } catch { /* best-effort */ }
   }
+
+  // 5) modello box-argomento (best-effort): catalogo box (sola lettura), sedi +
+  // componenti del cliente (registro persistente), e composizioni gia' fatte
+  // dall'ufficio per i sopralluoghi da fare. Cosi' i box si aprono offline.
+  try { await prefetchCatalogoBox(); } catch { /* best-effort */ }
+  try { await prefetchSediComponenti(clientiOrg); } catch { /* best-effort */ }
+  try { await prefetchComposizioni(daFare.map((s) => s.id)); } catch { /* best-effort */ }
 
   const meta: PrefetchMeta = {
     quando: new Date().toISOString(),
