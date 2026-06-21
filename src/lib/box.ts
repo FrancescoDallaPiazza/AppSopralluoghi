@@ -124,3 +124,99 @@ export async function assicuraComposizione(
   for (const r of righe) await enqueueRow('sopralluogo_box', r as unknown as Record<string, unknown>);
   return righe;
 }
+
+// =====================================================================
+// Caricamento per il rendering: dalla composizione congelata (sopralluogo_box)
+// al modello che BoxGenerico monta con il motore voci condiviso (vociRender).
+// Tutto dal catalogo in cache (offline): box -> sezioni -> voci; per le sezioni
+// ripetibili, i componenti del registro di sede (componente_sito).
+// =====================================================================
+
+export interface SezioneComposta {
+  sezione: BoxSezione;
+  vociTop: VoceTemplate[];        // voci radice della sezione (parent null), per ordine
+  componenti: ComponenteSito[];   // valorizzato solo se sezione.ripetibile (attivi)
+}
+
+export interface BoxComposto {
+  riga: SopralluogoBox;           // riga di composizione del giro (ordine, origine, versione)
+  box: BoxCatalogo;               // meta del box (tipo, nome, ref_smart)
+  sezioni: SezioneComposta[];     // popolato per i 'generico'; vuoto per smart/fisso
+  voci: VoceTemplate[];           // TUTTE le voci del box (per ctx.voci + figliDi)
+}
+
+// Risolve la composizione di un sopralluogo in BoxComposto[] ordinati. Lavora
+// sul catalogo gia' in cache (prefetchCatalogoBox); i box non risolvibili (catalogo
+// non ancora scaricato) vengono saltati. I componenti delle sezioni ripetibili
+// si filtrano per (sede, box, sezione_codice); senza sede restano vuoti.
+export async function caricaBoxComposti(
+  sopralluogoId: string,
+  sedeId: string | null,
+): Promise<BoxComposto[]> {
+  const righe = (await db.sopralluogoBox.where('sopralluogo_id').equals(sopralluogoId).toArray())
+    .sort((a, b) => a.ordine - b.ordine);
+  if (!righe.length) return [];
+
+  // componenti della sede una volta sola (poi filtrati per box+sezione)
+  const compSede = sedeId
+    ? (await db.componenti.where('sede_id').equals(sedeId).toArray()).filter((c) => c.attivo)
+    : [];
+
+  const out: BoxComposto[] = [];
+  for (const riga of righe) {
+    const box = await db.boxCatalogo.get(riga.box_id);
+    if (!box) continue; // catalogo non in cache: si salta (verra' al prossimo prefetch)
+
+    if (box.tipo !== 'generico') {
+      // smart/fisso: nessuna voce da montare qui (instradati dall'apertura)
+      out.push({ riga, box, sezioni: [], voci: [] });
+      continue;
+    }
+
+    const sezioni = (await db.boxSezioni.where('box_id').equals(box.id).toArray())
+      .sort((a, b) => a.ordine - b.ordine);
+
+    const sezComposte: SezioneComposta[] = [];
+    const vociTutte: VoceTemplate[] = [];
+    for (const sezione of sezioni) {
+      const vociSez = (await db.vociBox.where('sezione_id').equals(sezione.id).toArray())
+        .sort((a, b) => a.ordine - b.ordine);
+      vociTutte.push(...vociSez);
+      const vociTop = vociSez.filter((v) => v.parent_voce_id === null);
+      const componenti = sezione.ripetibile
+        ? compSede
+          .filter((c) => c.box_id === box.id && c.sezione_codice === sezione.codice)
+          .sort((a, b) => a.etichetta.localeCompare(b.etichetta))
+        : [];
+      sezComposte.push({ sezione, vociTop, componenti });
+    }
+
+    out.push({ riga, box, sezioni: sezComposte, voci: vociTutte });
+  }
+  return out;
+}
+
+// Aggiunge un componente al registro di una sezione ripetibile (il "+" della UI).
+// Persiste in locale e in outbox; appartiene alla SEDE, quindi persiste tra i
+// sopralluoghi e si ri-verifica a ogni giro. Ritorna la riga creata.
+export async function aggiungiComponente(
+  sedeId: string,
+  boxId: string,
+  sezioneCodice: string,
+  etichetta: string,
+  opts?: { matricola?: string | null; ubicazione?: string | null },
+): Promise<ComponenteSito> {
+  const riga: ComponenteSito = {
+    id: newId(),
+    sede_id: sedeId,
+    box_id: boxId,
+    sezione_codice: sezioneCodice,
+    etichetta: etichetta.trim() || 'Componente',
+    matricola: opts?.matricola?.trim() || null,
+    ubicazione: opts?.ubicazione?.trim() || null,
+    attivo: true,
+  };
+  await db.componenti.put(riga);
+  await enqueueRow('componente_sito', riga as unknown as Record<string, unknown>);
+  return riga;
+}

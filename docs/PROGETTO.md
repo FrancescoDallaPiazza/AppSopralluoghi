@@ -202,8 +202,15 @@ descrizioni (`guida`) delle figure in formato elenco puntato (quadro ASR 2025) �
 descrizioni `guida` figure riscritte verbatim dall'allegato (supera 022) · 026
 Preposto a obbligo 'sempre' (ruolo scoperto se vuoto) · 027 `organigramma_revisione`
 (snapshot versionato dell'organigramma per cliente + trigger di numerazione) ·
-028 `cliente.rls_territoriale` (RLS coperto dal rappresentante territoriale).
-**Prossima libera: 029.**
+028 `cliente.rls_territoriale` (RLS coperto dal rappresentante territoriale) ·
+029 modello box: `sede` + `incarico.sede_id` + `sopralluogo.sede_id` · 030
+`box_catalogo` (tipo generico/smart/fisso) + `box_sezione` (ripetibile,
+`etichetta_componente`) + `voce_template.sezione_id`, `template_id` reso nullable,
+vincolo XOR `voce_template_owner_chk` · 031 `checklist_template_box` (composizione
+di default sul template) + `sopralluogo_box` (composizione congelata del giro) ·
+032 `componente_sito` (registro componenti per sede) + `esito_voce.componente_id`
++ `azione.componente_id`.
+**Prossima libera: 033.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -514,6 +521,30 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modello box, loader di composizione + widening** (`src/lib/box.ts`,
+  `src/lib/types.ts`): aggiunti a `box.ts` il caricatore `caricaBoxComposti`
+  (dalla composizione congelata `sopralluogo_box`, tutto da catalogo in cache:
+  box → sezioni → voci; per le sezioni ripetibili i `componente_sito` del registro
+  di sede, filtrati per sede+box+codice sezione) e `aggiungiComponente` (il "+"
+  del registro, scrittura offline + outbox), con i tipi `BoxComposto`/`SezioneComposta`.
+  `VoceTemplate.template_id` allargato a `string | null` (le voci-box hanno
+  `template_id` NULL lato DB, appartengono a una `box_sezione` via `sezione_id`):
+  nessuna call-site rotta. È la base dati su cui poggerà `BoxGenerico.tsx`.
+  Verificato `tsc -b` + `vite build`. Nessuna migration (catalogo già da 030-032).
+- **Modello box, passi 1a+1b: motore di render condiviso** (`src/vociRender.tsx`,
+  `src/Compilazione.tsx`): per riusare la compilazione di campo dentro i futuri box
+  generici senza duplicare la logica, il motore di render di una voce e' stato
+  estratto in `vociRender.tsx` come funzioni presentazionali
+  (`renderVoce`/`renderRilievo`/`renderEvidenze`/`renderEsito`/`renderBozzeAzione`/
+  `renderScadenza`) che operano su un `ContestoVoci` tipizzato (stato + handler),
+  insieme ai primitivi (`FotoStrip`, `Seg`, `SelectDestinatario`, icone `I`,
+  `PERIODICITA`, tipi `Resp/Bozza/BozzaScad`). `Compilazione.tsx` ora costruisce
+  `ctx: ContestoVoci` prima del `return` e chiama `renderVoce(ctx, v, null)`; i
+  blocchi spostati sono stati rimossi (1154->817 righe). Nessuna modifica a stato,
+  handler o `completaSopralluogo`: lo stato resta di proprieta' di Compilazione,
+  le funzioni di render sono pure rispetto al `ctx`. Single source of truth: il
+  futuro `BoxGenerico.tsx` montera' lo stesso `renderVoce`. Verificato con `tsc -b`
+  + `vite build`. Canale 1 (2 file), nessuna migration.
 - **Antincendio / primo soccorso: niente cancello esonero**
   (`src/admin/Formazione.tsx`, `src/FormazioneRiepilogo.tsx`): per le categorie
   `CATEGORIE_NO_PREGRESSA` (antincendio DM 02/09/2021, primo soccorso DM

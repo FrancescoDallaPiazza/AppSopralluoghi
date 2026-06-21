@@ -133,7 +133,37 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     condizionali piatti e alberi); sezioni **ripetibili** con N componenti
     (etichetta + matricola/ubicazione opzionali);
   - scadenze RENTRI come config `fascia→data` localizzata (niente motore nuovo).
-  Riusa il motore voci esistente, nessun fork. Prossimo passo: generare le migration.
+  Riusa il motore voci esistente, nessun fork.
+  - [x] Migrations **029-032** eseguite (SQL Editor): `sede`, `box_catalogo` +
+    `box_sezione` (ripetibili), `checklist_template_box` + `sopralluogo_box`,
+    `componente_sito` + `*.componente_id`. Prossima libera: **033**.
+  - [x] Fondamenta codice (Canale 1, pushate): `types.ts` (tipi box, estensioni
+    opzionali), `db.ts` (Dexie v5 + cache catalogo + outbox), `lib/box.ts`
+    (prefetch + `assicuraComposizione`/`caricaBoxComposti`/`aggiungiComponente`),
+    `prefetch.ts` (step 5 box).
+  - [x] **1a** — motore voce estratto in `src/vociRender.tsx` (single source:
+    `renderVoce`/`renderRilievo`/`renderEvidenze`/`renderEsito`/`renderBozzeAzione`/
+    `renderScadenza` su `ContestoVoci`). Build verde.
+  - [x] **1b** — `src/Compilazione.tsx` usa il motore estratto (zero duplicazione,
+    1154→817 righe); `ctx: ContestoVoci` costruito prima del `return`; `vociRender`
+    esporta `Resp/Bozza/BozzaScad/I`. Verificato con `tsc -b` + `vite build`.
+  - [x] **Loader + widening** (Canale 1): in `lib/box.ts` aggiunti `caricaBoxComposti`
+    (composizione → `BoxComposto[]`: box→sezioni→voci, e per le ripetibili i
+    `componente_sito` filtrati per sede+box+sezione) e `aggiungiComponente` (il "+"
+    del registro di sede, offline+outbox); tipi `BoxComposto`/`SezioneComposta`.
+    `VoceTemplate.template_id` allargato a `string | null` (le voci-box hanno NULL).
+    Verificato `tsc -b`.
+  - [ ] **Prossimo — `BoxGenerico.tsx`**: monta `renderVoce(ctx, …)` per sezione
+    (ripetibili = una scheda per componente + "+"), su un `ctx` con identità esito
+    estesa per `componente_id`. **Fork da decidere**: il motore esiti+cose-da-fare+
+    scadenze vive dentro `Compilazione` e le bozze sono persistite in `completaSopralluogo`.
+    Opzioni: (A) estrarre il motore in un hook condiviso `useCompilazioneVoci` che
+    Compilazione e BoxGenerico riusano (single source, tocca il core di Compilazione);
+    (B) BoxGenerico con stato/handler propri che scrivono tramite gli stessi primitivi
+    (`salvaEsito`/`nuovoEsito`) e confluiscono nello stesso store letto da `completa()`.
+    Raccomandata la **(A)** per non duplicare la logica delle cose-da-fare (cuore
+    del valore dell'app) e non rischiare perdita dati offline. Poi: aggancio in
+    apertura (`assicuraComposizione` + elenco box, instradando smart/fisso).
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza
@@ -172,6 +202,14 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-06-21** Modello box, passi **1a+1b**: estratto il motore di render
+  delle voci in `src/vociRender.tsx` (single source su `ContestoVoci`) e fatto
+  usare a `src/Compilazione.tsx` senza duplicazione (1154→817 righe). `vociRender`
+  ora esporta anche `Resp/Bozza/BozzaScad/I`; `Compilazione` costruisce `ctx` prima
+  del `return` e chiama `renderVoce(ctx, v, null)`. Nessuna modifica a stato,
+  handler o `completaSopralluogo`. Verificato con `tsc -b` + `vite build` (verdi).
+  Canale 1 (2 file). Nessuna migration.
 
 - [x] **2026-06-19** Antincendio / primo soccorso: rimosso il cancello
   esonero/credito (back-office + campo) per le categorie fuori dal regime

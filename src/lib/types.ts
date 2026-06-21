@@ -100,7 +100,9 @@ export interface VoceConfig {
 
 export interface VoceTemplate {
   id: string;
-  template_id: string;
+  // Per i template piatti e' valorizzato; per le voci-box (migration 030) e'
+  // NULL lato DB (la voce appartiene a una box_sezione via sezione_id).
+  template_id: string | null;
   // Modello box (migration 030): se valorizzato, la voce appartiene a una
   // box_sezione invece che a un template piatto (template_id null lato DB).
   sezione_id?: string | null;
