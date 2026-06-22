@@ -149,6 +149,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
       patch,
     );
   }
+  // Sede obbligatoria solo se il cliente ha PIU' di una sede: in tal caso va
+  // scelta esplicitamente prima di completare.
+  const sedeObbligatoria = sediCli.length > 1;
+  const sedeMancante = sedeObbligatoria && !sedeId;
   // true quando si sta modificando un sopralluogo già completato (una revisione)
   const inRevisione = (sopralluogo.revisione_corrente ?? 1) > 1;
 
@@ -282,6 +286,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
 
   // ---- completa ----
   async function completa() {
+    if (sedeMancante) return; // sede obbligatoria con piu' sedi: CTA gia' disabilitata
     setSalvataggio('corso');
     try {
       // Cose da fare: una azione per ogni bozza della lista dell'esito (più
@@ -420,10 +425,11 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '8px 0 2px', fontSize: 12, color: '#dfe7e4' }}>
             {sediCli.length > 0 && (
               <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                Sede
-                <select value={sedeId ?? ''} style={{ fontSize: 12, padding: '3px 6px', borderRadius: 8, border: 'none' }}
+                Sede{sedeObbligatoria ? ' *' : ''}
+                <select value={sedeId ?? ''}
+                  style={{ fontSize: 12, padding: '3px 6px', borderRadius: 8, border: sedeMancante ? '2px solid #ff6b6b' : 'none' }}
                   onChange={(e) => { const v = e.target.value || null; setSedeId(v); persistiTestata({ sede_id: v }); }}>
-                  <option value="">— sede unica —</option>
+                  <option value="">{sedeObbligatoria ? '— scegli la sede —' : '— sede unica —'}</option>
                   {sediCli.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
                 </select>
               </label>
@@ -503,7 +509,12 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               <span>Formazione<small>stato cliente</small></span>
             </div>
           </div>
-          <button className={'cta' + (salvataggio === 'fatto' ? ' done' : '')} disabled={salvataggio === 'corso' || salvataggio === 'fatto'} onClick={() => void completa()}>
+          {sedeMancante && (
+            <div style={{ color: '#ff8a8a', fontSize: 12.5, marginBottom: 8, textAlign: 'center' }}>
+              Seleziona la sede in alto per completare (il cliente ha più sedi).
+            </div>
+          )}
+          <button className={'cta' + (salvataggio === 'fatto' ? ' done' : '')} disabled={salvataggio === 'corso' || salvataggio === 'fatto' || sedeMancante} onClick={() => void completa()}>
             {salvataggio === 'fatto' && I.done}{ctaLabel}
           </button>
         </div></footer>

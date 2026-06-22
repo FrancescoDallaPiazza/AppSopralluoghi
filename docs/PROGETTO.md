@@ -547,6 +547,9 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   sfoltito (migration 038): rimosse le voci Azienda/Data/Luogo (duplicavano i
   metadati del sopralluogo), restano Rif. Doc. Num. e i due Documenti
   consegnati/presi in consegna. Verificato `tsc -b` + `vite build`.
+  Sede in testata OBBLIGATORIA quando il cliente ha piu' di una sede: il
+  completamento e' bloccato (CTA disabilitata + campo evidenziato) finche' non e'
+  scelta; con una sola sede (o nessuna) resta libera.
 
 - **Anagrafiche in STAMPATELLO** (`src/admin/Anagrafiche.tsx`,
   `src/FormazioneRiepilogo.tsx`, `src/admin/Formazione.tsx`): gli inserimenti di
