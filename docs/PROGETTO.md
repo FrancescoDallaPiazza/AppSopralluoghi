@@ -538,6 +538,23 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modulo Organigramma in campo allineato al back-office: formazione tracciata
+  PER FIGURA** (`src/FormazioneRiepilogo.tsx`). In campo la formazione non era
+  tracciata: sotto ogni figura compariva solo il nominativo. Ora il modulo adotta
+  la STESSA modalita' e logica del tab Formazione del back-office, cosi' una
+  modifica fatta in campo si riflette in modo coerente. Per ogni figura attesa:
+  la sua guida (quadro obblighi ASR 2025) a elenco puntato; sotto, gli INCARICATI,
+  e per ciascuno: la data di nomina editabile inline (`NominaInline`, salvataggio
+  offline su uscita campo), i requisiti formativi DI QUEL RUOLO con semaforo +
+  badge di stato e l'editor inline attestato/esonero (`EditorRequisito`, ora con
+  `figura_codice` valorizzato sull'esonero come in back-office), e i moduli
+  aggiuntivi condizionati (es. cantieri) con stato e registrazione inline
+  (`ModuloInline`, via `salvaFormazione`/`salvaFormazioneConAllegato`). I requisiti
+  per figura usano `RequisitoValutato.figura_codici` del motore; i moduli
+  `ModuloValutato.figura_codice`. Le persone eventualmente senza figura restano
+  gestibili in fondo ("Persone non ancora assegnate a una figura", con assegna
+  figure + modifica). Verificato `tsc -b` + `vite build`.
+
 - **Modulo Organigramma in campo: copertura figure AZIONABILE + fix titolo box**
   (`src/FormazioneRiepilogo.tsx`, `src/BoxGenerico.tsx`, `src/lib/admin/formazione.ts`,
   `src/admin/Formazione.tsx`).

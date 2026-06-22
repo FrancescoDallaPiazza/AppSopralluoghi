@@ -14,11 +14,12 @@
 //     compilato/confermato/variato) viene salvata su organigramma_conferma.
 // Eredita la palette del campo (var --ok/--no/--hi su .compila) con fallback.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type RiepilogoCliente, type RequisitoValutato, type StatoRequisito,
   type LivelloRischio, type TipoEsonero, type Formazione, type Esonero,
-  type Persona, type Nomina, type FiguraSicurezza,
+  type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
+  type CorsoCatalogo,
   assemblaRiepilogo, nomePersona, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa,
 } from './lib/admin/formazione';
 import { costruisciSnapshot, firmaOrganigramma } from './lib/admin/organigramma-revisioni';
@@ -129,6 +130,28 @@ const CSS = `
 .fzr-figrow-chip{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink,#2a2c30); background:#f1ede5; border-radius:999px; padding:2px 9px;}
 .fzr-figrow-crit{font-size:11.5px; font-weight:700; color:var(--no,#d8442f);}
 .fzr-figrow-empty{font-size:11.5px; color:var(--ink-soft,#5b5f66);}
+.fzr-guida{margin:6px 0 6px 20px; padding:0; font-size:11.5px; color:var(--ink-soft,#5b5f66); line-height:1.45;}
+.fzr-guida li{margin:1px 0;}
+.fzr-guida li.sub{list-style:none; margin-left:-6px;}
+.fzr-guida li.sub::before{content:'\\2013\\00a0'; }
+.fzr-inc{margin:6px 0 2px 6px;}
+.fzr-inc-h{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft,#5b5f66); margin:4px 0 4px;}
+.fzr-inc-card{border:1px solid var(--line,#e3ddd2); border-radius:10px; padding:9px 10px; margin-bottom:8px; background:var(--card,#fff);}
+.fzr-inc-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.fzr-inc-nome{display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; min-width:0;}
+.fzr-nomina{display:flex; align-items:center; gap:8px; margin:7px 0; font-size:11.5px; color:var(--ink-soft,#5b5f66);}
+.fzr-nomina span{flex:0 0 auto;}
+.fzr-nomina input{flex:1 1 auto; min-width:0; padding:6px 8px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:12.5px; font-family:inherit; background:#fff; color:var(--ink,#2a2c30);}
+.fzr-r-right{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
+.fzr-st{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; padding:2px 7px; border-radius:999px; white-space:nowrap;}
+.fzr-st.conforme{background:var(--ok-bg,#e7f5ec); color:var(--ok,#1f9d57);}
+.fzr-st.in_scadenza{background:#fbf0d6; color:var(--hi-dark,#9a6206);}
+.fzr-st.critico{background:var(--no-bg,#fbeae6); color:var(--no,#d8442f);}
+.fzr-st.esonerato{background:#e8eefc; color:#27508f;}
+.fzr-st.da_verificare,.fzr-st.facoltativo{background:#e8ebf0; color:#51607a;}
+.fzr-modtag{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; margin-left:6px; padding:1px 6px; border-radius:999px; background:#e8ebf0; color:#51607a;}
+.fzr-mod{margin-top:6px;}
+.fzr-mod-stato{display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink-soft,#5b5f66); margin:4px 0;}
 `;
 
 interface Props {
@@ -469,10 +492,11 @@ function FigurePanel({
 
 // ---------- editor inline di un singolo requisito (attestato / esonero) ----------
 function EditorRequisito({
-  personaId, req, alternative, onSaved, onClose,
+  personaId, req, figuraCodice, alternative, onSaved, onClose,
 }: {
   personaId: string;
   req: RequisitoValutato;
+  figuraCodice: string | null;
   alternative: { codice: string; nome: string; ore: number | null; categoria: string | null }[];
   onSaved: () => Promise<void>;
   onClose: () => void;
@@ -556,7 +580,7 @@ function EditorRequisito({
         id: newId(),
         persona_id: personaId,
         corso_codice: req.corso_codice,
-        figura_codice: null,
+        figura_codice: figuraCodice,
         tipo: esonTipo,
         motivazione: esonMot.trim(),
         riferimento_norm: esonRif.trim() || null,
@@ -642,6 +666,101 @@ function EditorRequisito({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ---------- data di nomina inline (offline, salva all'uscita dal campo) ----------
+function NominaInline({ nomina, onSaved }: { nomina: Nomina | null; onSaved: () => Promise<void>; }) {
+  const [v, setV] = useState(nomina?.data_nomina ?? '');
+  const [busy, setBusy] = useState(false);
+  const editing = useRef(false);
+  useEffect(() => { if (!editing.current) setV(nomina?.data_nomina ?? ''); }, [nomina?.data_nomina]);
+
+  async function commit() {
+    editing.current = false;
+    const nuovo = v || null;
+    if (!nomina) return;
+    if ((nomina.data_nomina ?? '') === (nuovo ?? '')) return;
+    if (nuovo) { const anno = Number(nuovo.slice(0, 4)); if (!(anno >= 1990 && anno <= 2100)) return; }
+    setBusy(true);
+    try { await salvaNomina({ ...nomina, data_nomina: nuovo }); await onSaved(); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <label className="fzr-nomina">
+      <span>Data di nomina</span>
+      <input type="date" value={v} disabled={busy || !nomina} min="1990-01-01" max="2100-12-31"
+        onFocus={() => { editing.current = true; }}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => void commit()} />
+    </label>
+  );
+}
+
+// ---------- modulo aggiuntivo condizionato (es. cantieri), offline ----------
+function ModuloInline({
+  ammesso, corso, personaId, valutato, onSaved,
+}: {
+  ammesso: EsoneroAmmesso; corso: CorsoCatalogo | undefined; personaId: string;
+  valutato: ModuloValutato | undefined; onSaved: () => Promise<void>;
+}) {
+  const [applicabile, setApplicabile] = useState(false);
+  const [data, setData] = useState('');
+  const [ore, setOre] = useState(corso?.ore != null ? String(corso.ore) : '');
+  const [ente, setEnte] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function registra() {
+    if (!data || !corso) return;
+    if (file && file.size > MAX_ATTESTATO_BYTES) { window.alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
+    setBusy(true);
+    try {
+      const f: Formazione = {
+        id: newId(), persona_id: personaId, corso_codice: corso.codice, corso_nome: corso.nome,
+        categoria: corso.categoria, data_completamento: data, ore: ore === '' ? null : Number(ore),
+        ente_formatore: ente.trim() || null, is_aggiornamento: false, scadenza: null, allegato_url: null, note: null,
+      };
+      if (file) await salvaFormazioneConAllegato(f, file); else await salvaFormazione(f);
+      await onSaved();
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="fzr-mod">
+      <div className="fzr-hint">{ammesso.descrizione}{ammesso.riferimento_norm ? ' \u2014 ' + ammesso.riferimento_norm : ''}</div>
+      {valutato && (
+        <div className="fzr-mod-stato">
+          <span className={'fzr-dot ' + valutato.stato} title={TXT[valutato.stato]} />
+          <span>{valutato.dettaglio}</span>
+        </div>
+      )}
+      <label className="fzr-fig-row">
+        <input type="checkbox" checked={applicabile} disabled={busy} onChange={(e) => setApplicabile(e.target.checked)} />
+        <span>L'azienda ricade nell'obbligo di questo modulo aggiuntivo</span>
+      </label>
+      {applicabile && corso && (
+        <>
+          <div className="fzr-field">
+            <label>Data completamento</label>
+            <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+          </div>
+          <div className="fzr-row2">
+            <div className="fzr-field"><label>Ore</label><input type="number" inputMode="decimal" value={ore} onChange={(e) => setOre(e.target.value)} /></div>
+            <div className="fzr-field"><label>Ente formatore</label><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></div>
+          </div>
+          <div className="fzr-field">
+            <label>Allegato (PDF o foto, facoltativo)</label>
+            <input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </div>
+          <div className="fzr-actions">
+            <button className="fzr-btn primary" disabled={busy || !data} onClick={() => void registra()}>Registra modulo</button>
+          </div>
+        </>
+      )}
+      {applicabile && !corso && <div className="fzr-d">Corso del modulo non trovato a catalogo.</div>}
     </div>
   );
 }
@@ -816,6 +935,11 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
   }
   // tutte le persone in organigramma (per il selettore di assegnazione)
   const tuttePersone = riep.persone.map((p) => p.persona);
+  // catalogo: corso per codice (per i moduli) ed esoneri ammessi attivi
+  const corsoByCodice = new Map((org?.corsi ?? []).map((c) => [c.codice, c]));
+  const ammessoById = new Map((org?.esoneriAmmessi ?? []).map((a) => [a.id, a]));
+  // persone senza alcuna figura assegnata (per non perderle: vanno gestite a parte)
+  const orfani = riep.persone.filter((p) => p.figure.length === 0);
 
   return (
     <div className="fzr">
@@ -861,6 +985,7 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
                     const scoperta = scoperteSet.has(figura.codice);
                     const stato = assegnate.length ? 'conforme' : (scoperta ? 'critico' : 'in_scadenza');
                     const aperto = assegnaFigura === figura.codice;
+                    const guidaRighe = (figura.guida ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
                     return (
                       <div key={figura.codice} className="fzr-figrow">
                         <div className="fzr-figrow-top">
@@ -875,18 +1000,15 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
                             {aperto ? 'Chiudi' : (assegnate.length ? 'Modifica' : 'Assegna')}
                           </button>
                         </div>
-                        <div className="fzr-figrow-people">
-                          {assegnate.length
-                            ? assegnate.map((pv) => (
-                                <span key={pv.persona.id} className="fzr-figrow-chip">
-                                  <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
-                                  {nomePersona(pv.persona)}
-                                </span>
-                              ))
-                            : <span className={scoperta ? 'fzr-figrow-crit' : 'fzr-figrow-empty'}>
-                                {scoperta ? 'scoperto (obbligatorio)' : 'non assegnata'}
-                              </span>}
-                        </div>
+
+                        {guidaRighe.length > 0 && (
+                          <ul className="fzr-guida">
+                            {guidaRighe.map((l, i) => (
+                              l.startsWith('- ') ? <li key={i} className="sub">{l.slice(2).trim()}</li> : <li key={i}>{l}</li>
+                            ))}
+                          </ul>
+                        )}
+
                         {aperto && org && (
                           <AssegnaFiguraPanel
                             figura={figura}
@@ -896,6 +1018,101 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
                             onSaved={ricaricaLocale}
                             onClose={() => setAssegnaFigura(null)}
                           />
+                        )}
+
+                        {assegnate.length === 0 ? (
+                          <div className={'fzr-figrow-people'}>
+                            <span className={scoperta ? 'fzr-figrow-crit' : 'fzr-figrow-empty'}>
+                              {scoperta ? 'scoperto (obbligatorio)' : 'non assegnata'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="fzr-inc">
+                            <div className="fzr-inc-h">Incaricati</div>
+                            {assegnate.map((pv) => {
+                              const fg = pv.figure.find((x) => x.codice === figura.codice);
+                              const nomina = (org?.nomine ?? []).find((n) => n.id === fg?.nomina_id) ?? null;
+                              const anagKey = pv.persona.id + '|' + figura.codice;
+                              const anagAperto = editPersona === anagKey;
+                              const reqs = pv.requisiti.filter((r) => r.figura_codici.includes(figura.codice));
+                              const mods = pv.moduli.filter((m) => m.figura_codice === figura.codice && m.stato !== 'esonerato');
+                              return (
+                                <div key={pv.persona.id} className="fzr-inc-card">
+                                  <div className="fzr-inc-top">
+                                    <span className="fzr-inc-nome">
+                                      <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
+                                      {nomePersona(pv.persona)}
+                                    </span>
+                                    <button className="fzr-edit-btn" onClick={() => setEditPersona(anagAperto ? null : anagKey)}>
+                                      {anagAperto ? 'Chiudi' : 'Modifica'}
+                                    </button>
+                                  </div>
+
+                                  {anagAperto && (
+                                    <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricaricaLocale} onClose={() => setEditPersona(null)} />
+                                  )}
+
+                                  <NominaInline nomina={nomina} onSaved={ricaricaLocale} />
+
+                                  {reqs.map((r) => {
+                                    const key = pv.persona.id + '|' + figura.codice + '|' + r.corso_codice;
+                                    const apertoR = editKey === key;
+                                    return (
+                                      <div key={r.corso_codice} className="fzr-r">
+                                        <div className="fzr-r-main">
+                                          <span className="fzr-r-name">
+                                            <span className={'fzr-dot ' + r.stato} title={TXT[r.stato]} />
+                                            <span>{r.corso_nome}{r.ore != null ? ' \u00b7 ' + r.ore + 'h' : ''}</span>
+                                          </span>
+                                          <span className="fzr-r-right">
+                                            <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
+                                            <button className="fzr-edit-btn" onClick={() => setEditKey(apertoR ? null : key)}>
+                                              {apertoR ? 'Chiudi' : (r.esonero_id ? 'Esonero' : 'Registra')}
+                                            </button>
+                                          </span>
+                                        </div>
+                                        <div className="fzr-d">{r.dettaglio}</div>
+                                        {!apertoR && r.promemoria.map((a) => (
+                                          <div key={a.id} className="fzr-hint">
+                                            {a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}
+                                          </div>
+                                        ))}
+                                        {apertoR && (
+                                          <EditorRequisito
+                                            personaId={pv.persona.id}
+                                            req={r}
+                                            figuraCodice={figura.codice}
+                                            alternative={(org?.corsi ?? []).filter((c) => (c.categoria ?? '') === r.categoria)}
+                                            onSaved={ricaricaLocale}
+                                            onClose={() => setEditKey(null)}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+
+                                  {mods.map((mv) => (
+                                    <div key={'mod-' + mv.corso_codice} className="fzr-r">
+                                      <div className="fzr-r-main">
+                                        <span className="fzr-r-name">
+                                          <span className={'fzr-dot ' + mv.stato} title={TXT[mv.stato]} />
+                                          <span>{mv.corso_nome}<span className="fzr-modtag">modulo</span></span>
+                                        </span>
+                                        <span className={'fzr-st ' + mv.stato}>{TXT[mv.stato]}</span>
+                                      </div>
+                                      <ModuloInline
+                                        ammesso={ammessoById.get(mv.ammesso_id) ?? { id: mv.ammesso_id, corso_codice: mv.corso_codice, figura_codice: figura.codice, tipo: 'altro', descrizione: mv.dettaglio, riferimento_norm: null, ordine: 0, attivo: true }}
+                                        corso={corsoByCodice.get(mv.corso_codice)}
+                                        personaId={pv.persona.id}
+                                        valutato={mv}
+                                        onSaved={ricaricaLocale}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     );
@@ -907,15 +1124,15 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
         </div>
       )}
 
-      {!vuoto && (
-        <div className="fzr-grp" style={{ marginTop: 14 }}>Dettaglio persone e formazione</div>
+      {orfani.length > 0 && (
+        <div className="fzr-grp" style={{ marginTop: 14 }}>Persone non ancora assegnate a una figura</div>
       )}
 
       {vuoto && !addPersona && (
         <div className="empty">Nessuna persona in organigramma. Assegna un nominativo a una figura qui sopra, oppure usa "+ Persona".</div>
       )}
 
-      {riep.persone.map((pv) => {
+      {orfani.map((pv) => {
         const figAperto = figPersona === pv.persona.id;
         const anagAperto = editPersona === pv.persona.id;
         return (
@@ -923,56 +1140,20 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
             <div className="fzr-p-top">
               <div>
                 <b>{nomePersona(pv.persona)}</b>
-                <div className="fzr-fig">{pv.figure.map((f) => f.nome).join(' \u00b7 ') || 'nessuna figura'}</div>
+                <div className="fzr-fig">{pv.persona.mansione || 'nessuna figura assegnata'}</div>
               </div>
               <span className={'fzr-sem ' + pv.stato}>{TXT[pv.stato]}</span>
             </div>
-
             <div className="fzr-p-actions">
-              <button className={'fzr-mini' + (figAperto ? ' on' : '')} onClick={() => { setFigPersona(figAperto ? null : pv.persona.id); setEditPersona(null); }}>Figure</button>
+              <button className={'fzr-mini' + (figAperto ? ' on' : '')} onClick={() => { setFigPersona(figAperto ? null : pv.persona.id); setEditPersona(null); }}>Assegna figure</button>
               <button className={'fzr-mini' + (anagAperto ? ' on' : '')} onClick={() => { setEditPersona(anagAperto ? null : pv.persona.id); setFigPersona(null); }}>Modifica</button>
             </div>
-
             {anagAperto && (
               <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricaricaLocale} onClose={() => setEditPersona(null)} />
             )}
-
             {figAperto && org && (
               <FigurePanel persona={pv.persona} figure={org.figure} nomine={org.nomine} onSaved={ricaricaLocale} onClose={() => setFigPersona(null)} />
             )}
-
-            {pv.requisiti.map((r) => {
-              const key = pv.persona.id + '|' + r.corso_codice;
-              const aperto = editKey === key;
-              return (
-                <div key={r.corso_codice} className="fzr-r">
-                  <div className="fzr-r-main">
-                    <span className="fzr-r-name">
-                      <span className={'fzr-dot ' + r.stato} title={TXT[r.stato]} />
-                      <span>{r.corso_nome}{r.ore != null ? ' \u00b7 ' + r.ore + 'h' : ''}</span>
-                    </span>
-                    <button className="fzr-edit-btn" onClick={() => setEditKey(aperto ? null : key)}>
-                      {aperto ? 'Chiudi' : (r.esonero_id ? 'Esonero' : 'Registra')}
-                    </button>
-                  </div>
-                  <div className="fzr-d">{r.dettaglio}</div>
-                  {!aperto && r.promemoria.map((a) => (
-                    <div key={a.id} className="fzr-hint">
-                      {a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}
-                    </div>
-                  ))}
-                  {aperto && (
-                    <EditorRequisito
-                      personaId={pv.persona.id}
-                      req={r}
-                      alternative={(org?.corsi ?? []).filter((c) => (c.categoria ?? '') === r.categoria)}
-                      onSaved={ricaricaLocale}
-                      onClose={() => setEditKey(null)}
-                    />
-                  )}
-                </div>
-              );
-            })}
           </div>
         );
       })}
