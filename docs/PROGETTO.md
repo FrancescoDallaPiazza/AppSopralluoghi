@@ -533,6 +533,30 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **"Riallinea capitoli" nel sopralluogo + copertura figure nel modulo Formazione**
+  (`src/lib/box.ts`, `src/Compilazione.tsx`, `src/BoxGenerico.tsx`,
+  `src/FormazioneRiepilogo.tsx`).
+  1) Un giro GIA' aperto (ma non completato) puo' essere riallineato all'elenco e
+  all'ordine CORRENTI del template: pulsante "Riallinea capitoli" in testata ->
+  `riallineaComposizione` rinfresca dal server la composizione, cancella i
+  `sopralluogo_box` attuali (locale + outbox `enqueueDelete`) e li ricostruisce;
+  le RISPOSTE restano (sono legate a voce/componente, non ai box). `BoxGenerico`
+  ricarica via prop `rikey`.
+  2) Il modulo speciale Organigramma/Formazione in campo ora mostra anche la
+  CHECKLIST DI COPERTURA (come il tab Formazione del back-office): tutte le figure
+  attese del catalogo raggruppate per blocco, con chi le copre e i ruoli scoperti
+  (badge rosso), utile anche con organigramma ancora vuoto. Verificato `tsc -b` +
+  `vite build`.
+
+- **Fix: l'ordine dei capitoli di un template modificato non si rifletteva nei
+  nuovi sopralluoghi** (`src/lib/box.ts`): `assicuraComposizione` costruiva la
+  composizione del nuovo giro leggendo solo la cache locale `db.templateBox`, che
+  restava col vecchio ordine dopo una modifica fatta in back-office. Ora, per un
+  sopralluogo SENZA composizione congelata, se online si rinfresca dal server la
+  composizione del template (`checklist_template_box`) sostituendo le righe locali
+  stale (`refreshTemplateBox`), poi si costruisce. I sopralluoghi gia' aperti
+  mantengono la loro composizione congelata (per disegno). Verificato `tsc -b`.
+
 - **Modifica della composizione di un template** (`src/admin/TemplateList.tsx`,
   `src/admin/ComponiTemplate.tsx`, `src/lib/admin/composizione.ts`,
   `src/lib/admin/templates.ts`): i template assemblati dai capitoli ora si

@@ -474,6 +474,7 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
   const [figPersona, setFigPersona] = useState<string | null>(null); // figure di una persona
   const [editPersona, setEditPersona] = useState<string | null>(null); // anagrafica di una persona
   const [addPersona, setAddPersona] = useState(false);
+  const [coperturaAperta, setCoperturaAperta] = useState(false); // checklist figure attese
 
   // conferma tracciata
   const [conferma, setConferma] = useState<OrganigrammaConferma | null>(null);
@@ -603,6 +604,23 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
 
   const vuoto = riep.persone.length === 0;
 
+  // Copertura figure attese (come il tab Formazione del back-office): tutte le
+  // figure del catalogo, raggruppate per blocco, con chi le copre e quali sono
+  // scoperte. Cosi' il modulo "propone" le figure anche con organigramma vuoto.
+  const scoperteSet = new Set(riep.figureScoperte.map((f) => f.codice));
+  const figureAttese = (org?.figure ?? []).filter((f) => f.attiva)
+    .slice().sort((a, b) => (a.gruppo_ordine ?? 999) - (b.gruppo_ordine ?? 999) || a.ordine - b.ordine);
+  const gruppiCopertura: { nome: string; righe: { figura: FiguraSicurezza; persone: string[] }[] }[] = [];
+  for (const f of figureAttese) {
+    const persone = riep.persone
+      .filter((p) => p.figure.some((x) => x.codice === f.codice))
+      .map((p) => nomePersona(p.persona));
+    const g = f.gruppo || 'Altre figure';
+    let grp = gruppiCopertura.find((x) => x.nome === g);
+    if (!grp) { grp = { nome: g, righe: [] }; gruppiCopertura.push(grp); }
+    grp.righe.push({ figura: f, persone });
+  }
+
   return (
     <div className="fzr">
       <style>{CSS}</style>
@@ -624,6 +642,39 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
         <div className="fzr-p">
           <b>Nuova persona</b>
           <PersonaForm persona={null} clienteId={clienteId} onSaved={ricaricaLocale} onClose={() => setAddPersona(false)} />
+        </div>
+      )}
+
+      {figureAttese.length > 0 && (
+        <div style={{ border: '1px solid var(--line,#e3ddd2)', borderRadius: 10, margin: '4px 0 12px', overflow: 'hidden' }}>
+          <button type="button" onClick={() => setCoperturaAperta((v) => !v)}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 11px', border: 'none', background: '#f6f2ea', cursor: 'pointer', font: 'inherit', fontWeight: 700, fontSize: 13 }}>
+            <span>
+              Figure attese (copertura)
+              {riep.figureScoperte.length > 0 && (
+                <span style={{ color: 'var(--no,#d8442f)', fontWeight: 800 }}> {'\u00b7'} {riep.figureScoperte.length} scoperte</span>
+              )}
+            </span>
+            <span style={{ fontSize: 16 }}>{coperturaAperta ? '\u2212' : '+'}</span>
+          </button>
+          {coperturaAperta && (
+            <div style={{ padding: '4px 11px 10px' }}>
+              {gruppiCopertura.map((g) => (
+                <div key={g.nome}>
+                  <div className="fzr-grp">{g.nome}</div>
+                  {g.righe.map(({ figura, persone }) => (
+                    <div key={figura.codice} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '4px 2px', fontSize: 12.5 }}>
+                      <span className={'fzr-dot ' + (persone.length ? 'conforme' : (scoperteSet.has(figura.codice) ? 'critico' : 'in_scadenza'))} />
+                      <span style={{ flex: '1 1 auto' }}>{figura.nome}</span>
+                      <span style={{ flex: '0 0 auto', color: persone.length ? 'var(--ink-soft,#5b5f66)' : (scoperteSet.has(figura.codice) ? 'var(--no,#d8442f)' : 'var(--ink-soft,#5b5f66)'), fontWeight: persone.length ? 600 : 700, textAlign: 'right', maxWidth: '58%' }}>
+                        {persone.length ? persone.join(', ') : (scoperteSet.has(figura.codice) ? 'scoperto (obbligatorio)' : 'non assegnata')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

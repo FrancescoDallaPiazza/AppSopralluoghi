@@ -14,7 +14,7 @@ import {
 } from './lib/azioni';
 import FormazioneRiepilogo from './FormazioneRiepilogo';
 import BoxGenerico from './BoxGenerico';
-import { assicuraComposizione } from './lib/box';
+import { assicuraComposizione, riallineaComposizione } from './lib/box';
 import { nomeCompleto } from './lib/types';
 import type { Azione, VoceTemplate, AreaInterna, Sede } from './lib/types';
 import { renderVoce, I, type ContestoVoci, type Resp, type Bozza, type BozzaScad } from './vociRender';
@@ -112,6 +112,8 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [fase, setFase] = useState<'loading' | 'ok' | 'errore' | 'scelta'>('loading');
   const [erroreMsg, setErroreMsg] = useState<string | null>(null);
   const [compilataId, setCompilataId] = useState<string>('');
+  const [templateId, setTemplateId] = useState<string>('');
+  const [rikey, setRikey] = useState(0);
   const [voci, setVoci] = useState<VoceTemplate[]>([]);
   const motore = useCompilazioneVoci();
   const { esiti, bozze, scad } = motore;
@@ -153,6 +155,18 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   // scelta esplicitamente prima di completare.
   const sedeObbligatoria = sediCli.length > 1;
   const sedeMancante = sedeObbligatoria && !sedeId;
+
+  const [riallineando, setRiallineando] = useState(false);
+  async function riallinea() {
+    if (!templateId || riallineando) return;
+    if (!window.confirm(
+      'Riallineare i capitoli di questo sopralluogo all\u2019elenco e all\u2019ordine attuali del template? Le risposte gia\u2019 inserite restano.',
+    )) return;
+    setRiallineando(true);
+    try { await riallineaComposizione(sopralluogo.id, templateId); setRikey((k) => k + 1); }
+    catch { alert('Riallineamento non riuscito.'); }
+    finally { setRiallineando(false); }
+  }
   // true quando si sta modificando un sopralluogo già completato (una revisione)
   const inRevisione = (sopralluogo.revisione_corrente ?? 1) > 1;
 
@@ -189,7 +203,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           return;
         }
         // pronto: ripresa o ripiego offline sul template dell'incarico
-        setCompilataId(r.compilataId); setVoci(r.voci); motore.setEsiti(r.esiti);
+        setCompilataId(r.compilataId); setTemplateId(r.templateId); setVoci(r.voci); motore.setEsiti(r.esiti);
         // Composizione box del giro (dal template + box fissi): idempotente,
         // no-op finche' il catalogo box e' vuoto. I box si montano sotto.
         try { await assicuraComposizione(sopralluogo.id, r.templateId); } catch { /* offline: dal locale */ }
@@ -212,7 +226,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     setAvviando(true); setFase('loading');
     try {
       const d = await iniziaCompilazione(sopralluogo, { id: sel.id, versione: sel.versione });
-      setCompilataId(d.compilataId); setVoci(d.voci); motore.setEsiti(d.esiti);
+      setCompilataId(d.compilataId); setTemplateId(d.templateId); setVoci(d.voci); motore.setEsiti(d.esiti);
       try { await assicuraComposizione(sopralluogo.id, d.templateId); } catch { /* offline: dal locale */ }
       try {
         const tutte = await db.azioni.toArray();
@@ -439,6 +453,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               <input type="date" value={dataEff} style={{ fontSize: 12, padding: '3px 6px', borderRadius: 8, border: 'none' }}
                 onChange={(e) => { setDataEff(e.target.value); persistiTestata({ data_effettiva: e.target.value || null }); }} />
             </label>
+            <button type="button" onClick={() => void riallinea()} disabled={riallineando}
+              style={{ marginLeft: 'auto', fontSize: 11.5, padding: '4px 9px', borderRadius: 8, border: '1px solid rgba(255,255,255,.35)', background: 'transparent', color: '#dfe7e4', cursor: 'pointer' }}>
+              {riallineando ? 'Riallineo…' : 'Riallinea capitoli'}
+            </button>
           </div>
         </header>
 
@@ -470,6 +488,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             pregresse={prev}
             statoPregresse={statoPrev}
             filtro="fissi"
+            rikey={rikey}
           />
 
           {sezioni.map((s) => (
@@ -494,6 +513,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             pregresse={prev}
             statoPregresse={statoPrev}
             filtro="altri"
+            rikey={rikey}
           />
         </main>
 

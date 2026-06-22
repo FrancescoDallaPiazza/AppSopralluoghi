@@ -9,7 +9,7 @@
 // Le scritture in locale non sovrascrivono il lavoro di campo non sincronizzato.
 
 import { supabase } from './supabase';
-import { db, enqueueRow } from './db';
+import { db, enqueueRow, enqueueDelete } from './db';
 import { newId } from './types';
 import type {
   Sede, BoxCatalogo, BoxSezione, VoceTemplate, ChecklistTemplateBox,
@@ -88,6 +88,22 @@ export async function prefetchComposizioni(sopralluogoIds: string[]): Promise<vo
 // moduli speciali (smart/fisso) si includono in fase di composizione del
 // template. Idempotente. Pensata per l'apertura del sopralluogo, anche
 // offline (lavora sul catalogo in cache); le righe create vanno in outbox.
+// Rinfresca la cache locale della composizione di UN template dal server,
+// SOSTITUENDO le righe locali (l'aggiornamento dal back-office cancella e
+// reinserisce i checklist_template_box con nuovi id/ordine, quindi un semplice
+// bulkPut lascerebbe righe stale). Best-effort: offline non fa nulla.
+async function refreshTemplateBox(templateId: string): Promise<void> {
+  if (!navigator.onLine) return;
+  const { data, error } = await supabase
+    .from('checklist_template_box')
+    .select('id, template_id, box_id, box_versione, ordine')
+    .eq('template_id', templateId);
+  if (error || !data) return;
+  const vecchie = await db.templateBox.where('template_id').equals(templateId).primaryKeys();
+  if (vecchie.length) await db.templateBox.bulkDelete(vecchie as string[]);
+  if (data.length) await db.templateBox.bulkPut(data as unknown as ChecklistTemplateBox[]);
+}
+
 export async function assicuraComposizione(
   sopralluogoId: string,
   templateId: string,
@@ -97,6 +113,13 @@ export async function assicuraComposizione(
 
   const locali = await db.sopralluogoBox.where('sopralluogo_id').equals(sopralluogoId).toArray();
   if (locali.length) return locali.sort((a, b) => a.ordine - b.ordine);
+
+  // Nessuna composizione congelata per questo sopralluogo: la costruiamo dai
+  // capitoli del template. Prima, se online, RINFRESCHIAMO dal server la
+  // composizione del template (checklist_template_box): l'ufficio puo' aver
+  // cambiato capitoli/ordine dopo l'ultimo prefetch, e la cache locale sarebbe
+  // stale (mostrerebbe il vecchio ordine). Sostituiamo le righe locali.
+  await refreshTemplateBox(templateId);
 
   // box del template (default), dal catalogo in cache. NB: i moduli speciali
   // (organigramma 'smart' e cose-da-fare pregresse 'fisso') NON sono piu'
@@ -118,6 +141,38 @@ export async function assicuraComposizione(
   if (!righe.length) return [];
   await db.sopralluogoBox.bulkPut(righe);
   for (const r of righe) await enqueueRow('sopralluogo_box', r as unknown as Record<string, unknown>);
+  return righe;
+}
+
+// Riallinea la composizione di un giro GIA' aperto (ma da non completato) alla
+// composizione CORRENTE del template: utile se l'ufficio ha cambiato
+// capitoli/ordine dopo l'apertura. Cancella i sopralluogo_box attuali (locale +
+// server via outbox) e li ricostruisce dall'ordine fresco. Gli esiti restano
+// (sono legati a voce_template_id/componente_id, non ai sopralluogo_box): i box
+// rimasti ritrovano le risposte, quelli aggiunti seminano voci nuove, quelli
+// tolti semplicemente non vengono piu' renderizzati.
+export async function riallineaComposizione(
+  sopralluogoId: string,
+  templateId: string,
+): Promise<SopralluogoBox[]> {
+  await refreshTemplateBox(templateId);
+
+  const attuali = await db.sopralluogoBox.where('sopralluogo_id').equals(sopralluogoId).toArray();
+  for (const r of attuali) {
+    await db.sopralluogoBox.delete(r.id);
+    await enqueueDelete('sopralluogo_box', r.id);
+  }
+
+  const tb = (await db.templateBox.where('template_id').equals(templateId).toArray())
+    .sort((a, b) => a.ordine - b.ordine);
+  const righe: SopralluogoBox[] = tb.map((r, i) => ({
+    id: newId(), sopralluogo_id: sopralluogoId, box_id: r.box_id,
+    box_versione: r.box_versione, ordine: i, origine: 'template',
+  }));
+  if (righe.length) {
+    await db.sopralluogoBox.bulkPut(righe);
+    for (const r of righe) await enqueueRow('sopralluogo_box', r as unknown as Record<string, unknown>);
+  }
   return righe;
 }
 

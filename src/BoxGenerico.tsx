@@ -38,11 +38,12 @@ interface Props {
   // 'altri' = generici + smart, dopo la checklist. Permette di collocare i due
   // gruppi in punti diversi della pagina con un solo componente.
   filtro: 'fissi' | 'altri';
+  rikey?: number;   // bump esterno per forzare il ricaricamento (es. riallineo)
 }
 
 export default function BoxGenerico({
   sopralluogoId, compilataId, sedeId, clienteId, motore, aree, tecnici, tecnicoId,
-  tecnicoNome, pregresse, statoPregresse, filtro,
+  tecnicoNome, pregresse, statoPregresse, filtro, rikey,
 }: Props) {
   const [boxes, setBoxes] = useState<BoxComposto[]>([]);
   const [pronto, setPronto] = useState(false);
@@ -71,8 +72,8 @@ export default function BoxGenerico({
     let vivo = true;
     void (async () => { await ricarica(); if (!vivo) setPronto(false); })();
     return () => { vivo = false; };
-    // ricarica dipende solo dagli identificativi del giro/sede
-  }, [sopralluogoId, compilataId, sedeId]);
+    // ricarica dipende dagli identificativi del giro/sede e da rikey (riallineo)
+  }, [sopralluogoId, compilataId, sedeId, rikey]);
 
   async function aggiungi(box: BoxComposto, sezioneCodice: string) {
     if (!sedeId) return;
