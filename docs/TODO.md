@@ -179,11 +179,20 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     (restringibile cancellando le righe). Catena: seed → `prefetchCatalogoBox`
     (gia' in `prefetch.ts`) → `assicuraComposizione` → `BoxGenerico`. Verificato
     `tsc -b` + `vite build`; SQL validato con pglast (ASCII-only, idempotente).
-  - [ ] **Prossimo — box smart e fisso**: instradare nell'apertura i box non
-    generici saltati da `BoxGenerico`: smart (`ref_smart='organigramma'` →
-    `FormazioneRiepilogo`) e fisso ("cose da fare pregresse", vista calcolata per
-    sede). Rifinitura: passare `componente_id` anche a `generaAzione`/`InputAzione`
+  - [x] **Box smart e fisso** (Canale 1 + 3): `BoxGenerico` ora instrada per tipo.
+    Smart `ref_smart='organigramma'` → `FormazioneRiepilogo` inline (riceve
+    `clienteId`/`tecnicoNome`; il sheet "Formazione" resta come accesso rapido).
+    Fisso → vista read-only delle azioni ancora aperte dei giri precedenti
+    (`pregresse`/`statoPregresse` passati da `Compilazione`, che le carica gia' con
+    `useGiroPrecedente`: nessun fetch nuovo). Migration **034**: box smart
+    `ORGANIGRAMMA` (agganciato ai template attivi) + box fisso `PREGRESSE`
+    (auto-iniettato in ogni sopralluogo da `assicuraComposizione`). Verificato
+    `tsc -b` + `vite build`; SQL pglast/ASCII/idempotente.
+  - [ ] Rifinitura: passare `componente_id` anche a `generaAzione`/`InputAzione`
     (oggi l'azione-box lo eredita via `origine_esito_id` → `esito.componente_id`).
+  - [ ] Il box fisso "pregresse" e' appeso in fondo (assicuraComposizione mette i
+    fissi dopo i box del template). Valutare se anteporlo (rivedere le pregresse a
+    inizio giro) con un `ordine` negativo o un riordino dedicato dei fissi.
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza

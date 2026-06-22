@@ -421,10 +421,14 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             sopralluogoId={sopralluogo.id}
             compilataId={compilataId}
             sedeId={sopralluogo.sede_id ?? null}
+            clienteId={sopralluogo.cliente_id}
             motore={motore}
             aree={aree}
             tecnici={tecnici}
             tecnicoId={tecnicoId}
+            tecnicoNome={tecnicoNomeConferma}
+            pregresse={prev}
+            statoPregresse={statoPrev}
           />
         </main>
 

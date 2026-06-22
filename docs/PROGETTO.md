@@ -210,8 +210,9 @@ vincolo XOR `voce_template_owner_chk` · 031 `checklist_template_box` (composizi
 di default sul template) + `sopralluogo_box` (composizione congelata del giro) ·
 032 `componente_sito` (registro componenti per sede) + `esito_voce.componente_id`
 + `azione.componente_id` · 033 seed del box prototipo generico "Impianti" (Cap. 4)
-nel catalogo box + aggancio ai template attivi.
-**Prossima libera: 034.**
+nel catalogo box + aggancio ai template attivi · 034 box smart `ORGANIGRAMMA`
+(ref_smart) + box fisso `PREGRESSE` (auto-iniettato) nel catalogo.
+**Prossima libera: 035.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -522,6 +523,21 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modello box, instradamento smart e fisso** (`src/BoxGenerico.tsx`,
+  `src/Compilazione.tsx`, `034_box_smart_fisso.sql`): `BoxGenerico` non e' piu' il
+  solo renderer dei generici ma un dispatcher per tipo. I box SMART con
+  `ref_smart='organigramma'` montano `FormazioneRiepilogo` inline (stesso
+  componente del sheet "Formazione", che resta come accesso rapido; il sheet si
+  monta solo quando aperto, quindi niente doppia istanza salvo apertura
+  simultanea). I box FISSO mostrano in sola lettura le azioni ancora aperte dei
+  giri precedenti dello stesso incarico: i dati (`pregresse`/`statoPregresse`)
+  arrivano da `Compilazione`, che li carica gia' con `useGiroPrecedente`, quindi
+  nessun fetch aggiuntivo. La migration 034 semina il box smart `ORGANIGRAMMA`
+  (agganciato ai template attivi via `checklist_template_box`) e il box fisso
+  `PREGRESSE` (i fissi sono auto-iniettati in ogni sopralluogo da
+  `assicuraComposizione`, nessun link necessario). Con questo i tre tipi di box
+  sono coperti end-to-end. Verificato `tsc -b` + `vite build`; SQL validato con
+  pglast (ASCII-only, idempotente).
 - **Modello box, aggancio in apertura + seed prototipo "Impianti"**
   (`src/Compilazione.tsx`, `src/lib/compilazione.ts`, `033_box_seed_impianti.sql`):
   `BoxGenerico` ora e' montato in `Compilazione` sotto le sezioni piatte, sullo
