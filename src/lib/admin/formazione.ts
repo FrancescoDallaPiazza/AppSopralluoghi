@@ -224,6 +224,26 @@ export const MARCA_PREGRESSA = 'Evidenza pregressa';
 // "da verificare") e non vanno proposti nel flusso pregressa.
 export const CATEGORIE_NO_PREGRESSA = new Set(['antincendio', 'primo_soccorso']);
 
+// Vero se, assegnando una persona a QUESTA figura, ha senso chiederle la
+// formazione pregressa. La figura deve avere almeno un requisito il cui corso:
+//  (a) non sia antincendio / primo soccorso (regimi propri, CATEGORIE_NO_PREGRESSA);
+//  (b) non sia il corso base del Datore di lavoro: e' un obbligo NUOVO dell'ASR
+//      2025, quindi il flag formazione_pregressa non ne cambia la valutazione
+//      (resta "in scadenza"/"critico", mai "da verificare").
+// UNICA sorgente di verita', condivisa da back-office e campo: cosi' una modifica
+// fatta in campo resta coerente con il back-office.
+export function figuraChiedePregressa(
+  figuraCodice: string,
+  requisiti: { figura_codice: string; corso_codice: string }[],
+  corsi: { codice: string; categoria: string }[],
+): boolean {
+  const catDi = new Map(corsi.map((c) => [c.codice, c.categoria]));
+  return requisiti.some((r) =>
+    r.figura_codice === figuraCodice
+    && r.corso_codice !== CORSO_DATORE_BASE
+    && !CATEGORIE_NO_PREGRESSA.has(catDi.get(r.corso_codice) ?? ''));
+}
+
 // Ore di formazione specifica lavoratori per livello di rischio.
 const ORE_SPECIFICA: Record<LivelloRischio, number> = { basso: 4, medio: 8, alto: 12 };
 

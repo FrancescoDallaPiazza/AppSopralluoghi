@@ -539,26 +539,36 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 
 ## Cronologia
 - **Modulo Organigramma in campo: copertura figure AZIONABILE + fix titolo box**
-  (`src/FormazioneRiepilogo.tsx`, `src/BoxGenerico.tsx`).
+  (`src/FormazioneRiepilogo.tsx`, `src/BoxGenerico.tsx`, `src/lib/admin/formazione.ts`,
+  `src/admin/Formazione.tsx`).
   1) La sezione "Figure attese (copertura)" del modulo speciale in campo non e'
   piu' un elenco di sola lettura: ora adotta lo STESSO paradigma del tab
   Formazione del back-office. Ogni figura ha il suo badge di obbligo (sempre / se
   ricorre / eventuale), il pallino di stato, i nominativi assegnati (con il loro
   semaforo) e un bottone "Assegna/Modifica" per riga. Il bottone apre inline il
-  nuovo `AssegnaFiguraPanel`: si spuntano le persone gia' in organigramma da
-  incaricare di QUELLA figura e/o se ne crea una nuova al volo (cognome/nome).
-  Per chi viene assegnato ex-novo a un ruolo con formazione soggetta al regime
-  ASR 2025 (categoria non in `CATEGORIE_NO_PREGRESSA`) si chiede subito la
-  formazione pregressa. Tutte scritture offline (outbox) via `sync.ts`
-  (`salvaPersona`, `salvaNomina`, `eliminaNomina`) con rivalutazione immediata
-  dei semafori. La copertura e' aperta di default; le card per-persona restano
-  sotto come "Dettaglio persone e formazione" per gestire attestati/esoneri.
-  Cosi' il tecnico parte dalla figura scoperta e ci attacca il nominativo, invece
-  di dover creare prima una persona generica e poi cercarla.
-  2) Fix UI: il titolo del box (header nero "Organigramma e formazione") era
-  troppo attaccato al bordo sinistro -> `.boxgen .box-h` ora ha padding sinistro
-  comodo (`12px 14px 10px`), valido per tutti i box. Verificato `tsc -b` +
-  `vite build`.
+  nuovo `AssegnaFiguraPanel`, con lo stesso wording del back-office: se ci sono
+  persone in organigramma le elenca come checkbox ("Assegna una persona gia' in
+  organigramma"), altrimenti "Nessuna persona ancora in organigramma: creane una
+  qui sotto."; sotto, sempre la sezione "Crea e assegna una nuova persona"
+  (cognome/nome). Tutte scritture offline (outbox) via `sync.ts` (`salvaPersona`,
+  `salvaNomina`, `eliminaNomina`) con rivalutazione immediata dei semafori. La
+  copertura e' aperta di default; le card per-persona restano sotto come
+  "Dettaglio persone e formazione" per gestire attestati/esoneri. Cosi' il tecnico
+  parte dalla figura scoperta e ci attacca il nominativo, invece di dover creare
+  prima una persona generica e poi cercarla.
+  2) **Formazione pregressa decisa da una funzione CONDIVISA**: nuova
+  `figuraChiedePregressa(figuraCodice, requisiti, corsi)` in `formazione.ts`,
+  usata IDENTICA da campo e back-office (prima era duplicata inline solo nel
+  back-office). Oltre ad antincendio/primo soccorso, ora esclude correttamente il
+  **corso base del Datore di lavoro**: e' un obbligo NUOVO dell'ASR 2025, quindi
+  il flag pregressa non ne cambia la valutazione (resta "in scadenza"/"critico",
+  mai "da verificare") e non ha senso chiederla all'assegnazione. Fix valido in
+  entrambe le UI (era un difetto presente anche in back-office).
+  3) Fix UI: (a) il titolo del box era troppo attaccato al bordo sinistro ->
+  `.boxgen .box-h` ora ha padding sinistro comodo (`12px 14px 10px`); (b) gli
+  input/select/textarea del modulo in campo non ereditavano il font dell'app
+  (cadevano sul serif di default) -> aggiunto `font-family:inherit`. Verificato
+  `tsc -b` + `vite build`.
 
 - **"Riallinea capitoli" nel sopralluogo + copertura figure nel modulo Formazione**
   (`src/lib/box.ts`, `src/Compilazione.tsx`, `src/BoxGenerico.tsx`,

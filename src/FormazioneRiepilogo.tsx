@@ -19,7 +19,7 @@ import {
   type RiepilogoCliente, type RequisitoValutato, type StatoRequisito,
   type LivelloRischio, type TipoEsonero, type Formazione, type Esonero,
   type Persona, type Nomina, type FiguraSicurezza,
-  assemblaRiepilogo, nomePersona, CATEGORIE_NO_PREGRESSA,
+  assemblaRiepilogo, nomePersona, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa,
 } from './lib/admin/formazione';
 import { costruisciSnapshot, firmaOrganigramma } from './lib/admin/organigramma-revisioni';
 import {
@@ -96,7 +96,7 @@ const CSS = `
 .fzr-tabs button.on{background:var(--ink,#2a2c30); color:#fff; border-color:var(--ink,#2a2c30);}
 .fzr-field{margin-bottom:8px;}
 .fzr-field label{display:block; font-size:11px; font-weight:700; color:var(--ink-soft,#5b5f66); margin-bottom:3px;}
-.fzr-field input, .fzr-field select{width:100%; box-sizing:border-box; padding:8px 9px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:13px; background:#fff; color:var(--ink,#2a2c30);}
+.fzr-field input, .fzr-field select{width:100%; box-sizing:border-box; padding:8px 9px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:13px; font-family:inherit; background:#fff; color:var(--ink,#2a2c30);}
 .fzr-row2{display:flex; gap:8px;} .fzr-row2 > *{flex:1;}
 .fzr-actions{display:flex; gap:8px; margin-top:4px;}
 .fzr-btn{flex:1; padding:8px 10px; border-radius:8px; border:none; font-size:12.5px; font-weight:800; cursor:pointer;}
@@ -111,7 +111,7 @@ const CSS = `
 .fzr-conf{margin-top:14px; border-top:2px solid var(--line,#e3ddd2); padding-top:12px;}
 .fzr-conf h4{margin:0 0 6px; font-size:13px; font-weight:800;}
 .fzr-conf-last{font-size:11.5px; color:var(--ink-soft,#5b5f66); margin-bottom:8px;}
-.fzr-conf textarea{width:100%; box-sizing:border-box; padding:8px 9px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:13px; min-height:54px; resize:vertical; background:#fff; color:var(--ink,#2a2c30); margin-bottom:8px;}
+.fzr-conf textarea{width:100%; box-sizing:border-box; padding:8px 9px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:13px; font-family:inherit; min-height:54px; resize:vertical; background:#fff; color:var(--ink,#2a2c30); margin-bottom:8px;}
 .fzr-warn{font-size:11.5px; color:var(--hi-dark,#9a6206); background:#fbf0d6; border-radius:8px; padding:6px 9px; margin-bottom:10px;}
 .fzr-cop{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; overflow:hidden;}
 .fzr-cop-h{width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; border:none; background:#f6f2ea; cursor:pointer; font:inherit; font-weight:700; font-size:13px;}
@@ -354,16 +354,20 @@ function AssegnaFiguraPanel({
 
   return (
     <div className="fzr-ed">
-      {persone.length > 0 && (
-        <div className="fzr-grp" style={{ marginTop: 0 }}>Persone gi&agrave; in organigramma</div>
+      {persone.length > 0 ? (
+        <>
+          <div className="fzr-grp" style={{ marginTop: 0 }}>Assegna una persona gi&agrave; in organigramma</div>
+          {persone.map((p) => (
+            <label key={p.id} className="fzr-fig-row">
+              <input type="checkbox" checked={sel.has(p.id)} disabled={busy} onChange={() => toggle(p.id)} />
+              <span>{nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}</span>
+            </label>
+          ))}
+        </>
+      ) : (
+        <div className="fzr-d" style={{ marginTop: 0 }}>Nessuna persona ancora in organigramma: creane una qui sotto.</div>
       )}
-      {persone.map((p) => (
-        <label key={p.id} className="fzr-fig-row">
-          <input type="checkbox" checked={sel.has(p.id)} disabled={busy} onChange={() => toggle(p.id)} />
-          <span>{nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}</span>
-        </label>
-      ))}
-      <div className="fzr-grp">Oppure aggiungi una persona nuova</div>
+      <div className="fzr-grp">Crea e assegna una nuova persona</div>
       <div className="fzr-row2">
         <div className="fzr-field">
           <label>Cognome</label>
@@ -792,14 +796,14 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
   const scoperteSet = new Set(riep.figureScoperte.map((f) => f.codice));
   const figureAttese = (org?.figure ?? []).filter((f) => f.attiva)
     .slice().sort((a, b) => (a.gruppo_ordine ?? 999) - (b.gruppo_ordine ?? 999) || a.ordine - b.ordine);
-  // mappa corso_codice -> categoria, per capire se una figura ha formazione
-  // soggetta al regime "pregressa" (ASR 2025): in tal caso, assegnando una nuova
-  // persona, si chiede subito se ha formazione pregressa.
-  const catDiCorso = new Map((org?.corsi ?? []).map((c) => [c.codice, c.categoria]));
+  // mappa per capire se una figura, assegnandole una persona nuova, deve
+  // chiedere la formazione pregressa. Usa la funzione CONDIVISA col back-office
+  // (esclude antincendio/primo soccorso e il corso nuovo del Datore di lavoro).
+  const reqCat = org?.requisiti ?? [];
+  const corsiCat = org?.corsi ?? [];
   const figureChePregressa = new Set<string>();
-  for (const r of (org?.requisiti ?? [])) {
-    const cat = catDiCorso.get(r.corso_codice) ?? '';
-    if (!CATEGORIE_NO_PREGRESSA.has(cat)) figureChePregressa.add(r.figura_codice);
+  for (const f of figureAttese) {
+    if (figuraChiedePregressa(f.codice, reqCat, corsiCat)) figureChePregressa.add(f.codice);
   }
   type RigaCop = { figura: FiguraSicurezza; assegnate: typeof riep.persone };
   const gruppiCopertura: { nome: string; righe: RigaCop[] }[] = [];

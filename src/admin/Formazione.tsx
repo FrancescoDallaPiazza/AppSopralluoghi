@@ -18,7 +18,7 @@ import {
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
-  nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA,
+  nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa,
 } from '../lib/admin/formazione';
 import {
   registraSnapshotOrganigramma, caricaRevisioniOrganigramma, caricaRevisioneOrganigramma,
@@ -451,8 +451,7 @@ export default function Formazione() {
           figura={assegnaFigura}
           persone={riep.persone}
           clienteId={clienteId}
-          chiediPregressa={!!catalogo?.requisiti.some((r) => r.figura_codice === assegnaFigura.codice
-            && !CATEGORIE_NO_PREGRESSA.has(catalogo.corsi.find((c) => c.codice === r.corso_codice)?.categoria ?? ''))}
+          chiediPregressa={!!catalogo && figuraChiedePregressa(assegnaFigura.codice, catalogo.requisiti, catalogo.corsi)}
           onChiudi={() => { setAssegnaFigura(null); dopoModifica(); }}
           onAssegnaConPregressa={async (personaId) => { setAssegnaFigura(null); await dopoModifica(); setPregressaPersonaId(personaId); }}
         />
