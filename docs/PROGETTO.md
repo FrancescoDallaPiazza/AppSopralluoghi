@@ -527,6 +527,34 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Ordine capitoli nel compositore + sposta/copia voci tra sezioni**
+  (`src/admin/ComponiTemplate.tsx`, `src/admin/CapitoloEditor.tsx`): nel
+  compositore i capitoli selezionati hanno ora una sezione "Ordine nel
+  sopralluogo" con frecce su/giu' (la sequenza scelta diventa l'`ordine` dei
+  `checklist_template_box`; il box fisso resta comunque in testa). Nell'editor
+  capitolo, oltre alle frecce su/giu' (sezioni, voci, sotto-domande), ogni voce
+  di primo livello ha "Sposta in" e "Copia in" un'altra sezione: la copia clona
+  la domanda con le sue sotto-domande e nuovi id (config clonato in profondita').
+  Solo front-end. Verificato `tsc -b` + `vite build`.
+
+- **Editor dei capitoli in back-office + anteprima nel compositore**
+  (`src/lib/admin/capitoli.ts`, `src/admin/CapitoliList.tsx`,
+  `src/admin/CapitoloEditor.tsx`, nuovo tab in `src/admin/BackOffice.tsx`;
+  `src/admin/ComponiTemplate.tsx`, `src/admin/TemplateEditor.tsx`): il deployer
+  puo' ora gestire i capitoli (box) in autonomia, senza SQL. Nuovo tab "Capitoli":
+  elenco con conteggio sezioni/voci e stato (attivo/archiviato/in uso); crea un
+  nuovo capitolo, modifica sezioni e voci, duplica, archivia/riattiva. L'editor
+  capitolo riusa la scheda voce dei template (`VoceCard`, ora esportata con un
+  flag `nascondiSezione`): stessa potenza (tipo, opzioni, scadenza, sotto-domande)
+  organizzata per SEZIONE (con flag ripetibile + etichetta del "+"). Disciplina di
+  versionamento come i template: un capitolo gia' congelato in un sopralluogo
+  (`sopralluogo_box`) non si modifica a ritroso, si DUPLICA. I moduli speciali
+  (ORGANIGRAMMA 'smart', PREGRESSE 'fisso') si elencano ma non si editano da qui.
+  Nel COMPOSITORE ogni capitolo ha ora "Vedi domande": anteprima sola lettura
+  delle voci raggruppate per sezione (con tipo, scadenza e sotto-domande), per
+  valutare se il capitolo serve e se e' ancora attinente prima di includerlo.
+  Solo front-end (Canale 1), nessuna migration. Verificato `tsc -b` + `vite build`.
+
 - **Capitoli come box + compositore di template** (migration 035;
   `src/lib/admin/composizione.ts`, `src/admin/ComponiTemplate.tsx`,
   `src/admin/TemplateList.tsx`, `src/lib/box.ts`): l'intera checklist "Audit
