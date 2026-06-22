@@ -211,8 +211,12 @@ di default sul template) + `sopralluogo_box` (composizione congelata del giro) �
 032 `componente_sito` (registro componenti per sede) + `esito_voce.componente_id`
 + `azione.componente_id` · 033 seed del box prototipo generico "Impianti" (Cap. 4)
 nel catalogo box + aggancio ai template attivi · 034 box smart `ORGANIGRAMMA`
-(ref_smart) + box fisso `PREGRESSE` (auto-iniettato) nel catalogo.
-**Prossima libera: 035.**
+(ref_smart) + box fisso `PREGRESSE` (auto-iniettato) nel catalogo · 035 seed dei
+CAPITOLI dell'Audit Iniziale come box generici (11 capitoli, 134 voci, dal foglio
+`Riordino_Checklist_AuditIniziale.xlsx`) + box `RILIEVI_LIBERI` (foglio bianco);
+NON aggancia ad alcun template (composizione manuale) - disattiva il prototipo
+033 `IMPIANTI` e azzera i link demo `checklist_template_box`.
+**Prossima libera: 036.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -523,6 +527,30 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Capitoli come box + compositore di template** (migration 035;
+  `src/lib/admin/composizione.ts`, `src/admin/ComponiTemplate.tsx`,
+  `src/admin/TemplateList.tsx`, `src/lib/box.ts`): l'intera checklist "Audit
+  iniziale" e' stata seminata come CATALOGO di capitoli-box generici (11 capitoli,
+  134 voci, dal foglio `Riordino_Checklist_AuditIniziale.xlsx`) con sotto-domande
+  condizionate (`parent_voce_id` + `mostra_se_chiave`), scadenze ricorrenti
+  (`config.scadenza.periodicita_default_mesi` + `calendarizzabile`) e un box
+  `RILIEVI_LIBERI` (foglio bianco: rilievo ripetibile per note fuori check-list).
+  I capitoli NON sono agganciati ad alcun template: e' il back-office a comporre i
+  template. Nuovo tab d'azione "Componi da capitoli" nella lista template: si da'
+  un nome + tipo attivita e si spuntano i capitoli; i moduli speciali
+  (ORGANIGRAMMA 'smart' e COSE DA FARE pregresse 'fisso') sono SEMPRE proposti in
+  testa, gia' spuntati ma disattivabili. Salvando, il template diventa attivo e
+  compare nella scelta per seduta. Conseguenza architetturale: i fissi/smart NON
+  sono piu' auto-iniettati da `assicuraComposizione` (che ora materializza solo i
+  box del template); restano resi nella posizione giusta perche' `BoxGenerico`
+  filtra per `box.tipo` (i 'fisso' in testa). La 035 disattiva anche il prototipo
+  033 `IMPIANTI` (superato dal Cap.4 reale) e azzera i link demo
+  `checklist_template_box`. Generazione SQL deterministica (UUID v5 da codice,
+  ON CONFLICT DO NOTHING), validata con pglast; codice verificato con `tsc -b` +
+  `vite build`. Nota: 9 condizioni della catena "rifiuti" (Cap.9), troppo
+  ramificate per l'auto-wiring, sono seminate come voci di primo livello con la
+  condizione annotata in `descrizione`, da rifinire eventualmente nell'editor.
+
 - **Modello box, pregresse a inizio giro** (`src/BoxGenerico.tsx`,
   `src/Compilazione.tsx`): il box fisso "cose da fare pregresse" ora compare in
   TESTA al sopralluogo (prima della checklist), per rivedere cio' che e' rimasto

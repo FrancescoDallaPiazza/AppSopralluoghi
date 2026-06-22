@@ -6,11 +6,13 @@ import {
   caricaTemplates, impostaStatoTemplate, type TemplateRiga,
 } from '../lib/admin/templates';
 import TemplateEditor, { type AperturaEditor } from './TemplateEditor';
+import ComponiTemplate from './ComponiTemplate';
 
 export default function TemplateList() {
   const [righe, setRighe] = useState<TemplateRiga[]>([]);
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
   const [editor, setEditor] = useState<AperturaEditor | null>(null);
+  const [componi, setComponi] = useState(false);
   const [mostraArchiviati, setMostraArchiviati] = useState(false);
 
   function ricarica() {
@@ -20,6 +22,14 @@ export default function TemplateList() {
       .catch(() => setStato('errore'));
   }
   useEffect(ricarica, []);
+
+  if (componi) {
+    return (
+      <ComponiTemplate
+        onChiudi={(salvato) => { setComponi(false); if (salvato) ricarica(); }}
+      />
+    );
+  }
 
   if (editor) {
     return (
@@ -41,6 +51,7 @@ export default function TemplateList() {
             Modello configurabile per voce: scelta, testo, foto, rilievo, sotto-domande.
           </p>
         </div>
+        <button className="bo-btn ghost" onClick={() => setComponi(true)}>+ Componi da capitoli</button>
         <button className="bo-btn" onClick={() => setEditor({ modo: 'nuovo' })}>+ Nuovo template</button>
       </div>
 

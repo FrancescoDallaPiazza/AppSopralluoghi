@@ -201,6 +201,17 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     Una sola `assicuraComposizione`; semina solo l'istanza 'altri'. La collocazione
     e' data dalla posizione di mount, non dall'`ordine` congelato (assicuraComposizione
     invariata). Verificato `tsc -b` + `vite build`.
+  - [x] **Capitoli reali come box + compositore di template** (Canale 1 + 3,
+    migration **035**): seminati gli 11 capitoli dell'Audit Iniziale (134 voci, dal
+    foglio `Riordino_Checklist_AuditIniziale.xlsx`) come box generici + box
+    `RILIEVI_LIBERI` (foglio bianco). Nuovo compositore back-office
+    (`composizione.ts` + `ComponiTemplate.tsx`, azione "Componi da capitoli" nella
+    lista template): nome + tipo attivita + scelta capitoli; ORGANIGRAMMA e COSE DA
+    FARE sempre proposti e disattivabili. `assicuraComposizione` non auto-inietta
+    piu' i fissi (vengono dalla composizione). Chiude le lacune "comporre i veri
+    capitoli" e "editor back-office della composizione".
+    - [ ] **DEPLOY**: eseguire `supabase/migrations/035_box_seed_capitoli.sql`
+      nell'**SQL Editor** (Canale 3), poi push del codice su `main` + refresh PWA.
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza

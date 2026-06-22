@@ -84,8 +84,9 @@ export async function prefetchComposizioni(sopralluogoIds: string[]): Promise<vo
 }
 
 // Genera la composizione di default di un sopralluogo SE non ne esiste gia' una
-// (locale o lato server): box del template (checklist_template_box) + box fissi
-// iniettati sempre. Idempotente. Pensata per l'apertura del sopralluogo, anche
+// (locale o lato server): solo i box del template (checklist_template_box). I
+// moduli speciali (smart/fisso) si includono in fase di composizione del
+// template. Idempotente. Pensata per l'apertura del sopralluogo, anche
 // offline (lavora sul catalogo in cache); le righe create vanno in outbox.
 export async function assicuraComposizione(
   sopralluogoId: string,
@@ -97,12 +98,14 @@ export async function assicuraComposizione(
   const locali = await db.sopralluogoBox.where('sopralluogo_id').equals(sopralluogoId).toArray();
   if (locali.length) return locali.sort((a, b) => a.ordine - b.ordine);
 
-  // box del template (default) + box fissi, dal catalogo in cache
+  // box del template (default), dal catalogo in cache. NB: i moduli speciali
+  // (organigramma 'smart' e cose-da-fare pregresse 'fisso') NON sono piu'
+  // auto-iniettati: vanno scelti in fase di composizione del template (il
+  // compositore di back-office li propone sempre, ma compaiono solo se
+  // confermati). Restano comunque resi nella posizione giusta da BoxGenerico,
+  // che filtra per box.tipo (i 'fisso' in testa, gli altri dopo la checklist).
   const tb = (await db.templateBox.where('template_id').equals(templateId).toArray())
     .sort((a, b) => a.ordine - b.ordine);
-  const fissi = (await db.boxCatalogo.where('tipo').equals('fisso').toArray())
-    .filter((b) => b.attivo)
-    .sort((a, b) => a.ordine_default - b.ordine_default);
 
   const righe: SopralluogoBox[] = [];
   let ordine = 0;
@@ -110,13 +113,6 @@ export async function assicuraComposizione(
     righe.push({
       id: newId(), sopralluogo_id: sopralluogoId, box_id: r.box_id,
       box_versione: r.box_versione, ordine: ordine++, origine: 'template',
-    });
-  }
-  for (const b of fissi) {
-    if (righe.some((x) => x.box_id === b.id)) continue;
-    righe.push({
-      id: newId(), sopralluogo_id: sopralluogoId, box_id: b.id,
-      box_versione: b.versione, ordine: ordine++, origine: 'fisso',
     });
   }
   if (!righe.length) return [];
