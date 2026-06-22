@@ -4,7 +4,7 @@ import { db } from './lib/db';
 import { rimuoviAzione, runSync } from './lib/sync';
 import {
   apriCompilazione, iniziaCompilazione, generaAzione, completaSopralluogo,
-  isRipetibile,
+  isRipetibile, aggiornaTestataSopralluogo,
   type TemplateScelta,
 } from './lib/compilazione';
 import { toBaseSopralluogo, type SopralluogoConContesto } from './lib/sopralluoghi';
@@ -16,7 +16,7 @@ import FormazioneRiepilogo from './FormazioneRiepilogo';
 import BoxGenerico from './BoxGenerico';
 import { assicuraComposizione } from './lib/box';
 import { nomeCompleto } from './lib/types';
-import type { Azione, VoceTemplate, AreaInterna } from './lib/types';
+import type { Azione, VoceTemplate, AreaInterna, Sede } from './lib/types';
 import { renderVoce, I, type ContestoVoci, type Resp, type Bozza, type BozzaScad } from './vociRender';
 import { useCompilazioneVoci } from './lib/useCompilazioneVoci';
 import { annullaRevisione } from './lib/revisioni';
@@ -127,6 +127,28 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [tmplSel, setTmplSel] = useState<string | null>(null);
   const [tmplDefault, setTmplDefault] = useState<string | null>(null);
   const [avviando, setAvviando] = useState(false);
+
+  // --- testata: sede ispezionata + data effettiva (editabili) ---
+  const [sedeId, setSedeId] = useState<string | null>(sopralluogo.sede_id ?? null);
+  const [dataEff, setDataEff] = useState<string>(
+    (sopralluogo.data_effettiva ?? new Date().toISOString()).slice(0, 10),
+  );
+  const [sediCli, setSediCli] = useState<Sede[]>([]);
+  useEffect(() => {
+    const cid = sopralluogo.cliente_id;
+    if (!cid) { setSediCli([]); return; }
+    let vivo = true;
+    db.sediLocali.where('cliente_id').equals(cid).toArray()
+      .then((rows) => { if (vivo) setSediCli(rows.filter((s) => s.attivo)); })
+      .catch(() => { /* offline senza cache: nessuna tendina */ });
+    return () => { vivo = false; };
+  }, [sopralluogo.cliente_id]);
+  function persistiTestata(patch: { sede_id?: string | null; data_effettiva?: string | null }) {
+    void aggiornaTestataSopralluogo(
+      { ...sopralluogo, sede_id: sedeId, data_effettiva: dataEff || null } as SopralluogoConContesto,
+      patch,
+    );
+  }
   // true quando si sta modificando un sopralluogo già completato (una revisione)
   const inRevisione = (sopralluogo.revisione_corrente ?? 1) > 1;
 
@@ -394,6 +416,23 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           <div className="progress-wrap">
             <div className="progress-meta"><span>Avanzamento</span><span><b>{fatte}</b>/{totale} voci</span></div>
             <div className="bar"><i style={{ width: totale ? `${(fatte / totale) * 100}%` : '0%' }} /></div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '8px 0 2px', fontSize: 12, color: '#dfe7e4' }}>
+            {sediCli.length > 0 && (
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                Sede
+                <select value={sedeId ?? ''} style={{ fontSize: 12, padding: '3px 6px', borderRadius: 8, border: 'none' }}
+                  onChange={(e) => { const v = e.target.value || null; setSedeId(v); persistiTestata({ sede_id: v }); }}>
+                  <option value="">— sede unica —</option>
+                  {sediCli.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </label>
+            )}
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              Data
+              <input type="date" value={dataEff} style={{ fontSize: 12, padding: '3px 6px', borderRadius: 8, border: 'none' }}
+                onChange={(e) => { setDataEff(e.target.value); persistiTestata({ data_effettiva: e.target.value || null }); }} />
+            </label>
           </div>
         </header>
 

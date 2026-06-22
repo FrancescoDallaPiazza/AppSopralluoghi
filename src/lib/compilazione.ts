@@ -417,6 +417,18 @@ export async function generaAzione(i: InputAzione): Promise<Azione> {
   return azione;
 }
 
+// Aggiorna i metadati di testata del sopralluogo (sede ispezionata, data
+// effettiva) durante la compilazione: persiste via outbox come gli altri update.
+export async function aggiornaTestataSopralluogo(
+  sopr: SopralluogoConContesto,
+  patch: { sede_id?: string | null; data_effettiva?: string | null },
+): Promise<void> {
+  const agg: Sopralluogo = { ...toBaseSopralluogo(sopr), ...patch };
+  await db.sopralluoghi.put(agg);
+  await enqueueRow('sopralluogo', agg as unknown as Record<string, unknown>);
+  void runSync();
+}
+
 export async function completaSopralluogo(sopr: Sopralluogo): Promise<void> {
   const base = toBaseSopralluogo(sopr);
   const agg: Sopralluogo = {

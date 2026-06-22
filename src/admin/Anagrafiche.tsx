@@ -10,7 +10,10 @@ import {
   type ClienteRiga, type IncaricoRiga,
 } from '../lib/admin/anagrafiche';
 import { dateDaCadenza } from '../lib/admin/calendario';
-import type { Cliente, Incarico, IncaricoStato, CadenzaUnita } from '../lib/types';
+import {
+  caricaSedi, salvaSede, impostaStatoSede, sedeVuota,
+} from '../lib/admin/sedi';
+import type { Cliente, Incarico, IncaricoStato, CadenzaUnita, Sede } from '../lib/types';
 
 const STATO_INC: { v: IncaricoStato; l: string }[] = [
   { v: 'attivo', l: 'Attivo' }, { v: 'sospeso', l: 'Sospeso' }, { v: 'chiuso', l: 'Chiuso' },
@@ -130,6 +133,7 @@ function SchedaCliente({
   const [cliente, setCliente] = useState<Cliente>(() => clienteVuoto());
   const [persistito, setPersistito] = useState(!nuovo); // esiste sul DB?
   const [incarichi, setIncarichi] = useState<IncaricoRiga[]>([]);
+  const [sedi, setSedi] = useState<Sede[]>([]);
   const [tipi, setTipi] = useState<string[]>([]);
   const [fase, setFase] = useState<'carico' | 'pronto' | 'errore'>(nuovo ? 'pronto' : 'carico');
   const [msg, setMsg] = useState<string | null>(null);
@@ -149,6 +153,7 @@ function SchedaCliente({
         setFase('pronto');
       })
       .catch(() => setFase('errore'));
+    caricaSedi(clienteId!).then(setSedi).catch(() => setSedi([]));
   }
   useEffect(caricaTutto, [clienteId]);
 
@@ -190,6 +195,9 @@ function SchedaCliente({
 
   function ricaricaIncarichi() {
     caricaIncarichiCliente(cliente.id).then(setIncarichi).catch(() => {});
+  }
+  function ricaricaSedi() {
+    caricaSedi(cliente.id).then(setSedi).catch(() => {});
   }
 
   async function salvaIncaricoCorrente(inc: Incarico) {
@@ -321,6 +329,11 @@ function SchedaCliente({
         </div>
       </div>
 
+      {/* --- sedi --- */}
+      {persistito && (
+        <SediCliente clienteId={cliente.id} sedi={sedi} onCambia={ricaricaSedi} />
+      )}
+
       {/* --- incarichi --- */}
       <div className="bo-row" style={{ margin: '22px 0 12px' }}>
         <div className="grow"><h2 className="bo-h" style={{ margin: 0 }}>Incarichi</h2></div>
@@ -339,6 +352,7 @@ function SchedaCliente({
       {edit && (
         <EditorIncarico
           incarico={edit.inc} tipi={tipi} busy={busy}
+          sedi={sedi.filter((s) => s.attivo)}
           onSalva={salvaIncaricoCorrente}
           onAnnulla={() => setEdit(null)}
         />
@@ -396,11 +410,12 @@ function SchedaCliente({
 
 // --------------------------- editor di un incarico ---------------------------
 function EditorIncarico({
-  incarico, tipi, busy, onSalva, onAnnulla,
+  incarico, tipi, busy, sedi, onSalva, onAnnulla,
 }: {
   incarico: Incarico;
   tipi: string[];
   busy: boolean;
+  sedi: Sede[];
   onSalva: (i: Incarico) => void;
   onAnnulla: () => void;
 }) {
@@ -510,6 +525,14 @@ function EditorIncarico({
             onChange={(e) => patch({ durata_seduta_stimata_min: e.target.value ? Number(e.target.value) : null })} />
         </label>
         <label className="bo-field">
+          <span>Sede</span>
+          <select value={i.sede_id ?? ''}
+            onChange={(e) => patch({ sede_id: e.target.value || null })}>
+            <option value="">— nessuna (sede unica) —</option>
+            {sedi.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </select>
+        </label>
+        <label className="bo-field">
           <span>Stato</span>
           <select value={i.stato} onChange={(e) => patch({ stato: e.target.value as IncaricoStato })}>
             {STATO_INC.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
@@ -539,5 +562,82 @@ function EditorIncarico({
         <button className="bo-btn ghost" onClick={onAnnulla} disabled={busy}>Annulla</button>
       </div>
     </div>
+  );
+}
+
+// --------------------------- sedi di un cliente ---------------------------
+function RigaSede({ sede, onCambia }: { sede: Sede; onCambia: () => void }) {
+  const [s, setS] = useState<Sede>(sede);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const nuova = !sede.nome;
+
+  async function salva() {
+    setBusy(true); setMsg(null);
+    try { await salvaSede(s); onCambia(); if (nuova) setS(sedeVuota(sede.cliente_id)); }
+    catch (e) { setMsg((e as Error)?.message ?? 'Salvataggio non riuscito.'); }
+    finally { setBusy(false); }
+  }
+  async function toggle() {
+    setBusy(true); setMsg(null);
+    try { await impostaStatoSede(sede.id, !sede.attivo); onCambia(); }
+    catch { setMsg('Operazione non riuscita.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className={`bo-card ${s.attivo ? '' : 'dim'}`} style={{ marginBottom: 8 }}>
+      {msg && <div className="bo-err">{msg}</div>}
+      <div className="bo-grid">
+        <label className="bo-field">
+          <span>Nome sede</span>
+          <input type="text" value={s.nome}
+            onChange={(e) => setS({ ...s, nome: e.target.value.toUpperCase() })}
+            placeholder="es. SEDE LEGALE, STABILIMENTO 1" />
+        </label>
+        <label className="bo-field" style={{ marginBottom: 0 }}>
+          <span>Indirizzo</span>
+          <input type="text" value={s.indirizzo ?? ''}
+            onChange={(e) => setS({ ...s, indirizzo: e.target.value.toUpperCase() || null })} />
+        </label>
+      </div>
+      <div className="bo-bar">
+        <button className="bo-btn sm" onClick={() => void salva()} disabled={busy}>
+          {busy ? 'Salvo…' : nuova ? 'Aggiungi sede' : 'Salva'}
+        </button>
+        {!nuova && (
+          <button className="bo-btn ghost sm" onClick={() => void toggle()} disabled={busy}>
+            {sede.attivo ? 'Archivia' : 'Riattiva'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SediCliente({ clienteId, sedi, onCambia }: {
+  clienteId: string; sedi: Sede[]; onCambia: () => void;
+}) {
+  const [agg, setAgg] = useState(false);
+  return (
+    <>
+      <div className="bo-row" style={{ margin: '22px 0 12px' }}>
+        <div className="grow"><h2 className="bo-h" style={{ margin: 0 }}>Sedi</h2></div>
+        {!agg && <button className="bo-btn" onClick={() => setAgg(true)}>+ Aggiungi sede</button>}
+      </div>
+      <p className="bo-sub" style={{ margin: '0 0 10px' }}>
+        Una societa puo avere piu sedi. L'incarico ne sceglie una e il sopralluogo la eredita
+        (modificabile in testata). Senza sedi, vale l'indirizzo del cliente.
+      </p>
+
+      {agg && (
+        <RigaSede sede={sedeVuota(clienteId)}
+          onCambia={() => { onCambia(); setAgg(false); }} />
+      )}
+      {sedi.length === 0 && !agg && (
+        <div className="bo-empty">Nessuna sede registrata.</div>
+      )}
+      {sedi.map((s) => <RigaSede key={s.id} sede={s} onCambia={onCambia} />)}
+    </>
   );
 }

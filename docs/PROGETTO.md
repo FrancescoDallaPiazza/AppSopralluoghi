@@ -220,8 +220,9 @@ NON aggancia ad alcun template (composizione manuale) - disattiva il prototipo
 "Inquadramento azienda": profilo attivita + documenti societari, 5 voci),
 rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione periodica" ·
 037 opzione A anti-sovrapposizione: archivia Cap.2 'Formazione', rimuove la sezione
-'Organigramma' da Cap.1 (coperti dai moduli smart) e rinomina Cap.1 "Riunione periodica".
-**Prossima libera: 038.**
+'Organigramma' da Cap.1 (coperti dai moduli smart) e rinomina Cap.1 "Riunione periodica" ·
+038 sfoltisce il Cap.0 Anagrafica (rimuove Azienda/Data/Luogo, ora in testata di compilazione).
+**Prossima libera: 039.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -532,6 +533,21 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Sedi multiple per cliente + testata sopralluogo + Cap.0 sfoltito**
+  (migration 038; `src/lib/admin/sedi.ts`, `src/admin/Anagrafiche.tsx`,
+  `src/lib/admin/anagrafiche.ts`, `src/lib/admin/pianificazione.ts`,
+  `src/lib/sopralluoghi.ts`, `src/lib/compilazione.ts`, `src/Compilazione.tsx`):
+  una societa' puo' ora avere PIU' SEDI gestite in Anagrafiche (nome + indirizzo,
+  in stampatello, archiviabili). L'incarico sceglie una sede (tendina); il
+  sopralluogo la EREDITA alla generazione (`incarico.sede_id` -> `sopralluogo.sede_id`,
+  aggiunto a `COLONNE_SOPRALLUOGO`). In compilazione la TESTATA mostra Azienda (dal
+  cliente), una tendina SEDE (sedi del cliente, offline da `db.sediLocali`) e la
+  DATA effettiva auto-popolata ED EDITABILE; sede/data si salvano via outbox
+  (`aggiornaTestataSopralluogo`). Di conseguenza il Cap.0 Anagrafica e' stato
+  sfoltito (migration 038): rimosse le voci Azienda/Data/Luogo (duplicavano i
+  metadati del sopralluogo), restano Rif. Doc. Num. e i due Documenti
+  consegnati/presi in consegna. Verificato `tsc -b` + `vite build`.
+
 - **Anagrafiche in STAMPATELLO** (`src/admin/Anagrafiche.tsx`,
   `src/FormazioneRiepilogo.tsx`, `src/admin/Formazione.tsx`): gli inserimenti di
   identita' di societa' e persone vengono forzati in maiuscolo gia' alla

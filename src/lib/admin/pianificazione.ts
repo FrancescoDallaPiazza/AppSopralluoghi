@@ -11,7 +11,7 @@ import { newId, type Incarico, type Sopralluogo, type Tecnico } from '../types';
 
 const COLONNE_SOPRALLUOGO =
   'id, incarico_id, progressivo, tecnico_id, data_pianificata, data_effettiva, ' +
-  'durata_stimata_min, durata_effettiva_min, localita, stato, werp_attivita_id';
+  'durata_stimata_min, durata_effettiva_min, localita, stato, werp_attivita_id, sede_id';
 
 const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
   Array.isArray(v) ? v[0] : (v ?? undefined);
@@ -32,7 +32,7 @@ export async function caricaIncarichi(): Promise<IncaricoPiano[]> {
     .select(`
       id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi,
       periodo_inizio, periodo_fine, durata_seduta_stimata_min, stato,
-      cadenza_valore, cadenza_unita,
+      cadenza_valore, cadenza_unita, sede_id,
       cliente:cliente!cliente_id ( ragione_sociale, localita )
     `)
     .order('stato', { ascending: true })
@@ -82,7 +82,7 @@ export async function caricaPiano(incaricoId: string): Promise<PianoIncarico> {
     .select(`
       id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi,
       periodo_inizio, periodo_fine, durata_seduta_stimata_min, stato,
-      cadenza_valore, cadenza_unita,
+      cadenza_valore, cadenza_unita, sede_id,
       cliente:cliente!cliente_id ( ragione_sociale, localita, indirizzo, lat, lng )
     `)
     .eq('id', incaricoId).maybeSingle();
@@ -157,6 +157,7 @@ export async function generaSopralluoghiMancanti(piano: PianoIncarico): Promise<
       localita: cliente_localita,
       stato: 'pianificato',
       werp_attivita_id: null,
+      sede_id: incarico.sede_id ?? null,
     });
   }
   const { error } = await supabase.from('sopralluogo').insert(
@@ -164,6 +165,7 @@ export async function generaSopralluoghiMancanti(piano: PianoIncarico): Promise<
       id: s.id, incarico_id: s.incarico_id, progressivo: s.progressivo,
       tecnico_id: s.tecnico_id, data_pianificata: s.data_pianificata,
       durata_stimata_min: s.durata_stimata_min, localita: s.localita, stato: s.stato,
+      sede_id: s.sede_id ?? null,
     })),
   );
   if (error) throw error;
@@ -181,6 +183,7 @@ export async function salvaSopralluogo(s: Sopralluogo): Promise<void> {
     durata_stimata_min: s.durata_stimata_min,
     localita: s.localita,
     stato: s.stato,
+    sede_id: s.sede_id ?? null,
   }, { onConflict: 'id' });
   if (error) throw error;
 }

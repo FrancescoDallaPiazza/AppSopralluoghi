@@ -23,7 +23,7 @@ const COLONNE_CLIENTE =
   'id, werp_id, ragione_sociale, referente, telefono, email, localita, indirizzo, lat, lng, attivo';
 const COLONNE_INCARICO =
   'id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi, periodo_inizio, ' +
-  'periodo_fine, durata_seduta_stimata_min, stato, cadenza_valore, cadenza_unita';
+  'periodo_fine, durata_seduta_stimata_min, stato, cadenza_valore, cadenza_unita, sede_id';
 
 const vuotoNull = (s: string | null | undefined): string | null => {
   const v = (s ?? '').trim();
@@ -168,6 +168,7 @@ export async function salvaIncarico(i: Incarico): Promise<void> {
     stato: i.stato,
     cadenza_valore: haCadenza ? i.cadenza_valore : null,
     cadenza_unita: haCadenza ? i.cadenza_unita : null,
+    sede_id: i.sede_id ?? null,
   }, { onConflict: 'id' });
   if (error) throw error;
 }
@@ -198,7 +199,7 @@ export function incaricoVuoto(clienteId: string): Incarico {
     id: newId(), cliente_id: clienteId, werp_id: null, tipo_attivita: '',
     n_sopralluoghi: 1, periodo_inizio: iso(oggi), periodo_fine: iso(traUnAnno),
     durata_seduta_stimata_min: 180, stato: 'attivo',
-    cadenza_valore: null, cadenza_unita: null,
+    cadenza_valore: null, cadenza_unita: null, sede_id: null,
   };
 }
 
