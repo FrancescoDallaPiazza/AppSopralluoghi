@@ -35,6 +35,11 @@ const TXT: Record<StatoRequisito, string> = {
   conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo', da_verificare: 'Da verificare',
 };
 
+// Badge obbligo della figura (stesso wording del back-office).
+const LABEL_OBBLIGO: Record<string, string> = {
+  sempre: 'sempre', condizionale: 'se ricorre', eventuale: 'eventuale',
+};
+
 const TIPI_ESONERO: Array<{ v: TipoEsonero; l: string }> = [
   { v: 'titolo_studio', l: 'Titolo di studio' },
   { v: 'abilitazione', l: 'Abilitazione' },
@@ -108,6 +113,22 @@ const CSS = `
 .fzr-conf-last{font-size:11.5px; color:var(--ink-soft,#5b5f66); margin-bottom:8px;}
 .fzr-conf textarea{width:100%; box-sizing:border-box; padding:8px 9px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:13px; min-height:54px; resize:vertical; background:#fff; color:var(--ink,#2a2c30); margin-bottom:8px;}
 .fzr-warn{font-size:11.5px; color:var(--hi-dark,#9a6206); background:#fbf0d6; border-radius:8px; padding:6px 9px; margin-bottom:10px;}
+.fzr-cop{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; overflow:hidden;}
+.fzr-cop-h{width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; border:none; background:#f6f2ea; cursor:pointer; font:inherit; font-weight:700; font-size:13px;}
+.fzr-cop-body{padding:4px 11px 10px;}
+.fzr-figrow{padding:7px 2px; border-top:1px solid var(--line,#e3ddd2);}
+.fzr-figrow:first-child{border-top:none;}
+.fzr-figrow-top{display:flex; align-items:center; gap:8px;}
+.fzr-dot-wrap{flex:0 0 auto; display:flex; align-items:center;}
+.fzr-figrow-nome{flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+.fzr-badge{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; padding:1px 6px; border-radius:999px;}
+.fzr-badge.sempre{background:var(--no-bg,#fbeae6); color:var(--no,#d8442f);}
+.fzr-badge.condizionale{background:#fbf0d6; color:var(--hi-dark,#9a6206);}
+.fzr-badge.eventuale{background:#e8ebf0; color:#51607a;}
+.fzr-figrow-people{display:flex; flex-wrap:wrap; gap:6px; margin:5px 0 0 18px;}
+.fzr-figrow-chip{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink,#2a2c30); background:#f1ede5; border-radius:999px; padding:2px 9px;}
+.fzr-figrow-crit{font-size:11.5px; font-weight:700; color:var(--no,#d8442f);}
+.fzr-figrow-empty{font-size:11.5px; color:var(--ink-soft,#5b5f66);}
 `;
 
 interface Props {
@@ -198,6 +219,165 @@ function PersonaForm({
           <button className="fzr-btn danger" disabled={busy} onClick={() => void rimuovi()}>Rimuovi persona</button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------- pannello assegnazione PER FIGURA (paradigma back-office) ----------
+// Aperto dal bottone "assegna/modifica" di una riga-figura: si spuntano le
+// persone gia' in organigramma da incaricare di QUELLA figura, e/o se ne crea
+// una nuova al volo (cognome/nome). Per chi viene assegnato per la prima volta a
+// un ruolo con formazione soggetta al regime ASR 2025 si chiede se ha formazione
+// pregressa. Tutte scritture offline (outbox) via sync.ts.
+function AssegnaFiguraPanel({
+  figura, persone, clienteId, chiediPregressa, onSaved, onClose,
+}: {
+  figura: FiguraSicurezza;
+  persone: Persona[];
+  clienteId: string;
+  chiediPregressa: boolean;
+  onSaved: () => Promise<void>;
+  onClose: () => void;
+}) {
+  const [nomine, setNomineLocal] = useState<Nomina[]>([]);
+  // titolari attuali della figura (nomine attive)
+  const titolari = useMemo(
+    () => nomine.filter((n) => n.attiva && n.figura_codice === figura.codice).map((n) => n.persona_id),
+    [nomine, figura.codice],
+  );
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [nuovoCognome, setNuovoCognome] = useState('');
+  const [nuovoNome, setNuovoNome] = useState('');
+  const [busy, setBusy] = useState(false);
+  // passo 2: per chi e' appena stato assegnato si chiede la formazione pregressa
+  const [step, setStep] = useState<'assegna' | 'pregressa'>('assegna');
+  const [nuove, setNuove] = useState<Persona[]>([]);
+  const [risposte, setRisposte] = useState<Record<string, boolean>>({});
+
+  // carico le nomine correnti dalla cache locale (offline-safe)
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const o = await caricaOrganigrammaLocale(clienteId);
+      if (!vivo) return;
+      setNomineLocal(o.nomine);
+      setSel(new Set(o.nomine.filter((n) => n.attiva && n.figura_codice === figura.codice).map((n) => n.persona_id)));
+    })();
+    return () => { vivo = false; };
+  }, [clienteId, figura.codice]);
+
+  const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  async function salva() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const dopo = new Set(sel);
+      const aggiunte: Persona[] = [];
+      // crea la nuova persona, se indicata
+      if (nuovoCognome.trim() || nuovoNome.trim()) {
+        const creata: Persona = {
+          id: newId(), cliente_id: clienteId,
+          nome: nuovoNome.trim(), cognome: nuovoCognome.trim() || null,
+          codice_fiscale: null, mansione: null, reparto: null, data_assunzione: null,
+          livello_rischio: null, attivo: true, note: null, formazione_pregressa: false,
+        };
+        await salvaPersona(creata);
+        dopo.add(creata.id);
+        aggiunte.push(creata);
+      }
+      // aggiunte: selezionati ora ma non titolari prima
+      for (const id of dopo) {
+        if (titolari.includes(id)) continue;
+        const esistente = nomine.find((n) => n.persona_id === id && n.figura_codice === figura.codice);
+        if (esistente) await salvaNomina({ ...esistente, attiva: true });
+        else await salvaNomina({ id: newId(), persona_id: id, figura_codice: figura.codice, data_nomina: oggiISO(), attiva: true, note: null });
+        if (!aggiunte.some((a) => a.id === id)) {
+          const p = persone.find((x) => x.id === id);
+          if (p) aggiunte.push(p);
+        }
+      }
+      // rimozioni: titolari prima ma non piu' selezionati
+      for (const id of titolari) {
+        if (dopo.has(id)) continue;
+        const att = nomine.find((n) => n.persona_id === id && n.figura_codice === figura.codice && n.attiva);
+        if (att) await eliminaNomina(att.id);
+      }
+      // passo 2 (pregressa) solo per chi e' stato assegnato ex-novo a un ruolo
+      // con formazione soggetta al regime ASR 2025.
+      if (chiediPregressa && aggiunte.length > 0) {
+        setNuove(aggiunte);
+        setRisposte(Object.fromEntries(aggiunte.map((p) => [p.id, false])));
+        setStep('pregressa');
+        await onSaved();
+        setBusy(false);
+        return;
+      }
+      await onSaved();
+      onClose();
+    } finally { setBusy(false); }
+  }
+
+  async function confermaPregressa() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      for (const p of nuove) {
+        if (risposte[p.id]) await salvaPersona({ ...p, formazione_pregressa: true });
+      }
+      await onSaved();
+      onClose();
+    } finally { setBusy(false); }
+  }
+
+  if (step === 'pregressa') {
+    return (
+      <div className="fzr-ed">
+        <div className="fzr-hint" style={{ marginTop: 0 }}>
+          Per ogni persona appena assegnata a &laquo;{figura.nome}&raquo;: l'azienda era gi&agrave;
+          operante prima dell'ASR 2025 con formazione pregressa? Se s&igrave;, i requisiti senza
+          attestato risultano &laquo;da verificare&raquo; invece di &laquo;critici&raquo;.
+        </div>
+        {nuove.map((p) => (
+          <label key={p.id} className="fzr-fig-row">
+            <input type="checkbox" checked={!!risposte[p.id]} disabled={busy}
+              onChange={(e) => setRisposte((r) => ({ ...r, [p.id]: e.target.checked }))} />
+            <span>{nomePersona(p)} {'\u2014'} formazione pregressa</span>
+          </label>
+        ))}
+        <div className="fzr-actions" style={{ marginTop: 8 }}>
+          <button className="fzr-btn primary" disabled={busy} onClick={() => void confermaPregressa()}>Conferma</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fzr-ed">
+      {persone.length > 0 && (
+        <div className="fzr-grp" style={{ marginTop: 0 }}>Persone gi&agrave; in organigramma</div>
+      )}
+      {persone.map((p) => (
+        <label key={p.id} className="fzr-fig-row">
+          <input type="checkbox" checked={sel.has(p.id)} disabled={busy} onChange={() => toggle(p.id)} />
+          <span>{nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}</span>
+        </label>
+      ))}
+      <div className="fzr-grp">Oppure aggiungi una persona nuova</div>
+      <div className="fzr-row2">
+        <div className="fzr-field">
+          <label>Cognome</label>
+          <input type="text" value={nuovoCognome} disabled={busy} onChange={(e) => setNuovoCognome(e.target.value.toUpperCase())} />
+        </div>
+        <div className="fzr-field">
+          <label>Nome</label>
+          <input type="text" value={nuovoNome} disabled={busy} onChange={(e) => setNuovoNome(e.target.value.toUpperCase())} />
+        </div>
+      </div>
+      <div className="fzr-actions">
+        <button className="fzr-btn primary" disabled={busy} onClick={() => void salva()}>Salva</button>
+        <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>
+      </div>
     </div>
   );
 }
@@ -474,7 +654,8 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
   const [figPersona, setFigPersona] = useState<string | null>(null); // figure di una persona
   const [editPersona, setEditPersona] = useState<string | null>(null); // anagrafica di una persona
   const [addPersona, setAddPersona] = useState(false);
-  const [coperturaAperta, setCoperturaAperta] = useState(false); // checklist figure attese
+  const [coperturaAperta, setCoperturaAperta] = useState(true); // checklist figure attese (azionabile)
+  const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null); // codice figura in assegnazione
 
   // conferma tracciata
   const [conferma, setConferma] = useState<OrganigrammaConferma | null>(null);
@@ -606,20 +787,31 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
 
   // Copertura figure attese (come il tab Formazione del back-office): tutte le
   // figure del catalogo, raggruppate per blocco, con chi le copre e quali sono
-  // scoperte. Cosi' il modulo "propone" le figure anche con organigramma vuoto.
+  // scoperte. Qui la lista e' AZIONABILE: ogni figura ha "assegna/modifica" per
+  // attaccarle un nominativo (persona esistente o nuova al volo).
   const scoperteSet = new Set(riep.figureScoperte.map((f) => f.codice));
   const figureAttese = (org?.figure ?? []).filter((f) => f.attiva)
     .slice().sort((a, b) => (a.gruppo_ordine ?? 999) - (b.gruppo_ordine ?? 999) || a.ordine - b.ordine);
-  const gruppiCopertura: { nome: string; righe: { figura: FiguraSicurezza; persone: string[] }[] }[] = [];
+  // mappa corso_codice -> categoria, per capire se una figura ha formazione
+  // soggetta al regime "pregressa" (ASR 2025): in tal caso, assegnando una nuova
+  // persona, si chiede subito se ha formazione pregressa.
+  const catDiCorso = new Map((org?.corsi ?? []).map((c) => [c.codice, c.categoria]));
+  const figureChePregressa = new Set<string>();
+  for (const r of (org?.requisiti ?? [])) {
+    const cat = catDiCorso.get(r.corso_codice) ?? '';
+    if (!CATEGORIE_NO_PREGRESSA.has(cat)) figureChePregressa.add(r.figura_codice);
+  }
+  type RigaCop = { figura: FiguraSicurezza; assegnate: typeof riep.persone };
+  const gruppiCopertura: { nome: string; righe: RigaCop[] }[] = [];
   for (const f of figureAttese) {
-    const persone = riep.persone
-      .filter((p) => p.figure.some((x) => x.codice === f.codice))
-      .map((p) => nomePersona(p.persona));
+    const assegnate = riep.persone.filter((p) => p.figure.some((x) => x.codice === f.codice));
     const g = f.gruppo || 'Altre figure';
     let grp = gruppiCopertura.find((x) => x.nome === g);
     if (!grp) { grp = { nome: g, righe: [] }; gruppiCopertura.push(grp); }
-    grp.righe.push({ figura: f, persone });
+    grp.righe.push({ figura: f, assegnate });
   }
+  // tutte le persone in organigramma (per il selettore di assegnazione)
+  const tuttePersone = riep.persone.map((p) => p.persona);
 
   return (
     <div className="fzr">
@@ -646,9 +838,8 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
       )}
 
       {figureAttese.length > 0 && (
-        <div style={{ border: '1px solid var(--line,#e3ddd2)', borderRadius: 10, margin: '4px 0 12px', overflow: 'hidden' }}>
-          <button type="button" onClick={() => setCoperturaAperta((v) => !v)}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 11px', border: 'none', background: '#f6f2ea', cursor: 'pointer', font: 'inherit', fontWeight: 700, fontSize: 13 }}>
+        <div className="fzr-cop">
+          <button type="button" className="fzr-cop-h" onClick={() => setCoperturaAperta((v) => !v)}>
             <span>
               Figure attese (copertura)
               {riep.figureScoperte.length > 0 && (
@@ -658,19 +849,53 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
             <span style={{ fontSize: 16 }}>{coperturaAperta ? '\u2212' : '+'}</span>
           </button>
           {coperturaAperta && (
-            <div style={{ padding: '4px 11px 10px' }}>
+            <div className="fzr-cop-body">
               {gruppiCopertura.map((g) => (
                 <div key={g.nome}>
                   <div className="fzr-grp">{g.nome}</div>
-                  {g.righe.map(({ figura, persone }) => (
-                    <div key={figura.codice} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '4px 2px', fontSize: 12.5 }}>
-                      <span className={'fzr-dot ' + (persone.length ? 'conforme' : (scoperteSet.has(figura.codice) ? 'critico' : 'in_scadenza'))} />
-                      <span style={{ flex: '1 1 auto' }}>{figura.nome}</span>
-                      <span style={{ flex: '0 0 auto', color: persone.length ? 'var(--ink-soft,#5b5f66)' : (scoperteSet.has(figura.codice) ? 'var(--no,#d8442f)' : 'var(--ink-soft,#5b5f66)'), fontWeight: persone.length ? 600 : 700, textAlign: 'right', maxWidth: '58%' }}>
-                        {persone.length ? persone.join(', ') : (scoperteSet.has(figura.codice) ? 'scoperto (obbligatorio)' : 'non assegnata')}
-                      </span>
-                    </div>
-                  ))}
+                  {g.righe.map(({ figura, assegnate }) => {
+                    const scoperta = scoperteSet.has(figura.codice);
+                    const stato = assegnate.length ? 'conforme' : (scoperta ? 'critico' : 'in_scadenza');
+                    const aperto = assegnaFigura === figura.codice;
+                    return (
+                      <div key={figura.codice} className="fzr-figrow">
+                        <div className="fzr-figrow-top">
+                          <span className="fzr-dot-wrap">
+                            <span className={'fzr-dot ' + stato} />
+                          </span>
+                          <span className="fzr-figrow-nome">
+                            {figura.nome}
+                            {figura.obbligo && <span className={'fzr-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
+                          </span>
+                          <button className="fzr-edit-btn" onClick={() => setAssegnaFigura(aperto ? null : figura.codice)}>
+                            {aperto ? 'Chiudi' : (assegnate.length ? 'Modifica' : 'Assegna')}
+                          </button>
+                        </div>
+                        <div className="fzr-figrow-people">
+                          {assegnate.length
+                            ? assegnate.map((pv) => (
+                                <span key={pv.persona.id} className="fzr-figrow-chip">
+                                  <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
+                                  {nomePersona(pv.persona)}
+                                </span>
+                              ))
+                            : <span className={scoperta ? 'fzr-figrow-crit' : 'fzr-figrow-empty'}>
+                                {scoperta ? 'scoperto (obbligatorio)' : 'non assegnata'}
+                              </span>}
+                        </div>
+                        {aperto && org && (
+                          <AssegnaFiguraPanel
+                            figura={figura}
+                            persone={tuttePersone}
+                            clienteId={clienteId}
+                            chiediPregressa={figureChePregressa.has(figura.codice)}
+                            onSaved={ricaricaLocale}
+                            onClose={() => setAssegnaFigura(null)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -678,8 +903,12 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
         </div>
       )}
 
+      {!vuoto && (
+        <div className="fzr-grp" style={{ marginTop: 14 }}>Dettaglio persone e formazione</div>
+      )}
+
       {vuoto && !addPersona && (
-        <div className="empty">Nessuna persona in organigramma. Usa "+ Persona" per iniziare a compilarlo.</div>
+        <div className="empty">Nessuna persona in organigramma. Assegna un nominativo a una figura qui sopra, oppure usa "+ Persona".</div>
       )}
 
       {riep.persone.map((pv) => {

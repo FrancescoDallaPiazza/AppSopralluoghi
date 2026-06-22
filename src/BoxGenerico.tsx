@@ -194,7 +194,7 @@ export default function BoxGenerico({
 
 const CSS = `
 .boxgen .box{margin:0 0 18px;}
-.boxgen .box-h{display:flex; flex-direction:column; gap:2px; padding:10px 2px 8px; border-bottom:2px solid var(--line,#e6e2da);}
+.boxgen .box-h{display:flex; flex-direction:column; gap:2px; padding:12px 14px 10px; border-bottom:2px solid var(--line,#e6e2da);}
 .boxgen .box-nome{font-weight:700; font-size:1.05rem;}
 .boxgen .box-desc{font-size:.82rem; color:var(--muted,#8a8a8a);}
 .boxgen .box-sez{margin:12px 0;}

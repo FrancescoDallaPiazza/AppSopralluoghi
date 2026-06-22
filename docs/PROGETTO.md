@@ -298,8 +298,13 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   cache il livello di rischio del cliente. Il tecnico puo' aggiungere/modificare/
   rimuovere persone, assegnare/togliere figure (nomine), e per ogni requisito
   registrare/aggiornare l'attestato o registrare/rimuovere un esonero: tutte
-  scritture offline via `sync.ts` con rivalutazione immediata dei semafori. A fine
-  consultazione una **conferma tracciata** (tecnico + data + tipo compilato/
+  scritture offline via `sync.ts` con rivalutazione immediata dei semafori.
+  L'assegnazione segue il paradigma del back-office: si parte dalla **figura**
+  ("Figure attese", azionabile) e con "Assegna/Modifica" le si attacca un
+  nominativo (persona esistente o creata al volo), con la domanda sulla
+  formazione pregressa quando il ruolo lo richiede; le card per-persona sotto
+  restano per gestire attestati/esoneri. A fine consultazione una **conferma
+  tracciata** (tecnico + data + tipo compilato/
   confermato/variato) finisce su `organigramma_conferma`. Lo "Scarica per offline"
   (`prefetch.ts`) precarica anche catalogo + persone dei clienti coinvolti.
   File: `src/FormazioneRiepilogo.tsx`, innesto in `src/Compilazione.tsx` (sheet +
@@ -533,6 +538,28 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modulo Organigramma in campo: copertura figure AZIONABILE + fix titolo box**
+  (`src/FormazioneRiepilogo.tsx`, `src/BoxGenerico.tsx`).
+  1) La sezione "Figure attese (copertura)" del modulo speciale in campo non e'
+  piu' un elenco di sola lettura: ora adotta lo STESSO paradigma del tab
+  Formazione del back-office. Ogni figura ha il suo badge di obbligo (sempre / se
+  ricorre / eventuale), il pallino di stato, i nominativi assegnati (con il loro
+  semaforo) e un bottone "Assegna/Modifica" per riga. Il bottone apre inline il
+  nuovo `AssegnaFiguraPanel`: si spuntano le persone gia' in organigramma da
+  incaricare di QUELLA figura e/o se ne crea una nuova al volo (cognome/nome).
+  Per chi viene assegnato ex-novo a un ruolo con formazione soggetta al regime
+  ASR 2025 (categoria non in `CATEGORIE_NO_PREGRESSA`) si chiede subito la
+  formazione pregressa. Tutte scritture offline (outbox) via `sync.ts`
+  (`salvaPersona`, `salvaNomina`, `eliminaNomina`) con rivalutazione immediata
+  dei semafori. La copertura e' aperta di default; le card per-persona restano
+  sotto come "Dettaglio persone e formazione" per gestire attestati/esoneri.
+  Cosi' il tecnico parte dalla figura scoperta e ci attacca il nominativo, invece
+  di dover creare prima una persona generica e poi cercarla.
+  2) Fix UI: il titolo del box (header nero "Organigramma e formazione") era
+  troppo attaccato al bordo sinistro -> `.boxgen .box-h` ora ha padding sinistro
+  comodo (`12px 14px 10px`), valido per tutti i box. Verificato `tsc -b` +
+  `vite build`.
+
 - **"Riallinea capitoli" nel sopralluogo + copertura figure nel modulo Formazione**
   (`src/lib/box.ts`, `src/Compilazione.tsx`, `src/BoxGenerico.tsx`,
   `src/FormazioneRiepilogo.tsx`).
