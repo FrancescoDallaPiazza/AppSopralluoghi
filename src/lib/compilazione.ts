@@ -370,6 +370,7 @@ export interface InputAzione {
   tecnicoId: string;               // destinatario interno (può essere un tecnico diverso da chi compila)
   areaId?: string | null;          // se interno -> a un'area invece che al tecnico
   periodicitaMesi?: number | null;
+  componenteId?: string | null;    // componente del box ripetibile (origine dell'esito)
 }
 
 export async function generaAzione(i: InputAzione): Promise<Azione> {
@@ -410,6 +411,7 @@ export async function generaAzione(i: InputAzione): Promise<Azione> {
     periodicita_mesi: i.tipo === 'scadenza_ricorrente' ? (i.periodicitaMesi ?? null) : null,
     werp_attivita_id: esistente?.werp_attivita_id ?? null,
     notificata_il: esistente?.notificata_il ?? null,
+    componente_id: i.componenteId ?? null,
   };
   await salvaAzione(azione);
   return azione;

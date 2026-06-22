@@ -523,6 +523,16 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modello box, `componente_id` fino all'azione** (`src/lib/azioni.ts`,
+  `src/lib/compilazione.ts`, `src/Compilazione.tsx`): le cose-da-fare generate da
+  un box ripetibile ora portano direttamente `azione.componente_id` (prima il
+  legame col componente esisteva solo via `origine_esito_id` -> `esito.componente_id`).
+  `InputAzione.componenteId` + `generaAzione` impostano il campo; `completa()` lo
+  passa dall'esito in entrambi i cicli (correttive e scadenze): null per le voci
+  piatte, id del componente per i box. `componente_id` aggiunto a `COLONNE_AZIONE`
+  cosi' select e `toBaseAzione` lo preservano alla rilettura/upsert. Abilita
+  raggruppamenti/report per componente (es. cose da fare per singolo quadro).
+  Verificato `tsc -b` + `vite build`. Nessuna migration (colonna gia' da 032).
 - **Modello box, instradamento smart e fisso** (`src/BoxGenerico.tsx`,
   `src/Compilazione.tsx`, `034_box_smart_fisso.sql`): `BoxGenerico` non e' piu' il
   solo renderer dei generici ma un dispatcher per tipo. I box SMART con

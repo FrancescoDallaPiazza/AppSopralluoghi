@@ -188,8 +188,13 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     `ORGANIGRAMMA` (agganciato ai template attivi) + box fisso `PREGRESSE`
     (auto-iniettato in ogni sopralluogo da `assicuraComposizione`). Verificato
     `tsc -b` + `vite build`; SQL pglast/ASCII/idempotente.
-  - [ ] Rifinitura: passare `componente_id` anche a `generaAzione`/`InputAzione`
-    (oggi l'azione-box lo eredita via `origine_esito_id` → `esito.componente_id`).
+  - [x] **`componente_id` fino all'azione** (Canale 1): `InputAzione.componenteId`
+    + `generaAzione` ora impostano `azione.componente_id`; `completa()` lo passa
+    dall'esito in entrambi i cicli (correttive e scadenze) — vale per le voci
+    piatte (null) e per i box ripetibili (id del componente). `componente_id`
+    aggiunto a `COLONNE_AZIONE` (select + `toBaseAzione` lo preservano alla
+    rilettura/upsert). Verificato `tsc -b` + `vite build`. Nessuna migration
+    (colonna gia' da 032).
   - [ ] Il box fisso "pregresse" e' appeso in fondo (assicuraComposizione mette i
     fissi dopo i box del template). Valutare se anteporlo (rivedere le pregresse a
     inizio giro) con un `ordine` negativo o un riordino dedicato dei fissi.

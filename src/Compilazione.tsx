@@ -281,6 +281,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             clienteId: sopralluogo.cliente_id,
             tecnicoId: interno ? (b.tecnicoTargetId ?? tecnicoId) : tecnicoId,
             areaId: interno ? b.areaId : null,
+            componenteId: e.componente_id ?? null,
           });
         }
       }
@@ -296,6 +297,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
           tecnicoId: interno ? (s.tecnicoTargetId ?? tecnicoId) : tecnicoId,
           periodicitaMesi: s.mesi,
           areaId: interno ? s.areaId : null,
+          componenteId: e?.componente_id ?? null,
         });
       }
       // Riconcilia le CANCELLAZIONI: elimina le azioni di questo sopralluogo
