@@ -10,13 +10,14 @@ import Anagrafiche from './Anagrafiche';
 import Tecnici from './Tecnici';
 import Aree from './Aree';
 import TemplateList from './TemplateList';
+import CapitoliList from './CapitoliList';
 import Pianificazione from './Pianificazione';
 import Disponibilita from './Disponibilita';
 import Formazione from './Formazione';
 import CoseDaFare from './CoseDaFare';
 
 type Sezione =
-  | 'anagrafiche' | 'tecnici' | 'aree' | 'template'
+  | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
   | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare';
 
 export default function BackOffice({
@@ -47,6 +48,8 @@ export default function BackOffice({
             onClick={() => setSezione('aree')}>Aree</button>
           <button className={`bo-tab ${sezione === 'template' ? 'on' : ''}`}
             onClick={() => setSezione('template')}>Template</button>
+          <button className={`bo-tab ${sezione === 'capitoli' ? 'on' : ''}`}
+            onClick={() => setSezione('capitoli')}>Capitoli</button>
           <button className={`bo-tab ${sezione === 'pianificazione' ? 'on' : ''}`}
             onClick={() => setSezione('pianificazione')}>Pianificazione</button>
           <button className={`bo-tab ${sezione === 'disponibilita' ? 'on' : ''}`}
@@ -63,6 +66,7 @@ export default function BackOffice({
         {sezione === 'tecnici' && <Tecnici />}
         {sezione === 'aree' && <Aree />}
         {sezione === 'template' && <TemplateList />}
+        {sezione === 'capitoli' && <CapitoliList />}
         {sezione === 'pianificazione' && <Pianificazione />}
         {sezione === 'disponibilita' && <Disponibilita />}
         {sezione === 'formazione' && <Formazione />}

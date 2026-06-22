@@ -30,9 +30,9 @@ const TIPI: { v: VoceTipo; label: string }[] = [
   { v: 'foto', label: 'Foto' },
   { v: 'rilievo', label: 'Rilievo' },
 ];
-const haOpzioni = (t: VoceTipo) => t === 'scelta' || t === 'multiscelta';
+export const haOpzioni = (t: VoceTipo) => t === 'scelta' || t === 'multiscelta';
 
-function configDefault(tipo: VoceTipo): VoceConfig {
+export function configDefault(tipo: VoceTipo): VoceConfig {
   switch (tipo) {
     case 'scelta':
     case 'multiscelta':
@@ -299,11 +299,12 @@ export default function TemplateEditor({
 }
 
 // ============ scheda di una voce (riusata per le sotto-domande) ============
-interface VoceCardProps {
+export interface VoceCardProps {
   v: VoceTemplate;
   child: boolean;
   parentOpzioni: OpzioneVoce[];
   figli: VoceTemplate[];
+  nascondiSezione?: boolean;
   patchVoce: (id: string, patch: Partial<VoceTemplate>) => void;
   patchConfig: (id: string, patch: Partial<VoceConfig>) => void;
   cambiaTipo: (id: string, tipo: VoceTipo) => void;
@@ -316,7 +317,7 @@ interface VoceCardProps {
   eliminaOpzione: (v: VoceTemplate, i: number) => void;
 }
 
-function VoceCard(p: VoceCardProps) {
+export function VoceCard(p: VoceCardProps) {
   const { v, child } = p;
   const opz = p.opzioniDi(v);
 
@@ -345,12 +346,14 @@ function VoceCard(p: VoceCardProps) {
             {TIPI.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
           </select>
         </label>
-        <label className="bo-field">
-          <span>Sezione</span>
-          <input type="text" value={v.sezione ?? ''}
-            onChange={(e) => p.patchVoce(v.id, { sezione: e.target.value || null })}
-            placeholder="Es. E. Prevenzione incendi" />
-        </label>
+        {!p.nascondiSezione && (
+          <label className="bo-field">
+            <span>Sezione</span>
+            <input type="text" value={v.sezione ?? ''}
+              onChange={(e) => p.patchVoce(v.id, { sezione: e.target.value || null })}
+              placeholder="Es. E. Prevenzione incendi" />
+          </label>
+        )}
       </div>
 
       <div className="bo-grid" style={{ marginBottom: 8 }}>
