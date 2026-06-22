@@ -5,37 +5,33 @@
 // promemoria. Stile allineato al back-office (classi .bo-* di ui.ts) + un
 // piccolo foglio supplementare per semafori/metriche/modali (scoping .bo).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, contentTypeAttestato, pathAttestato, urlFirmatoAttestato } from '../lib/supabase';
 import { newId } from '../lib/types';
 import {
-  type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato, type ModuloValutato,
+  type Catalogo, type RiepilogoCliente, type PersonaValutata, type RequisitoValutato,
   type Persona, type Formazione,
   type EsoneroAmmesso, type AreaInterna, type LivelloRischio, type TipoEsonero,
-  type CosaDaFareProposta, type FiguraSicurezza,
+  type CosaDaFareProposta,
   caricaCatalogo, caricaAreeInterne, valutaCliente,
-  salvaPersona, eliminaPersona, salvaNomina, aggiornaDataNomina,
+  salvaPersona, eliminaPersona, salvaNomina,
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   proponiCoseDaFare, generaCoseDaFare,
-  nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa,
+  nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA,
 } from '../lib/admin/formazione';
 import {
   registraSnapshotOrganigramma, caricaRevisioniOrganigramma, caricaRevisioneOrganigramma,
   costruisciSnapshot, esportaPdfOrganigramma,
   type RevisioneOrganigramma, type SnapshotOrganigramma,
 } from '../lib/admin/organigramma-revisioni';
+import OrganigrammaView, { type OrganigrammaAdapter } from '../OrganigrammaView';
 
 interface ClienteLite { id: string; ragione_sociale: string; livello_rischio: LivelloRischio | null; rls_territoriale: boolean; }
 
 const TIPI_ESONERO: TipoEsonero[] = [
   'titolo_studio', 'abilitazione', 'ruolo_equipollente', 'credito_pregresso', 'altro',
 ];
-
-// foglio supplementare: semafori, metriche, chip, righe requisito, modali.
-const LABEL_OBBLIGO: Record<string, string> = {
-  sempre: 'sempre', condizionale: 'se ricorre', eventuale: 'eventuale',
-};
 
 const LABEL_STATO: Record<string, string> = {
   conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico', esonerato: 'Esonerato', facoltativo: 'Facoltativo', da_verificare: 'Da verificare',
@@ -147,9 +143,6 @@ export default function Formazione() {
   const [caricando, setCaricando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
 
-  const [editPersona, setEditPersona] = useState<Persona | null>(null);
-  const [assegnaFigura, setAssegnaFigura] = useState<FiguraSicurezza | null>(null);
-  const [evidenzeFor, setEvidenzeFor] = useState<{ personaId: string; figuraCodice: string } | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [catalogoOpen, setCatalogoOpen] = useState(false);
   const [storicoOpen, setStoricoOpen] = useState(false);
@@ -203,6 +196,28 @@ export default function Formazione() {
     await ricarica();
   }
 
+  // Adapter ONLINE per OrganigrammaView: scritture dirette su Supabase
+  // (formazione.ts) + upload allegati su Storage. onCambia = dopoModifica (snapshot
+  // automatico + ricarica). Identico, per la UI, all'adapter offline del campo.
+  const adapter: OrganigrammaAdapter = {
+    salvaPersona, eliminaPersona, salvaNomina,
+    eliminaNomina: async (id: string) => {
+      const { error } = await supabase.from('nomina').delete().eq('id', id);
+      if (error) throw error;
+    },
+    salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
+    salvaFormazioneConAllegato: async (f, file) => {
+      const path = pathAttestato(f.id, newId(), estensioneAttestato(file));
+      const up = await supabase.storage.from(ATTESTATI_BUCKET)
+        .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
+      if (up.error) throw up.error;
+      return salvaFormazione({ ...f, allegato_url: path });
+    },
+    apriAllegato,
+    maxAllegatoBytes: MAX_ATTESTATO_BYTES,
+    onCambia: dopoModifica,
+  };
+
   // Esporta in PDF il riassunto dell'organigramma corrente (via Edge Function).
   async function esportaPdf() {
     if (!riep || !cliente) return;
@@ -233,27 +248,6 @@ export default function Formazione() {
     setClienti((arr) => arr.map((c) => (c.id === clienteId ? { ...c, rls_territoriale: v } : c)));
     dopoModifica();
   }
-  const copertura = useMemo(() => {
-    if (!catalogo || !riep) return [];
-    return catalogo.figure
-      .filter((f) => f.attiva)
-      .map((f) => ({
-        figura: f,
-        persone: riep.persone.filter((p) => p.figure.some((x) => x.codice === f.codice)).map((p) => nomePersona(p.persona)),
-      }));
-  }, [catalogo, riep]);
-
-  // raggruppamento per blocco logico (checklist ragionata)
-  const gruppiCopertura = useMemo(() => {
-    const out: { nome: string; righe: typeof copertura }[] = [];
-    for (const row of copertura) {
-      const g = row.figura.gruppo || 'Altre figure';
-      let grp = out.find((x) => x.nome === g);
-      if (!grp) { grp = { nome: g, righe: [] }; out.push(grp); }
-      grp.righe.push(row);
-    }
-    return out;
-  }, [copertura]);
 
   return (
     <>
@@ -296,7 +290,6 @@ export default function Formazione() {
           </div>
 
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
-            <button className="bo-btn" onClick={() => setEditPersona(nuovaPersona(clienteId))}>+ Aggiungi persona</button>
             <button className="bo-btn ghost" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length}>Genera cose da fare per i gap</button>
             <button className="bo-btn ghost" onClick={esportaPdf} disabled={pdfBusy}>{pdfBusy ? 'Genero PDF…' : 'Esporta PDF organigramma'}</button>
             <button className="bo-btn ghost" onClick={() => setStoricoOpen(true)}>Storico organigramma</button>
@@ -306,106 +299,21 @@ export default function Formazione() {
             <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate. Impostalo dal menù a tendina "rischio" in alto, accanto al nome del cliente.</div>
           )}
 
-          {/* organigramma atteso */}
+          {/* organigramma atteso - render CONDIVISO col campo (OrganigrammaView) */}
           <div className="bo-card">
             <div className="bo-title" style={{ marginBottom: 4 }}>Organigramma atteso</div>
             <p className="bo-sub" style={{ marginTop: 0, marginBottom: 10 }}>
               Checklist ragionata: figure per blocco, con quando scattano e cosa serve (fonte: quadro obblighi ASR 17/04/2025).
             </p>
-            {copertura.length === 0 && <div className="bo-sub" style={{ margin: 0 }}>Nessuna figura a catalogo (verifica il seed di figura_sicurezza).</div>}
-            {gruppiCopertura.map((g) => (
-              <div key={g.nome} className="fz-grp">
-                <div className="fz-grp-h">{g.nome}</div>
-                {g.righe.map(({ figura, persone }) => {
-                  const assegnate = riep?.persone.filter((pv) => pv.figure.some((f) => f.codice === figura.codice)) ?? [];
-                  const reqCodici = new Set(catalogo?.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice) ?? []);
-                  const modCodiciFigura = new Set(catalogo?.esoneriAmmessi.filter((a) => a.attivo && a.tipo === 'altro' && a.figura_codice === figura.codice).map((a) => a.corso_codice) ?? []);
-                  const dlRsppCoperto = !!riep?.persone.some((pv) => pv.figure.some((f) => f.codice === 'dl_rspp'));
-                  if (figura.codice === 'rspp' && dlRsppCoperto) return null; // il datore svolge l'RSPP: box non proposto
-                  const scoperta = !!riep?.figureScoperte.some((f) => f.codice === figura.codice);
-                  return (
-                  <div key={figura.codice} className="fz-fig">
-                    <div className="fz-fig-top">
-                      <span className="fz-fig-nome">
-                        <span className="fz-fig-pill">{figura.nome}</span>
-                        {figura.obbligo && <span className={'fz-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
-                        {figura.codice === 'rls' && (
-                          <span className="fz-seg" role="group" aria-label="Tipo RLS">
-                            <button type="button" className={'fz-seg-b' + (!cliente?.rls_territoriale ? ' on' : '')} onClick={() => impostaRlsTerritoriale(false)}>Interno</button>
-                            <button type="button" className={'fz-seg-b' + (cliente?.rls_territoriale ? ' on' : '')} onClick={() => impostaRlsTerritoriale(true)}>RLS territoriale</button>
-                          </span>
-                        )}
-                      </span>
-                      <button className="bo-btn ghost sm" onClick={() => setAssegnaFigura(figura)}>
-                        {persone.length > 0 ? 'modifica' : 'assegna'}
-                      </button>
-                    </div>
-
-                    <div className="fz-fig-body">
-                      <div className="fz-fig-main">
-                        {figura.guida && (
-                          <ul className="fz-guida">
-                            {figura.guida.split('\n').map((l) => l.trim()).filter(Boolean).map((l, i) => (
-                              l.startsWith('- ')
-                                ? <li key={i} className="sub">{l.slice(2).trim()}</li>
-                                : <li key={i}>{l}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-
-                      <div className="fz-fig-people">
-                        <div className="fz-spec-t">Incaricati</div>
-                        {assegnate.length > 0
-                          ? assegnate.map((pv) => {
-                              const fg = pv.figure.find((x) => x.codice === figura.codice);
-                              return (
-                              <div key={pv.persona.id} className="fz-person-box">
-                                <div className="fz-person-head">
-                                  <span className="nm">{nomePersona(pv.persona)}</span>
-                                  <span className="fz-person-act">
-                                    <button className="ev-link" onClick={() => setEditPersona(pv.persona)}>modifica</button>
-                                    <button className="ev-link" onClick={() => setEvidenzeFor({ personaId: pv.persona.id, figuraCodice: figura.codice })}>evidenze</button>
-                                  </span>
-                                </div>
-                                <NominaDataInline nominaId={fg?.nomina_id ?? null} data={fg?.data_nomina ?? null} onSaved={dopoModifica} />
-                                <div className="fz-person-ev">
-                                  {pv.requisiti.filter((r) => reqCodici.has(r.corso_codice)).map((r) => (
-                                    <div key={r.corso_codice} className="fz-ev-item">
-                                      <div className="fz-ev-row">
-                                        <span className="fz-ev-corso">{r.corso_nome}</span>
-                                        <span className={'fz-st st-' + r.stato}>{LABEL_STATO[r.stato] ?? r.stato}</span>
-                                      </div>
-                                      {r.dettaglio && <div className="fz-ev-det">{r.dettaglio}</div>}
-                                    </div>
-                                  ))}
-                                  {pv.moduli.filter((mv) => modCodiciFigura.has(mv.corso_codice) && mv.stato !== 'esonerato').map((mv) => (
-                                    <div key={'mod-' + mv.corso_codice} className="fz-ev-item">
-                                      <div className="fz-ev-row">
-                                        <span className="fz-ev-corso">{mv.corso_nome}<span className="fz-mod-tag">modulo</span></span>
-                                        <span className={'fz-st st-' + mv.stato}>{LABEL_STATO[mv.stato] ?? mv.stato}</span>
-                                      </div>
-                                      {mv.dettaglio && <div className="fz-ev-det">{mv.dettaglio}</div>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              );
-                            })
-                          : figura.codice === 'rls'
-                            ? (cliente?.rls_territoriale
-                                ? <div className="fz-person-empty">RLS territoriale (RLST): ruolo coperto dal rappresentante territoriale. Puoi comunque registrarne il nominativo con &laquo;assegna&raquo;.</div>
-                                : <div className="fz-person-crit">Criticità: ruolo obbligatorio senza incaricato (RLS interno).</div>)
-                            : scoperta
-                              ? <div className="fz-person-crit">Criticità: ruolo obbligatorio senza incaricato.</div>
-                              : <div className="fz-person-empty">Nessuna persona assegnata</div>}
-                      </div>
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
-            ))}
+            <OrganigrammaView
+              clienteId={clienteId}
+              riep={riep}
+              catalogo={catalogo!}
+              adapter={adapter}
+              rlsTerritoriale={cliente.rls_territoriale}
+              onRlsTerritoriale={impostaRlsTerritoriale}
+              onEvidenzePregresse={(p) => setPregressaPersonaId(p.id)}
+            />
           </div>
 
           {genOpen && (
@@ -428,48 +336,6 @@ export default function Formazione() {
           </div>
         </>
       )}
-
-      {editPersona && (
-        <FormPersona
-          persona={editPersona}
-          onAnnulla={() => setEditPersona(null)}
-          onSalva={async (p) => {
-            const eraPregressa = editPersona?.formazione_pregressa ?? false;
-            await salvaPersona(p);
-            setEditPersona(null);
-            await dopoModifica();
-            // Alla prima attivazione della "formazione pregressa" apri il pannello
-            // dedicato per caricare le evidenze pregresse / creare le cose da fare.
-            if (p.formazione_pregressa && !eraPregressa) setPregressaPersonaId(p.id);
-          }}
-          onEvidenzePregresse={editPersona.id ? () => { const id = editPersona.id; setEditPersona(null); setPregressaPersonaId(id); } : undefined}
-          onElimina={editPersona.id ? async () => { if (confirm('Eliminare la persona e tutti i suoi dati formativi?')) { await eliminaPersona(editPersona.id); setEditPersona(null); dopoModifica(); } } : undefined}
-        />
-      )}
-      {assegnaFigura && riep && (
-        <FormAssegnaFigura
-          figura={assegnaFigura}
-          persone={riep.persone}
-          clienteId={clienteId}
-          chiediPregressa={!!catalogo && figuraChiedePregressa(assegnaFigura.codice, catalogo.requisiti, catalogo.corsi)}
-          onChiudi={() => { setAssegnaFigura(null); dopoModifica(); }}
-          onAssegnaConPregressa={async (personaId) => { setAssegnaFigura(null); await dopoModifica(); setPregressaPersonaId(personaId); }}
-        />
-      )}
-      {evidenzeFor && riep && catalogo && (() => {
-        const pv = riep.persone.find((p) => p.persona.id === evidenzeFor.personaId);
-        const figura = catalogo.figure.find((f) => f.codice === evidenzeFor.figuraCodice);
-        if (!pv || !figura) return null;
-        return (
-          <EvidenzeRuolo
-            pv={pv}
-            figura={figura}
-            catalogo={catalogo}
-            onCambia={dopoModifica}
-            onChiudi={() => setEvidenzeFor(null)}
-          />
-        );
-      })()}
 
       {storicoOpen && cliente && (
         <StoricoOrganigramma
@@ -564,491 +430,6 @@ function Modale({ titolo, children }: { titolo: string; children: any }) {
         {children}
       </div>
     </div>
-  );
-}
-
-// Data di nomina editabile nel box di assegnazione: aggiorna la nomina esistente
-// (per id) senza toccare gli altri campi. Il salvataggio avviene all'USCITA dal
-// campo (onBlur), non a ogni tasto: i campi date nativi formano una data valida
-// gia' alla prima cifra dell'anno (es. "0002"), e salvare/ricaricare a ogni
-// onChange azzererebbe il valore mentre si digita. Se manca la nomina (caso
-// anomalo) il campo resta disabilitato.
-function NominaDataInline({ nominaId, data, onSaved }: {
-  nominaId: string | null; data: string | null; onSaved: () => void;
-}) {
-  const [v, setV] = useState(data ?? '');
-  const [busy, setBusy] = useState(false);
-  const editing = useRef(false);
-  // Allinea al valore salvato solo quando NON si sta editando (evita reset a meta' digitazione).
-  useEffect(() => { if (!editing.current) setV(data ?? ''); }, [data]);
-
-  async function commit() {
-    editing.current = false;
-    const nuovo = v || null;
-    if ((data ?? '') === (nuovo ?? '')) return;     // nessuna modifica
-    if (!nominaId) return;
-    if (nuovo) {                                     // guardia anno plausibile
-      const anno = Number(nuovo.slice(0, 4));
-      if (!(anno >= 1990 && anno <= 2100)) return;   // data incompleta/assurda: ignora
-    }
-    setBusy(true);
-    try { await aggiornaDataNomina(nominaId, nuovo); onSaved(); }
-    finally { setBusy(false); }
-  }
-
-  return (
-    <label className="fz-nomina">
-      <span>Data di nomina</span>
-      <input
-        type="date" value={v} disabled={busy || !nominaId}
-        min="1990-01-01" max="2100-12-31"
-        onFocus={() => { editing.current = true; }}
-        onChange={(e) => setV(e.target.value)}
-        onBlur={commit}
-      />
-    </label>
-  );
-}
-
-function FormPersona({ persona, onSalva, onAnnulla, onElimina, onEvidenzePregresse }: {
-  persona: Persona; onSalva: (p: Persona) => void; onAnnulla: () => void; onElimina?: () => void; onEvidenzePregresse?: () => void;
-}) {
-  const [p, setP] = useState<Persona>(persona);
-  return (
-    <Modale titolo={persona.id ? 'Modifica persona' : 'Nuova persona'}>
-      <div className="bo-grid">
-        <label className="bo-field"><span>Nome *</span><input type="text" value={p.nome} onChange={(e) => setP({ ...p, nome: e.target.value.toUpperCase() })} /></label>
-        <label className="bo-field"><span>Cognome</span><input type="text" value={p.cognome ?? ''} onChange={(e) => setP({ ...p, cognome: e.target.value.toUpperCase() })} /></label>
-        <label className="bo-field"><span>Codice fiscale</span><input type="text" value={p.codice_fiscale ?? ''} onChange={(e) => setP({ ...p, codice_fiscale: e.target.value })} /></label>
-        <label className="bo-field"><span>Mansione</span><input type="text" value={p.mansione ?? ''} onChange={(e) => setP({ ...p, mansione: e.target.value })} /></label>
-        <label className="bo-field"><span>Reparto</span><input type="text" value={p.reparto ?? ''} onChange={(e) => setP({ ...p, reparto: e.target.value })} /></label>
-        <label className="bo-field"><span>Rischio (override del cliente)</span>
-          <select value={p.livello_rischio ?? ''} onChange={(e) => setP({ ...p, livello_rischio: (e.target.value || null) as LivelloRischio | null })}>
-            <option value="">eredita dal cliente</option>
-            <option value="basso">basso</option><option value="medio">medio</option><option value="alto">alto</option>
-          </select>
-        </label>
-      </div>
-      <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '6px 0 2px' }}>
-        <input type="checkbox" checked={p.formazione_pregressa} onChange={(e) => setP({ ...p, formazione_pregressa: e.target.checked })} />
-        <span>Formazione pregressa (azienda gia' operante prima dell'ASR 2025): i requisiti senza attestato risultano "da verificare" invece di "critici". Il corso datore di lavoro fa storia a se' (prima applicazione entro 19/05/2027).</span>
-      </label>
-      {p.formazione_pregressa && persona.id && onEvidenzePregresse && (
-        <div className="ev-note" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
-          <span>Carica gli attestati pregressi (data + scadenza) o segna quelli non disponibili.</span>
-          <button type="button" className="bo-btn ghost sm" onClick={onEvidenzePregresse}>Evidenze pregresse</button>
-        </div>
-      )}
-      <div className="bo-bar">
-        <button className="bo-btn" disabled={!p.nome.trim()} onClick={() => onSalva(p)}>Salva</button>
-        <button className="bo-btn ghost" onClick={onAnnulla}>Annulla</button>
-        <span className="bo-sp" />
-        {onElimina && <button className="bo-btn danger sm" onClick={onElimina}>Elimina</button>}
-      </div>
-    </Modale>
-  );
-}
-
-function EvidenzeRuolo({ pv, figura, catalogo, onCambia, onChiudi }: {
-  pv: PersonaValutata; figura: FiguraSicurezza; catalogo: Catalogo; onCambia: () => void; onChiudi: () => void;
-}) {
-  const codici = new Set(catalogo.requisiti.filter((r) => r.figura_codice === figura.codice).map((r) => r.corso_codice));
-  const reqs = pv.requisiti.filter((r) => codici.has(r.corso_codice));
-  // Tutti i moduli aggiuntivi della PERSONA (di ogni suo ruolo), non solo della
-  // figura corrente; nascosti quelli coperti da un esonero applicabile.
-  // Moduli aggiuntivi di QUESTA figura: agganciati alla card della formazione e
-  // mostrati nel ramo "No, registro la formazione". Nascosti se coperti da esonero.
-  const moduliFigura = catalogo.esoneriAmmessi
-    .filter((a) => a.attivo && a.tipo === 'altro' && a.figura_codice === figura.codice)
-    .map((a) => ({
-      ammesso: a,
-      corso: catalogo.corsi.find((c) => c.codice === a.corso_codice),
-      valutato: pv.moduli.find((mv) => mv.corso_codice === a.corso_codice),
-    }))
-    .filter((m) => !m.valutato || m.valutato.stato !== 'esonerato');
-  return (
-    <Modale titolo={'Evidenze: ' + figura.nome + ' \u2014 ' + nomePersona(pv.persona)}>
-      {reqs.length === 0 && <div className="bo-sub" style={{ marginTop: 0 }}>Nessun corso richiesto per questo ruolo.</div>}
-      {reqs.map((r, i) => (
-        <EvidenzaRequisito
-          key={r.corso_codice} r={r} persona={pv.persona} figura={figura} onCambia={onCambia}
-          alternative={catalogo.corsi.filter((c) => (c.categoria ?? '') === r.categoria)}
-          moduli={i === 0 ? moduliFigura : undefined}
-        />
-      ))}
-      {reqs.length === 0 && moduliFigura.length > 0 && (
-        <div className="ev-card">
-          <div className="ev-head"><span><b>Moduli aggiuntivi</b></span></div>
-          {moduliFigura.map((m) => (
-            <ModuloAggiuntivo key={m.ammesso.id} m={{ ammesso: m.ammesso, corso: m.corso }} persona={pv.persona} valutato={m.valutato} onCambia={onCambia} />
-          ))}
-        </div>
-      )}
-      <div className="bo-bar"><button className="bo-btn ghost" onClick={onChiudi}>Chiudi</button></div>
-    </Modale>
-  );
-}
-
-function EvidenzaRequisito({ r, persona, figura, onCambia, alternative, moduli }: {
-  r: RequisitoValutato; persona: Persona; figura: FiguraSicurezza; onCambia: () => void;
-  alternative: Catalogo['corsi'];
-  moduli?: { ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined; valutato: ModuloValutato | undefined }[];
-}) {
-  // Requisito a percorsi multipli (es. antincendio liv.1/2/3, primo soccorso
-  // gruppo A / B-C): il consulente sceglie QUI il corso effettivo della persona.
-  const multiPath = alternative.length > 1;
-  // Antincendio (DM 02/09/2021) e primo soccorso (DM 388/2003) sono fuori dal
-  // regime ASR 2025: gli esoneri/crediti (Allegato III) non si applicano, quindi
-  // niente cancello esonero - si va diretti alla registrazione della formazione.
-  const noEsonero = CATEGORIE_NO_PREGRESSA.has(r.categoria);
-  const [scelta, setScelta] = useState<'attesa' | 'esonero' | 'formazione'>('attesa');
-  const [corsoScelto, setCorsoScelto] = useState('');
-  const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
-  const [esonMot, setEsonMot] = useState('');
-  const [esonRif, setEsonRif] = useState(r.promemoria[0]?.riferimento_norm ?? '');
-  const [data, setData] = useState('');
-  const [ore, setOre] = useState(r.ore != null ? String(r.ore) : '');
-  const [ente, setEnte] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [agg, setAgg] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  function scegliCorso(codice: string) {
-    setCorsoScelto(codice);
-    const c = alternative.find((x) => x.codice === codice);
-    if (c && c.ore != null) setOre(String(c.ore));
-  }
-
-  async function registraEsonero() {
-    if (!esonMot.trim()) return;
-    setBusy(true);
-    try {
-      await salvaEsonero({
-        id: '', persona_id: persona.id, corso_codice: r.corso_codice, figura_codice: figura.codice,
-        tipo: esonTipo, motivazione: esonMot.trim(), riferimento_norm: esonRif.trim() || null,
-        documento_url: null, data_riconoscimento: null, attivo: true, note: null,
-      });
-      onCambia();
-    } finally { setBusy(false); }
-  }
-  async function rimuoviEson() {
-    if (!r.esonero_id) return;
-    setBusy(true);
-    try { await eliminaEsonero(r.esonero_id); onCambia(); } finally { setBusy(false); }
-  }
-  async function rimuoviAttestato() {
-    if (!r.formazione_id) return;
-    if (!confirm('Eliminare l\u2019attestato registrato per questo requisito? L\u2019operazione non si puo\u2019 annullare.')) return;
-    setBusy(true);
-    try { await eliminaFormazione(r.formazione_id); onCambia(); } finally { setBusy(false); }
-  }
-  async function registraAttestato() {
-    if (!data) return;
-    if (multiPath && !corsoScelto) { alert('Scegli il corso (livello/gruppo) effettivamente svolto.'); return; }
-    if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
-    setBusy(true);
-    try {
-      const fid = newId();
-      let allegatoUrl: string | null = null;
-      if (file) {
-        const path = pathAttestato(fid, newId(), estensioneAttestato(file));
-        const up = await supabase.storage.from(ATTESTATI_BUCKET)
-          .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
-        if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); return; }
-        allegatoUrl = path;
-      }
-      // corso effettivo: quello scelto (percorsi multipli) o quello del requisito.
-      const scelto = multiPath ? alternative.find((c) => c.codice === corsoScelto) : null;
-      await salvaFormazione({
-        id: fid, persona_id: persona.id,
-        corso_codice: scelto?.codice ?? r.corso_codice, corso_nome: scelto?.nome ?? r.corso_nome, categoria: r.categoria,
-        data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
-        is_aggiornamento: agg, scadenza: null, allegato_url: allegatoUrl, note: null,
-      });
-      onCambia();
-    } finally { setBusy(false); }
-  }
-
-  return (
-    <div className="ev-card">
-      <div className="ev-head">
-        <span><b>{r.corso_nome}</b>{r.ore != null && <span className="ev-ore"> &middot; {r.ore}h</span>}</span>
-        <span className="ev-head-r">
-          {r.allegato_url && <button type="button" className="ev-link" onClick={() => void apriAllegato(r.allegato_url!)}>vedi allegato</button>}
-          <span className={'fz-badge ' + (r.stato === 'esonerato' || r.stato === 'da_verificare' ? 'eventuale' : r.stato === 'conforme' ? 'sempre' : 'condizionale')}>{LABEL_STATO[r.stato] ?? r.stato}</span>
-        </span>
-      </div>
-
-      {r.esonero_id ? (
-        <div className="ev-eson-ok">
-          Esonero / credito registrato per questo requisito: l'attestato non e' richiesto.
-          <button className="bo-btn ghost sm" disabled={busy} onClick={rimuoviEson}>rimuovi esonero</button>
-        </div>
-      ) : (
-        <>
-          {r.formazione_id && (
-            <div className="ev-eson-ok" style={{ marginBottom: 8 }}>
-              Attestato registrato per questo requisito{r.scadenza ? ' \u2014 scadenza ' + r.scadenza : ''}.
-              <button className="bo-btn ghost sm" disabled={busy} onClick={rimuoviAttestato}>rimuovi attestato</button>
-            </div>
-          )}
-          {!noEsonero && (
-            <>
-              <div className="ev-step">1 &middot; Esonero / credito previsto?</div>
-              {r.promemoria.filter((a) => a.tipo !== 'altro').map((a) => (
-                <div key={a.id} className="fz-hint"><span aria-hidden="true">i</span><span>{a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}</span></div>
-              ))}
-              <div className="ev-choice">
-                <button className={'bo-btn ghost sm' + (scelta === 'esonero' ? ' on' : '')} onClick={() => setScelta('esonero')}>Si, c'e' un esonero/credito</button>
-                <button className={'bo-btn ghost sm' + (scelta === 'formazione' ? ' on' : '')} onClick={() => setScelta('formazione')}>No, registro la formazione</button>
-              </div>
-
-              {scelta === 'esonero' && (
-                <div className="ev-box">
-                  <div className="bo-grid">
-                    <label className="bo-field"><span>Tipo</span>
-                      <select value={esonTipo} onChange={(e) => setEsonTipo(e.target.value as TipoEsonero)}>{TIPI_ESONERO.map((t) => <option key={t} value={t}>{t}</option>)}</select>
-                    </label>
-                    <label className="bo-field"><span>Riferimento normativo</span><input type="text" value={esonRif} onChange={(e) => setEsonRif(e.target.value)} /></label>
-                  </div>
-                  <label className="bo-field"><span>Motivazione *</span><textarea value={esonMot} onChange={(e) => setEsonMot(e.target.value)} /></label>
-                  <button className="bo-btn sm" disabled={busy || !esonMot.trim()} onClick={registraEsonero}>Registra esonero / credito</button>
-                </div>
-              )}
-            </>
-          )}
-
-          {(noEsonero || scelta === 'formazione') && (
-            <div className="ev-box">
-              <div className="ev-step">{noEsonero ? '1' : '2'} &middot; Formazione richiesta (base + aggiornamento)</div>
-              {r.formazione_id && <div className="ev-note">Attestato gia' presente: aggiungine un altro solo per l'aggiornamento o una correzione.</div>}
-              {multiPath && (
-                <label className="bo-field" style={{ marginBottom: 8 }}><span>Corso svolto (livello/gruppo) *</span>
-                  <select value={corsoScelto} onChange={(e) => scegliCorso(e.target.value)}>
-                    <option value="">— scegli il corso —</option>
-                    {alternative.map((c) => <option key={c.codice} value={c.codice}>{c.nome}{c.ore != null ? ' (' + c.ore + 'h)' : ''}</option>)}
-                  </select>
-                </label>
-              )}
-              <div className="bo-grid">
-                <label className="bo-field"><span>Data completamento *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
-                <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
-                <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
-                <label className="bo-field"><span>Allegato (PDF o foto)</span><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
-              </div>
-              {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
-              <label className="chk" style={{ marginBottom: 10 }}><input type="checkbox" checked={agg} onChange={(e) => setAgg(e.target.checked)} /> e' un aggiornamento</label>
-              <button className="bo-btn sm" disabled={busy || !data || (multiPath && !corsoScelto)} onClick={registraAttestato}>Registra attestato</button>
-              <div className="ev-step" style={{ marginTop: 12 }}>{noEsonero ? '2' : '3'} &middot; Scadenza</div>
-              <div className="ev-note">{r.scadenza ? 'Scadenza attuale: ' + r.scadenza : 'Nessuna scadenza attiva: verra\' calcolata dalla data dell\'attestato.'}</div>
-              {moduli && moduli.length > 0 && (
-                <>
-                  <div className="ev-step" style={{ marginTop: 12 }}>{noEsonero ? '3' : '4'} &middot; Moduli aggiuntivi</div>
-                  {moduli.map((m) => (
-                    <ModuloAggiuntivo key={m.ammesso.id} m={{ ammesso: m.ammesso, corso: m.corso }} persona={persona} valutato={m.valutato} onCambia={onCambia} />
-                  ))}
-                </>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// Modulo formativo aggiuntivo e condizionato (es. modulo cantieri per impresa
-// affidataria): una spunta rende evidente se l'azienda ci ricade; se si', si
-// registra l'attestato del modulo come una normale formazione.
-function ModuloAggiuntivo({ m, persona, valutato, onCambia }: {
-  m: { ammesso: EsoneroAmmesso; corso: Catalogo['corsi'][number] | undefined };
-  persona: Persona; valutato?: ModuloValutato; onCambia: () => void;
-}) {
-  const [applicabile, setApplicabile] = useState(false);
-  const [data, setData] = useState('');
-  const [ore, setOre] = useState(m.corso?.ore != null ? String(m.corso.ore) : '');
-  const [ente, setEnte] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const allegatoModulo = valutato?.allegato_url ?? null;
-
-  async function registra() {
-    if (!data || !m.corso) return;
-    if (file && file.size > MAX_ATTESTATO_BYTES) { alert('Il file supera 20 MB: scegline uno piu\u2019 piccolo.'); return; }
-    setBusy(true);
-    try {
-      const fid = newId();
-      let allegatoUrl: string | null = null;
-      if (file) {
-        const path = pathAttestato(fid, newId(), estensioneAttestato(file));
-        const up = await supabase.storage.from(ATTESTATI_BUCKET)
-          .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
-        if (up.error) { alert('Upload allegato non riuscito: ' + up.error.message); return; }
-        allegatoUrl = path;
-      }
-      await salvaFormazione({
-        id: fid, persona_id: persona.id, corso_codice: m.corso.codice, corso_nome: m.corso.nome, categoria: m.corso.categoria,
-        data_completamento: data, ore: ore === '' ? null : Number(ore), ente_formatore: ente.trim() || null,
-        is_aggiornamento: false, scadenza: null, allegato_url: allegatoUrl, note: null,
-      });
-      onCambia();
-    } finally { setBusy(false); }
-  }
-
-  return (
-    <div className="ev-mod">
-      <div className="fz-hint"><span aria-hidden="true">i</span><span>{m.ammesso.descrizione}{m.ammesso.riferimento_norm ? ' \u2014 ' + m.ammesso.riferimento_norm : ''}</span></div>
-      {valutato && (
-        <div className="ev-row">
-          <span className={'fz-st st-' + valutato.stato}>{LABEL_STATO[valutato.stato] ?? valutato.stato}</span>
-          <span className="ev-det">{valutato.dettaglio}</span>
-          {allegatoModulo && (
-            <button type="button" className="ev-link" onClick={() => void apriAllegato(allegatoModulo)}>vedi allegato</button>
-          )}
-        </div>
-      )}
-      <label className="chk"><input type="checkbox" checked={applicabile} onChange={(e) => setApplicabile(e.target.checked)} /> L'azienda ricade nell'obbligo di questo modulo aggiuntivo</label>
-      {applicabile && m.corso && (
-        <div className="ev-box">
-          <div className="bo-grid">
-            <label className="bo-field"><span>Data completamento *</span><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
-            <label className="bo-field"><span>Ore</span><input type="number" value={ore} onChange={(e) => setOre(e.target.value)} /></label>
-            <label className="bo-field"><span>Ente formatore</span><input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} /></label>
-            <label className="bo-field"><span>Allegato (PDF o foto)</span><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
-          </div>
-          {file && <div className="ev-note">Allegato: {file.name} ({Math.round(file.size / 1024)} KB)</div>}
-          <button className="bo-btn sm" disabled={busy || !data} onClick={registra}>Registra modulo aggiuntivo</button>
-        </div>
-      )}
-      {applicabile && !m.corso && <div className="ev-note">Corso del modulo non trovato a catalogo.</div>}
-    </div>
-  );
-}
-
-function FormAssegnaFigura({ figura, persone, clienteId, chiediPregressa, onChiudi, onAssegnaConPregressa }: {
-  figura: FiguraSicurezza; persone: PersonaValutata[]; clienteId: string; chiediPregressa: boolean; onChiudi: () => void;
-  onAssegnaConPregressa?: (personaId: string) => void;
-}) {
-  const titolari = persone.filter((p) => p.figure.some((f) => f.codice === figura.codice)).map((p) => p.persona.id);
-  const [sel, setSel] = useState<Set<string>>(new Set(titolari));
-  const [nuovoNome, setNuovoNome] = useState('');
-  const [nuovoCognome, setNuovoCognome] = useState('');
-  const [salvando, setSalvando] = useState(false);
-  // passo 2: per le persone appena assegnate si chiede se hanno formazione pregressa
-  const [step, setStep] = useState<'assegna' | 'pregressa'>('assegna');
-  const [nuove, setNuove] = useState<Persona[]>([]);
-  const [risposte, setRisposte] = useState<Record<string, 'si' | 'no'>>({});
-  const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const setRisp = (id: string, v: 'si' | 'no') => setRisposte((r) => ({ ...r, [id]: v }));
-
-  async function salva() {
-    setSalvando(true);
-    try {
-      const dopo = new Set(sel);
-      const aggiunte: Persona[] = [];
-      if (nuovoNome.trim()) {
-        const creata = await salvaPersona({ ...nuovaPersona(clienteId), nome: nuovoNome.trim(), cognome: nuovoCognome.trim() || null });
-        dopo.add(creata.id);
-        aggiunte.push(creata);
-      }
-      // aggiunte: chi e' selezionato ma non era titolare
-      for (const id of dopo) {
-        if (!titolari.includes(id)) {
-          await salvaNomina({ id: '', persona_id: id, figura_codice: figura.codice, data_nomina: null, attiva: true, note: null });
-          const pv = persone.find((p) => p.persona.id === id);
-          if (pv && !aggiunte.some((a) => a.id === id)) aggiunte.push(pv.persona);
-        }
-      }
-      // rimozioni: chi era titolare ma non e' piu' selezionato
-      for (const id of titolari) {
-        if (!dopo.has(id)) {
-          await supabase.from('nomina').delete().eq('persona_id', id).eq('figura_codice', figura.codice);
-        }
-      }
-      // Se ho assegnato qualcuno per la prima volta a questo ruolo E il ruolo
-      // prevede formazione soggetta al regime pregressa (ASR 2025), chiedo subito
-      // se ha formazione pregressa. Escluse: figure senza corsi (es. Medico
-      // competente) e ruoli con regime proprio (antincendio, primo soccorso).
-      if (chiediPregressa && aggiunte.length > 0) {
-        setNuove(aggiunte);
-        setRisposte(Object.fromEntries(aggiunte.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>);
-        setStep('pregressa');
-        setSalvando(false);
-        return;
-      }
-      onChiudi();
-    } finally { setSalvando(false); }
-  }
-
-  async function confermaPregressa() {
-    setSalvando(true);
-    try {
-      const siIds = nuove.filter((p) => risposte[p.id] === 'si').map((p) => p.id);
-      for (const p of nuove) {
-        if (risposte[p.id] === 'si') await salvaPersona({ ...p, formazione_pregressa: true });
-      }
-      const primoSi = siIds[0];
-      // Se almeno una persona ha formazione pregressa, apro le evidenze pregresse
-      // (le altre restano apribili dalla scheda persona). Se nessuna, chiudo:
-      // restano i corsi previsti dall'ASR 2025 come requisiti da svolgere.
-      if (primoSi && onAssegnaConPregressa) onAssegnaConPregressa(primoSi);
-      else onChiudi();
-    } finally { setSalvando(false); }
-  }
-
-  if (step === 'pregressa') {
-    return (
-      <Modale titolo="Formazione pregressa?">
-        <div className="bo-sub" style={{ marginTop: 0 }}>
-          Per ogni persona appena assegnata a "{figura.nome}": ha gia' una formazione pregressa
-          (azienda operante prima dell'ASR 2025)? Se <b>SI</b> carichi subito le evidenze;
-          se <b>NO</b> si procede con la formazione prevista dall'ASR 2025.
-        </div>
-        {nuove.map((p) => (
-          <div key={p.id} className="ev-card">
-            <div className="ev-head" style={{ alignItems: 'center' }}>
-              <span><b>{nomePersona(p)}</b></span>
-              <span className="ev-choice">
-                <button className={'bo-btn ghost sm' + (risposte[p.id] === 'si' ? ' on' : '')} onClick={() => setRisp(p.id, 'si')}>Si, formazione pregressa</button>
-                <button className={'bo-btn ghost sm' + (risposte[p.id] === 'no' ? ' on' : '')} onClick={() => setRisp(p.id, 'no')}>No, formazione ASR 2025</button>
-              </span>
-            </div>
-          </div>
-        ))}
-        <div className="bo-bar">
-          <button className="bo-btn" disabled={salvando} onClick={confermaPregressa}>{salvando ? 'Salvo…' : 'Conferma'}</button>
-        </div>
-      </Modale>
-    );
-  }
-
-  return (
-    <Modale titolo={'Assegna: ' + figura.nome}>
-      {persone.length > 0 ? (
-        <div style={{ display: 'grid', gap: 6 }}>
-          {persone.map((p) => (
-            <label key={p.persona.id} className="chk" style={{ padding: '5px 0' }}>
-              <input type="checkbox" checked={sel.has(p.persona.id)} onChange={() => toggle(p.persona.id)} /> {nomePersona(p.persona)}
-            </label>
-          ))}
-        </div>
-      ) : (
-        <div className="bo-sub" style={{ marginTop: 0 }}>Nessuna persona ancora in organigramma: creane una qui sotto.</div>
-      )}
-
-      <div className="bo-card flat" style={{ marginTop: 10 }}>
-        <div className="bo-title" style={{ fontSize: 13.5, marginBottom: 8 }}>Crea e assegna una nuova persona</div>
-        <div className="bo-grid">
-          <label className="bo-field"><span>Nome</span><input type="text" value={nuovoNome} onChange={(e) => setNuovoNome(e.target.value)} /></label>
-          <label className="bo-field"><span>Cognome</span><input type="text" value={nuovoCognome} onChange={(e) => setNuovoCognome(e.target.value)} /></label>
-        </div>
-      </div>
-
-      <div className="bo-bar">
-        <button className="bo-btn" disabled={salvando} onClick={salva}>{salvando ? 'Salvo…' : 'Salva'}</button>
-        <button className="bo-btn ghost" onClick={onChiudi}>Annulla</button>
-      </div>
-    </Modale>
   );
 }
 
@@ -1433,8 +814,3 @@ function SezioneRuoloPregresso({ ruoloNome, requisiti, persona, clienteId, onCam
   );
 }
 
-// ---------- factory ----------
-
-function nuovaPersona(clienteId: string): Persona {
-  return { id: '', cliente_id: clienteId, nome: '', cognome: null, codice_fiscale: null, mansione: null, reparto: null, data_assunzione: null, livello_rischio: null, attivo: true, note: null, formazione_pregressa: false };
-}

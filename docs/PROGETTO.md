@@ -50,11 +50,13 @@ src/
   MieiSopralluoghi.tsx    # lista del tecnico (Da fare / Completati) + report
   MieCoseDaFare.tsx       # azioni assegnate al singolo
   Compilazione.tsx        # schermata di campo (scelta checklist + check-list + cose da fare)
+  OrganigrammaView.tsx    # RENDER CONDIVISO organigramma/formazione (back-office + campo)
+  FormazioneRiepilogo.tsx # guscio CAMPO: carica offline + conferma + adapter -> OrganigrammaView
   NotaVocale.tsx          # dettatura vocale note
   admin/                  # back-office (solo admin)
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
     CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx,
-    Disponibilita.tsx, Formazione.tsx
+    Disponibilita.tsx, Formazione.tsx  # guscio BACK-OFFICE: adapter online -> OrganigrammaView
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
     auth.ts, sopralluoghi.ts, azioni.ts, report.ts, prefetch.ts,
@@ -311,6 +313,34 @@ applicato in-app. L'isolamento a livello DB è rinviato come step separato.
   props tecnico/sopralluogo), `src/lib/prefetch.ts`; fondamenta `src/lib/db.ts` v3
   + `src/lib/sync.ts` (invariati) + migration 019.
 
+- **Render organigramma CONDIVISO back-office + campo** (`OrganigrammaView.tsx`):
+  i due contesti (back-office `admin/Formazione.tsx` e campo `FormazioneRiepilogo.tsx`)
+  non hanno piu' due render paralleli da tenere allineati a mano: c'e' UN solo
+  componente di rendering, `OrganigrammaView`, usato identico da entrambi. E' la
+  sorgente unica della UI dell'organigramma (figure-first con guida, incaricati,
+  data di nomina, requisiti + editor inline attestato/esonero, moduli aggiuntivi,
+  assegnazione e scelta formazione pregressa). Una modifica al modello si riflette
+  automaticamente in campo e in back-office.
+  - Le **letture** arrivano gia' valutate dal motore puro `assemblaRiepilogo` (lo
+    stesso per i due contesti): il componente riceve `riep` + `catalogo`.
+  - Le **scritture** passano per un **adapter** iniettato dal guscio
+    (`OrganigrammaAdapter`): il back-office inietta le funzioni ONLINE (Supabase +
+    upload allegati su Storage), il campo quelle OFFLINE (`sync.ts` -> outbox).
+    `onCambia` rivaluta (back-office: snapshot automatico + `ricarica`; campo:
+    `ricaricaLocale`).
+  - Tutto **inline** (niente modali, nemmeno in back-office): una sola UX. I gusci
+    conservano solo cio' che e' loro proprio: back-office = scelta cliente,
+    metriche, rischio, RLS territoriale (toggle online), genera cose-da-fare, PDF,
+    storico, editor esoneri ammessi, evidenze pregresse (batch, aperto dal form
+    persona via `onEvidenzePregresse`); campo = caricamento offline, banner offline,
+    conferma tracciata + snapshot revisione, prefetch.
+  - Estetica ereditata dal contesto (CSS var `--ok/--no/--line/--ink` con fallback),
+    quindi rende bene sia sotto `.compila` (campo) sia nel back-office.
+  File: `src/OrganigrammaView.tsx` (nuovo, condiviso); `src/FormazioneRiepilogo.tsx`
+  (ridotto a guscio campo); `src/admin/Formazione.tsx` (guscio back-office, rimossi
+  i modali e gli helper duplicati: FormPersona/FormAssegnaFigura/EvidenzeRuolo/
+  EvidenzaRequisito/ModuloAggiuntivo/NominaDataInline). Nessuna migration.
+
 - **Ricalibrazione date successive in pianificazione**: quando in
   `admin/Pianificazione.tsx` si modifica la `data_pianificata` di un sopralluogo,
   se ci sono sedute successive `pianificato` con data valorizzata appare un
@@ -538,6 +568,25 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Unificazione render organigramma: UN solo componente condiviso back-office +
+  campo** (`src/OrganigrammaView.tsx` nuovo). Eliminata la duplicazione strutturale:
+  non esistono piu' due render paralleli (`admin/Formazione.tsx` e
+  `FormazioneRiepilogo.tsx`) da allineare a mano. Tutta la UI dell'organigramma
+  (figure-first: guida, incaricati, data nomina, requisiti + editor inline
+  attestato/esonero, moduli, assegnazione, scelta formazione pregressa SI/NO) vive
+  in `OrganigrammaView`, usato IDENTICO dai due contesti: una modifica al modello si
+  propaga automaticamente a entrambi. Le letture arrivano dal motore puro
+  `assemblaRiepilogo` (`riep` + `catalogo`); le scritture passano per un
+  `OrganigrammaAdapter` iniettato dal guscio (ONLINE Supabase + upload Storage in
+  back-office, OFFLINE `sync.ts`/outbox in campo). Tutto INLINE, niente modali
+  nemmeno in back-office (scelta architetturale: una sola UX). I gusci conservano
+  solo cio' che e' loro: back-office = cliente/metriche/rischio/RLS territoriale/
+  genera cose-da-fare/PDF/storico/editor esoneri ammessi/evidenze pregresse;
+  campo = caricamento offline/banner/conferma tracciata + snapshot/prefetch.
+  Rimosso da `admin/Formazione.tsx` il codice ora duplicato (FormPersona,
+  FormAssegnaFigura, EvidenzeRuolo, EvidenzaRequisito, ModuloAggiuntivo,
+  NominaDataInline + stato e helper relativi). `FormazioneRiepilogo.tsx` ridotto a
+  guscio campo sottile. Nessuna migration; `tsc -b` + `vite build` verdi.
 - **Modulo Organigramma in campo allineato al back-office: formazione tracciata
   PER FIGURA** (`src/FormazioneRiepilogo.tsx`). In campo la formazione non era
   tracciata: sotto ogni figura compariva solo il nominativo. Ora il modulo adotta
