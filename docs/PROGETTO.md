@@ -215,8 +215,11 @@ nel catalogo box + aggancio ai template attivi · 034 box smart `ORGANIGRAMMA`
 CAPITOLI dell'Audit Iniziale come box generici (11 capitoli, 134 voci, dal foglio
 `Riordino_Checklist_AuditIniziale.xlsx`) + box `RILIEVI_LIBERI` (foglio bianco);
 NON aggancia ad alcun template (composizione manuale) - disattiva il prototipo
-033 `IMPIANTI` e azzera i link demo `checklist_template_box`.
-**Prossima libera: 036.**
+033 `IMPIANTI` e azzera i link demo `checklist_template_box` · 036 estrae
+"Conformita societaria" da Cap.1 in un capitolo a se' (`INQUADRAMENTO`
+"Inquadramento azienda": profilo attivita + documenti societari, 5 voci),
+rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione periodica".
+**Prossima libera: 037.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
