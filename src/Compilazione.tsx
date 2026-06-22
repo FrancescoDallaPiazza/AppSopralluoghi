@@ -409,16 +409,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
               </button>
             </div>
           )}
-          {sezioni.map((s) => (
-            <div key={s.sez ?? '—'}>
-              {s.sez && <div className="section-h">{s.sez}</div>}
-              {s.voci.map((v) => renderVoce(ctx, v, null))}
-            </div>
-          ))}
 
-          {/* Box generici del modello box-argomento, sullo stesso motore: le loro
-              cose-da-fare confluiscono in completa(). No-op finche' il catalogo box
-              e' vuoto. Smart/fisso instradati altrove (prossimo step). */}
+          {/* Inizio giro: box FISSO "cose da fare pregresse" in testa, da rivedere
+              prima della checklist. Stesso componente, filtrato per posizione. */}
           <BoxGenerico
             sopralluogoId={sopralluogo.id}
             compilataId={compilataId}
@@ -431,6 +424,31 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             tecnicoNome={tecnicoNomeConferma}
             pregresse={prev}
             statoPregresse={statoPrev}
+            filtro="fissi"
+          />
+
+          {sezioni.map((s) => (
+            <div key={s.sez ?? '—'}>
+              {s.sez && <div className="section-h">{s.sez}</div>}
+              {s.voci.map((v) => renderVoce(ctx, v, null))}
+            </div>
+          ))}
+
+          {/* Dopo la checklist: box generici (sullo stesso motore: le loro
+              cose-da-fare confluiscono in completa()) e smart (organigramma). */}
+          <BoxGenerico
+            sopralluogoId={sopralluogo.id}
+            compilataId={compilataId}
+            sedeId={sopralluogo.sede_id ?? null}
+            clienteId={sopralluogo.cliente_id}
+            motore={motore}
+            aree={aree}
+            tecnici={tecnici}
+            tecnicoId={tecnicoId}
+            tecnicoNome={tecnicoNomeConferma}
+            pregresse={prev}
+            statoPregresse={statoPrev}
+            filtro="altri"
           />
         </main>
 

@@ -34,11 +34,15 @@ interface Props {
   tecnicoNome: string | null;
   pregresse: AzioneConContesto[];
   statoPregresse: 'idle' | 'loading' | 'ok' | 'errore';
+  // 'fissi' = solo i box fisso (es. pregresse), da mostrare a inizio giro;
+  // 'altri' = generici + smart, dopo la checklist. Permette di collocare i due
+  // gruppi in punti diversi della pagina con un solo componente.
+  filtro: 'fissi' | 'altri';
 }
 
 export default function BoxGenerico({
   sopralluogoId, compilataId, sedeId, clienteId, motore, aree, tecnici, tecnicoId,
-  tecnicoNome, pregresse, statoPregresse,
+  tecnicoNome, pregresse, statoPregresse, filtro,
 }: Props) {
   const [boxes, setBoxes] = useState<BoxComposto[]>([]);
   const [pronto, setPronto] = useState(false);
@@ -47,13 +51,16 @@ export default function BoxGenerico({
     const bx = await caricaBoxComposti(sopralluogoId, sedeId);
     setBoxes(bx);
     // Semina gli esiti mancanti per ogni (sezione, componente). Idempotente.
-    for (const b of bx) {
-      if (b.box.tipo !== 'generico') continue;
-      for (const s of b.sezioni) {
-        if (s.sezione.ripetibile) {
-          for (const c of s.componenti) await motore.assicuraEsiti(compilataId, s.vociTop, c.id);
-        } else {
-          await motore.assicuraEsiti(compilataId, s.vociTop, null);
+    // Solo l'istanza 'altri' semina (i fissi non hanno voci): niente doppio lavoro.
+    if (filtro === 'altri') {
+      for (const b of bx) {
+        if (b.box.tipo !== 'generico') continue;
+        for (const s of b.sezioni) {
+          if (s.sezione.ripetibile) {
+            for (const c of s.componenti) await motore.assicuraEsiti(compilataId, s.vociTop, c.id);
+          } else {
+            await motore.assicuraEsiti(compilataId, s.vociTop, null);
+          }
         }
       }
     }
@@ -75,7 +82,8 @@ export default function BoxGenerico({
     await ricarica();
   }
 
-  if (!boxes.length) return null;
+  const visibili = boxes.filter((b) => (filtro === 'fissi' ? b.box.tipo === 'fisso' : b.box.tipo !== 'fisso'));
+  if (!visibili.length) return null;
 
   function renderSmart(b: BoxComposto) {
     if (b.box.ref_smart !== 'organigramma') return null;
@@ -123,7 +131,7 @@ export default function BoxGenerico({
   return (
     <div className="boxgen">
       <style>{CSS}</style>
-      {boxes.map((b) => {
+      {visibili.map((b) => {
         if (b.box.tipo === 'smart') return renderSmart(b);
         if (b.box.tipo === 'fisso') return renderFisso(b);
         return (
@@ -178,7 +186,7 @@ export default function BoxGenerico({
         </section>
         );
       })}
-      {!pronto && <p className="box-vuoto">Preparo i box…</p>}
+      {filtro === 'altri' && !pronto && <p className="box-vuoto">Preparo i box…</p>}
     </div>
   );
 }

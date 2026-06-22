@@ -195,9 +195,12 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
     aggiunto a `COLONNE_AZIONE` (select + `toBaseAzione` lo preservano alla
     rilettura/upsert). Verificato `tsc -b` + `vite build`. Nessuna migration
     (colonna gia' da 032).
-  - [ ] Il box fisso "pregresse" e' appeso in fondo (assicuraComposizione mette i
-    fissi dopo i box del template). Valutare se anteporlo (rivedere le pregresse a
-    inizio giro) con un `ordine` negativo o un riordino dedicato dei fissi.
+  - [x] **Pregresse a inizio giro** (Canale 1): `BoxGenerico` ora prende un prop
+    `filtro` ('fissi' | 'altri') e `Compilazione` lo monta due volte: i box FISSO
+    (cose da fare pregresse) in testa, prima della checklist; generici + smart dopo.
+    Una sola `assicuraComposizione`; semina solo l'istanza 'altri'. La collocazione
+    e' data dalla posizione di mount, non dall'`ordine` congelato (assicuraComposizione
+    invariata). Verificato `tsc -b` + `vite build`.
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza

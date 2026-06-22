@@ -523,6 +523,16 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modello box, pregresse a inizio giro** (`src/BoxGenerico.tsx`,
+  `src/Compilazione.tsx`): il box fisso "cose da fare pregresse" ora compare in
+  TESTA al sopralluogo (prima della checklist), per rivedere cio' che e' rimasto
+  aperto prima di compilare il nuovo giro. Realizzato senza toccare l'ordine
+  congelato della composizione: `BoxGenerico` riceve un prop `filtro`
+  ('fissi' | 'altri') e `Compilazione` lo monta due volte - i box fisso prima
+  della checklist, generici e smart dopo. Una sola `assicuraComposizione`; semina
+  solo l'istanza 'altri' (i fissi non hanno voci); la seconda istanza fa solo una
+  lettura locale in piu' (trascurabile). Verificato `tsc -b` + `vite build`.
+  Nessuna migration.
 - **Modello box, `componente_id` fino all'azione** (`src/lib/azioni.ts`,
   `src/lib/compilazione.ts`, `src/Compilazione.tsx`): le cose-da-fare generate da
   un box ripetibile ora portano direttamente `azione.componente_id` (prima il
