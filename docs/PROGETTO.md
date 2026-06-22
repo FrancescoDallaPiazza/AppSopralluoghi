@@ -218,8 +218,10 @@ NON aggancia ad alcun template (composizione manuale) - disattiva il prototipo
 033 `IMPIANTI` e azzera i link demo `checklist_template_box` · 036 estrae
 "Conformita societaria" da Cap.1 in un capitolo a se' (`INQUADRAMENTO`
 "Inquadramento azienda": profilo attivita + documenti societari, 5 voci),
-rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione periodica".
-**Prossima libera: 037.**
+rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione periodica" ·
+037 opzione A anti-sovrapposizione: archivia Cap.2 'Formazione', rimuove la sezione
+'Organigramma' da Cap.1 (coperti dai moduli smart) e rinomina Cap.1 "Riunione periodica".
+**Prossima libera: 038.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -530,6 +532,14 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Anagrafiche in STAMPATELLO** (`src/admin/Anagrafiche.tsx`,
+  `src/FormazioneRiepilogo.tsx`, `src/admin/Formazione.tsx`): gli inserimenti di
+  identita' di societa' e persone vengono forzati in maiuscolo gia' alla
+  digitazione (valore salvato in maiuscolo). Campi: ragione sociale, referente,
+  localita, indirizzo (cliente); cognome, nome, mansione, codice fiscale (persona
+  in campo) e nome/cognome (persona back-office). Esclusi email, telefono e id
+  Werp. Solo front-end; verificato `tsc -b` + `vite build`.
+
 - **Ordine capitoli nel compositore + sposta/copia voci tra sezioni**
   (`src/admin/ComponiTemplate.tsx`, `src/admin/CapitoloEditor.tsx`): nel
   compositore i capitoli selezionati hanno ora una sezione "Ordine nel

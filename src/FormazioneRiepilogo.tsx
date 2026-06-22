@@ -170,20 +170,20 @@ function PersonaForm({
       <div className="fzr-row2">
         <div className="fzr-field">
           <label>Cognome</label>
-          <input type="text" value={cognome} onChange={(e) => setCognome(e.target.value)} />
+          <input type="text" value={cognome} onChange={(e) => setCognome(e.target.value.toUpperCase())} />
         </div>
         <div className="fzr-field">
           <label>Nome</label>
-          <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} />
+          <input type="text" value={nome} onChange={(e) => setNome(e.target.value.toUpperCase())} />
         </div>
       </div>
       <div className="fzr-field">
         <label>Mansione</label>
-        <input type="text" value={mansione} onChange={(e) => setMansione(e.target.value)} />
+        <input type="text" value={mansione} onChange={(e) => setMansione(e.target.value.toUpperCase())} />
       </div>
       <div className="fzr-field">
         <label>Codice fiscale (facoltativo)</label>
-        <input type="text" value={cf} onChange={(e) => setCf(e.target.value)} />
+        <input type="text" value={cf} onChange={(e) => setCf(e.target.value.toUpperCase())} />
       </div>
       <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '2px 0 4px' }}>
         <input type="checkbox" checked={pregressa} onChange={(e) => setPregressa(e.target.checked)} />

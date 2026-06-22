@@ -258,13 +258,13 @@ function SchedaCliente({
         <label className="bo-field">
           <span>Ragione sociale *</span>
           <input type="text" value={cliente.ragione_sociale}
-            onChange={(e) => patch({ ragione_sociale: e.target.value })} />
+            onChange={(e) => patch({ ragione_sociale: e.target.value.toUpperCase() })} />
         </label>
         <div className="bo-grid">
           <label className="bo-field">
             <span>Referente</span>
             <input type="text" value={cliente.referente ?? ''}
-              onChange={(e) => patch({ referente: e.target.value || null })} />
+              onChange={(e) => patch({ referente: e.target.value.toUpperCase() || null })} />
           </label>
           <label className="bo-field">
             <span>Telefono</span>
@@ -279,12 +279,12 @@ function SchedaCliente({
           <label className="bo-field">
             <span>Località</span>
             <input type="text" value={cliente.localita ?? ''}
-              onChange={(e) => patch({ localita: e.target.value || null })} />
+              onChange={(e) => patch({ localita: e.target.value.toUpperCase() || null })} />
           </label>
           <label className="bo-field">
             <span>Indirizzo</span>
             <input type="text" value={cliente.indirizzo ?? ''}
-              onChange={(e) => patch({ indirizzo: e.target.value || null })} />
+              onChange={(e) => patch({ indirizzo: e.target.value.toUpperCase() || null })} />
           </label>
           <label className="bo-field">
             <span>Latitudine</span>
