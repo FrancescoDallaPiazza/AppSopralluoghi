@@ -12,7 +12,7 @@ export default function TemplateList() {
   const [righe, setRighe] = useState<TemplateRiga[]>([]);
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
   const [editor, setEditor] = useState<AperturaEditor | null>(null);
-  const [componi, setComponi] = useState(false);
+  const [componi, setComponi] = useState<{ templateId?: string } | null>(null);
   const [mostraArchiviati, setMostraArchiviati] = useState(false);
 
   function ricarica() {
@@ -26,7 +26,8 @@ export default function TemplateList() {
   if (componi) {
     return (
       <ComponiTemplate
-        onChiudi={(salvato) => { setComponi(false); if (salvato) ricarica(); }}
+        templateId={componi.templateId ?? null}
+        onChiudi={(salvato) => { setComponi(null); if (salvato) ricarica(); }}
       />
     );
   }
@@ -51,7 +52,7 @@ export default function TemplateList() {
             Modello configurabile per voce: scelta, testo, foto, rilievo, sotto-domande.
           </p>
         </div>
-        <button className="bo-btn ghost" onClick={() => setComponi(true)}>+ Componi da capitoli</button>
+        <button className="bo-btn ghost" onClick={() => setComponi({})}>+ Componi da capitoli</button>
         <button className="bo-btn" onClick={() => setEditor({ modo: 'nuovo' })}>+ Nuovo template</button>
       </div>
 
@@ -75,13 +76,15 @@ export default function TemplateList() {
               <div className="bo-meta">
                 <span><b>{r.template.tipo_attivita}</b></span>
                 <span>v{r.template.versione}</span>
-                <span>{r.n_voci} voci</span>
+                <span>{r.composto ? 'composto da capitoli' : `${r.n_voci} voci`}</span>
                 <span className={`bo-pill ${r.template.stato}`}>{r.template.stato}</span>
                 {r.usato && <span className="bo-pill usato">in uso</span>}
               </div>
             </div>
             <button className="bo-btn ghost sm"
-              onClick={() => setEditor({ modo: 'modifica', templateId: r.template.id })}>
+              onClick={() => (r.composto
+                ? setComponi({ templateId: r.template.id })
+                : setEditor({ modo: 'modifica', templateId: r.template.id }))}>
               Modifica
             </button>
             <button className="bo-btn ghost sm"

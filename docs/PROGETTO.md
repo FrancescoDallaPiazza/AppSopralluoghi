@@ -533,6 +533,18 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modifica della composizione di un template** (`src/admin/TemplateList.tsx`,
+  `src/admin/ComponiTemplate.tsx`, `src/lib/admin/composizione.ts`,
+  `src/lib/admin/templates.ts`): i template assemblati dai capitoli ora si
+  riconoscono (flag `composto`, etichetta "composto da capitoli") e il loro
+  "Modifica" riapre il COMPOSITORE sullo stesso template invece dell'editor delle
+  voci piatte (che mostrava "Voci (0)"). Nel compositore in modalita' modifica si
+  precaricano nome/tipo/note e i capitoli nell'ordine attuale: si possono
+  aggiungere/togliere e RIORDINARE (frecce su/giu'). Il salvataggio aggiorna in
+  place i `checklist_template_box` (niente nuova versione: la composizione guida
+  solo i prossimi sopralluoghi, quelli gia' compilati hanno la copia congelata).
+  Verificato `tsc -b` + `vite build`.
+
 - **Sedi multiple per cliente + testata sopralluogo + Cap.0 sfoltito**
   (migration 038; `src/lib/admin/sedi.ts`, `src/admin/Anagrafiche.tsx`,
   `src/lib/admin/anagrafiche.ts`, `src/lib/admin/pianificazione.ts`,

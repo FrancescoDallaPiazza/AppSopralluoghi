@@ -107,3 +107,77 @@ export async function creaTemplateDaBox(d: NuovoTemplateDaBox): Promise<string> 
 
   return id;
 }
+
+// ---- modifica composizione di un template ESISTENTE ----
+
+export interface ComposizioneTemplate {
+  templateId: string;
+  nome: string;
+  tipo_attivita: string;
+  note: string | null;
+  versione: number;
+  boxIds: string[];        // ordinati per ordine crescente
+  haVociPiatte: boolean;   // true se ha anche voci piatte (template "classico")
+}
+
+export async function caricaComposizioneTemplate(templateId: string): Promise<ComposizioneTemplate> {
+  const { data: t, error } = await supabase
+    .from('checklist_template')
+    .select('id, nome, tipo_attivita, note, versione')
+    .eq('id', templateId).maybeSingle();
+  if (error) throw error;
+  if (!t) throw new Error('Template non trovato.');
+
+  const { data: links } = await supabase
+    .from('checklist_template_box').select('box_id, ordine')
+    .eq('template_id', templateId).order('ordine', { ascending: true });
+
+  const { count } = await supabase
+    .from('voce_template').select('id', { count: 'exact', head: true }).eq('template_id', templateId);
+
+  const tt = t as { nome: string; tipo_attivita: string; note: string | null; versione: number };
+  return {
+    templateId,
+    nome: tt.nome,
+    tipo_attivita: tt.tipo_attivita,
+    note: tt.note ?? null,
+    versione: tt.versione,
+    boxIds: ((links ?? []) as { box_id: string }[]).map((l) => l.box_id),
+    haVociPiatte: (count ?? 0) > 0,
+  };
+}
+
+// Aggiorna in place la composizione (capitoli + ordine) e i metadati del
+// template. La composizione guida solo l'apertura dei NUOVI sopralluoghi: quelli
+// gia' compilati hanno la propria copia congelata (sopralluogo_box), quindi non
+// serve versionare. Sostituisce i link checklist_template_box.
+export async function aggiornaComposizioneTemplate(
+  templateId: string, d: NuovoTemplateDaBox,
+): Promise<void> {
+  const nome = d.nome.trim();
+  const tipo = d.tipo_attivita.trim();
+  if (!nome) throw new Error('Indicare un nome per il template.');
+  if (!tipo) throw new Error('Indicare il tipo attivita (aggancio con l\'incarico).');
+  if (!d.boxIds.length) throw new Error('Selezionare almeno un capitolo.');
+
+  const { data: bc, error: eBox } = await supabase
+    .from('box_catalogo').select('id, versione').in('id', d.boxIds);
+  if (eBox) throw eBox;
+  const verById = new Map<string, number>();
+  for (const b of (bc ?? []) as { id: string; versione: number }[]) verById.set(b.id, b.versione);
+
+  const { error: e1 } = await supabase.from('checklist_template')
+    .update({ nome, tipo_attivita: tipo, note: d.note }).eq('id', templateId);
+  if (e1) throw e1;
+
+  const { error: e2 } = await supabase.from('checklist_template_box')
+    .delete().eq('template_id', templateId);
+  if (e2) throw e2;
+
+  const righe = d.boxIds.map((boxId, i) => ({
+    id: newId(), template_id: templateId, box_id: boxId,
+    box_versione: verById.get(boxId) ?? 1, ordine: i * 10,
+  }));
+  const { error: e3 } = await supabase.from('checklist_template_box').insert(righe);
+  if (e3) throw e3;
+}

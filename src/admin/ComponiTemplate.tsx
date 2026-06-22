@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import {
   caricaBoxDisponibili, creaTemplateDaBox, type BoxDisponibile,
+  caricaComposizioneTemplate, aggiornaComposizioneTemplate,
 } from '../lib/admin/composizione';
 import { caricaAnteprimaCapitolo, type AnteprimaCapitolo } from '../lib/admin/capitoli';
 import type { VoceTemplate } from '../lib/types';
@@ -20,8 +21,8 @@ const TIPO_BREVE: Record<string, string> = {
 };
 
 export default function ComponiTemplate({
-  onChiudi,
-}: { onChiudi: (salvato: boolean) => void }) {
+  templateId = null, onChiudi,
+}: { templateId?: string | null; onChiudi: (salvato: boolean) => void }) {
   const [fase, setFase] = useState<'loading' | 'ok' | 'errore'>('loading');
   const [disp, setDisp] = useState<BoxDisponibile[]>([]);
   const [ordine, setOrdine] = useState<string[]>([]); // selezione + ordine
@@ -35,17 +36,29 @@ export default function ComponiTemplate({
   const [errore, setErrore] = useState<string | null>(null);
 
   useEffect(() => {
-    caricaBoxDisponibili()
-      .then((d) => {
+    Promise.all([
+      caricaBoxDisponibili(),
+      templateId ? caricaComposizioneTemplate(templateId) : Promise.resolve(null),
+    ])
+      .then(([d, comp]) => {
         setDisp(d);
-        // i moduli speciali sono proposti gia' confermati, in ordine di catalogo
-        setOrdine(d.filter((x) => x.sempre)
-          .sort((a, b) => a.box.ordine_default - b.box.ordine_default)
-          .map((x) => x.box.id));
+        if (comp) {
+          setNome(comp.nome);
+          setTipoAttivita(comp.tipo_attivita);
+          setNote(comp.note ?? '');
+          // ordine = capitoli del template (solo quelli ancora nel catalogo attivo)
+          const validi = new Set(d.map((x) => x.box.id));
+          setOrdine(comp.boxIds.filter((id) => validi.has(id)));
+        } else {
+          // nuovo: i moduli speciali sono proposti gia' confermati
+          setOrdine(d.filter((x) => x.sempre)
+            .sort((a, b) => a.box.ordine_default - b.box.ordine_default)
+            .map((x) => x.box.id));
+        }
         setFase('ok');
       })
       .catch(() => setFase('errore'));
-  }, []);
+  }, [templateId]);
 
   const boxById = (id: string) => disp.find((d) => d.box.id === id);
   const selezionato = (id: string) => ordine.includes(id);
@@ -85,7 +98,9 @@ export default function ComponiTemplate({
     const boxIds = ordine.filter((id) => boxById(id)); // ordine scelto dall'utente
     try {
       setSalvando(true);
-      await creaTemplateDaBox({ nome, tipo_attivita: tipoAttivita, note: note.trim() || null, boxIds });
+      const dati = { nome, tipo_attivita: tipoAttivita, note: note.trim() || null, boxIds };
+      if (templateId) await aggiornaComposizioneTemplate(templateId, dati);
+      else await creaTemplateDaBox(dati);
       onChiudi(true);
     } catch (e) {
       setErrore((e as Error)?.message ?? 'Creazione non riuscita.');
@@ -181,15 +196,16 @@ export default function ComponiTemplate({
     <>
       <div className="bo-row" style={{ marginBottom: 14 }}>
         <div className="grow">
-          <h2 className="bo-h">Componi un template dai capitoli</h2>
+          <h2 className="bo-h">{templateId ? 'Modifica i capitoli del template' : 'Componi un template dai capitoli'}</h2>
           <p className="bo-sub" style={{ margin: 0 }}>
-            Scegli i capitoli (espandi per vedere le domande), ordinali, dai un nome:
-            il template diventa attivo e compare nella scelta per seduta.
+            {templateId
+              ? 'Aggiungi/togli capitoli e cambia l\u2019ordine (frecce in basso). Vale per i prossimi sopralluoghi; quelli gia\u2019 compilati restano invariati.'
+              : 'Scegli i capitoli (espandi per vedere le domande), ordinali, dai un nome: il template diventa attivo e compare nella scelta per seduta.'}
           </p>
         </div>
         <button className="bo-btn ghost" onClick={() => onChiudi(false)} disabled={salvando}>Annulla</button>
         <button className="bo-btn" onClick={() => void crea()} disabled={salvando}>
-          {salvando ? 'Creo…' : 'Crea template'}
+          {salvando ? (templateId ? 'Salvo…' : 'Creo…') : (templateId ? 'Salva' : 'Crea template')}
         </button>
       </div>
 
@@ -256,7 +272,7 @@ export default function ComponiTemplate({
         <span className="grow" />
         <button className="bo-btn ghost" onClick={() => onChiudi(false)} disabled={salvando}>Annulla</button>
         <button className="bo-btn" onClick={() => void crea()} disabled={salvando}>
-          {salvando ? 'Creo…' : 'Crea template'}
+          {salvando ? (templateId ? 'Salvo…' : 'Creo…') : (templateId ? 'Salva' : 'Crea template')}
         </button>
       </div>
     </>

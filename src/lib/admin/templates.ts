@@ -22,6 +22,7 @@ export interface TemplateRiga {
   template: ChecklistTemplate;
   usato: boolean;     // ha almeno una checklist compilata che lo riferisce
   n_voci: number;
+  composto: boolean;  // assemblato da capitoli (checklist_template_box) anziche' voci piatte
 }
 
 // ---- elenco (raggruppabile per nome lato UI) ----
@@ -42,10 +43,14 @@ export async function caricaTemplates(): Promise<TemplateRiga[]> {
   const { data: usati } = await supabase.from('checklist_compilata').select('template_id');
   const setUsati = new Set((usati ?? []).map((r: { template_id: string }) => r.template_id));
 
+  const { data: links } = await supabase.from('checklist_template_box').select('template_id');
+  const setComposti = new Set((links ?? []).map((r: { template_id: string }) => r.template_id));
+
   return (tmpl ?? []).map((t: any): TemplateRiga => ({
     template: t as ChecklistTemplate,
     usato: setUsati.has(t.id),
     n_voci: conta.get(t.id) ?? 0,
+    composto: setComposti.has(t.id),
   }));
 }
 
