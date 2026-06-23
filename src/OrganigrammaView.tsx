@@ -292,7 +292,7 @@ function PersonaForm({
 // un ruolo con formazione soggetta al regime ASR 2025 si chiede (scelta esplicita
 // SI/NO) se ha formazione pregressa. Scritture via adapter.
 function AssegnaFiguraPanel({
-  figura, persone, titolari, clienteId, chiediPregressa, onSaved, onClose,
+  figura, persone, titolari, clienteId, chiediPregressa, onSaved, onClose, onEvidenzePregresse,
 }: {
   figura: FiguraSicurezza;
   persone: Persona[];
@@ -301,6 +301,7 @@ function AssegnaFiguraPanel({
   chiediPregressa: boolean;
   onSaved: () => Promise<void>;
   onClose: () => void;
+  onEvidenzePregresse?: (p: Persona) => void;
 }) {
   const adapter = useAdapter();
   const titolariIds = useMemo(() => titolari.map((t) => t.personaId), [titolari]);
@@ -366,11 +367,20 @@ function AssegnaFiguraPanel({
     if (busy) return;
     setBusy(true);
     try {
+      const conPregressa: Persona[] = [];
       for (const p of nuove) {
-        if (risposte[p.id] === 'si') await adapter.salvaPersona({ ...p, formazione_pregressa: true });
+        if (risposte[p.id] === 'si') {
+          const agg = { ...p, formazione_pregressa: true };
+          await adapter.salvaPersona(agg);
+          conPregressa.push(agg);
+        }
       }
       await onSaved();
       onClose();
+      // Apri SUBITO il pannello "Evidenze pregresse" per la prima persona
+      // dichiarata pregressa: l'utente carica gli attestati senza doverli
+      // cercare/aprire riga per riga (la scelta pregressa implica il caricamento).
+      if (conPregressa.length > 0 && onEvidenzePregresse) onEvidenzePregresse(conPregressa[0]);
     } finally { setBusy(false); }
   }
 
@@ -927,6 +937,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
             chiediPregressa={figureChePregressa.has(figura.codice)}
             onSaved={ricarica}
             onClose={() => setAssegnaFigura(null)}
+            onEvidenzePregresse={onEvidenzePregresse}
           />
         )}
 
@@ -964,6 +975,14 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                       <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
                       {nomePersona(pv.persona)}
                     </span>
+                    {pv.persona.formazione_pregressa && onEvidenzePregresse
+                      && figureChePregressa.has(figura.codice)
+                      && reqs.some((r) => r.stato === 'da_verificare' || r.stato === 'critico') && (
+                      <button className="fzr-edit-btn" style={{ borderColor: 'var(--hi-dark,#9a6206)', color: 'var(--hi-dark,#9a6206)' }}
+                        onClick={() => onEvidenzePregresse(pv.persona)}>
+                        Evidenze pregresse
+                      </button>
+                    )}
                     <button className="fzr-edit-btn" onClick={() => setEditPersona(anagAperto ? null : anagKey)}>
                       {anagAperto ? 'Chiudi' : 'Modifica'}
                     </button>

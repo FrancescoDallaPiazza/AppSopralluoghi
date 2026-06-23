@@ -48,6 +48,17 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ### UX trasversale
 
+- [ ] **Evidenze pregresse anche in campo (offline)**. Oggi il pannello batch
+  "Evidenze pregresse" (auto-apertura alla scelta "Si, pregressa" + bottone in
+  scheda incaricato) e' **back-office only**: `EvidenzePregresse` /
+  `SezioneRuoloPregresso` caricano l'attestato con `supabase.storage...upload` e
+  scrivono con `salvaFormazione` in diretta (online). Per la parita' campo =
+  back-office serve una versione offline: upload via `attestatoBlob` + outbox
+  ('attestato') e scrittura formazione via adapter, poi passare
+  `onEvidenzePregresse` a `OrganigrammaView` anche da `FormazioneRiepilogo`.
+  In campo, per ora, la pregressa si carica con il "Registra" per-riga
+  (gia' offline-safe via adapter/outbox).
+
 - [ ] **App unica responsive (PC / tablet / phone)**. Approccio scelto:
   hardening incrementale (non unificazione del guscio), app da campo prima.
   - [x] **App da campo su schermi grandi** (fatto 2026-06-10). Le tre schermate

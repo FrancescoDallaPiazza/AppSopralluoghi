@@ -578,6 +578,14 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Pregressa: apertura immediata del pannello evidenze** (`OrganigrammaView.tsx`).
+  Scegliendo "Si, pregressa" nell'assegnazione di una figura, alla conferma si apre
+  SUBITO il pannello "Evidenze pregresse" della persona (back-office), cosi' si
+  caricano gli attestati senza aprire riga per riga. In piu', nella card
+  dell'incaricato gia' pregresso con requisiti da recuperare compare un bottone
+  diretto "Evidenze pregresse". Nota: il pannello batch e' **online-only**
+  (back-office); in campo (offline) resta la registrazione per-riga via "Registra"
+  (adapter + outbox). `tsc -b` + `vite build` verdi.
 - **Parità organigramma campo = back-office + PDF con corso emergenza**
   (`lib/db.ts` v6, `lib/sync.ts`, `FormazioneRiepilogo.tsx`,
   `lib/admin/organigramma-revisioni.ts`, `functions/organigramma-pdf/index.ts`):
