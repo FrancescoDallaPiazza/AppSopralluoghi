@@ -134,8 +134,9 @@ function norm(s: string): string {
 
 // Suggerimenti per il typeahead: combacia per prefisso di codice (divisione) o
 // per sottostringa nella descrizione/sezione. Le voci che combaciano sul codice
-// vengono prima. Vuoto -> lista intera (per lo sfoglio iniziale).
-export function cercaAteco(query: string, limite = 8): AtecoDivisione[] {
+// vengono prima. Vuoto -> lista intera (per lo sfoglio iniziale). Di default
+// nessun tetto: sono 88 voci e la tendina scrolla; passare `limite` per cap.
+export function cercaAteco(query: string, limite = ATECO_DIVISIONI.length): AtecoDivisione[] {
   const q = (query ?? '').trim();
   if (!q) return ATECO_DIVISIONI.slice(0, limite);
   const digits = q.replace(/\D/g, '');
