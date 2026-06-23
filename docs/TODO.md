@@ -251,6 +251,15 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## ✅ Fatti di recente
 
+- [x] **2026-06-23** Parità organigramma campo = back-office + PDF emergenze.
+  Prefetch cacha i meta cliente in Dexie (tabella `clienteMeta`, schema **v6**:
+  rischio, rls territoriale, livelli emergenza); `caricaOrganigrammaLocale` li
+  espone e `FormazioneRiepilogo` li passa ad `assemblaRiepilogo` → campo valuta
+  identico al back-office (prima girava senza opts). Snapshot + Edge Function
+  `organigramma-pdf` ora riportano il corso da erogare per addetti emergenza
+  scoperti (`corso_emergenza`). `tsc -b` + `vite build` verdi. **PDF va
+  ridistribuito (canale 2)**; il corso compare sui nuovi snapshot.
+
 - [x] **2026-06-23** Organigramma: rifiniture IA + emergenze. (1) Il rischio
   proposto dall'ATECO si propaga subito all'organigramma (`OrganigrammaCliente`
   `refreshToken`). (4) Le schede ruolo si aprono inline nel proprio gruppo

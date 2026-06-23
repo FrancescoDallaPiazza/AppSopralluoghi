@@ -4,11 +4,12 @@
 // (gli id sono generati lato client, quindi niente conflitti di chiave).
 
 import { supabase, FOTO_BUCKET, ATTESTATI_BUCKET, estensioneAttestato, contentTypeAttestato, pathAttestato } from './supabase';
-import { db, enqueueRow, enqueueDelete, type OutboxOp, type OrganigrammaConferma } from './db';
+import { db, enqueueRow, enqueueDelete, type OutboxOp, type OrganigrammaConferma, type ClienteMeta } from './db';
 import { newId, type EsitoVoce, type Foto, type Azione } from './types';
 import type {
   Persona, Nomina, Formazione, Esonero,
   CorsoCatalogo, FiguraSicurezza, FiguraRequisito, EsoneroAmmesso,
+  LivelloRischio, LivelloAntincendio, GruppoPrimoSoccorso,
 } from './admin/formazione';
 
 // ---------- Foto: ridimensiona allo scatto, poi accoda ----------
@@ -256,6 +257,20 @@ export async function prefetchOrganigramma(clienteId: string): Promise<void> {
   if (!r.error && r.data) await db.requisiti.bulkPut(r.data as FiguraRequisito[]);
   if (!ea.error && ea.data) await db.esoneriAmmessi.bulkPut(ea.data as EsoneroAmmesso[]);
 
+  // Meta del cliente per l'organigramma (parita' di valutazione con il back-office).
+  const cli = await supabase.from('cliente')
+    .select('id, livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso')
+    .eq('id', clienteId).single();
+  if (!cli.error && cli.data) {
+    await db.clienteMeta.put({
+      id: clienteId,
+      livello_rischio: (cli.data.livello_rischio ?? null) as string | null,
+      rls_territoriale: (cli.data.rls_territoriale ?? false) as boolean,
+      livello_antincendio: (cli.data.livello_antincendio ?? null) as string | null,
+      gruppo_primo_soccorso: (cli.data.gruppo_primo_soccorso ?? null) as string | null,
+    });
+  }
+
   const pe = await supabase.from('persona').select('*').eq('cliente_id', clienteId);
   if (pe.error || !pe.data) return;
   const persone = pe.data as Persona[];
@@ -276,20 +291,30 @@ export async function prefetchOrganigramma(clienteId: string): Promise<void> {
 export interface OrganigrammaLocale {
   corsi: CorsoCatalogo[]; figure: FiguraSicurezza[]; requisiti: FiguraRequisito[]; esoneriAmmessi: EsoneroAmmesso[];
   persone: Persona[]; nomine: Nomina[]; formazioni: Formazione[]; esoneri: Esonero[];
+  // Meta del cliente (cache di prefetch): valutazione di campo = back-office.
+  livello_rischio: LivelloRischio | null;
+  rls_territoriale: boolean;
+  livello_antincendio: LivelloAntincendio | null;
+  gruppo_primo_soccorso: GruppoPrimoSoccorso | null;
 }
 
 export async function caricaOrganigrammaLocale(clienteId: string): Promise<OrganigrammaLocale> {
   const persone = await db.persone.where('cliente_id').equals(clienteId).toArray();
   const ids = new Set(persone.map((p) => p.id));
-  const [corsi, figure, requisiti, esoneriAmmessi, nomineAll, formAll, esonAll] = await Promise.all([
+  const [corsi, figure, requisiti, esoneriAmmessi, nomineAll, formAll, esonAll, meta] = await Promise.all([
     db.corsi.toArray(), db.figure.toArray(), db.requisiti.toArray(), db.esoneriAmmessi.toArray(),
     db.nomine.toArray(), db.formazioni.toArray(), db.esoneri.toArray(),
+    db.clienteMeta.get(clienteId) as Promise<ClienteMeta | undefined>,
   ]);
   return {
     corsi, figure, requisiti, esoneriAmmessi, persone,
     nomine: nomineAll.filter((n) => ids.has(n.persona_id)),
     formazioni: formAll.filter((f) => ids.has(f.persona_id)),
     esoneri: esonAll.filter((e) => ids.has(e.persona_id)),
+    livello_rischio: (meta?.livello_rischio ?? null) as LivelloRischio | null,
+    rls_territoriale: meta?.rls_territoriale ?? false,
+    livello_antincendio: (meta?.livello_antincendio ?? null) as LivelloAntincendio | null,
+    gruppo_primo_soccorso: (meta?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null,
   };
 }
 

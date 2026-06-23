@@ -19,7 +19,7 @@
 
 import { supabase } from '../supabase';
 import {
-  assemblaRiepilogo, caricaDatiOrganigramma,
+  assemblaRiepilogo, caricaDatiOrganigramma, corsoEmergenzaRichiesto,
   type Catalogo, type RiepilogoCliente, type ConteggiStato,
   type StatoRequisito, type LivelloRischio, type DatiOrganigramma,
 } from './formazione';
@@ -42,7 +42,7 @@ export interface SnapshotOrganigramma {
   livello_rischio: LivelloRischio | null;
   generato_il: string;                 // ISO
   conteggi: ConteggiStato;
-  figure_scoperte: { codice: string; nome: string; obbligo: string | null }[];
+  figure_scoperte: { codice: string; nome: string; obbligo: string | null; corso_emergenza?: string | null }[];
   persone: SnapshotPersona[];
 }
 
@@ -75,9 +75,13 @@ export function costruisciSnapshot(
     livello_rischio: riep.livello_rischio,
     generato_il: generatoIl ?? new Date().toISOString(),
     conteggi: { ...riep.conteggi },
-    figure_scoperte: riep.figureScoperte.map((f) => ({
-      codice: f.codice, nome: f.nome, obbligo: f.obbligo ?? null,
-    })),
+    figure_scoperte: riep.figureScoperte.map((f) => {
+      const em = corsoEmergenzaRichiesto(f.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+      return {
+        codice: f.codice, nome: f.nome, obbligo: f.obbligo ?? null,
+        corso_emergenza: em ? em.testo : null,
+      };
+    }),
     persone: riep.persone.map((pv) => ({
       nome: nomeDa(pv.persona),
       mansione: pv.persona.mansione,

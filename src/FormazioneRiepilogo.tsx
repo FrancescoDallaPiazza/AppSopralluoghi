@@ -82,13 +82,18 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
         : 'Catalogo non disponibile offline: apri con connessione almeno una volta, o usa "Scarica per offline".');
       return;
     }
-    const rischio = leggiRischioLocale(clienteId);
+    const rischio = o.livello_rischio ?? leggiRischioLocale(clienteId);
     const cat: Catalogo = { corsi: o.corsi, figure: o.figure, requisiti: o.requisiti, esoneriAmmessi: o.esoneriAmmessi };
     const r = assemblaRiepilogo(
       clienteId,
       rischio,
       { persone: o.persone, nomine: o.nomine, formazioni: o.formazioni, esoneri: o.esoneri },
       cat,
+      {
+        rlsTerritoriale: o.rls_territoriale,
+        livAntincendio: o.livello_antincendio,
+        gruppoPS: o.gruppo_primo_soccorso,
+      },
     );
     setOrg(o);
     setCatalogo(cat);
@@ -165,7 +170,7 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
       // la conferma in caso di errore.
       try {
         if (riep && org) {
-          const rischioFirma = leggiRischioLocale(clienteId);
+          const rischioFirma = org.livello_rischio ?? leggiRischioLocale(clienteId);
           const firma = firmaOrganigramma(
             { persone: org.persone, nomine: org.nomine, formazioni: org.formazioni, esoneri: org.esoneri },
             rischioFirma,

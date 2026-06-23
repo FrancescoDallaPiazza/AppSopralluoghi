@@ -65,6 +65,17 @@ export interface ContestoSopralluogo {
   tipo_attivita: string | null;
 }
 
+// Campi del cliente rilevanti per l'organigramma, messi in cache dal prefetch
+// per la valutazione OFFLINE in campo, identica al back-office: livello di
+// rischio, RLS territoriale e livelli di emergenza (antincendio / primo soccorso).
+export interface ClienteMeta {
+  id: string;                  // = cliente.id
+  livello_rischio: string | null;
+  rls_territoriale: boolean;
+  livello_antincendio: string | null;
+  gruppo_primo_soccorso: string | null;
+}
+
 class LocalDB extends Dexie {
   sopralluoghi!: Table<Sopralluogo, string>;
   compilate!: Table<ChecklistCompilata, string>;
@@ -94,6 +105,8 @@ class LocalDB extends Dexie {
   templateBox!: Table<ChecklistTemplateBox, string>;
   sopralluogoBox!: Table<SopralluogoBox, string>;
   componenti!: Table<ComponenteSito, string>;
+  // meta del cliente per l'organigramma offline (rischio, rls, emergenze)
+  clienteMeta!: Table<ClienteMeta, string>;
 
   constructor() {
     super('sopralluoghi');
@@ -143,6 +156,12 @@ class LocalDB extends Dexie {
       templateBox: 'id, template_id, box_id',
       sopralluogoBox: 'id, sopralluogo_id, box_id',
       componenti: 'id, sede_id, box_id',
+    });
+    // v6: meta del cliente per l'organigramma offline (livello di rischio, RLS
+    // territoriale, livelli emergenza), cosi' la valutazione di campo combacia
+    // con il back-office (stessi opts a assemblaRiepilogo).
+    this.version(6).stores({
+      clienteMeta: 'id',
     });
   }
 }

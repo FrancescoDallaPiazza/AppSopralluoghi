@@ -578,6 +578,24 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Parità organigramma campo = back-office + PDF con corso emergenza**
+  (`lib/db.ts` v6, `lib/sync.ts`, `FormazioneRiepilogo.tsx`,
+  `lib/admin/organigramma-revisioni.ts`, `functions/organigramma-pdf/index.ts`):
+  - **Parità offline**: il prefetch ora cacha in Dexie (nuova tabella
+    `clienteMeta`, **schema v6**) i campi cliente che servono al motore
+    (`livello_rischio`, `rls_territoriale`, `livello_antincendio`,
+    `gruppo_primo_soccorso`); `caricaOrganigrammaLocale` li restituisce e
+    `FormazioneRiepilogo` li passa ad `assemblaRiepilogo` come opts. Prima la
+    valutazione di campo girava senza opts (rischio di fatto nullo: la vecchia
+    chiave `formazione:rischio:` non era mai scritta) → ora campo e back-office
+    valutano identico, incluse le indicazioni corso degli addetti emergenza.
+  - **PDF (canale 2)**: lo snapshot (`costruisciSnapshot`) arricchisce ogni
+    figura scoperta con `corso_emergenza` (da `corsoEmergenzaRichiesto`); la
+    Edge Function `organigramma-pdf` stampa il corso accanto all'addetto
+    antincendio / primo soccorso scoperto. **Va ridistribuita (canale 2)**; i
+    PDF dei vecchi snapshot non avranno il corso finche' non si rigenera lo
+    snapshot (cioe' alla prossima conferma/registrazione organigramma).
+  `tsc -b` + `vite build` verdi; Edge Function: parse OK.
 - **Organigramma: propagazione rischio, schede inline, colori, regola DL=RSPP,
   emergenze** (`OrganigrammaView.tsx`, `lib/admin/formazione.ts`, `admin/Formazione.tsx`,
   `admin/Anagrafiche.tsx`, `lib/admin/organigramma-revisioni.ts`, `lib/types.ts`,

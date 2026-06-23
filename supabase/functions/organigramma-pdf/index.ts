@@ -38,7 +38,7 @@ interface SnapPersona {
 interface Snap {
   cliente_id: string; cliente_nome: string; livello_rischio: string | null;
   generato_il: string; conteggi: Record<string, number>;
-  figure_scoperte: { codice: string; nome: string; obbligo: string | null }[];
+  figure_scoperte: { codice: string; nome: string; obbligo: string | null; corso_emergenza?: string | null }[];
   persone: SnapPersona[];
 }
 
@@ -120,7 +120,7 @@ function renderSnapshot(s: Snap, numero: number | null): string {
     `<div class="m"><div class="mk">${esc(k)}</div><div class="mv" style="${col ? 'color:' + col : ''}">${v ?? 0}</div></div>`;
 
   const scoperti = (s.figure_scoperte ?? []).length
-    ? `<div class="crit"><b>Ruoli obbligatori senza incaricato:</b> ${s.figure_scoperte.map((f) => esc(f.nome)).join(', ')}</div>`
+    ? `<div class="crit"><b>Ruoli obbligatori senza incaricato:</b> ${s.figure_scoperte.map((f) => esc(f.nome) + (f.corso_emergenza ? ' <i>(corso: ' + esc(f.corso_emergenza) + ')</i>' : '')).join(', ')}</div>`
     : '';
 
   const persone = (s.persone ?? []).map((p) => {
