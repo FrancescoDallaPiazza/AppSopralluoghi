@@ -12,6 +12,7 @@ import {
   caricaSedi, salvaSede, impostaStatoSede, sedeVuota,
 } from '../lib/admin/sedi';
 import type { Cliente, Sede } from '../lib/types';
+import { OrganigrammaCliente } from './Formazione';
 
 export default function Anagrafiche() {
   // null = elenco; { id } = scheda esistente; { nuovo:true } = scheda nuova
@@ -296,6 +297,9 @@ function SchedaCliente({
           </div>
         </>
       )}
+
+      {/* --- organigramma sicurezza / formazione del cliente --- */}
+      {persistito && <OrganigrammaCliente clienteId={cliente.id} />}
 
     </div>
   );

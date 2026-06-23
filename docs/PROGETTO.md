@@ -57,7 +57,9 @@ src/
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
     CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx,
     EditorIncarico.tsx,  # editor incarico (vive nel tab Incarichi/Pianificazione)
-    Disponibilita.tsx, Formazione.tsx  # guscio BACK-OFFICE: adapter online -> OrganigrammaView
+    Disponibilita.tsx,
+    Formazione.tsx  # esporta OrganigrammaCliente (per-cliente, nella scheda Anagrafiche)
+                    # e CatalogoFormazione (globale, tab "Catalogo formazione")
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
     auth.ts, sopralluoghi.ts, azioni.ts, report.ts, prefetch.ts,
@@ -572,6 +574,18 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Organigramma del cliente spostato nella sua scheda (Anagrafiche); catalogo
+  esoneri ammessi isolato in "Catalogo formazione"** (`admin/Formazione.tsx`,
+  `admin/Anagrafiche.tsx`, `admin/BackOffice.tsx`). L'organigramma/formazione e' dato
+  del cliente: il tab Formazione standalone (con il selettore cliente) e' stato
+  smontato. La parte PER-CLIENTE diventa il componente `OrganigrammaCliente({clienteId})`
+  (rischio, OrganigrammaView con adapter online, genera cose da fare, PDF, storico,
+  evidenze pregresse, snapshot) ed e' innestata nella **scheda cliente** (niente piu'
+  picker: il cliente e' quello della scheda). La parte GLOBALE (editor "catalogo
+  esoneri ammessi", uguale per tutti i clienti) diventa `CatalogoFormazione` (default
+  export) e vive nel tab rinominato **"Catalogo formazione"**. Cosi' Anagrafiche =
+  cliente + sedi + organigramma; il tab globale resta solo per il catalogo condiviso.
+  Nessuna migration; `tsc -b` + `vite build` verdi.
 - **Incarichi spostati da Anagrafiche al tab Pianificazione (rinominato "Incarichi")**
   (`admin/Anagrafiche.tsx`, `admin/Pianificazione.tsx`, `admin/EditorIncarico.tsx` nuovo,
   `admin/BackOffice.tsx`). L'incarico e' un oggetto OPERATIVO (genera le sedute), non

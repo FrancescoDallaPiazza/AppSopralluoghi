@@ -134,44 +134,46 @@ const CSS_FZ = `
 .fz-modal{background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; width:min(560px,100%); max-height:90vh; overflow:auto;}
 `;
 
-export default function Formazione() {
+// Organigramma/formazione di UN cliente, da innestare nella sua scheda
+// (Anagrafiche). Il cliente e' gia' selezionato (prop clienteId): niente picker.
+// La parte GLOBALE (catalogo esoneri ammessi) sta in CatalogoFormazione.
+export function OrganigrammaCliente({ clienteId }: { clienteId: string }) {
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
-  const [clienti, setClienti] = useState<ClienteLite[]>([]);
   const [aree, setAree] = useState<AreaInterna[]>([]);
-  const [clienteId, setClienteId] = useState<string>('');
+  const [cliente, setCliente] = useState<ClienteLite | null>(null);
   const [riep, setRiep] = useState<RiepilogoCliente | null>(null);
   const [caricando, setCaricando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
 
   const [genOpen, setGenOpen] = useState(false);
-  const [catalogoOpen, setCatalogoOpen] = useState(false);
   const [storicoOpen, setStoricoOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pregressaPersonaId, setPregressaPersonaId] = useState<string | null>(null);
 
-  const cliente = useMemo(() => clienti.find((c) => c.id === clienteId) ?? null, [clienti, clienteId]);
-
   useEffect(() => {
+    let vivo = true;
     (async () => {
       try {
         const [cat, ar, cli] = await Promise.all([
           caricaCatalogo(),
           caricaAreeInterne(),
           supabase.from('cliente').select('id, ragione_sociale, livello_rischio, rls_territoriale')
-            .eq('attivo', true).order('ragione_sociale'),
+            .eq('id', clienteId).single(),
         ]);
         if (cli.error) throw cli.error;
+        if (!vivo) return;
         setCatalogo(cat);
         setAree(ar);
-        setClienti((cli.data ?? []) as ClienteLite[]);
+        setCliente(cli.data as ClienteLite);
       } catch (e: any) {
-        setErrore(e?.message ?? String(e));
+        if (vivo) setErrore(e?.message ?? String(e));
       }
     })();
-  }, []);
+    return () => { vivo = false; };
+  }, [clienteId]);
 
   async function ricarica() {
-    if (!clienteId || !catalogo) { setRiep(null); return; }
+    if (!catalogo) { setRiep(null); return; }
     setCaricando(true); setErrore(null);
     try {
       setRiep(await valutaCliente(clienteId, catalogo));
@@ -183,12 +185,8 @@ export default function Formazione() {
   }
   useEffect(() => { ricarica(); /* eslint-disable-next-line */ }, [clienteId, catalogo]);
 
-  // Dopo ogni MODIFICA dell'organigramma: snapshot automatico versionato (con
-  // dedup lato server: niente revisione se nulla e' cambiato) e poi ricarica.
-  // Le ricariche di sola lettura (cambio cliente, primo caricamento) restano su
-  // `ricarica()` e non generano snapshot.
   async function dopoModifica() {
-    if (clienteId && catalogo && cliente) {
+    if (catalogo && cliente) {
       try {
         await registraSnapshotOrganigramma(clienteId, { catalogo, clienteNome: cliente.ragione_sociale });
       } catch (e) { console.warn('snapshot organigramma non riuscito', e); }
@@ -196,9 +194,6 @@ export default function Formazione() {
     await ricarica();
   }
 
-  // Adapter ONLINE per OrganigrammaView: scritture dirette su Supabase
-  // (formazione.ts) + upload allegati su Storage. onCambia = dopoModifica (snapshot
-  // automatico + ricarica). Identico, per la UI, all'adapter offline del campo.
   const adapter: OrganigrammaAdapter = {
     salvaPersona, eliminaPersona, salvaNomina,
     eliminaNomina: async (id: string) => {
@@ -218,7 +213,6 @@ export default function Formazione() {
     onCambia: dopoModifica,
   };
 
-  // Esporta in PDF il riassunto dell'organigramma corrente (via Edge Function).
   async function esportaPdf() {
     if (!riep || !cliente) return;
     setPdfBusy(true);
@@ -232,20 +226,16 @@ export default function Formazione() {
   }
 
   async function setRischio(v: LivelloRischio | null) {
-    if (!clienteId) return;
     const { error } = await supabase.from('cliente').update({ livello_rischio: v }).eq('id', clienteId);
     if (error) { setErrore(error.message); return; }
-    setClienti((arr) => arr.map((c) => (c.id === clienteId ? { ...c, livello_rischio: v } : c)));
+    setCliente((c) => (c ? { ...c, livello_rischio: v } : c));
     dopoModifica();
   }
 
-  // RLS coperto dal rappresentante territoriale (RLST): se attivo, l'RLS non
-  // viene segnalato come ruolo scoperto. Persistito sul cliente; ricalcola.
   async function impostaRlsTerritoriale(v: boolean) {
-    if (!clienteId) return;
     const { error } = await supabase.from('cliente').update({ rls_territoriale: v }).eq('id', clienteId);
     if (error) { setErrore(error.message); return; }
-    setClienti((arr) => arr.map((c) => (c.id === clienteId ? { ...c, rls_territoriale: v } : c)));
+    setCliente((c) => (c ? { ...c, rls_territoriale: v } : c));
     dopoModifica();
   }
 
@@ -253,15 +243,8 @@ export default function Formazione() {
     <>
       <style>{CSS_FZ}</style>
 
-      <div className="bo-row" style={{ marginBottom: 14, gap: 14, flexWrap: 'wrap' }}>
-        <div className="grow">
-          <h2 className="bo-h">Formazione e organigramma</h2>
-          <p className="bo-sub" style={{ margin: 0 }}>Stato formativo del personale per cliente.</p>
-        </div>
-        <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} style={{ minWidth: 240, width: 'auto' }}>
-          <option value="">— scegli cliente —</option>
-          {clienti.map((c) => <option key={c.id} value={c.id}>{c.ragione_sociale}</option>)}
-        </select>
+      <div className="bo-row" style={{ margin: '22px 0 12px', gap: 14, flexWrap: 'wrap', alignItems: 'baseline' }}>
+        <div className="grow"><h2 className="bo-h" style={{ margin: 0 }}>Formazione e organigramma</h2></div>
         {cliente && (
           <select value={cliente.livello_rischio ?? ''}
             style={{ width: 'auto', ...(cliente.livello_rischio ? {} : { borderColor: 'var(--hi-dark)', background: '#fbf0d6', fontWeight: 700 }) }}
@@ -275,8 +258,7 @@ export default function Formazione() {
       </div>
 
       {errore && <div className="bo-err">{errore}</div>}
-      {!clienteId && <div className="bo-empty">Scegli un cliente per vederne l'organigramma e lo stato formativo.</div>}
-      {caricando && <div className="bo-empty">Carico…</div>}
+      {caricando && !riep && <div className="bo-empty">Carico…</div>}
 
       {riep && cliente && (
         <>
@@ -296,7 +278,7 @@ export default function Formazione() {
           </div>
 
           {!cliente.livello_rischio && (
-            <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate. Impostalo dal menù a tendina "rischio" in alto, accanto al nome del cliente.</div>
+            <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate. Impostalo dal menù a tendina "rischio" qui sopra.</div>
           )}
 
           {/* organigramma atteso - render CONDIVISO col campo (OrganigrammaView) */}
@@ -325,15 +307,6 @@ export default function Formazione() {
           )}
 
           {riep.persone.length === 0 && <div className="bo-empty">Nessuna persona in organigramma. Aggiungine una per iniziare.</div>}
-
-          <div style={{ marginTop: 18 }}>
-            <button className="bo-btn ghost sm" onClick={() => setCatalogoOpen((v) => !v)}>
-              {catalogoOpen ? 'Nascondi' : 'Mostra'} catalogo esoneri ammessi (promemoria in campo)
-            </button>
-            {catalogoOpen && catalogo && (
-              <EditorEsoneriAmmessi catalogo={catalogo} onCambia={(ea) => setCatalogo({ ...catalogo, esoneriAmmessi: ea })} />
-            )}
-          </div>
         </>
       )}
 
@@ -345,7 +318,7 @@ export default function Formazione() {
         />
       )}
 
-      {pregressaPersonaId && riep && clienteId && (() => {
+      {pregressaPersonaId && riep && (() => {
         const pv = riep.persone.find((p) => p.persona.id === pregressaPersonaId);
         if (!pv) return null;
         return (
@@ -357,6 +330,33 @@ export default function Formazione() {
           />
         );
       })()}
+    </>
+  );
+}
+
+// Catalogo formazione GLOBALE (non per-cliente): editor degli esoneri ammessi
+// (i promemoria mostrati in campo). Vive in una sezione dedicata del back-office.
+export default function CatalogoFormazione() {
+  const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  useEffect(() => {
+    caricaCatalogo().then(setCatalogo).catch((e) => setErrore(e?.message ?? String(e)));
+  }, []);
+
+  return (
+    <>
+      <style>{CSS_FZ}</style>
+      <h2 className="bo-h">Catalogo formazione</h2>
+      <p className="bo-sub">
+        Esoneri ammessi: titoli, abilitazioni e ruoli equipollenti riconosciuti come promemoria
+        in fase di compilazione (valgono per tutti i clienti).
+      </p>
+      {errore && <div className="bo-err">{errore}</div>}
+      {!catalogo && !errore && <div className="bo-empty">Carico…</div>}
+      {catalogo && (
+        <EditorEsoneriAmmessi catalogo={catalogo} onCambia={(ea) => setCatalogo({ ...catalogo, esoneriAmmessi: ea })} />
+      )}
     </>
   );
 }
