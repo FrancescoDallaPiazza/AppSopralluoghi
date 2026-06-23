@@ -251,6 +251,16 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## ✅ Fatti di recente
 
+- [x] **2026-06-23** Anagrafica fiscale cliente + **codice ATECO guidato**.
+  Migration 040 (`cliente.partita_iva`/`codice_fiscale`/`codice_ateco`); nuovo
+  `src/lib/ateco.ts` (tabella Allegato IV ASR 2025 generata dalla libreria
+  `formazione-81-utils-src`, 88 divisioni) con `risolviAteco`/`cercaAteco`; campo
+  ATECO typeahead nel blocco Ragione sociale che propone/applica
+  `cliente.livello_rischio`. `types.ts` + `lib/admin/anagrafiche.ts`
+  (colonne/upsert/`clienteVuoto`) + `admin/Anagrafiche.tsx`. `tsc -b` +
+  `vite build` verdi; SQL parse OK + ASCII-only. Rilascio: **040 in SQL Editor
+  PRIMA** del push. Chiude il punto 1 di "Aperto / da decidere".
+
 - [x] **2026-06-21** Modello box, passi **1a+1b**: estratto il motore di render
   delle voci in `src/vociRender.tsx` (single source su `ContestoVoci`) e fatto
   usare a `src/Compilazione.tsx` senza duplicazione (1154→817 righe). `vociRender`

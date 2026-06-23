@@ -12,6 +12,10 @@ import {
   caricaSedi, salvaSede, impostaStatoSede, sedeVuota,
 } from '../lib/admin/sedi';
 import type { Cliente, Sede } from '../lib/types';
+import {
+  risolviAteco, cercaAteco, ETICHETTA_RISCHIO,
+  type AtecoDivisione, type RischioAteco,
+} from '../lib/ateco';
 import { OrganigrammaCliente } from './Formazione';
 
 export default function Anagrafiche() {
@@ -218,6 +222,23 @@ function SchedaCliente({
         </label>
         <div className="bo-grid">
           <label className="bo-field">
+            <span>Partita IVA</span>
+            <input type="text" inputMode="numeric" value={cliente.partita_iva ?? ''}
+              onChange={(e) => patch({ partita_iva: e.target.value.toUpperCase() || null })} />
+          </label>
+          <label className="bo-field">
+            <span>Codice fiscale</span>
+            <input type="text" value={cliente.codice_fiscale ?? ''}
+              onChange={(e) => patch({ codice_fiscale: e.target.value.toUpperCase() || null })} />
+          </label>
+        </div>
+        <CampoAteco
+          codice={cliente.codice_ateco}
+          livello={cliente.livello_rischio}
+          onPatch={patch}
+        />
+        <div className="bo-grid" style={{ marginTop: 12 }}>
+          <label className="bo-field">
             <span>Referente</span>
             <input type="text" value={cliente.referente ?? ''}
               onChange={(e) => patch({ referente: e.target.value.toUpperCase() || null })} />
@@ -379,5 +400,104 @@ function SediCliente({ clienteId, sedi, onCambia }: {
       )}
       {sedi.map((s) => <RigaSede key={s.id} sede={s} onCambia={onCambia} />)}
     </>
+  );
+}
+
+// ===================== Campo ATECO guidato =====================
+// Typeahead sull'Allegato IV ASR 2025: si cerca per codice o per attivita,
+// si sceglie la divisione e si imposta automaticamente il livello di rischio
+// dell'organigramma. Digitando un codice a mano, il livello viene proposto
+// (bottone "Applica") senza sovrascrivere un valore gia' scelto.
+function CampoAteco({
+  codice, livello, onPatch,
+}: {
+  codice: string | null;
+  livello: RischioAteco | null;
+  onPatch: (p: Partial<Cliente>) => void;
+}) {
+  const [aperto, setAperto] = useState(false);
+  const testo = codice ?? '';
+  const ris = risolviAteco(testo);
+  const suggerimenti = useMemo(() => cercaAteco(testo), [testo]);
+
+  const coloreRischio = (l: RischioAteco) =>
+    l === 'basso' ? 'var(--ok)' : l === 'alto' ? 'var(--no)' : 'var(--hi-dark)';
+
+  const scegli = (d: AtecoDivisione) => {
+    onPatch({ codice_ateco: d.divisione, livello_rischio: d.livello });
+    setAperto(false);
+  };
+
+  return (
+    <div className="bo-field" style={{ position: 'relative', marginBottom: 0 }}>
+      <span>Codice ATECO</span>
+      <input
+        type="text"
+        autoComplete="off"
+        value={testo}
+        placeholder="Cerca per codice o attività (es. 56 o 'ristorazione')"
+        onFocus={() => setAperto(true)}
+        onChange={(e) => { onPatch({ codice_ateco: e.target.value || null }); setAperto(true); }}
+        onBlur={() => window.setTimeout(() => setAperto(false), 150)}
+      />
+
+      {aperto && suggerimenti.length > 0 && (
+        <div style={{
+          position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 30,
+          marginTop: 4, background: '#fff', border: '1px solid var(--line)',
+          borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)',
+          maxHeight: 290, overflowY: 'auto',
+        }}>
+          {suggerimenti.map((d) => (
+            <button key={d.divisione} type="button"
+              onMouseDown={(e) => { e.preventDefault(); scegli(d); }}
+              style={{
+                display: 'flex', gap: 10, alignItems: 'baseline', width: '100%',
+                textAlign: 'left', border: 'none', background: 'none',
+                padding: '9px 11px', cursor: 'pointer', fontFamily: 'inherit',
+                borderBottom: '1px solid var(--line)',
+              }}>
+              <b style={{ fontVariantNumeric: 'tabular-nums', minWidth: 20 }}>{d.divisione}</b>
+              <span style={{ flex: 1, fontSize: 13, color: 'var(--ink)' }}>{d.descrizione}</span>
+              <span style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '.04em',
+                color: coloreRischio(d.livello),
+              }}>{ETICHETTA_RISCHIO[d.livello]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {ris ? (
+        <div style={{
+          marginTop: 6, fontSize: 12, color: 'var(--ink-soft)',
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        }}>
+          <span>
+            Div. {ris.divisione} (sez. {ris.sezione}) · {ris.descrizione} ·{' '}
+            <b style={{ color: coloreRischio(ris.livello) }}>rischio {ETICHETTA_RISCHIO[ris.livello]}</b>
+          </span>
+          {livello !== ris.livello && (
+            <button type="button" className="bo-btn ghost"
+              style={{ padding: '3px 9px', fontSize: 11.5 }}
+              onClick={() => onPatch({ livello_rischio: ris.livello })}>
+              Applica rischio: {ETICHETTA_RISCHIO[ris.livello]}
+            </button>
+          )}
+        </div>
+      ) : testo.trim() ? (
+        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--faint)' }}>
+          Divisione non classificata nell'Allegato IV — verifica il codice.
+        </div>
+      ) : null}
+
+      <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--ink-soft)' }}>
+        Livello di rischio impostato:{' '}
+        {livello
+          ? <b style={{ color: coloreRischio(livello) }}>{ETICHETTA_RISCHIO[livello]}</b>
+          : <span style={{ color: 'var(--faint)' }}>non impostato</span>}
+        {' '}· modificabile anche dall'organigramma del cliente.
+      </div>
+    </div>
   );
 }

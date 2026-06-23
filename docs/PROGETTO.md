@@ -229,8 +229,10 @@ rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione pe
 037 opzione A anti-sovrapposizione: archivia Cap.2 'Formazione', rimuove la sezione
 'Organigramma' da Cap.1 (coperti dai moduli smart) e rinomina Cap.1 "Riunione periodica" ·
 038 sfoltisce il Cap.0 Anagrafica (rimuove Azienda/Data/Luogo, ora in testata di compilazione) ·
-039 `sopralluogo.template_id` + `template_versione` (checklist scelta in pianificazione per seduta).
-**Prossima libera: 040.**
+039 `sopralluogo.template_id` + `template_versione` (checklist scelta in pianificazione per seduta) ·
+040 anagrafica fiscale cliente (`cliente.partita_iva` + `codice_fiscale` + `codice_ateco`; il
+livello di rischio e' proposto in UI dall'ATECO, Allegato IV ASR 2025).
+**Prossima libera: 041.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -574,6 +576,24 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Anagrafica fiscale cliente + codice ATECO guidato** (`migration 040` +
+  `lib/types.ts` + `lib/admin/anagrafiche.ts` + `lib/ateco.ts` nuovo +
+  `admin/Anagrafiche.tsx`). Nel blocco "Ragione sociale" della scheda cliente
+  ora ci sono **Partita IVA**, **Codice fiscale** e **Codice ATECO**. Il campo
+  ATECO e' un **typeahead guidato** sull'Allegato IV ASR 17/04/2025 (Rep. Atti
+  59/CSR): si cerca per codice o per descrizione dell'attivita, la tendina mostra
+  divisione + descrizione + livello di rischio, e scegliendo una voce si imposta
+  in automatico `cliente.codice_ateco` e si **propone/applica** il livello di
+  rischio dell'organigramma (`cliente.livello_rischio`, colonna gia' presente
+  dalla 015). Digitando un codice a mano il rischio viene proposto con un bottone
+  "Applica" (non sovrascrive un valore gia' scelto). Il livello resta comunque
+  modificabile dall'organigramma del cliente (ultimo salvataggio vince). La
+  tabella ATECO->rischio (`src/lib/ateco.ts`, 88 divisioni) e' **generata dalla
+  libreria normativa** `FrancescoDallaPiazza/formazione-81-utils-src`
+  (`allegato_iv_asr2025.js`), non trascritta a mano; livelli in minuscolo per
+  combaciare col vincolo della colonna. Rilascio: eseguire **040 in SQL Editor
+  PRIMA** del push (idempotente). `tsc -b` + `vite build` verdi; SQL parse OK +
+  ASCII-only + idempotente.
 - **Rifiniture back-office** (`admin/ui.ts`, `admin/Anagrafiche.tsx`, `OrganigrammaView.tsx`):
   (1) gli input `email`/`tel` ereditavano il font del browser perche' il selettore CSS
   copriva solo `text/number/date`; ampliato a `.bo input:not([checkbox/radio/file])`.

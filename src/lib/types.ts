@@ -49,6 +49,13 @@ export interface Cliente {
   id: string;
   werp_id: string | null;
   ragione_sociale: string;
+  // Anagrafica fiscale (migration 040): mostrati nel blocco "Ragione sociale".
+  partita_iva: string | null;
+  codice_fiscale: string | null;
+  codice_ateco: string | null;
+  // Livello di rischio (colonna da migration 015): proposto in anagrafica dal
+  // codice ATECO (Allegato IV ASR 2025) e sovrascrivibile dall'organigramma.
+  livello_rischio: 'basso' | 'medio' | 'alto' | null;
   referente: string | null;
   telefono: string | null;
   email: string | null;
