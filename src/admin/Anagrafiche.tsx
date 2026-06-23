@@ -128,6 +128,9 @@ function SchedaCliente({
   const [fase, setFase] = useState<'carico' | 'pronto' | 'errore'>(nuovo ? 'pronto' : 'carico');
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Bump dopo il salvataggio: forza il ricalcolo dell'organigramma innestato
+  // (es. nuovo livello di rischio proposto dall'ATECO, livelli emergenza).
+  const [orgRefresh, setOrgRefresh] = useState(0);
 
   function caricaTutto() {
     if (nuovo) return;
@@ -153,6 +156,7 @@ function SchedaCliente({
     try {
       await salvaCliente(cliente);
       setPersistito(true);
+      setOrgRefresh((n) => n + 1);
       setMsg('Cliente salvato.');
     } catch (e: any) {
       setMsg(e?.message ?? 'Salvataggio non riuscito.');
@@ -280,6 +284,35 @@ function SchedaCliente({
           </label>
         </div>
 
+        <div className="bo-field" style={{ margin: '14px 0 0' }}>
+          <span>Gestione emergenze (definire a monte)</span>
+        </div>
+        <div className="bo-grid">
+          <label className="bo-field">
+            <span>Livello rischio incendio</span>
+            <select value={cliente.livello_antincendio ?? ''}
+              onChange={(e) => patch({ livello_antincendio: (e.target.value || null) as Cliente['livello_antincendio'] })}>
+              <option value="">— non definito —</option>
+              <option value="1">Livello 1 — corso 4h</option>
+              <option value="2">Livello 2 — corso 8h</option>
+              <option value="3">Livello 3 — corso 16h</option>
+            </select>
+          </label>
+          <label className="bo-field" style={{ marginBottom: 0 }}>
+            <span>Gruppo primo soccorso</span>
+            <select value={cliente.gruppo_primo_soccorso ?? ''}
+              onChange={(e) => patch({ gruppo_primo_soccorso: (e.target.value || null) as Cliente['gruppo_primo_soccorso'] })}>
+              <option value="">— non definito —</option>
+              <option value="A">Gruppo A — corso 16h</option>
+              <option value="BC">Gruppi B / C — corso 12h</option>
+            </select>
+          </label>
+        </div>
+        <p className="bo-sub" style={{ margin: '6px 0 0' }}>
+          Determinano il corso degli addetti. Se nell'organigramma non c'è un addetto,
+          il report indica il corso da erogare in base a questi valori.
+        </p>
+
         <div className="bo-bar">
           <button className="bo-btn" onClick={() => void salva()} disabled={busy}>
             {busy ? 'Salvo…' : 'Salva cliente'}
@@ -320,7 +353,7 @@ function SchedaCliente({
       )}
 
       {/* --- organigramma sicurezza / formazione del cliente --- */}
-      {persistito && <OrganigrammaCliente clienteId={cliente.id} />}
+      {persistito && <OrganigrammaCliente clienteId={cliente.id} refreshToken={orgRefresh} />}
 
     </div>
   );

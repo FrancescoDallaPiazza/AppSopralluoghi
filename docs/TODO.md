@@ -251,6 +251,17 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## ✅ Fatti di recente
 
+- [x] **2026-06-23** Organigramma: rifiniture IA + emergenze. (1) Il rischio
+  proposto dall'ATECO si propaga subito all'organigramma (`OrganigrammaCliente`
+  `refreshToken`). (4) Le schede ruolo si aprono inline nel proprio gruppo
+  (`renderFigCard`). (5) Colori dei bottoni-figura coerenti con lo stato reale
+  + legenda (`statoFigura`). (6) Se DL = RSPP sparisce l'intera area SPP
+  (RSPP + ASPP) in motore e view. (7) Emergenze definite a monte: migration 041
+  (`cliente.livello_antincendio` 1/2/3, `gruppo_primo_soccorso` A/BC), selettori
+  in anagrafica, indicazione del corso da erogare per addetti scoperti in scheda
+  e in `proponiCoseDaFare` (`corsoEmergenzaRichiesto`). `tsc -b` + `vite build`
+  verdi; SQL parse OK + ASCII-only. Rilascio: **041 in SQL Editor PRIMA** del push.
+
 - [x] **2026-06-23** Anagrafica fiscale cliente + **codice ATECO guidato**.
   Migration 040 (`cliente.partita_iva`/`codice_fiscale`/`codice_ateco`); nuovo
   `src/lib/ateco.ts` (tabella Allegato IV ASR 2025 generata dalla libreria

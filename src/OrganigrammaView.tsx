@@ -18,7 +18,7 @@ import {
   type TipoEsonero, type Formazione, type Esonero,
   type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
   type CorsoCatalogo, type Catalogo,
-  nomePersona, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa,
+  nomePersona, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
 } from './lib/admin/formazione';
 import { newId } from './lib/types';
 
@@ -90,6 +90,7 @@ const CSS = `
 .fzr-dot.critico{background:var(--no,#d8442f);}
 .fzr-dot.esonerato{background:#3b6fd0;}
 .fzr-dot.da_verificare{background:#7a8aa6;}
+.fzr-dot.neutro{background:#b9bdc4;}
 .fzr-d{color:var(--ink-soft,#5b5f66); font-size:11.5px; margin-top:2px;}
 .fzr-hint{font-size:11.5px; color:#27508f; background:#eef3fc; border-radius:8px; padding:5px 8px; margin-top:5px; line-height:1.4;}
 .fzr-edit-btn{flex:0 0 auto; background:none; border:1px solid var(--line,#e3ddd2); border-radius:8px; padding:3px 9px; font-size:11.5px; font-weight:700; color:var(--ink,#2a2c30); cursor:pointer;}
@@ -143,6 +144,16 @@ const CSS = `
 .fzr-figchip.on{background:#fff7e6; border-color:var(--hi,#e0a32e);}
 .fzr-figchip.critico{border-color:#f0c4bc;}
 .fzr-figchip.critico.on{background:#fdeae6; border-color:var(--no,#d8442f);}
+.fzr-figchip.in_scadenza{border-color:#e8cf9b;}
+.fzr-figchip.in_scadenza.on{background:#fbf3df; border-color:var(--hi,#e0a32e);}
+.fzr-figchip.conforme{border-color:#bfe0c9;}
+.fzr-figchip.conforme.on{background:#eaf6ee; border-color:var(--ok,#1f9d57);}
+.fzr-figchip.da_verificare,.fzr-figchip.esonerato{border-color:#cdd4df;}
+.fzr-figchip.neutro{border-color:#e1e3e7; color:var(--ink-soft,#5b5f66);}
+.fzr-figchip.neutro.on{background:#f1f2f4;}
+.fzr-legenda{display:flex; flex-wrap:wrap; gap:10px 14px; margin:0 0 9px; font-size:11px; color:var(--ink-soft,#5b5f66);}
+.fzr-legenda span{display:inline-flex; align-items:center; gap:5px;}
+.fzr-emerg{font-size:11.5px; color:var(--hi-dark,#9a6206); background:#fbf0d6; border-radius:8px; padding:5px 8px; margin:5px 0 0 18px; line-height:1.4;}
 .fzr-figchip-nome{white-space:nowrap;}
 .fzr-figchip-n{font-size:10.5px; font-weight:800; background:#efeae0; border-radius:999px; padding:0 6px; min-width:16px; text-align:center;}
 .fzr-figchip-pm{font-size:14px; font-weight:800; color:var(--ink-soft,#5b5f66); width:12px; text-align:center; line-height:1;}
@@ -820,8 +831,10 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
 
   // Copertura figure attese: tutte le figure del catalogo, raggruppate per blocco.
   const scoperteSet = new Set(riep.figureScoperte.map((f) => f.codice));
+  // #6: se il Datore di lavoro svolge l'RSPP, l'INTERA area SPP (RSPP + ASPP)
+  // sparisce, non solo la riga RSPP.
   const figureAttese = catalogo.figure.filter((f) => f.attiva)
-    .filter((f) => !(f.codice === 'rspp' && dlRsppCoperto))
+    .filter((f) => !((f.codice === 'rspp' || f.codice === 'aspp') && dlRsppCoperto))
     .slice().sort((a, b) => (a.gruppo_ordine ?? 999) - (b.gruppo_ordine ?? 999) || a.ordine - b.ordine);
   const figureChePregressa = new Set<string>();
   for (const f of figureAttese) {
@@ -836,10 +849,195 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     if (!grp) { grp = { nome: g, righe: [] }; gruppiCopertura.push(grp); }
     grp.righe.push({ figura: f, assegnate });
   }
+
+  // #5: colore del bottone-figura con una ratio chiara, dallo stato REALE:
+  //   - nessun incaricato + ruolo obbligatorio scoperto -> critico (rosso)
+  //   - nessun incaricato + ruolo eventuale/condizionale -> neutro (grigio)
+  //   - incaricati presenti -> stato PEGGIORE della formazione per quella figura
+  //     (critico > in scadenza > da verificare > conforme/esonerato).
+  type StatoFig = 'critico' | 'in_scadenza' | 'da_verificare' | 'conforme' | 'esonerato' | 'neutro';
+  const RANK: Record<string, number> = { critico: 5, in_scadenza: 4, da_verificare: 3, conforme: 2, esonerato: 2, neutro: 1 };
+  const statoFigura = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate']): StatoFig => {
+    if (assegnate.length === 0) return scoperteSet.has(figura.codice) ? 'critico' : 'neutro';
+    let worst: StatoFig = 'conforme';
+    for (const pv of assegnate) {
+      for (const r of pv.requisiti.filter((x) => x.figura_codici.includes(figura.codice))) {
+        if ((RANK[r.stato] ?? 0) > (RANK[worst] ?? 0)) worst = r.stato as StatoFig;
+      }
+      for (const m of pv.moduli.filter((x) => x.figura_codice === figura.codice && x.stato !== 'esonerato')) {
+        if ((RANK[m.stato] ?? 0) > (RANK[worst] ?? 0)) worst = m.stato as StatoFig;
+      }
+    }
+    return worst;
+  };
+
   const tuttePersone = riep.persone.map((p) => p.persona);
   const corsoByCodice = new Map(catalogo.corsi.map((c) => [c.codice, c]));
   const ammessoById = new Map(catalogo.esoneriAmmessi.map((a) => [a.id, a]));
   const orfani = riep.persone.filter((p) => p.figure.length === 0);
+
+  // Scheda di una figura: usata INLINE dentro il proprio gruppo (#4), non in coda.
+  const renderFigCard = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate']) => {
+    const scoperta = scoperteSet.has(figura.codice);
+    const stato = statoFigura(figura, assegnate);
+    const aperto = assegnaFigura === figura.codice;
+    const guidaRighe = (figura.guida ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+    const emerg = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+    const titolari = assegnate.map((pv) => ({
+      personaId: pv.persona.id,
+      nominaId: pv.figure.find((x) => x.codice === figura.codice)?.nomina_id ?? null,
+    }));
+    return (
+      <div key={figura.codice} className="fzr-figrow">
+        <div className="fzr-figrow-top">
+          <span className="fzr-dot-wrap">
+            <span className={'fzr-dot ' + stato} />
+          </span>
+          <span className="fzr-figrow-nome">
+            {figura.nome}
+            {figura.obbligo && <span className={'fzr-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
+          </span>
+          <button className="fzr-edit-btn" onClick={() => setAssegnaFigura(aperto ? null : figura.codice)}>
+            {aperto ? 'Chiudi' : (assegnate.length ? 'Modifica' : 'Assegna')}
+          </button>
+          <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => toggleFigura(figura.codice)}>{'\u2212'}</button>
+        </div>
+
+        {figura.codice === 'rls' && onRlsTerritoriale && (
+          <div className="fzr-figrow-people" style={{ marginLeft: 18 }}>
+            <button className={'fzr-mini' + (!rlsTerritoriale ? ' on' : '')} onClick={() => void onRlsTerritoriale(false)}>Interno</button>
+            <button className={'fzr-mini' + (rlsTerritoriale ? ' on' : '')} onClick={() => void onRlsTerritoriale(true)}>RLS territoriale</button>
+          </div>
+        )}
+
+        {guidaRighe.length > 0 && (
+          <ul className="fzr-guida">
+            {guidaRighe.map((l, i) => (
+              l.startsWith('- ') ? <li key={i} className="sub">{l.slice(2).trim()}</li> : <li key={i}>{l}</li>
+            ))}
+          </ul>
+        )}
+
+        {aperto && (
+          <AssegnaFiguraPanel
+            figura={figura}
+            persone={tuttePersone}
+            titolari={titolari}
+            clienteId={clienteId}
+            chiediPregressa={figureChePregressa.has(figura.codice)}
+            onSaved={ricarica}
+            onClose={() => setAssegnaFigura(null)}
+          />
+        )}
+
+        {assegnate.length === 0 ? (
+          <>
+            <div className="fzr-figrow-people">
+              <span className={scoperta ? 'fzr-figrow-crit' : 'fzr-figrow-empty'}>
+                {scoperta ? 'scoperto (obbligatorio)' : 'non assegnata'}
+              </span>
+            </div>
+            {emerg && (
+              <div className="fzr-emerg">
+                {emerg.definito
+                  ? 'Corso da erogare: ' + emerg.testo
+                  : emerg.testo.charAt(0).toUpperCase() + emerg.testo.slice(1) + ' (anagrafica cliente).'}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="fzr-inc">
+            <div className="fzr-inc-h">Incaricati</div>
+            {assegnate.map((pv) => {
+              const fg = pv.figure.find((x) => x.codice === figura.codice);
+              const nomina: Nomina | null = fg
+                ? { id: fg.nomina_id ?? '', persona_id: pv.persona.id, figura_codice: figura.codice, data_nomina: fg.data_nomina, attiva: true, note: null }
+                : null;
+              const anagKey = pv.persona.id + '|' + figura.codice;
+              const anagAperto = editPersona === anagKey;
+              const reqs = pv.requisiti.filter((r) => r.figura_codici.includes(figura.codice));
+              const mods = pv.moduli.filter((m) => m.figura_codice === figura.codice && m.stato !== 'esonerato');
+              return (
+                <div key={pv.persona.id} className="fzr-inc-card">
+                  <div className="fzr-inc-top">
+                    <span className="fzr-inc-nome">
+                      <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
+                      {nomePersona(pv.persona)}
+                    </span>
+                    <button className="fzr-edit-btn" onClick={() => setEditPersona(anagAperto ? null : anagKey)}>
+                      {anagAperto ? 'Chiudi' : 'Modifica'}
+                    </button>
+                  </div>
+
+                  {anagAperto && (
+                    <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} />
+                  )}
+
+                  {nomina && (nomina.id || nomina.data_nomina) && <NominaInline nomina={nomina} onSaved={ricarica} />}
+
+                  {reqs.map((r) => {
+                    const key = pv.persona.id + '|' + figura.codice + '|' + r.corso_codice;
+                    const apertoR = editKey === key;
+                    return (
+                      <div key={r.corso_codice} className="fzr-r">
+                        <div className="fzr-r-main">
+                          <span className="fzr-r-name">
+                            <span className={'fzr-dot ' + r.stato} title={TXT[r.stato]} />
+                            <span>{r.corso_nome}{r.ore != null ? ' \u00b7 ' + r.ore + 'h' : ''}</span>
+                          </span>
+                          <span className="fzr-r-right">
+                            <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
+                            <button className="fzr-edit-btn" onClick={() => setEditKey(apertoR ? null : key)}>
+                              {apertoR ? 'Chiudi' : (r.esonero_id ? 'Esonero' : 'Registra')}
+                            </button>
+                          </span>
+                        </div>
+                        <div className="fzr-d">{r.dettaglio}</div>
+                        {!apertoR && r.promemoria.map((a) => (
+                          <div key={a.id} className="fzr-hint">
+                            {a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}
+                          </div>
+                        ))}
+                        {apertoR && (
+                          <EditorRequisito
+                            personaId={pv.persona.id}
+                            req={r}
+                            figuraCodice={figura.codice}
+                            alternative={catalogo.corsi.filter((c) => (c.categoria ?? '') === r.categoria)}
+                            onSaved={ricarica}
+                            onClose={() => setEditKey(null)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {mods.map((mv) => (
+                    <div key={'mod-' + mv.corso_codice} className="fzr-r">
+                      <div className="fzr-r-main">
+                        <span className="fzr-r-name">
+                          <span className={'fzr-dot ' + mv.stato} title={TXT[mv.stato]} />
+                          <span>{mv.corso_nome}<span className="fzr-modtag">modulo</span></span>
+                        </span>
+                        <span className={'fzr-st ' + mv.stato}>{TXT[mv.stato]}</span>
+                      </div>
+                      <ModuloInline
+                        ammesso={ammessoById.get(mv.ammesso_id) ?? { id: mv.ammesso_id, corso_codice: mv.corso_codice, figura_codice: figura.codice, tipo: 'altro', descrizione: mv.dettaglio, riferimento_norm: null, ordine: 0, attivo: true }}
+                        corso={corsoByCodice.get(mv.corso_codice)}
+                        personaId={pv.persona.id}
+                        valutato={mv}
+                        onSaved={ricarica}
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AdapterCtx.Provider value={adapter}>
@@ -873,13 +1071,21 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                 <span style={{ color: 'var(--no,#d8442f)', fontWeight: 800 }}> {'\u00b7'} {riep.figureScoperte.length} scoperte</span>
               )}
             </div>
-            {gruppiCopertura.map((g) => (
+            <div className="fzr-legenda">
+              <span><span className="fzr-dot critico" /> obbligatorio scoperto / criticità</span>
+              <span><span className="fzr-dot in_scadenza" /> in scadenza</span>
+              <span><span className="fzr-dot da_verificare" /> da verificare</span>
+              <span><span className="fzr-dot conforme" /> in regola</span>
+              <span><span className="fzr-dot neutro" /> non assegnata (eventuale)</span>
+            </div>
+            {gruppiCopertura.map((g) => {
+              const aperteGrp = g.righe.filter(({ figura }) => aperte.has(figura.codice));
+              return (
               <div key={g.nome} className="fzr-figgrp">
                 <div className="fzr-figgrp-name">{g.nome}</div>
                 <div className="fzr-figchips">
                   {g.righe.map(({ figura, assegnate }) => {
-                    const scoperta = scoperteSet.has(figura.codice);
-                    const stato = assegnate.length ? 'conforme' : (scoperta ? 'critico' : 'in_scadenza');
+                    const stato = statoFigura(figura, assegnate);
                     const open = aperte.has(figura.codice);
                     return (
                       <button key={figura.codice} type="button"
@@ -893,162 +1099,14 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                     );
                   })}
                 </div>
+                {aperteGrp.length > 0 && (
+                  <div className="fzr-cop-body" style={{ padding: '6px 0 0' }}>
+                    {aperteGrp.map(({ figura, assegnate }) => renderFigCard(figura, assegnate))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-
-          <div className="fzr-cop-body">
-            {gruppiCopertura.flatMap((g) => g.righe).filter(({ figura }) => aperte.has(figura.codice)).map(({ figura, assegnate }) => {
-                    const scoperta = scoperteSet.has(figura.codice);
-                    const stato = assegnate.length ? 'conforme' : (scoperta ? 'critico' : 'in_scadenza');
-                    const aperto = assegnaFigura === figura.codice;
-                    const guidaRighe = (figura.guida ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
-                    const titolari = assegnate.map((pv) => ({
-                      personaId: pv.persona.id,
-                      nominaId: pv.figure.find((x) => x.codice === figura.codice)?.nomina_id ?? null,
-                    }));
-                    return (
-                      <div key={figura.codice} className="fzr-figrow">
-                        <div className="fzr-figrow-top">
-                          <span className="fzr-dot-wrap">
-                            <span className={'fzr-dot ' + stato} />
-                          </span>
-                          <span className="fzr-figrow-nome">
-                            {figura.nome}
-                            {figura.obbligo && <span className={'fzr-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
-                          </span>
-                          <button className="fzr-edit-btn" onClick={() => setAssegnaFigura(aperto ? null : figura.codice)}>
-                            {aperto ? 'Chiudi' : (assegnate.length ? 'Modifica' : 'Assegna')}
-                          </button>
-                          <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => toggleFigura(figura.codice)}>{'\u2212'}</button>
-                        </div>
-
-                        {figura.codice === 'rls' && onRlsTerritoriale && (
-                          <div className="fzr-figrow-people" style={{ marginLeft: 18 }}>
-                            <button className={'fzr-mini' + (!rlsTerritoriale ? ' on' : '')} onClick={() => void onRlsTerritoriale(false)}>Interno</button>
-                            <button className={'fzr-mini' + (rlsTerritoriale ? ' on' : '')} onClick={() => void onRlsTerritoriale(true)}>RLS territoriale</button>
-                          </div>
-                        )}
-
-                        {guidaRighe.length > 0 && (
-                          <ul className="fzr-guida">
-                            {guidaRighe.map((l, i) => (
-                              l.startsWith('- ') ? <li key={i} className="sub">{l.slice(2).trim()}</li> : <li key={i}>{l}</li>
-                            ))}
-                          </ul>
-                        )}
-
-                        {aperto && (
-                          <AssegnaFiguraPanel
-                            figura={figura}
-                            persone={tuttePersone}
-                            titolari={titolari}
-                            clienteId={clienteId}
-                            chiediPregressa={figureChePregressa.has(figura.codice)}
-                            onSaved={ricarica}
-                            onClose={() => setAssegnaFigura(null)}
-                          />
-                        )}
-
-                        {assegnate.length === 0 ? (
-                          <div className="fzr-figrow-people">
-                            <span className={scoperta ? 'fzr-figrow-crit' : 'fzr-figrow-empty'}>
-                              {scoperta ? 'scoperto (obbligatorio)' : 'non assegnata'}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="fzr-inc">
-                            <div className="fzr-inc-h">Incaricati</div>
-                            {assegnate.map((pv) => {
-                              const fg = pv.figure.find((x) => x.codice === figura.codice);
-                              const nomina: Nomina | null = fg
-                                ? { id: fg.nomina_id ?? '', persona_id: pv.persona.id, figura_codice: figura.codice, data_nomina: fg.data_nomina, attiva: true, note: null }
-                                : null;
-                              const anagKey = pv.persona.id + '|' + figura.codice;
-                              const anagAperto = editPersona === anagKey;
-                              const reqs = pv.requisiti.filter((r) => r.figura_codici.includes(figura.codice));
-                              const mods = pv.moduli.filter((m) => m.figura_codice === figura.codice && m.stato !== 'esonerato');
-                              return (
-                                <div key={pv.persona.id} className="fzr-inc-card">
-                                  <div className="fzr-inc-top">
-                                    <span className="fzr-inc-nome">
-                                      <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
-                                      {nomePersona(pv.persona)}
-                                    </span>
-                                    <button className="fzr-edit-btn" onClick={() => setEditPersona(anagAperto ? null : anagKey)}>
-                                      {anagAperto ? 'Chiudi' : 'Modifica'}
-                                    </button>
-                                  </div>
-
-                                  {anagAperto && (
-                                    <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} />
-                                  )}
-
-                                  {nomina && (nomina.id || nomina.data_nomina) && <NominaInline nomina={nomina} onSaved={ricarica} />}
-
-                                  {reqs.map((r) => {
-                                    const key = pv.persona.id + '|' + figura.codice + '|' + r.corso_codice;
-                                    const apertoR = editKey === key;
-                                    return (
-                                      <div key={r.corso_codice} className="fzr-r">
-                                        <div className="fzr-r-main">
-                                          <span className="fzr-r-name">
-                                            <span className={'fzr-dot ' + r.stato} title={TXT[r.stato]} />
-                                            <span>{r.corso_nome}{r.ore != null ? ' \u00b7 ' + r.ore + 'h' : ''}</span>
-                                          </span>
-                                          <span className="fzr-r-right">
-                                            <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
-                                            <button className="fzr-edit-btn" onClick={() => setEditKey(apertoR ? null : key)}>
-                                              {apertoR ? 'Chiudi' : (r.esonero_id ? 'Esonero' : 'Registra')}
-                                            </button>
-                                          </span>
-                                        </div>
-                                        <div className="fzr-d">{r.dettaglio}</div>
-                                        {!apertoR && r.promemoria.map((a) => (
-                                          <div key={a.id} className="fzr-hint">
-                                            {a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}
-                                          </div>
-                                        ))}
-                                        {apertoR && (
-                                          <EditorRequisito
-                                            personaId={pv.persona.id}
-                                            req={r}
-                                            figuraCodice={figura.codice}
-                                            alternative={catalogo.corsi.filter((c) => (c.categoria ?? '') === r.categoria)}
-                                            onSaved={ricarica}
-                                            onClose={() => setEditKey(null)}
-                                          />
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-
-                                  {mods.map((mv) => (
-                                    <div key={'mod-' + mv.corso_codice} className="fzr-r">
-                                      <div className="fzr-r-main">
-                                        <span className="fzr-r-name">
-                                          <span className={'fzr-dot ' + mv.stato} title={TXT[mv.stato]} />
-                                          <span>{mv.corso_nome}<span className="fzr-modtag">modulo</span></span>
-                                        </span>
-                                        <span className={'fzr-st ' + mv.stato}>{TXT[mv.stato]}</span>
-                                      </div>
-                                      <ModuloInline
-                                        ammesso={ammessoById.get(mv.ammesso_id) ?? { id: mv.ammesso_id, corso_codice: mv.corso_codice, figura_codice: figura.codice, tipo: 'altro', descrizione: mv.dettaglio, riferimento_norm: null, ordine: 0, attivo: true }}
-                                        corso={corsoByCodice.get(mv.corso_codice)}
-                                        personaId={pv.persona.id}
-                                        valutato={mv}
-                                        onSaved={ricarica}
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+              );
+            })}
           </div>
         </div>
       )}

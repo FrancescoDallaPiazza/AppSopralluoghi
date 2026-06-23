@@ -56,6 +56,10 @@ export interface Cliente {
   // Livello di rischio (colonna da migration 015): proposto in anagrafica dal
   // codice ATECO (Allegato IV ASR 2025) e sovrascrivibile dall'organigramma.
   livello_rischio: 'basso' | 'medio' | 'alto' | null;
+  // Emergenze (migration 041): livello rischio incendio e gruppo primo soccorso,
+  // definiti a monte; guidano il corso richiesto agli addetti.
+  livello_antincendio: '1' | '2' | '3' | null;
+  gruppo_primo_soccorso: 'A' | 'BC' | null;
   referente: string | null;
   telefono: string | null;
   email: string | null;

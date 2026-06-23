@@ -231,8 +231,10 @@ rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione pe
 038 sfoltisce il Cap.0 Anagrafica (rimuove Azienda/Data/Luogo, ora in testata di compilazione) ·
 039 `sopralluogo.template_id` + `template_versione` (checklist scelta in pianificazione per seduta) ·
 040 anagrafica fiscale cliente (`cliente.partita_iva` + `codice_fiscale` + `codice_ateco`; il
-livello di rischio e' proposto in UI dall'ATECO, Allegato IV ASR 2025).
-**Prossima libera: 041.**
+livello di rischio e' proposto in UI dall'ATECO, Allegato IV ASR 2025) ·
+041 emergenze sul cliente (`cliente.livello_antincendio` 1/2/3 + `gruppo_primo_soccorso` A o BC,
+con vincolo di dominio; guidano il corso degli addetti antincendio / primo soccorso).
+**Prossima libera: 042.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -576,6 +578,28 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Organigramma: propagazione rischio, schede inline, colori, regola DL=RSPP,
+  emergenze** (`OrganigrammaView.tsx`, `lib/admin/formazione.ts`, `admin/Formazione.tsx`,
+  `admin/Anagrafiche.tsx`, `lib/admin/organigramma-revisioni.ts`, `lib/types.ts`,
+  `lib/admin/anagrafiche.ts`, `migration 041`):
+  - **Propagazione rischio**: salvando l'anagrafica, l'organigramma innestato si
+    ricalcola (`OrganigrammaCliente` ora ha `refreshToken`, bumpato dopo `salvaCliente`);
+    il livello proposto dall'ATECO si riflette subito su figure scoperte e stati.
+  - **Schede inline**: cliccando un ruolo, la scheda si apre DENTRO il proprio gruppo
+    (es. "Vertice e deleghe"), non piu' in coda. Card estratta in `renderFigCard`.
+  - **Colori coerenti**: il bottone-figura riflette lo stato reale (rosso = obbligatorio
+    scoperto o criticita' formativa; arancio = in scadenza; grigio-blu = da verificare;
+    verde = in regola; grigio = non assegnata ma eventuale), con `statoFigura` e legenda.
+  - **DL = RSPP**: se assegnato il "Datore di lavoro che svolge il ruolo di RSPP",
+    sparisce l'INTERA area SPP (RSPP + ASPP), nel motore (`figureScoperte`) e nella view.
+  - **Emergenze definite a monte** (migration 041 + helper `corsoEmergenzaRichiesto`,
+    `CORSI_ANTINCENDIO`/`CORSI_PRIMO_SOCCORSO`): `cliente.livello_antincendio` (1/2/3) e
+    `gruppo_primo_soccorso` (A o B/C) si impostano in anagrafica. Determinano il corso
+    degli addetti; se l'addetto manca, la scheda figura e `proponiCoseDaFare` indicano il
+    corso da erogare (es. "Addetto antincendio livello 2 (8h)"); se livello/gruppo non
+    definiti, invitano a definirli prima. `RiepilogoCliente` porta i due livelli.
+  Rilascio: eseguire **041 in SQL Editor PRIMA** del push (040 se non gia' fatta).
+  `tsc -b` + `vite build` verdi; SQL parse OK + ASCII-only + idempotente.
 - **Anagrafica fiscale cliente + codice ATECO guidato** (`migration 040` +
   `lib/types.ts` + `lib/admin/anagrafiche.ts` + `lib/ateco.ts` nuovo +
   `admin/Anagrafiche.tsx`). Nel blocco "Ragione sociale" della scheda cliente

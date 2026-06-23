@@ -187,6 +187,10 @@ export interface ConteggiStato {
 export interface RiepilogoCliente {
   cliente_id: string;
   livello_rischio: LivelloRischio | null;
+  // Emergenze: definiti a monte sul cliente (migration 041). Determinano il
+  // corso richiesto agli addetti antincendio / primo soccorso.
+  livello_antincendio: LivelloAntincendio | null;
+  gruppo_primo_soccorso: GruppoPrimoSoccorso | null;
   persone: PersonaValutata[];
   conteggi: ConteggiStato;
   figureScoperte: FiguraSicurezza[];
@@ -223,6 +227,45 @@ export const MARCA_PREGRESSA = 'Evidenza pregressa';
 // verificare". Per questi, un attestato mancante e' direttamente critico (non
 // "da verificare") e non vanno proposti nel flusso pregressa.
 export const CATEGORIE_NO_PREGRESSA = new Set(['antincendio', 'primo_soccorso']);
+
+// ---- Emergenze: livello rischio incendio + gruppo primo soccorso ----------
+// Definiti a monte sul cliente. Determinano il corso che gli addetti devono
+// avere e, se l'addetto manca, il corso da erogare (indicato nel report).
+export type LivelloAntincendio = '1' | '2' | '3';
+export type GruppoPrimoSoccorso = 'A' | 'BC';
+
+// Corsi antincendio per livello (DM 02/09/2021): 4h / 8h / 16h.
+export const CORSI_ANTINCENDIO: Record<LivelloAntincendio, { codice: string; nome: string; ore: number }> = {
+  '1': { codice: 'AI_LIV1', nome: 'Addetto antincendio livello 1', ore: 4 },
+  '2': { codice: 'AI_LIV2', nome: 'Addetto antincendio livello 2', ore: 8 },
+  '3': { codice: 'AI_LIV3', nome: 'Addetto antincendio livello 3', ore: 16 },
+};
+// Corsi primo soccorso per gruppo aziendale (DM 388/2003): A = 16h, B/C = 12h.
+export const CORSI_PRIMO_SOCCORSO: Record<GruppoPrimoSoccorso, { codice: string; nome: string; ore: number }> = {
+  'A':  { codice: 'PS_GRA',  nome: 'Addetto primo soccorso gruppo A', ore: 16 },
+  'BC': { codice: 'PS_GRBC', nome: 'Addetto primo soccorso gruppi B e C', ore: 12 },
+};
+
+// Indicazione del corso richiesto per una figura di emergenza, dati i livelli
+// definiti sul cliente. Ritorna null se la figura non e' di emergenza;
+// { definito:false } se manca la scelta di livello/gruppo (va definita prima).
+export function corsoEmergenzaRichiesto(
+  figuraCodice: string,
+  livAntincendio: LivelloAntincendio | null,
+  gruppoPS: GruppoPrimoSoccorso | null,
+): { definito: boolean; codice: string | null; testo: string } | null {
+  if (figuraCodice === 'addetto_antincendio') {
+    if (!livAntincendio) return { definito: false, codice: null, testo: 'definire prima il livello di rischio incendio (1, 2 o 3)' };
+    const c = CORSI_ANTINCENDIO[livAntincendio];
+    return { definito: true, codice: c.codice, testo: c.nome + ' (' + c.ore + 'h)' };
+  }
+  if (figuraCodice === 'addetto_primo_soccorso') {
+    if (!gruppoPS) return { definito: false, codice: null, testo: 'definire prima il gruppo di primo soccorso (A oppure B/C)' };
+    const c = CORSI_PRIMO_SOCCORSO[gruppoPS];
+    return { definito: true, codice: c.codice, testo: c.nome + ' (' + c.ore + 'h)' };
+  }
+  return null;
+}
 
 // Vero se, assegnando una persona a QUESTA figura, ha senso chiederle la
 // formazione pregressa. La figura deve avere almeno un requisito il cui corso:
@@ -608,7 +651,11 @@ export function assemblaRiepilogo(
   rischio: LivelloRischio | null,
   dati: DatiOrganigramma,
   cat: Catalogo,
-  opts?: { rlsTerritoriale?: boolean },
+  opts?: {
+    rlsTerritoriale?: boolean;
+    livAntincendio?: LivelloAntincendio | null;
+    gruppoPS?: GruppoPrimoSoccorso | null;
+  },
 ): RiepilogoCliente {
   const valutate = dati.persone
     .filter((p) => p.attivo)
@@ -646,11 +693,17 @@ export function assemblaRiepilogo(
   const rlsTerritoriale = opts?.rlsTerritoriale ?? false;
   const figureScoperte = cat.figure.filter(
     (f) => f.attiva && f.obbligo === 'sempre' && !coperte.has(f.codice)
-      && !(f.codice === 'rspp' && dlRsppCoperto)
+      && !((f.codice === 'rspp' || f.codice === 'aspp') && dlRsppCoperto)
       && !(f.codice === 'rls' && rlsTerritoriale),
   );
 
-  return { cliente_id: clienteId, livello_rischio: rischio, persone: valutate, conteggi, figureScoperte };
+  return {
+    cliente_id: clienteId,
+    livello_rischio: rischio,
+    livello_antincendio: opts?.livAntincendio ?? null,
+    gruppo_primo_soccorso: opts?.gruppoPS ?? null,
+    persone: valutate, conteggi, figureScoperte,
+  };
 }
 
 // Carica i dati grezzi dell'organigramma di un cliente da Supabase (rischio +
@@ -658,11 +711,21 @@ export function assemblaRiepilogo(
 // da `valutaCliente` per essere riusato dallo snapshot versionato (revisioni).
 export async function caricaDatiOrganigramma(
   clienteId: string,
-): Promise<{ rischio: LivelloRischio | null; rlsTerritoriale: boolean; dati: DatiOrganigramma }> {
-  const cli = await supabase.from('cliente').select('livello_rischio, rls_territoriale').eq('id', clienteId).single();
+): Promise<{
+  rischio: LivelloRischio | null;
+  rlsTerritoriale: boolean;
+  livAntincendio: LivelloAntincendio | null;
+  gruppoPS: GruppoPrimoSoccorso | null;
+  dati: DatiOrganigramma;
+}> {
+  const cli = await supabase.from('cliente')
+    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso')
+    .eq('id', clienteId).single();
   if (cli.error) throw cli.error;
   const rischio = (cli.data?.livello_rischio ?? null) as LivelloRischio | null;
   const rlsTerritoriale = (cli.data?.rls_territoriale ?? false) as boolean;
+  const livAntincendio = (cli.data?.livello_antincendio ?? null) as LivelloAntincendio | null;
+  const gruppoPS = (cli.data?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null;
 
   const persone = await caricaPersone(clienteId);
   const ids = persone.map((p) => p.id);
@@ -671,7 +734,7 @@ export async function caricaDatiOrganigramma(
     caricaPerPersone<Formazione>('formazione', ids),
     caricaPerPersone<Esonero>('esonero', ids),
   ]);
-  return { rischio, rlsTerritoriale, dati: { persone, nomine, formazioni, esoneri } };
+  return { rischio, rlsTerritoriale, livAntincendio, gruppoPS, dati: { persone, nomine, formazioni, esoneri } };
 }
 
 // Valuta l'intero cliente: organigramma + stato formativo per persona.
@@ -679,8 +742,8 @@ export async function caricaDatiOrganigramma(
 // pura `assemblaRiepilogo` (la medesima usata offline in campo).
 export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
   const catalogo = cat ?? (await caricaCatalogo());
-  const { rischio, rlsTerritoriale, dati } = await caricaDatiOrganigramma(clienteId);
-  return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale });
+  const { rischio, rlsTerritoriale, livAntincendio, gruppoPS, dati } = await caricaDatiOrganigramma(clienteId);
+  return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale, livAntincendio, gruppoPS });
 }
 
 // ============================ CRUD ============================
@@ -842,6 +905,22 @@ export function proponiCoseDaFare(riep: RiepilogoCliente, includiInScadenza: boo
         priorita: r.stato === 'critico' ? 'alta' : 'media',
       });
     }
+  }
+  // Addetti emergenza scoperti (nessun nominativo): il report indica il corso
+  // da erogare, derivato dal livello/gruppo definito sul cliente. Se il
+  // livello/gruppo non e' stato definito, l'azione invita a definirlo prima.
+  for (const f of riep.figureScoperte) {
+    const em = corsoEmergenzaRichiesto(f.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+    if (!em) continue;
+    out.push({
+      persona_id: null,
+      persona_nome: f.nome,
+      descrizione: em.definito
+        ? 'Emergenze - nominare e formare ' + f.nome + ': ' + em.testo
+        : 'Emergenze - ' + f.nome + ' non assegnato: ' + em.testo,
+      scadenza: null,
+      priorita: 'alta',
+    });
   }
   return out;
 }

@@ -137,7 +137,7 @@ const CSS_FZ = `
 // Organigramma/formazione di UN cliente, da innestare nella sua scheda
 // (Anagrafiche). Il cliente e' gia' selezionato (prop clienteId): niente picker.
 // La parte GLOBALE (catalogo esoneri ammessi) sta in CatalogoFormazione.
-export function OrganigrammaCliente({ clienteId }: { clienteId: string }) {
+export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: string; refreshToken?: number }) {
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
   const [aree, setAree] = useState<AreaInterna[]>([]);
   const [cliente, setCliente] = useState<ClienteLite | null>(null);
@@ -170,7 +170,7 @@ export function OrganigrammaCliente({ clienteId }: { clienteId: string }) {
       }
     })();
     return () => { vivo = false; };
-  }, [clienteId]);
+  }, [clienteId, refreshToken]);
 
   async function ricarica() {
     if (!catalogo) { setRiep(null); return; }
@@ -183,7 +183,7 @@ export function OrganigrammaCliente({ clienteId }: { clienteId: string }) {
       setCaricando(false);
     }
   }
-  useEffect(() => { ricarica(); /* eslint-disable-next-line */ }, [clienteId, catalogo]);
+  useEffect(() => { ricarica(); /* eslint-disable-next-line */ }, [clienteId, catalogo, refreshToken]);
 
   async function dopoModifica() {
     if (catalogo && cliente) {

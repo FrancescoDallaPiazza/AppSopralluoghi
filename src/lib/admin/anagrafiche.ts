@@ -21,7 +21,8 @@ import {
 
 const COLONNE_CLIENTE =
   'id, werp_id, ragione_sociale, partita_iva, codice_fiscale, codice_ateco, ' +
-  'livello_rischio, referente, telefono, email, localita, indirizzo, lat, lng, attivo';
+  'livello_rischio, livello_antincendio, gruppo_primo_soccorso, ' +
+  'referente, telefono, email, localita, indirizzo, lat, lng, attivo';
 const COLONNE_INCARICO =
   'id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi, periodo_inizio, ' +
   'periodo_fine, durata_seduta_stimata_min, stato, cadenza_valore, cadenza_unita, sede_id';
@@ -72,6 +73,8 @@ export async function salvaCliente(c: Cliente): Promise<void> {
     codice_fiscale: vuotoNull(c.codice_fiscale),
     codice_ateco: vuotoNull(c.codice_ateco),
     livello_rischio: c.livello_rischio,
+    livello_antincendio: c.livello_antincendio,
+    gruppo_primo_soccorso: c.gruppo_primo_soccorso,
     referente: vuotoNull(c.referente),
     telefono: vuotoNull(c.telefono),
     email: vuotoNull(c.email),
@@ -105,7 +108,7 @@ export function clienteVuoto(): Cliente {
   return {
     id: newId(), werp_id: null, ragione_sociale: '',
     partita_iva: null, codice_fiscale: null, codice_ateco: null,
-    livello_rischio: null,
+    livello_rischio: null, livello_antincendio: null, gruppo_primo_soccorso: null,
     referente: null, telefono: null, email: null,
     localita: null, indirizzo: null, lat: null, lng: null, attivo: true,
   };

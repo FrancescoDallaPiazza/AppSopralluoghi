@@ -143,8 +143,8 @@ export async function registraSnapshotOrganigramma(
     origine?: string;
   },
 ): Promise<EsitoSnapshot> {
-  const { rischio, rlsTerritoriale, dati } = await caricaDatiOrganigramma(clienteId);
-  const riep = assemblaRiepilogo(clienteId, rischio, dati, opts.catalogo, { rlsTerritoriale });
+  const { rischio, rlsTerritoriale, livAntincendio, gruppoPS, dati } = await caricaDatiOrganigramma(clienteId);
+  const riep = assemblaRiepilogo(clienteId, rischio, dati, opts.catalogo, { rlsTerritoriale, livAntincendio, gruppoPS });
   const firma = firmaOrganigramma(dati, rischio, rlsTerritoriale);
 
   const ultima = await supabase
