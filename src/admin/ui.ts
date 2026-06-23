@@ -43,7 +43,7 @@ export const CSS_BACKOFFICE = `
 .bo-field{display:block; margin-bottom:12px;}
 .bo-field>span{display:block; font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; letter-spacing:.02em;}
 .bo-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-.bo input[type=text], .bo input[type=number], .bo input[type=date], .bo select, .bo textarea{
+.bo input:not([type=checkbox]):not([type=radio]):not([type=file]), .bo select, .bo textarea{
   width:100%; -webkit-appearance:none; appearance:none; border:1px solid var(--line);
   border-radius:10px; padding:10px 11px; font-family:inherit; font-size:14px; background:#fbfaf7; color:var(--ink);}
 .bo textarea{resize:vertical; min-height:54px;}

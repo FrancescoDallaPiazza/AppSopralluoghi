@@ -290,10 +290,10 @@ function SchedaCliente({
           </div>
           <div className="bo-note">
             {incarichi.length === 0
-              ? 'Nessun incarico per questo cliente. Gli incarichi si creano e si pianificano nel tab Pianificazione.'
+              ? 'Nessun incarico per questo cliente. Gli incarichi si creano e si pianificano nel tab Incarichi.'
               : `${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'} `
                 + `(${incarichi.filter((r) => r.incarico.stato === 'attivo').length} attivi). `
-                + 'Si gestiscono nel tab Pianificazione.'}
+                + 'Si gestiscono nel tab Incarichi.'}
           </div>
         </>
       )}

@@ -574,6 +574,14 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Rifiniture back-office** (`admin/ui.ts`, `admin/Anagrafiche.tsx`, `OrganigrammaView.tsx`):
+  (1) gli input `email`/`tel` ereditavano il font del browser perche' il selettore CSS
+  copriva solo `text/number/date`; ampliato a `.bo input:not([checkbox/radio/file])`.
+  (2) il riepilogo incarichi citava "tab Pianificazione" (rinominato): ora "tab Incarichi".
+  (3) organigramma: l'unica fisarmonica "Figure attese" e' diventata una **barra di
+  bottoni in testa**, uno per figura (colorati per stato coperta/scoperta, con conteggio
+  incaricati); ogni bottone apre/chiude la scheda della figura (+/−), e la scheda ha un
+  proprio "−" di chiusura. Stato per-figura via `aperte:Set` + `toggleFigura`.
 - **Organigramma del cliente spostato nella sua scheda (Anagrafiche); catalogo
   esoneri ammessi isolato in "Catalogo formazione"** (`admin/Formazione.tsx`,
   `admin/Anagrafiche.tsx`, `admin/BackOffice.tsx`). L'organigramma/formazione e' dato

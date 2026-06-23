@@ -132,6 +132,20 @@ const CSS = `
 .fzr-figrow-chip{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink,#2a2c30); background:#f1ede5; border-radius:999px; padding:2px 9px;}
 .fzr-figrow-crit{font-size:11.5px; font-weight:700; color:var(--no,#d8442f);}
 .fzr-figrow-empty{font-size:11.5px; color:var(--ink-soft,#5b5f66);}
+.fzr-cop-bar{padding:9px 11px; background:#f6f2ea; border-bottom:1px solid var(--line,#e3ddd2);}
+.fzr-cop-barhead{font-size:12px; font-weight:700; color:var(--ink-soft,#5b5f66); margin-bottom:8px;}
+.fzr-figgrp{margin-bottom:8px;}
+.fzr-figgrp:last-child{margin-bottom:0;}
+.fzr-figgrp-name{font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin-bottom:5px;}
+.fzr-figchips{display:flex; flex-wrap:wrap; gap:6px;}
+.fzr-figchip{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line,#e3ddd2); background:#fff; border-radius:999px; padding:4px 10px; font:inherit; font-size:12px; font-weight:600; color:var(--ink,#2a2c30); cursor:pointer; transition:.12s;}
+.fzr-figchip:hover{border-color:var(--hi,#e0a32e);}
+.fzr-figchip.on{background:#fff7e6; border-color:var(--hi,#e0a32e);}
+.fzr-figchip.critico{border-color:#f0c4bc;}
+.fzr-figchip.critico.on{background:#fdeae6; border-color:var(--no,#d8442f);}
+.fzr-figchip-nome{white-space:nowrap;}
+.fzr-figchip-n{font-size:10.5px; font-weight:800; background:#efeae0; border-radius:999px; padding:0 6px; min-width:16px; text-align:center;}
+.fzr-figchip-pm{font-size:14px; font-weight:800; color:var(--ink-soft,#5b5f66); width:12px; text-align:center; line-height:1;}
 .fzr-guida{margin:6px 0 6px 20px; padding:0; font-size:11.5px; color:var(--ink-soft,#5b5f66); line-height:1.45;}
 .fzr-guida li{margin:1px 0;}
 .fzr-guida li.sub{list-style:none; margin-left:-6px;}
@@ -790,8 +804,13 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const [figPersona, setFigPersona] = useState<string | null>(null); // figure di un orfano
   const [editPersona, setEditPersona] = useState<string | null>(null); // anagrafica (personaId|figura oppure personaId)
   const [addPersona, setAddPersona] = useState(false);
-  const [coperturaAperta, setCoperturaAperta] = useState(true);
+  const [aperte, setAperte] = useState<Set<string>>(new Set());
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
+  const toggleFigura = (codice: string) => setAperte((s) => {
+    const n = new Set(s);
+    if (n.has(codice)) n.delete(codice); else n.add(codice);
+    return n;
+  });
 
   const ricarica = adapter.onCambia;
   const vuoto = riep.persone.length === 0;
@@ -847,21 +866,39 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
 
       {figureAttese.length > 0 && (
         <div className="fzr-cop">
-          <button type="button" className="fzr-cop-h" onClick={() => setCoperturaAperta((v) => !v)}>
-            <span>
-              Figure attese (copertura)
+          <div className="fzr-cop-bar">
+            <div className="fzr-cop-barhead">
+              Figure attese {'\u2014'} clicca un ruolo per aprirne la scheda
               {riep.figureScoperte.length > 0 && (
                 <span style={{ color: 'var(--no,#d8442f)', fontWeight: 800 }}> {'\u00b7'} {riep.figureScoperte.length} scoperte</span>
               )}
-            </span>
-            <span style={{ fontSize: 16 }}>{coperturaAperta ? '\u2212' : '+'}</span>
-          </button>
-          {coperturaAperta && (
-            <div className="fzr-cop-body">
-              {gruppiCopertura.map((g) => (
-                <div key={g.nome}>
-                  <div className="fzr-grp">{g.nome}</div>
+            </div>
+            {gruppiCopertura.map((g) => (
+              <div key={g.nome} className="fzr-figgrp">
+                <div className="fzr-figgrp-name">{g.nome}</div>
+                <div className="fzr-figchips">
                   {g.righe.map(({ figura, assegnate }) => {
+                    const scoperta = scoperteSet.has(figura.codice);
+                    const stato = assegnate.length ? 'conforme' : (scoperta ? 'critico' : 'in_scadenza');
+                    const open = aperte.has(figura.codice);
+                    return (
+                      <button key={figura.codice} type="button"
+                        className={'fzr-figchip ' + stato + (open ? ' on' : '')}
+                        onClick={() => toggleFigura(figura.codice)}>
+                        <span className={'fzr-dot ' + stato} />
+                        <span className="fzr-figchip-nome">{figura.nome}</span>
+                        {assegnate.length > 0 && <span className="fzr-figchip-n">{assegnate.length}</span>}
+                        <span className="fzr-figchip-pm">{open ? '\u2212' : '+'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="fzr-cop-body">
+            {gruppiCopertura.flatMap((g) => g.righe).filter(({ figura }) => aperte.has(figura.codice)).map(({ figura, assegnate }) => {
                     const scoperta = scoperteSet.has(figura.codice);
                     const stato = assegnate.length ? 'conforme' : (scoperta ? 'critico' : 'in_scadenza');
                     const aperto = assegnaFigura === figura.codice;
@@ -883,6 +920,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                           <button className="fzr-edit-btn" onClick={() => setAssegnaFigura(aperto ? null : figura.codice)}>
                             {aperto ? 'Chiudi' : (assegnate.length ? 'Modifica' : 'Assegna')}
                           </button>
+                          <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => toggleFigura(figura.codice)}>{'\u2212'}</button>
                         </div>
 
                         {figura.codice === 'rls' && onRlsTerritoriale && (
@@ -1011,10 +1049,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                       </div>
                     );
                   })}
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       )}
 
