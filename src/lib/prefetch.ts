@@ -17,7 +17,7 @@ import { db } from './db';
 import {
   caricaMieiSopralluoghi, toBaseSopralluogo, type SopralluogoConContesto,
 } from './sopralluoghi';
-import { prefetchTemplatePerTipo, prefetchTemplatesAttivi } from './compilazione';
+import { prefetchTemplatesAttivi } from './compilazione';
 import { prefetchAzioniIncarichi } from './azioni';
 import { prefetchOrganigramma } from './sync';
 import { prefetchCatalogoBox, prefetchSediComponenti, prefetchComposizioni } from './box';
@@ -79,24 +79,12 @@ export async function prefetchOffline(tecnicoId: string): Promise<RisultatoPrefe
   // 1) lista + contesto
   await cacheLista(daFare);
 
-  // 2) template per ogni tipo attività distinto
-  const tipi = [...new Set(
-    daFare.map((s) => s.tipo_attivita).filter((t): t is string => !!t),
-  )];
+  // 2) tutti i template attivi + voci in cache: il template scelto in
+  //    pianificazione per la seduta e' tra questi, quindi la checklist si apre
+  //    offline. (Il tipo_attivita dell'incarico non determina piu' il template.)
   let checklist = 0;
+  try { checklist = await prefetchTemplatesAttivi(); } catch { /* best-effort */ }
   const tipiMancanti: string[] = [];
-  for (const t of tipi) {
-    try {
-      if (await prefetchTemplatePerTipo(t)) checklist++;
-      else tipiMancanti.push(t);
-    } catch {
-      tipiMancanti.push(t);
-    }
-  }
-
-  // 2-bis) elenco completo dei template attivi + voci: serve a SCEGLIERE la
-  // checklist in campo (default = quella dell'incarico) anche da offline.
-  try { await prefetchTemplatesAttivi(); } catch { /* best-effort */ }
 
   // 3) azioni aperte del giro precedente (best-effort)
   const incarichi = [...new Set(daFare.map((s) => s.incarico_id))];

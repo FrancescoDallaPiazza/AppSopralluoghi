@@ -198,7 +198,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
         if (r.modo === 'scelta') {
           setTmplScelta(r.templates);
           setTmplDefault(r.defaultTemplateId ?? null);
-          setTmplSel(r.defaultTemplateId ?? r.templates[0]?.id ?? null);
+          setTmplSel(r.defaultTemplateId ?? null);
           setFase('scelta');
           return;
         }
@@ -384,9 +384,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
         <div className="pick-client">{sopralluogo.cliente_nome ?? 'Cliente —'}</div>
         <div className="pick-sub">{[sopralluogo.tipo_attivita, sopralluogo.progressivo].filter(Boolean).join(' · ') || 'Sopralluogo'}</div>
         <p className="muted" style={{ margin: '12px 2px 16px' }}>
-          Scegli la checklist per questo sopralluogo. È preselezionata quella dell'incarico,
-          ma puoi cambiarla. Una volta aperta resta fissata per questa seduta; le cose da fare
-          del giro precedente restano comunque collegate.
+          Scegli la checklist per questo sopralluogo. Di norma viene impostata in
+          pianificazione; qui la scegli perché non era stata indicata. Una volta aperta
+          resta fissata per questa seduta; le cose da fare del giro precedente restano comunque collegate.
         </p>
         <div className="pick-list">
           {tmplScelta.map((t) => {

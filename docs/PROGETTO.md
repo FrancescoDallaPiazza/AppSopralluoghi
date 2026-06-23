@@ -130,7 +130,9 @@ normalizzati a CRLF prima della consegna.
 - `incarico` — tipo attività, n. sopralluoghi, periodo, durata, stato; per cadenza
   o a numero fisso. Si aggancia a un template attivo per `tipo_attivita`.
 - `sopralluogo` — seduta: progressivo, tecnico, date pianificata/effettiva, durata,
-  località, stato (`pianificato` / `in_corso` / `completato` / `sincronizzato`).
+  località, stato (`pianificato` / `in_corso` / `completato` / `sincronizzato`),
+  e `template_id` / `template_versione` (checklist scelta in PIANIFICAZIONE per la
+  seduta, migration 039; nullable: se assente, scelta in campo).
 - `checklist_template` + `voce_template` — modello form configurabile (voci e
   sotto-domande, tipi: scelta/multiscelta/testo/data/numero/slider/foto/rilievo).
   Dalla **modalità di rilievo unica** (commit `a35cf45`) l'opzione di una scelta
@@ -223,8 +225,9 @@ NON aggancia ad alcun template (composizione manuale) - disattiva il prototipo
 rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione periodica" ·
 037 opzione A anti-sovrapposizione: archivia Cap.2 'Formazione', rimuove la sezione
 'Organigramma' da Cap.1 (coperti dai moduli smart) e rinomina Cap.1 "Riunione periodica" ·
-038 sfoltisce il Cap.0 Anagrafica (rimuove Azienda/Data/Luogo, ora in testata di compilazione).
-**Prossima libera: 039.**
+038 sfoltisce il Cap.0 Anagrafica (rimuove Azienda/Data/Luogo, ora in testata di compilazione) ·
+039 `sopralluogo.template_id` + `template_versione` (checklist scelta in pianificazione per seduta).
+**Prossima libera: 040.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -568,6 +571,22 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Template della checklist scelto in PIANIFICAZIONE (per seduta)**
+  (`migration 039` + `lib/admin/pianificazione.ts` + `admin/Pianificazione.tsx` +
+  `lib/compilazione.ts` + `lib/sopralluoghi.ts` + `lib/prefetch.ts` + `lib/types.ts`).
+  Prima il template si sceglieva in campo, alla prima apertura, con default dedotto
+  dal `tipo_attivita` dell'incarico. Ora la scelta avviene in back-office, sulla
+  singola seduta: la riga della seduta in Pianificazione ha un selettore "Checklist"
+  (facoltativo, **vuoto di default**, elenco dei template attivi) salvato su
+  `sopralluogo.template_id`/`template_versione` (migration 039, colonne nullable).
+  In campo: se la seduta ha un template pianificato, la compilazione si apre
+  **diretta** su quello (congelato, niente scelta); altrimenti ripiega sulla scelta
+  in campo ma **senza alcun default** (tendina vuota). Rimosso ovunque l'uso del
+  `tipo_attivita` per risolvere il template (resta solo etichetta dell'incarico):
+  `apriCompilazione` non cerca piu' il template per tipo, e il prefetch mette in
+  cache tutti i template attivi (tra cui quello pianificato) invece di quelli per
+  tipo. Rilascio: eseguire **039 in SQL Editor PRIMA** del push del codice. `tsc -b`
+  + `vite build` verdi; SQL parse OK + ASCII-only.
 - **Corsia veloce della voce in campo** (`src/vociRender.tsx` + CSS in
   `src/Compilazione.tsx`). Ribaltato l'ordine dei controlli della singola voce per
   rendere immediato il caso frequente ("voce conforme, vado oltre") su checklist

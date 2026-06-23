@@ -19,6 +19,7 @@ const COLONNE_SOPRALLUOGO = [
   'id', 'incarico_id', 'progressivo', 'tecnico_id', 'data_pianificata',
   'data_effettiva', 'durata_stimata_min', 'durata_effettiva_min', 'localita',
   'stato', 'werp_attivita_id', 'revisione_corrente', 'sede_id',
+  'template_id', 'template_versione',
 ] as const;
 
 // Ricava il solo Sopralluogo "pulito" (senza contesto) per upsert/locale.

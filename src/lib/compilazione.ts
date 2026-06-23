@@ -305,31 +305,23 @@ export async function apriCompilazione(
     return { modo: 'pronto', compilataId: compilata.id, templateId: compilata.template_id, voci, esiti };
   }
 
-  // 2b) nuova compilazione -> scelta del template (default = quello dell'incarico)
-  const elenco = await caricaTemplatesAttivi();
-
-  // Offline senza elenco in cache: ripiega sul template dell'incarico, se noto.
-  if (elenco.length === 0) {
-    const def = sopralluogo.tipo_attivita
-      ? await caricaTemplateAttivo(sopralluogo.tipo_attivita)
-      : null;
-    if (!def) {
-      throw new Error(
-        sopralluogo.tipo_attivita
-          ? `Nessuna checklist attiva per "${sopralluogo.tipo_attivita}".`
-          : 'Nessuna checklist attiva disponibile.',
-      );
-    }
-    const dati = await creaCompilazione(sopralluogo, def.id, def.versione);
+  // 2b) nuova compilazione.
+  // Il template e' scelto in PIANIFICAZIONE (sulla seduta): se presente, si apre
+  // DIRETTO su quello, congelandolo, senza chiedere nulla in campo. Le voci si
+  // leggono dalla cache offline se gia' prefetchate.
+  if (sopralluogo.template_id) {
+    const dati = await creaCompilazione(sopralluogo, sopralluogo.template_id, sopralluogo.template_versione ?? 1);
     return { modo: 'pronto', ...dati };
   }
 
-  const defaultTemplateId =
-    (sopralluogo.tipo_attivita
-      ? elenco.find((t) => t.tipo_attivita === sopralluogo.tipo_attivita)?.id
-      : undefined) ?? null;
-
-  return { modo: 'scelta', templates: elenco, defaultTemplateId };
+  // Nessun template pianificato (seduta non pianificata o vecchia): ripiego con la
+  // scelta in campo, SENZA default (il tipo_attivita dell'incarico e' solo
+  // un'etichetta e non determina alcun template).
+  const elenco = await caricaTemplatesAttivi();
+  if (elenco.length === 0) {
+    throw new Error('Nessuna checklist attiva disponibile: scegline una in pianificazione o creane una.');
+  }
+  return { modo: 'scelta', templates: elenco, defaultTemplateId: null };
 }
 
 // Conferma della scelta: crea la compilazione sul template scelto. Difensiva:

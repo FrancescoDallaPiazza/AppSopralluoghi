@@ -143,6 +143,8 @@ export interface Sopralluogo {
   werp_attivita_id: string | null;
   revisione_corrente?: number;   // versione corrente (1 = primo completamento)
   sede_id?: string | null;       // sede ispezionata (migration 029)
+  template_id?: string | null;       // checklist scelta in PIANIFICAZIONE (migration 039)
+  template_versione?: number | null; // versione del template scelto
 }
 
 export interface ChecklistCompilata {

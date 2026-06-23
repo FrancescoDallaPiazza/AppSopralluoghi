@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   caricaIncarichi, caricaPiano, caricaTecnici, eliminaSopralluogo,
   generaSopralluoghiMancanti, salvaSopralluogo, caricaCaricoGlobale,
-  type IncaricoPiano, type PianoIncarico,
+  caricaTemplatesPiano,
+  type IncaricoPiano, type PianoIncarico, type TemplatePiano,
 } from '../lib/admin/pianificazione';
 import {
   calcolaCarico, valutaTecnici, ordinaSuggeriti, tecnicoSuggerito, settimanaISO,
@@ -88,6 +89,7 @@ function ElencoIncarichi({ onApri }: { onApri: (id: string) => void }) {
 function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndietro: () => void }) {
   const [piano, setPiano] = useState<PianoIncarico | null>(null);
   const [tecnici, setTecnici] = useState<Tecnico[]>([]);
+  const [templates, setTemplates] = useState<TemplatePiano[]>([]);
   const [righe, setRighe] = useState<Sopralluogo[]>([]);
   const [globale, setGlobale] = useState<Sopralluogo[]>([]); // sedute di TUTTI gli incarichi
   const [fase, setFase] = useState<'carico' | 'pronto' | 'errore'>('carico');
@@ -103,9 +105,9 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
 
   function carica() {
     setFase('carico');
-    Promise.all([caricaPiano(incaricoId), caricaTecnici(), caricaCaricoGlobale()])
-      .then(([p, t, g]) => {
-        setPiano(p); setTecnici(t); setRighe(p.sopralluoghi); setGlobale(g); setFase('pronto');
+    Promise.all([caricaPiano(incaricoId), caricaTecnici(), caricaCaricoGlobale(), caricaTemplatesPiano()])
+      .then(([p, t, g, tm]) => {
+        setPiano(p); setTecnici(t); setRighe(p.sopralluoghi); setGlobale(g); setTemplates(tm); setFase('pronto');
       })
       .catch(() => setFase('errore'));
   }
@@ -361,6 +363,20 @@ function DettaglioPiano({ incaricoId, onIndietro }: { incaricoId: string; onIndi
                   <span>Località</span>
                   <input type="text" value={r.localita ?? ''}
                     onChange={(e) => patch(r.id, { localita: e.target.value || null })} />
+                </label>
+                <label className="bo-field" style={{ marginBottom: 0 }}>
+                  <span>Checklist</span>
+                  <select value={r.template_id ?? ''}
+                    onChange={(e) => {
+                      const id = e.target.value || null;
+                      const tmpl = id ? templates.find((t) => t.id === id) : null;
+                      patch(r.id, { template_id: id, template_versione: tmpl?.versione ?? null });
+                    }}>
+                    <option value="">— scegli checklist —</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.nome}{t.versione > 1 ? ` (v${t.versione})` : ''}</option>
+                    ))}
+                  </select>
                 </label>
               </div>
 

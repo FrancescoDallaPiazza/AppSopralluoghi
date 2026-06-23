@@ -184,8 +184,23 @@ export async function salvaSopralluogo(s: Sopralluogo): Promise<void> {
     localita: s.localita,
     stato: s.stato,
     sede_id: s.sede_id ?? null,
+    template_id: s.template_id ?? null,
+    template_versione: s.template_versione ?? null,
   }, { onConflict: 'id' });
   if (error) throw error;
+}
+
+// Template attivi selezionabili in pianificazione (id, nome, versione). Nessun
+// legame col tipo_attivita dell'incarico: la scelta e' libera, per seduta.
+export interface TemplatePiano { id: string; nome: string; versione: number; }
+export async function caricaTemplatesPiano(): Promise<TemplatePiano[]> {
+  const { data, error } = await supabase
+    .from('checklist_template')
+    .select('id, nome, versione')
+    .eq('stato', 'attivo')
+    .order('nome', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as TemplatePiano[];
 }
 
 // ---- elimina un sopralluogo pianificato e non ancora compilato ----
