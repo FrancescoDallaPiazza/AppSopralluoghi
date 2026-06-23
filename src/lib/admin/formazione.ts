@@ -799,6 +799,31 @@ export async function aggiornaDataNomina(id: string, data_nomina: string | null)
   if (error) throw error;
 }
 
+// Costruisce la riga dell'azione di scadenzario COLLEGATA a una formazione con
+// scadenza. id = id formazione (upsert idempotente per id: rinnovo -> update);
+// origine_formazione_id = id formazione (FK on delete cascade). Omette di
+// proposito `stato`/`priorita`: in upsert PostgREST non tocca le colonne assenti,
+// quindi un eventuale stato gia' chiuso dall'utente NON viene riaperto; in insert
+// valgono i default ('aperta'/'media'). Null se non c'e' scadenza da monitorare.
+export function azioneScadenzaFormazione(
+  f: Formazione, clienteId: string, personaNome?: string,
+): Record<string, unknown> | null {
+  if (!f.scadenza) return null;
+  const nome = (f.corso_nome ?? '').trim() || f.corso_codice || 'corso';
+  return {
+    id: f.id,
+    tipo: 'azione_correttiva',
+    origine_esito_id: null,
+    sopralluogo_origine_id: null,
+    origine_formazione_id: f.id,
+    descrizione: 'Rinnovo formazione - ' + nome + (personaNome ? ' (' + personaNome + ')' : ''),
+    responsabile_tipo: 'cliente',
+    responsabile_cliente_id: clienteId,
+    responsabile_interno_id: null,
+    data_scadenza: f.scadenza,
+  };
+}
+
 export async function salvaFormazione(f: Formazione): Promise<Formazione> {
   const row = {
     id: f.id || newId(),
@@ -816,7 +841,21 @@ export async function salvaFormazione(f: Formazione): Promise<Formazione> {
   };
   const { data, error } = await supabase.from('formazione').upsert(row).select().single();
   if (error) throw error;
-  return data as Formazione;
+  const salvata = data as Formazione;
+
+  // Mantieni l'azione di scadenzario collegata (monitoraggio scadenza). Best-effort:
+  // la formazione e' gia' salvata, non deve fallire per un problema sullo scadenzario.
+  try {
+    const per = await supabase.from('persona').select('cliente_id, nome, cognome').eq('id', salvata.persona_id).single();
+    const clienteId = (per.data?.cliente_id ?? null) as string | null;
+    if (clienteId) {
+      const az = azioneScadenzaFormazione(salvata, clienteId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }));
+      if (az) await supabase.from('azione').upsert(az);
+      else await supabase.from('azione').delete().eq('origine_formazione_id', salvata.id);
+    }
+  } catch (e) { console.error('azione scadenza formazione (online):', e); }
+
+  return salvata;
 }
 
 export async function eliminaFormazione(id: string): Promise<void> {
@@ -897,6 +936,10 @@ export function proponiCoseDaFare(riep: RiepilogoCliente, includiInScadenza: boo
     for (const r of pv.requisiti) {
       const gap = r.stato === 'critico' || (includiInScadenza && r.stato === 'in_scadenza');
       if (!gap) continue;
+      // Le scadenze di formazioni gia' registrate (r.scadenza valorizzata) sono
+      // monitorate automaticamente da un'azione collegata (migration 042): non
+      // duplicarle qui. Restano i veri gap (requisito senza attestato: scadenza nulla).
+      if (r.scadenza) continue;
       out.push({
         persona_id: pv.persona.id,
         persona_nome: nomePersona(pv.persona),

@@ -233,8 +233,10 @@ rimuove la sezione Conformita da Cap.1 e lo rinomina "Organigramma + Riunione pe
 040 anagrafica fiscale cliente (`cliente.partita_iva` + `codice_fiscale` + `codice_ateco`; il
 livello di rischio e' proposto in UI dall'ATECO, Allegato IV ASR 2025) ·
 041 emergenze sul cliente (`cliente.livello_antincendio` 1/2/3 + `gruppo_primo_soccorso` A o BC,
-con vincolo di dominio; guidano il corso degli addetti antincendio / primo soccorso).
-**Prossima libera: 042.**
+con vincolo di dominio; guidano il corso degli addetti antincendio / primo soccorso) ·
+042 monitoraggio scadenze formazione: `azione.origine_formazione_id` (FK on delete cascade) +
+backfill delle formazioni con scadenza nello scadenzario (azione collegata, id = id formazione).
+**Prossima libera: 043.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -578,6 +580,22 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Monitoraggio automatico delle scadenze di formazione** (`migration 042` +
+  `lib/types.ts`, `lib/admin/formazione.ts`, `lib/sync.ts`). Una formazione con
+  scadenza crea/aggiorna un'azione di scadenzario COLLEGATA (`azione.id` = id
+  formazione, `origine_formazione_id` = id formazione; helper
+  `azioneScadenzaFormazione`): al rinnovo si aggiorna (upsert per id, omette
+  `stato`/`priorita` per non riaprire azioni gia' chiuse), all'eliminazione
+  sparisce (FK on delete cascade), se si toglie la scadenza l'azione viene
+  cancellata. Vale online (`salvaFormazione`) e offline (`sync.ts`
+  `salvaFormazione`/`salvaFormazioneConAllegato`/`eliminaFormazione`, via outbox).
+  La migration include un **backfill** delle formazioni gia' con scadenza.
+  Per non duplicare, `proponiCoseDaFare` (generazione manuale) ora salta i
+  requisiti gia' auto-monitorati (`r.scadenza` valorizzata) e tiene solo i veri
+  gap (requisito senza attestato). Effetto collaterale: il toggle "includi in
+  scadenza" del pannello Genera diventa di fatto inerte (le scadenze sono gestite
+  in automatico). `tsc -b` + `vite build` verdi; SQL parse OK + ASCII-only + idempotente.
+  Rilascio: **042 in SQL Editor PRIMA** del push.
 - **Rimozione persona: per-ruolo vs globale (fix perdita dati)** (`OrganigrammaView.tsx`).
   Prima nella scheda di un incaricato il pulsante "Rimuovi persona" chiamava
   `eliminaPersona` (rimozione GLOBALE da tutti i ruoli): togliendo una persona dal

@@ -215,6 +215,9 @@ export interface Azione {
   notificata_il: string | null;
   // Cosa da fare/scadenza riferita a un componente di sede (migration 032).
   componente_id?: string | null;
+  // Azione di scadenzario collegata a una formazione (migration 042): id azione
+  // = id formazione, per upsert idempotente al rinnovo; cascade all'eliminazione.
+  origine_formazione_id?: string | null;
 }
 
 // Area/funzione interna (Formazione, Preventivi, …): destinatario di una

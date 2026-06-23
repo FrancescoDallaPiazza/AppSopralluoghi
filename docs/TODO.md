@@ -243,22 +243,6 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## C · Decisioni da prendere
 
-- [ ] **Monitoraggio automatico delle scadenze formazione (organigramma)**.
-  Oggi una scadenza di un attestato/corso diventa "in scadenza/critico"
-  nell'organigramma, ma finisce nello scadenzario (`azione`) SOLO con il pannello
-  "Genera cose da fare" (manuale; `generaCoseDaFare` fa insert senza dedup ->
-  ri-generando duplica). Richiesta: ogni scadenza inserita deve essere
-  monitorata e gestita automaticamente. Fork da decidere:
-  - (A) **Azione collegata**: al salvataggio di una formazione con scadenza si
-    crea/aggiorna un'azione di scadenzario collegata (`azione.origine_formazione_id`,
-    migration), idempotente per id; alla rinnovo/eliminazione si aggiorna/chiude.
-    Pro: si integra con scadenzario e report esistenti, niente duplicati. Contro:
-    schema + logica anche sul percorso offline (outbox).
-  - (B) **Vista scadenze read-through**: lo scadenzario aggrega direttamente le
-    scadenze formazione (nessuna riga azione). Pro: niente schema. Contro: tocca
-    UI scadenzario e reportistica, doppio modello di "scadenza".
-  Raccomandazione: (A). Da confermare prima di implementare.
-
 - [ ] **Contenuto email `notifica-sopralluogo`**: solo elenco testuale (oggi) o
   anche link/allegato del report interno?
 - [ ] **Isolamento RLS a livello DB per ruoli**: oggi il gating è solo
@@ -277,6 +261,18 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-06-23** Monitoraggio automatico scadenze formazione (scelta A).
+  Migration 042 (`azione.origine_formazione_id` FK cascade + backfill). Una
+  formazione con scadenza crea/aggiorna un'azione di scadenzario collegata
+  (id azione = id formazione), online e offline (outbox); al rinnovo si aggiorna,
+  all'eliminazione/rimozione scadenza sparisce. `proponiCoseDaFare` salta i
+  requisiti gia' auto-monitorati per non duplicare. **042 in SQL Editor prima del
+  push.** `tsc -b` + `vite build` verdi; SQL OK.
+- [x] **2026-06-23** Fix perdita dati: rimozione persona per-ruolo. Nella card
+  incaricato "Rimuovi dal ruolo" (solo quella nomina); il "Rimuovi persona (da
+  tutti i ruoli)" globale e' nascosto nelle card di ruolo. Evita di cancellare la
+  persona da tutti i ruoli quando si voleva toglierla da uno solo.
 
 - [x] **2026-06-23** Parità organigramma campo = back-office + PDF emergenze.
   Prefetch cacha i meta cliente in Dexie (tabella `clienteMeta`, schema **v6**:

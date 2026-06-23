@@ -11,6 +11,7 @@ import type {
   CorsoCatalogo, FiguraSicurezza, FiguraRequisito, EsoneroAmmesso,
   LivelloRischio, LivelloAntincendio, GruppoPrimoSoccorso,
 } from './admin/formazione';
+import { nomePersona, azioneScadenzaFormazione } from './admin/formazione';
 
 // ---------- Foto: ridimensiona allo scatto, poi accoda ----------
 // Riduce a ~1600px sul lato lungo, JPEG ~0.8 -> ~200-400 KB invece dei MB del file pieno.
@@ -137,10 +138,23 @@ export async function salvaNomina(n: Nomina): Promise<Nomina> {
   return r;
 }
 
+// Mantiene (offline) l'azione di scadenzario collegata a una formazione: la
+// accoda dopo la riga formazione (ordine seq -> la formazione e' creata prima
+// lato server, FK soddisfatta). Se non c'e' scadenza, accoda la cancellazione.
+async function mantieniAzioneScadenza(r: Formazione): Promise<void> {
+  const per = await db.persone.get(r.persona_id);
+  const clienteId = per?.cliente_id ?? null;
+  if (!clienteId) return;
+  const az = azioneScadenzaFormazione(r, clienteId, per ? nomePersona(per) : undefined);
+  if (az) await enqueueRow('azione', az);
+  else await enqueueDelete('azione', r.id);
+}
+
 export async function salvaFormazione(f: Formazione): Promise<Formazione> {
   const r = conId(f);
   await db.formazioni.put(r);
   await enqueueRow('formazione', r as unknown as Record<string, unknown>);
+  await mantieniAzioneScadenza(r);
   void runSync();
   return r;
 }
@@ -168,6 +182,7 @@ export async function salvaFormazioneConAllegato(
   await db.formazioni.put(r);
   await enqueueRow('formazione', r as unknown as Record<string, unknown>);
   await db.outbox.add({ kind: 'attestato', attestatoId: fileId });
+  await mantieniAzioneScadenza(r);
   void runSync();
   return r;
 }
@@ -229,6 +244,11 @@ export async function eliminaFormazione(id: string) {
     }
   }
   await rimuoviRiga('formazione', () => db.formazioni.delete(id), id);
+  // Azione di scadenzario collegata (id azione = id formazione): annulla eventuali
+  // upsert pendenti e accoda la cancellazione. Lato server la FK on delete cascade
+  // la toglierebbe comunque, ma cosi' si evita un upsert orfano nel caso la
+  // formazione non fosse ancora stata sincronizzata.
+  await rimuoviRiga('azione', () => db.azioni.delete(id), id);
 }
 export async function eliminaEsonero(id: string) { await rimuoviRiga('esonero', () => db.esoneri.delete(id), id); }
 
