@@ -51,7 +51,7 @@ export default function BackOffice({
           <button className={`bo-tab ${sezione === 'capitoli' ? 'on' : ''}`}
             onClick={() => setSezione('capitoli')}>Capitoli</button>
           <button className={`bo-tab ${sezione === 'pianificazione' ? 'on' : ''}`}
-            onClick={() => setSezione('pianificazione')}>Pianificazione</button>
+            onClick={() => setSezione('pianificazione')}>Incarichi</button>
           <button className={`bo-tab ${sezione === 'disponibilita' ? 'on' : ''}`}
             onClick={() => setSezione('disponibilita')}>Disponibilità</button>
           <button className={`bo-tab ${sezione === 'formazione' ? 'on' : ''}`}

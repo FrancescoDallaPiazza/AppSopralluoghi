@@ -13,7 +13,12 @@ import {
   type CaricoPerTecnico, type ValutazioneTecnico,
 } from '../lib/admin/assistita';
 import { ricalibraUniformi, ricalibraShift } from '../lib/admin/calendario';
-import { nomeCompleto, type Sopralluogo, type Tecnico } from '../lib/types';
+import {
+  caricaClienti, salvaIncarico, eliminaIncarico, impostaStatoIncarico,
+  incaricoVuoto, tipiAttivitaSuggeriti, type ClienteRiga,
+} from '../lib/admin/anagrafiche';
+import { EditorIncarico } from './EditorIncarico';
+import { nomeCompleto, type Sopralluogo, type Tecnico, type Incarico, type IncaricoStato } from '../lib/types';
 
 const STATO_LABEL: Record<string, string> = {
   attivo: 'attivo', sospeso: 'sospeso', chiuso: 'chiuso',
@@ -32,29 +37,81 @@ export default function Pianificazione() {
   return <ElencoIncarichi onApri={setSel} />;
 }
 
-// ---------------- elenco incarichi ----------------
+// ---------------- elenco incarichi (con CRUD: l'incarico vive qui) ----------------
 function ElencoIncarichi({ onApri }: { onApri: (id: string) => void }) {
   const [righe, setRighe] = useState<IncaricoPiano[]>([]);
+  const [clienti, setClienti] = useState<ClienteRiga[]>([]);
+  const [tipi, setTipi] = useState<string[]>([]);
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
+  const [edit, setEdit] = useState<{ inc: Incarico; nuovo: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
 
-  useEffect(() => {
-    caricaIncarichi()
-      .then((r) => { setRighe(r); setStato('ok'); })
+  function carica() {
+    setStato('loading');
+    Promise.all([caricaIncarichi(), caricaClienti(), tipiAttivitaSuggeriti()])
+      .then(([r, c, t]) => { setRighe(r); setClienti(c); setTipi(t); setStato('ok'); })
       .catch(() => setStato('errore'));
-  }, []);
+  }
+  useEffect(carica, []);
+
+  async function salvaInc(inc: Incarico) {
+    setBusy(true); setMsg('');
+    try {
+      await salvaIncarico(inc);
+      setEdit(null);
+      setMsg('Incarico salvato.');
+      carica();
+    } catch (e: any) {
+      setMsg(e?.message ?? 'Salvataggio incarico non riuscito.');
+    } finally { setBusy(false); }
+  }
+
+  async function cambiaStato(id: string, s: IncaricoStato) {
+    setBusy(true); setMsg('');
+    try { await impostaStatoIncarico(id, s); carica(); }
+    catch (e: any) { setMsg(e?.message ?? 'Operazione non riuscita.'); }
+    finally { setBusy(false); }
+  }
+
+  async function rimuovi(id: string) {
+    if (!confirm('Eliminare questo incarico?')) return;
+    setBusy(true); setMsg('');
+    try { await eliminaIncarico(id); carica(); }
+    catch (e: any) { setMsg(e?.message ?? 'Eliminazione non riuscita.'); }
+    finally { setBusy(false); }
+  }
 
   return (
     <>
-      <h2 className="bo-h">Pianificazione</h2>
-      <p className="bo-sub">Genera e assegna i sopralluoghi di ciascun incarico.</p>
+      <div className="bo-row" style={{ marginBottom: 4, alignItems: 'baseline' }}>
+        <div className="grow"><h2 className="bo-h" style={{ margin: 0 }}>Incarichi &amp; pianificazione</h2></div>
+        {!edit && (
+          <button className="bo-btn" disabled={busy || clienti.length === 0}
+            onClick={() => setEdit({ inc: incaricoVuoto(''), nuovo: true })}>+ Nuovo incarico</button>
+        )}
+      </div>
+      <p className="bo-sub">Tutti gli incarichi attivi, con avanzamento. Crea/modifica un incarico e genera/assegna le sue sedute.</p>
+
+      {msg && <div className="bo-note">{msg}</div>}
+      {stato === 'ok' && clienti.length === 0 && (
+        <div className="bo-note">Nessun cliente in anagrafica: crea prima un cliente in Anagrafiche, poi qui il suo incarico.</div>
+      )}
+
+      {edit && (
+        <EditorIncarico
+          incarico={edit.inc} nuovo={edit.nuovo} clienti={clienti} tipi={tipi} busy={busy}
+          onSalva={salvaInc} onAnnulla={() => setEdit(null)}
+        />
+      )}
 
       {stato === 'loading' && <div className="bo-empty">Carico…</div>}
       {stato === 'errore' && <div className="bo-err">Errore nel caricamento degli incarichi.</div>}
-      {stato === 'ok' && righe.length === 0 && (
+      {stato === 'ok' && !edit && righe.length === 0 && (
         <div className="bo-empty">Nessun incarico presente.</div>
       )}
 
-      {righe.map((r) => {
+      {!edit && righe.map((r) => {
         const completo = r.assegnati >= r.totale_previsti;
         return (
           <div key={r.incarico.id} className={`bo-card ${r.incarico.stato !== 'attivo' ? 'dim' : ''}`}>
@@ -76,7 +133,25 @@ function ElencoIncarichi({ onApri }: { onApri: (id: string) => void }) {
                   {r.creati !== r.totale_previsti && <span>{r.creati} sedute create</span>}
                 </div>
               </div>
-              <button className="bo-btn" onClick={() => onApri(r.incarico.id)}>Pianifica</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="bo-btn ghost sm" disabled={busy}
+                  onClick={() => setEdit({ inc: r.incarico, nuovo: false })}>Modifica</button>
+                <button className="bo-btn" onClick={() => onApri(r.incarico.id)}>Pianifica</button>
+              </div>
+            </div>
+            <div className="bo-bar" style={{ marginTop: 12 }}>
+              <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
+                <span>Stato</span>
+                <select value={r.incarico.stato} disabled={busy}
+                  onChange={(e) => void cambiaStato(r.incarico.id, e.target.value as IncaricoStato)}>
+                  {STATO_LABEL && Object.entries(STATO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <span className="bo-sp" />
+              {r.creati === 0 && (
+                <button className="bo-btn danger sm" disabled={busy}
+                  onClick={() => void rimuovi(r.incarico.id)}>Elimina</button>
+              )}
             </div>
           </div>
         );

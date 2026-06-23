@@ -56,6 +56,7 @@ src/
   admin/                  # back-office (solo admin)
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
     CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx,
+    EditorIncarico.tsx,  # editor incarico (vive nel tab Incarichi/Pianificazione)
     Disponibilita.tsx, Formazione.tsx  # guscio BACK-OFFICE: adapter online -> OrganigrammaView
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
@@ -571,6 +572,17 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Incarichi spostati da Anagrafiche al tab Pianificazione (rinominato "Incarichi")**
+  (`admin/Anagrafiche.tsx`, `admin/Pianificazione.tsx`, `admin/EditorIncarico.tsx` nuovo,
+  `admin/BackOffice.tsx`). L'incarico e' un oggetto OPERATIVO (genera le sedute), non
+  anagrafico: tenerlo in Anagrafiche era la causa dello strappo "crei in un posto,
+  pianifichi in un altro". Ora: **Anagrafiche** = solo dati cliente + sedi (con un
+  riepilogo in sola lettura "N incarichi (M attivi), si gestiscono in Pianificazione");
+  **tab Incarichi/Pianificazione** = panoramica di tutti gli incarichi attivi + CRUD
+  incarico (nuovo con selettore cliente, modifica, stato, elimina) + generazione/
+  assegnazione sedute. `EditorIncarico` estratto da Anagrafiche in componente
+  condiviso, con selettore cliente (in creazione) e sedi caricate per cliente. Il tab
+  nav e' rinominato "Incarichi". Nessuna migration; `tsc -b` + `vite build` verdi.
 - **Template della checklist scelto in PIANIFICAZIONE (per seduta)**
   (`migration 039` + `lib/admin/pianificazione.ts` + `admin/Pianificazione.tsx` +
   `lib/compilazione.ts` + `lib/sopralluoghi.ts` + `lib/prefetch.ts` + `lib/types.ts`).
