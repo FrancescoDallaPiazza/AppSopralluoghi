@@ -634,6 +634,18 @@ const CSS = `
 .compila .voce-req{font-size:15px; font-weight:500; line-height:1.35;}
 .compila .voce-hint{font-size:12px; color:var(--ink-soft); margin-top:4px; line-height:1.4;}
 .compila .voce-body{margin-top:11px;}
+/* Corsia veloce: l'esito e' il primo controllo della voce (niente bordo/margine
+   superiore quando apre il body); l'espansore raccoglie nota/foto/cose/scadenza. */
+.compila .voce-body > .esito-box:first-child{margin-top:0; padding-top:0; border-top:none;}
+.compila .seg.esito button{min-height:38px;}
+.compila .voce-extra{margin-top:12px;}
+.compila .voce-exp{display:flex; align-items:center; gap:8px; width:100%; box-sizing:border-box; background:#fbfaf7; border:1px solid var(--line); border-radius:10px; padding:9px 11px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--ink-soft); cursor:pointer; text-align:left;}
+.compila .voce-exp-ic{width:15px; height:15px; flex:0 0 auto; display:inline-flex; color:var(--ink-soft); transition:transform .15s ease;}
+.compila .voce-exp-ic svg{width:100%; height:100%;}
+.compila .voce-exp.on{background:#fff; color:var(--ink);}
+.compila .voce-exp.on .voce-exp-ic{transform:rotate(45deg);}
+.compila .voce-exp-sum{margin-left:auto; font-weight:600; font-size:11.5px; color:var(--ink-soft);}
+.compila .voce-extra-body{margin-top:8px;}
 
 .compila .opts{display:flex; flex-wrap:wrap; gap:7px;}
 .compila .opt{flex:1 1 auto; min-width:90px; border:1.5px solid var(--line); background:#fbfaf7; color:var(--ink-soft); font-family:var(--disp); font-weight:600; font-size:12.5px; padding:10px 8px; border-radius:10px; cursor:pointer;}

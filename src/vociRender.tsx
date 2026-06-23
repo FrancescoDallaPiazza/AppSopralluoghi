@@ -4,7 +4,7 @@
 // (stato + callback) che il chiamante assembla dal proprio stato. Lo stato e gli
 // handler restano di proprieta' del chiamante (Compilazione mantiene completa()).
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { liveQuery } from 'dexie';
 import { db } from './lib/db';
 import { aggiungiFoto, rimuoviFoto } from './lib/sync';
@@ -237,32 +237,87 @@ export function renderVoce(ctx: ContestoVoci, voce: VoceTemplate, parentEsitoId:
         break;
     }
 
-    return (
-      <div key={voce.id} className={'voce' + (esito.stato ? ' s-' + esito.stato : '')}>
-        <div className="voce-head">
-          <div className="voce-req">{voce.testo_requisito}</div>
-          {voce.descrizione && <div className="voce-hint">{voce.descrizione}</div>}
-          <div className="voce-body">
-            {corpo}
-            {/* Modalità di rilievo UNICA: a prescindere dal tipo di voce, dopo
-                l'input vengono SEMPRE offerti evidenze (nota testo+voce, foto),
-                output opzionali (cose da fare, scadenza ricorrente) e l'esito
-                esplicito in coda. I `rilievo` hanno il loro flusso per-istanza
-                in renderRilievo. */}
-            {renderEvidenze(ctx, esito, voce)}
-            {renderBozzeAzione(ctx, esito)}
-            {renderScadenza(ctx, esito, voce)}
-            {renderEsito(ctx, esito)}
+    return <VoceCard ctx={ctx} voce={voce} esito={esito} corpo={corpo} figli={figli} childKey={childKey} />;
+  }
+
+// Card di una voce predefinita con CORSIA VELOCE: esito in cima (a portata di
+// pollice), corpo descrittivo subito sotto, ed evidenze/azioni (nota, foto, cose
+// da fare, scadenza) COLLASSATE dietro un espansore che si apre solo quando serve.
+// Si apre da solo se: tocchi "Non conforme" (quasi sempre vuole nota/azione) o la
+// voce ha gia' contenuto (nota/foto/cosa da fare/scadenza), cosi' riaprendo un
+// sopralluogo a meta' vedi subito cosa avevi messo. Resta richiudibile a mano.
+function VoceCard({ ctx, voce, esito, corpo, figli, childKey }: {
+  ctx: ContestoVoci; voce: VoceTemplate; esito: EsitoVoce; corpo: ReactNode;
+  figli: VoceTemplate[]; childKey: string | null;
+}): ReactNode {
+  // Le foto del tipo 'foto' sono la risposta (corpo), non evidenza extra: non
+  // contano per riepilogo/auto-apertura.
+  const fotoExtra = useFotoCount(voce.tipo === 'foto' ? null : esito.id);
+  const bozze = ctx.bozze[esito.id] ?? [];
+  const hasNota = !!(esito.note && esito.note.trim());
+  const hasScad = !!ctx.scad[esito.id];
+  const hasContenuto = hasNota || fotoExtra > 0 || bozze.length > 0 || hasScad;
+  const autoOpen = hasContenuto || esito.stato === 'non_conforme';
+
+  const [open, setOpen] = useState<boolean>(autoOpen);
+  // Apri (mai chiudere) quando autoOpen passa a true: es. al tap su "Non conforme".
+  const prevAuto = useRef(autoOpen);
+  useEffect(() => {
+    if (autoOpen && !prevAuto.current) setOpen(true);
+    prevAuto.current = autoOpen;
+  }, [autoOpen]);
+
+  const parti: string[] = [];
+  if (hasNota) parti.push('nota');
+  if (fotoExtra > 0) parti.push(fotoExtra + ' foto');
+  if (bozze.length > 0) parti.push(bozze.length + (bozze.length === 1 ? ' cosa da fare' : ' cose da fare'));
+  if (hasScad) parti.push('scadenza');
+  const riepilogo = parti.join(' \u00b7 ');
+
+  return (
+    <div className={'voce' + (esito.stato ? ' s-' + esito.stato : '')}>
+      <div className="voce-head">
+        <div className="voce-req">{voce.testo_requisito}</div>
+        {voce.descrizione && <div className="voce-hint">{voce.descrizione}</div>}
+        <div className="voce-body">
+          {renderEsito(ctx, esito)}
+          {corpo}
+          <div className="voce-extra">
+            <button type="button" className={'voce-exp' + (open ? ' on' : '')} onClick={() => setOpen((o) => !o)}>
+              <span className="voce-exp-ic">{I.plus}</span>
+              <span>{open ? 'Evidenze e azioni' : (riepilogo ? 'Evidenze e azioni' : 'Aggiungi nota, foto o cosa da fare')}</span>
+              {!open && riepilogo && <span className="voce-exp-sum">{riepilogo}</span>}
+            </button>
+            {open && (
+              <div className="voce-extra-body">
+                {renderEvidenze(ctx, esito, voce)}
+                {renderBozzeAzione(ctx, esito)}
+                {renderScadenza(ctx, esito, voce)}
+              </div>
+            )}
           </div>
         </div>
-        {childKey && figli.some((f) => f.mostra_se_chiave === childKey) && (
-          <div className="sub">
-            {figli.filter((f) => f.mostra_se_chiave === childKey).map((f) => renderVoce(ctx, f, esito.id))}
-          </div>
-        )}
       </div>
-    );
-  }
+      {childKey && figli.some((f) => f.mostra_se_chiave === childKey) && (
+        <div className="sub">
+          {figli.filter((f) => f.mostra_se_chiave === childKey).map((f) => renderVoce(ctx, f, esito.id))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Conteggio reattivo delle foto di un esito (per badge + auto-apertura). Passa
+// null per disabilitarlo (es. voci 'foto', dove le foto sono gia' nel corpo).
+function useFotoCount(esitoId: string | null): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!esitoId) { setN(0); return; }
+    const sub = liveQuery(() => db.foto.where('esito_voce_id').equals(esitoId).count()).subscribe({ next: setN });
+    return () => sub.unsubscribe();
+  }, [esitoId]);
+  return n;
+}
 
 
 export function renderRilievo(ctx: ContestoVoci, voce: VoceTemplate): ReactNode {
@@ -280,15 +335,16 @@ export function renderRilievo(ctx: ContestoVoci, voce: VoceTemplate): ReactNode 
                 <button className="ril-del" title="Elimina questo rilievo"
                   onClick={() => void rimuoviRilievo(e)}>{I.x}</button>
               </div>
-              {/* Card di rilievo = stessa modalità unica delle voci predefinite:
-                  descrizione (testo+voce), foto, cose da fare, scadenza, esito. */}
+              {/* Esito in cima (coerenza con le voci predefinite); un rilievo e'
+                  per definizione una segnalazione, quindi resta sempre espanso:
+                  descrizione (testo+voce), foto, cose da fare, scadenza. */}
+              {renderEsito(ctx, e)}
               <NotaVocale className="fld" rows={2} placeholder="Descrivi il rilievo…" ariaLabel="Rilievo"
                 defaultValue={(e.valore as string) ?? ''}
                 onCommit={(t) => { void setRilievoTesto(e, t).then(() => salvaRilievo({ ...e, valore: t })); }} />
               <FotoStrip esitoId={e.id} />
               {renderBozzeAzione(ctx, e)}
               {renderScadenza(ctx, e, voce)}
-              {renderEsito(ctx, e)}
             </div>
           ))}
           <button className="add-ril" onClick={() => void aggiungiRilievo(voce)}>{I.plus} {voce.config.etichetta_aggiunta?.trim() || 'Aggiungi rilievo'}</button>

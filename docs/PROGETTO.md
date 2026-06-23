@@ -568,6 +568,20 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Corsia veloce della voce in campo** (`src/vociRender.tsx` + CSS in
+  `src/Compilazione.tsx`). Ribaltato l'ordine dei controlli della singola voce per
+  rendere immediato il caso frequente ("voce conforme, vado oltre") su checklist
+  lunghe (l'Audit Iniziale ha 134 voci). Ora ogni voce ha: requisito -> **ESITO in
+  cima** (Conforme/Non conforme/N.A., a portata di pollice) -> corpo descrittivo ->
+  **"Evidenze e azioni" COLLASSATE** dietro un espansore (nota, foto, cose da fare,
+  scadenza). L'espansore e' chiuso di default e si apre da solo quando tocchi "Non
+  conforme" o quando la voce ha gia' contenuto (nota/foto/cosa da fare/scadenza, con
+  conteggio foto reattivo via `liveQuery`); da chiuso mostra un riepilogo
+  ("1 nota - 2 foto - 1 cosa da fare"). Resta richiudibile a mano. `renderVoce`
+  diventa un wrapper sul nuovo componente `VoceCard` (stato locale di apertura);
+  i `rilievo` restano espansi ma con l'esito in cima per coerenza. Render condiviso
+  (single source) tra checklist e box generici invariato; nessuna migration; `tsc -b`
+  + `vite build` verdi.
 - **Unificazione render organigramma: UN solo componente condiviso back-office +
   campo** (`src/OrganigrammaView.tsx` nuovo). Eliminata la duplicazione strutturale:
   non esistono piu' due render paralleli (`admin/Formazione.tsx` e
