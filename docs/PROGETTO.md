@@ -578,6 +578,14 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Rimozione persona: per-ruolo vs globale (fix perdita dati)** (`OrganigrammaView.tsx`).
+  Prima nella scheda di un incaricato il pulsante "Rimuovi persona" chiamava
+  `eliminaPersona` (rimozione GLOBALE da tutti i ruoli): togliendo una persona dal
+  DL-RSPP spariva anche dal DL se era la stessa persona. Ora: nella card
+  dell'incaricato c'e' "Rimuovi dal ruolo" (solo quella nomina, `eliminaNomina`);
+  il "Rimuovi persona (da tutti i ruoli)" globale e' nascosto nelle card di ruolo
+  (`mostraRimuoviPersona=false`) e resta solo dove ha senso (persone non assegnate),
+  con conferma esplicita. `tsc -b` + `vite build` verdi.
 - **Pregressa: apertura immediata del pannello evidenze** (`OrganigrammaView.tsx`).
   Scegliendo "Si, pregressa" nell'assegnazione di una figura, alla conferma si apre
   SUBITO il pannello "Evidenze pregresse" della persona (back-office), cosi' si

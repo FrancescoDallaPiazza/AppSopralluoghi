@@ -195,13 +195,14 @@ interface Props {
 
 // ---------- form anagrafica persona (nuova o modifica) ----------
 function PersonaForm({
-  persona, clienteId, onSaved, onClose, onEvidenzePregresse,
+  persona, clienteId, onSaved, onClose, onEvidenzePregresse, mostraRimuoviPersona = true,
 }: {
   persona: Persona | null;
   clienteId: string;
   onSaved: () => Promise<void>;
   onClose: () => void;
   onEvidenzePregresse?: (persona: Persona) => void;
+  mostraRimuoviPersona?: boolean;
 }) {
   const adapter = useAdapter();
   const [cognome, setCognome] = useState(persona?.cognome ?? '');
@@ -237,7 +238,7 @@ function PersonaForm({
 
   async function rimuovi() {
     if (!persona) return;
-    if (!window.confirm('Rimuovere ' + nomePersona(persona) + ' dall\u2019organigramma? Verranno tolte anche le sue nomine, attestati ed esoneri.')) return;
+    if (!window.confirm('Rimuovere definitivamente ' + nomePersona(persona) + ' dall\u2019organigramma?\n\nVerr\u00e0 tolta da TUTTI i ruoli a cui \u00e8 assegnata, con le sue nomine, attestati ed esoneri. L\u2019operazione non si pu\u00f2 annullare.\n\nPer toglierla da un solo ruolo, usa invece \u00abRimuovi dal ruolo\u00bb nella scheda del ruolo.')) return;
     setBusy(true);
     try { await adapter.eliminaPersona(persona.id); await onSaved(); onClose(); }
     finally { setBusy(false); }
@@ -276,9 +277,9 @@ function PersonaForm({
         <button className="fzr-btn primary" disabled={busy} onClick={() => void salva()}>{persona ? 'Salva' : 'Aggiungi'}</button>
         <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>
       </div>
-      {persona && (
+      {persona && mostraRimuoviPersona && (
         <div className="fzr-actions" style={{ marginTop: 8 }}>
-          <button className="fzr-btn danger" disabled={busy} onClick={() => void rimuovi()}>Rimuovi persona</button>
+          <button className="fzr-btn danger" disabled={busy} onClick={() => void rimuovi()}>Rimuovi persona (da tutti i ruoli)</button>
         </div>
       )}
     </div>
@@ -986,10 +987,20 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                     <button className="fzr-edit-btn" onClick={() => setEditPersona(anagAperto ? null : anagKey)}>
                       {anagAperto ? 'Chiudi' : 'Modifica'}
                     </button>
+                    {fg?.nomina_id && (
+                      <button className="fzr-edit-btn" style={{ borderColor: 'var(--no,#d8442f)', color: 'var(--no,#d8442f)' }}
+                        title={'Toglie ' + nomePersona(pv.persona) + ' solo da questo ruolo'}
+                        onClick={() => {
+                          if (!window.confirm('Togliere ' + nomePersona(pv.persona) + ' dal ruolo \u00ab' + figura.nome + '\u00bb? Resta negli altri ruoli a cui \u00e8 assegnata.')) return;
+                          void (async () => { await adapter.eliminaNomina(fg.nomina_id!); await ricarica(); })();
+                        }}>
+                        Rimuovi dal ruolo
+                      </button>
+                    )}
                   </div>
 
                   {anagAperto && (
-                    <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} />
+                    <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} mostraRimuoviPersona={false} />
                   )}
 
                   {nomina && (nomina.id || nomina.data_nomina) && <NominaInline nomina={nomina} onSaved={ricarica} />}

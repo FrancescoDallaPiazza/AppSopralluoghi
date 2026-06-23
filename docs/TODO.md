@@ -243,6 +243,22 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## C · Decisioni da prendere
 
+- [ ] **Monitoraggio automatico delle scadenze formazione (organigramma)**.
+  Oggi una scadenza di un attestato/corso diventa "in scadenza/critico"
+  nell'organigramma, ma finisce nello scadenzario (`azione`) SOLO con il pannello
+  "Genera cose da fare" (manuale; `generaCoseDaFare` fa insert senza dedup ->
+  ri-generando duplica). Richiesta: ogni scadenza inserita deve essere
+  monitorata e gestita automaticamente. Fork da decidere:
+  - (A) **Azione collegata**: al salvataggio di una formazione con scadenza si
+    crea/aggiorna un'azione di scadenzario collegata (`azione.origine_formazione_id`,
+    migration), idempotente per id; alla rinnovo/eliminazione si aggiorna/chiude.
+    Pro: si integra con scadenzario e report esistenti, niente duplicati. Contro:
+    schema + logica anche sul percorso offline (outbox).
+  - (B) **Vista scadenze read-through**: lo scadenzario aggrega direttamente le
+    scadenze formazione (nessuna riga azione). Pro: niente schema. Contro: tocca
+    UI scadenzario e reportistica, doppio modello di "scadenza".
+  Raccomandazione: (A). Da confermare prima di implementare.
+
 - [ ] **Contenuto email `notifica-sopralluogo`**: solo elenco testuale (oggi) o
   anche link/allegato del report interno?
 - [ ] **Isolamento RLS a livello DB per ruoli**: oggi il gating è solo
