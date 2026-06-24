@@ -218,6 +218,8 @@ export interface Azione {
   // Azione di scadenzario collegata a una formazione (migration 042): id azione
   // = id formazione, per upsert idempotente al rinnovo; cascade all'eliminazione.
   origine_formazione_id?: string | null;
+  // Idem per un esonero/credito con scadenza (migration 043): id azione = id esonero.
+  origine_esonero_id?: string | null;
 }
 
 // Area/funzione interna (Formazione, Preventivi, …): destinatario di una

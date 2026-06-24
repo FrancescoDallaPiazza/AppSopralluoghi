@@ -235,8 +235,10 @@ livello di rischio e' proposto in UI dall'ATECO, Allegato IV ASR 2025) ·
 041 emergenze sul cliente (`cliente.livello_antincendio` 1/2/3 + `gruppo_primo_soccorso` A o BC,
 con vincolo di dominio; guidano il corso degli addetti antincendio / primo soccorso) ·
 042 monitoraggio scadenze formazione: `azione.origine_formazione_id` (FK on delete cascade) +
-backfill delle formazioni con scadenza nello scadenzario (azione collegata, id = id formazione).
-**Prossima libera: 043.**
+backfill delle formazioni con scadenza nello scadenzario (azione collegata, id = id formazione) ·
+043 scadenza del credito/esonero: `esonero.scadenza` + `azione.origine_esonero_id` (FK cascade):
+un esonero da credito che corrisponde a un corso con scadenza viene monitorato come una formazione.
+**Prossima libera: 044.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -580,6 +582,19 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Scadenza del credito/esonero monitorata come una formazione** (`migration 043` +
+  `lib/types.ts`, `lib/admin/formazione.ts`, `lib/sync.ts`, `OrganigrammaView.tsx`).
+  Nel form Esonero ora c'e' "Data di scadenza del credito": se un esonero da credito
+  pregresso corrisponde a un corso che scade (es. attestato RSPP usato come credito
+  per il modulo base DL-RSPP), la scadenza viene tracciata. Nel motore l'esonero con
+  scadenza riflette lo stato (esonerato finche' valido -> in scadenza -> critico) via
+  `statoDaScadenza`. Si crea/aggiorna un'azione di scadenzario COLLEGATA
+  (`azione.origine_esonero_id`, id azione = id esonero; helper
+  `azioneScadenzaEsonero`) indirizzata all'**area Formazione interna**, online
+  (`salvaEsonero`) e offline (`sync.ts`); FK on delete cascade + pulizia outbox in
+  `eliminaEsonero`. `proponiCoseDaFare` salta gia' i requisiti con scadenza (no
+  duplicati). `tsc -b` + `vite build` verdi; SQL parse OK + ASCII-only.
+  Rilascio: **043 in SQL Editor PRIMA** del push.
 - **Scadenze formazione indirizzate all'area Formazione interna**
   (`lib/admin/formazione.ts`, `lib/sync.ts`, `migration 042`). L'azione di
   scadenza collegata e' ora indirizzata all'**area interna "Formazione"**

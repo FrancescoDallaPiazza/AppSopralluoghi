@@ -551,6 +551,7 @@ function EditorRequisito({
   const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
   const [esonMot, setEsonMot] = useState('');
   const [esonRif, setEsonRif] = useState('');
+  const [esonScad, setEsonScad] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -630,6 +631,7 @@ function EditorRequisito({
         riferimento_norm: esonRif.trim() || null,
         documento_url: null,
         data_riconoscimento: oggiISO(),
+        scadenza: esonScad || null,
         attivo: true,
         note: null,
       };
@@ -712,6 +714,11 @@ function EditorRequisito({
           <div className="fzr-field">
             <label>Riferimento normativo (facoltativo)</label>
             <input type="text" value={esonRif} onChange={(e) => setEsonRif(e.target.value)} />
+          </div>
+          <div className="fzr-field">
+            <label>Data di scadenza del credito (se il credito e&apos; un corso che scade)</label>
+            <input type="date" value={esonScad} onChange={(e) => setEsonScad(e.target.value)} />
+            <div className="fzr-d">Se valorizzata, la scadenza viene monitorata nello scadenzario (area Formazione) come un corso.</div>
           </div>
           <div className="fzr-actions">
             <button className="fzr-btn primary" disabled={busy} onClick={() => void salvaEson()}>Salva esonero</button>

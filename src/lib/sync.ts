@@ -11,7 +11,7 @@ import type {
   CorsoCatalogo, FiguraSicurezza, FiguraRequisito, EsoneroAmmesso,
   LivelloRischio, LivelloAntincendio, GruppoPrimoSoccorso,
 } from './admin/formazione';
-import { nomePersona, azioneScadenzaFormazione } from './admin/formazione';
+import { nomePersona, azioneScadenzaFormazione, azioneScadenzaEsonero } from './admin/formazione';
 
 // ---------- Foto: ridimensiona allo scatto, poi accoda ----------
 // Riduce a ~1600px sul lato lungo, JPEG ~0.8 -> ~200-400 KB invece dei MB del file pieno.
@@ -193,8 +193,22 @@ export async function salvaEsonero(e: Esonero): Promise<Esonero> {
   const r = conId(e);
   await db.esoneri.put(r);
   await enqueueRow('esonero', r as unknown as Record<string, unknown>);
+  await mantieniAzioneEsonero(r);
   void runSync();
   return r;
+}
+
+// Azione di scadenzario collegata a un esonero/credito con scadenza (offline).
+async function mantieniAzioneEsonero(r: Esonero): Promise<void> {
+  const per = await db.persone.get(r.persona_id);
+  const clienteId = per?.cliente_id ?? null;
+  if (!clienteId) return;
+  let areaId: string | null = null;
+  try { areaId = localStorage.getItem('area:formazione:id') || null; } catch { areaId = null; }
+  const corso = r.corso_codice ? await db.corsi.get(r.corso_codice) : undefined;
+  const az = azioneScadenzaEsonero(r, clienteId, areaId, per ? nomePersona(per) : undefined, corso?.nome);
+  if (az) await enqueueRow('azione', az);
+  else await enqueueDelete('azione', r.id);
 }
 
 export async function salvaConfermaOrganigramma(c: OrganigrammaConferma): Promise<OrganigrammaConferma> {
@@ -252,7 +266,12 @@ export async function eliminaFormazione(id: string) {
   // formazione non fosse ancora stata sincronizzata.
   await rimuoviRiga('azione', () => db.azioni.delete(id), id);
 }
-export async function eliminaEsonero(id: string) { await rimuoviRiga('esonero', () => db.esoneri.delete(id), id); }
+export async function eliminaEsonero(id: string) {
+  await rimuoviRiga('esonero', () => db.esoneri.delete(id), id);
+  // Azione di scadenzario collegata (id azione = id esonero): annulla upsert
+  // pendenti e accoda la cancellazione (lato server la FK cascade la rimuove).
+  await rimuoviRiga('azione', () => db.azioni.delete(id), id);
+}
 
 export async function eliminaPersona(id: string) {
   const ns = await db.nomine.where('persona_id').equals(id).toArray();

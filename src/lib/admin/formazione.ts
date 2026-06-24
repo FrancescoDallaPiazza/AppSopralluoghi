@@ -107,6 +107,10 @@ export interface Esonero {
   riferimento_norm: string | null;
   documento_url: string | null;
   data_riconoscimento: string | null;
+  // Scadenza del credito (migration 043): se il credito/esonero corrisponde a un
+  // corso che scade (es. attestato RSPP usato come credito), la sua scadenza viene
+  // monitorata come una formazione (azione collegata -> area Formazione).
+  scadenza: string | null;
   attivo: boolean;
   note: string | null;
 }
@@ -510,12 +514,27 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         (!e.corso_codice && e.figura_codice && figureSet.has(e.figura_codice)),
     );
     if (eson) {
-      requisiti.push({
-        figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
-        categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
-        dettaglio: 'Esonero: ' + eson.motivazione + (eson.riferimento_norm ? ' (' + eson.riferimento_norm + ')' : ''),
-        formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
-      });
+      // Esonero senza scadenza: copre il requisito (esonerato). Esonero da credito
+      // con scadenza: si comporta come un attestato che scade (esonerato finche'
+      // valido, poi in scadenza/critico) ed entra nello scadenzario.
+      const base = 'Esonero: ' + eson.motivazione + (eson.riferimento_norm ? ' (' + eson.riferimento_norm + ')' : '');
+      if (eson.scadenza) {
+        const { stato: st, dettaglio: dt } = statoDaScadenza(eson.scadenza, eson.data_riconoscimento ?? eson.scadenza);
+        requisiti.push({
+          figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
+          categoria, ore, obbligatorio: r.obbligatorio,
+          stato: st === 'conforme' ? 'esonerato' : st, scadenza: eson.scadenza,
+          dettaglio: base + ' \u00b7 ' + dt,
+          formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
+        });
+      } else {
+        requisiti.push({
+          figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
+          categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
+          dettaglio: base,
+          formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
+        });
+      }
       continue;
     }
 
@@ -842,6 +861,33 @@ export function azioneScadenzaFormazione(
   return az;
 }
 
+// Gemello di azioneScadenzaFormazione per un esonero/credito con scadenza.
+// id azione = id esonero; origine_esonero_id = id esonero. Stesse regole
+// (indirizzata all'area Formazione; omette stato/priorita). Null se senza scadenza.
+export function azioneScadenzaEsonero(
+  e: Esonero, clienteId: string, areaFormazione: string | null, personaNome?: string, corsoNome?: string,
+): Record<string, unknown> | null {
+  if (!e.scadenza) return null;
+  const nome = (corsoNome ?? '').trim() || e.corso_codice || (e.motivazione ?? '').trim() || 'credito';
+  const az: Record<string, unknown> = {
+    id: e.id,
+    tipo: 'azione_correttiva',
+    origine_esito_id: null,
+    sopralluogo_origine_id: null,
+    origine_esonero_id: e.id,
+    descrizione: 'Rinnovo credito/esonero - ' + nome + (personaNome ? ' (' + personaNome + ')' : ''),
+    responsabile_cliente_id: clienteId,
+    data_scadenza: e.scadenza,
+  };
+  if (areaFormazione) {
+    az.responsabile_tipo = 'risorsa_interna';
+    az.responsabile_area_id = areaFormazione;
+  } else {
+    az.responsabile_tipo = 'cliente';
+  }
+  return az;
+}
+
 export async function salvaFormazione(f: Formazione): Promise<Formazione> {
   const row = {
     id: f.id || newId(),
@@ -893,12 +939,32 @@ export async function salvaEsonero(e: Esonero): Promise<Esonero> {
     riferimento_norm: vuotoNull(e.riferimento_norm),
     documento_url: vuotoNull(e.documento_url),
     data_riconoscimento: vuotoNull(e.data_riconoscimento),
+    scadenza: vuotoNull(e.scadenza),
     attivo: e.attivo,
     note: vuotoNull(e.note),
   };
   const { data, error } = await supabase.from('esonero').upsert(row).select().single();
   if (error) throw error;
-  return data as Esonero;
+  const salvato = data as Esonero;
+
+  // Azione di scadenzario collegata (solo se il credito ha una scadenza). Best-effort.
+  try {
+    const per = await supabase.from('persona').select('cliente_id, nome, cognome').eq('id', salvato.persona_id).single();
+    const clienteId = (per.data?.cliente_id ?? null) as string | null;
+    if (clienteId) {
+      const areaId = await areaFormazioneId();
+      let corsoNome: string | undefined;
+      if (salvato.corso_codice) {
+        const c = await supabase.from('corso_catalogo').select('nome').eq('codice', salvato.corso_codice).maybeSingle();
+        corsoNome = (c.data?.nome ?? undefined) as string | undefined;
+      }
+      const az = azioneScadenzaEsonero(salvato, clienteId, areaId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }), corsoNome);
+      if (az) await supabase.from('azione').upsert(az);
+      else await supabase.from('azione').delete().eq('origine_esonero_id', salvato.id);
+    }
+  } catch (err) { console.error('azione scadenza esonero (online):', err); }
+
+  return salvato;
 }
 
 export async function eliminaEsonero(id: string): Promise<void> {
