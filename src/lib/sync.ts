@@ -145,7 +145,9 @@ async function mantieniAzioneScadenza(r: Formazione): Promise<void> {
   const per = await db.persone.get(r.persona_id);
   const clienteId = per?.cliente_id ?? null;
   if (!clienteId) return;
-  const az = azioneScadenzaFormazione(r, clienteId, per ? nomePersona(per) : undefined);
+  let areaId: string | null = null;
+  try { areaId = localStorage.getItem('area:formazione:id') || null; } catch { areaId = null; }
+  const az = azioneScadenzaFormazione(r, clienteId, areaId, per ? nomePersona(per) : undefined);
   if (az) await enqueueRow('azione', az);
   else await enqueueDelete('azione', r.id);
 }
@@ -290,6 +292,16 @@ export async function prefetchOrganigramma(clienteId: string): Promise<void> {
       gruppo_primo_soccorso: (cli.data.gruppo_primo_soccorso ?? null) as string | null,
     });
   }
+
+  // Id area interna "Formazione" (globale): serve a indirizzare le azioni di
+  // scadenza create offline. Stashato in localStorage (best-effort).
+  try {
+    const ar = await supabase.from('area_interna').select('id, nome, attiva').eq('attiva', true);
+    if (!ar.error && ar.data) {
+      const a = ar.data.find((x: { nome?: string | null }) => /formazione/i.test(x.nome ?? ''));
+      localStorage.setItem('area:formazione:id', (a?.id ?? '') as string);
+    }
+  } catch { /* best-effort */ }
 
   const pe = await supabase.from('persona').select('*').eq('cliente_id', clienteId);
   if (pe.error || !pe.data) return;

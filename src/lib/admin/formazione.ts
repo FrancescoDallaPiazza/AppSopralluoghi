@@ -799,29 +799,47 @@ export async function aggiornaDataNomina(id: string, data_nomina: string | null)
   if (error) throw error;
 }
 
+// id area interna "Formazione" (memo di sessione): l'azione di scadenza viene
+// indirizzata a quest'area per il monitoraggio e l'invito ai corsi interni.
+let _areaFormazioneId: string | null | undefined;
+export async function areaFormazioneId(): Promise<string | null> {
+  if (_areaFormazioneId !== undefined) return _areaFormazioneId;
+  const r = await supabase.from('area_interna').select('id, nome, attiva').eq('attiva', true);
+  const a = (r.data ?? []).find((x: { nome?: string | null }) => /formazione/i.test(x.nome ?? ''));
+  _areaFormazioneId = (a?.id ?? null) as string | null;
+  return _areaFormazioneId;
+}
+
 // Costruisce la riga dell'azione di scadenzario COLLEGATA a una formazione con
-// scadenza. id = id formazione (upsert idempotente per id: rinnovo -> update);
-// origine_formazione_id = id formazione (FK on delete cascade). Omette di
+// scadenza. id = id formazione (upsert idempotente per id: rinnovo -> update;
+// FK on delete cascade). Indirizzata all'AREA FORMAZIONE interna (monitoraggio +
+// invito ai corsi); tiene anche `responsabile_cliente_id` per contesto/filtro.
+// Se l'area Formazione non e' configurata, ripiega sul cliente. Omette di
 // proposito `stato`/`priorita`: in upsert PostgREST non tocca le colonne assenti,
 // quindi un eventuale stato gia' chiuso dall'utente NON viene riaperto; in insert
-// valgono i default ('aperta'/'media'). Null se non c'e' scadenza da monitorare.
+// valgono i default. Null se non c'e' scadenza da monitorare.
 export function azioneScadenzaFormazione(
-  f: Formazione, clienteId: string, personaNome?: string,
+  f: Formazione, clienteId: string, areaFormazione: string | null, personaNome?: string,
 ): Record<string, unknown> | null {
   if (!f.scadenza) return null;
   const nome = (f.corso_nome ?? '').trim() || f.corso_codice || 'corso';
-  return {
+  const az: Record<string, unknown> = {
     id: f.id,
     tipo: 'azione_correttiva',
     origine_esito_id: null,
     sopralluogo_origine_id: null,
     origine_formazione_id: f.id,
     descrizione: 'Rinnovo formazione - ' + nome + (personaNome ? ' (' + personaNome + ')' : ''),
-    responsabile_tipo: 'cliente',
     responsabile_cliente_id: clienteId,
-    responsabile_interno_id: null,
     data_scadenza: f.scadenza,
   };
+  if (areaFormazione) {
+    az.responsabile_tipo = 'risorsa_interna';
+    az.responsabile_area_id = areaFormazione;
+  } else {
+    az.responsabile_tipo = 'cliente';
+  }
+  return az;
 }
 
 export async function salvaFormazione(f: Formazione): Promise<Formazione> {
@@ -849,7 +867,8 @@ export async function salvaFormazione(f: Formazione): Promise<Formazione> {
     const per = await supabase.from('persona').select('cliente_id, nome, cognome').eq('id', salvata.persona_id).single();
     const clienteId = (per.data?.cliente_id ?? null) as string | null;
     if (clienteId) {
-      const az = azioneScadenzaFormazione(salvata, clienteId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }));
+      const areaId = await areaFormazioneId();
+      const az = azioneScadenzaFormazione(salvata, clienteId, areaId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }));
       if (az) await supabase.from('azione').upsert(az);
       else await supabase.from('azione').delete().eq('origine_formazione_id', salvata.id);
     }

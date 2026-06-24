@@ -580,6 +580,17 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Scadenze formazione indirizzate all'area Formazione interna**
+  (`lib/admin/formazione.ts`, `lib/sync.ts`, `migration 042`). L'azione di
+  scadenza collegata e' ora indirizzata all'**area interna "Formazione"**
+  (`responsabile_tipo = 'risorsa_interna'`, `responsabile_area_id`), per il
+  monitoraggio e l'invito ai corsi interni, mantenendo `responsabile_cliente_id`
+  per contesto/filtro. Online: `areaFormazioneId()` (memo) risolve l'area; offline:
+  l'id area e' messo in cache dal prefetch (`localStorage 'area:formazione:id'`),
+  con fallback al cliente se non disponibile. La migration 042 fa il backfill verso
+  l'area e include un UPDATE correttivo idempotente (ri-eseguibile) che re-indirizza
+  eventuali azioni gia' create verso il cliente. `tsc -b` + `vite build` verdi;
+  SQL parse OK + ASCII-only. **042 ri-eseguibile in SQL Editor.**
 - **Monitoraggio automatico delle scadenze di formazione** (`migration 042` +
   `lib/types.ts`, `lib/admin/formazione.ts`, `lib/sync.ts`). Una formazione con
   scadenza crea/aggiorna un'azione di scadenzario COLLEGATA (`azione.id` = id
