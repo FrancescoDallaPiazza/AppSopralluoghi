@@ -12,7 +12,7 @@ import {
   caricaGiroPrecedente, verificaAzione, caricaAreeInterne, caricaTecniciAssegnabili,
   type AzioneConContesto, type TecnicoAssegnabile,
 } from './lib/azioni';
-import FormazioneRiepilogo from './FormazioneRiepilogo';
+import { FormazioneRiepilogo } from './formazione';
 import BoxGenerico from './BoxGenerico';
 import { assicuraComposizione, riallineaComposizione } from './lib/box';
 import { nomeCompleto } from './lib/types';

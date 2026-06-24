@@ -17,12 +17,12 @@
 // Lo snapshot e' gia' "pronto da rendere": il PDF (Edge Function organigramma-pdf)
 // e la vista storico leggono questa stessa struttura senza ricalcolare nulla.
 
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import {
   assemblaRiepilogo, caricaDatiOrganigramma, corsoEmergenzaRichiesto,
   type Catalogo, type RiepilogoCliente, type ConteggiStato,
   type StatoRequisito, type LivelloRischio, type DatiOrganigramma,
-} from './formazione';
+} from '../lib/admin/formazione';
 
 // ============================ TIPI SNAPSHOT ============================
 

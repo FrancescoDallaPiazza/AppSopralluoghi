@@ -15,8 +15,8 @@ import type { Cliente, Sede } from '../lib/types';
 import {
   risolviAteco, cercaAteco, ETICHETTA_RISCHIO,
   type AtecoDivisione, type RischioAteco,
-} from '../lib/ateco';
-import { OrganigrammaCliente } from './Formazione';
+} from '../formazione';
+import { OrganigrammaCliente } from '../formazione';
 
 export default function Anagrafiche() {
   // null = elenco; { id } = scheda esistente; { nuovo:true } = scheda nuova

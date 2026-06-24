@@ -24,8 +24,8 @@ import {
   registraSnapshotOrganigramma, caricaRevisioniOrganigramma, caricaRevisioneOrganigramma,
   costruisciSnapshot, esportaPdfOrganigramma,
   type RevisioneOrganigramma, type SnapshotOrganigramma,
-} from '../lib/admin/organigramma-revisioni';
-import OrganigrammaView, { type OrganigrammaAdapter } from '../OrganigrammaView';
+} from './organigramma-revisioni';
+import OrganigrammaView, { type OrganigrammaAdapter } from './OrganigrammaView';
 
 interface ClienteLite { id: string; ragione_sociale: string; livello_rischio: LivelloRischio | null; rls_territoriale: boolean; }
 

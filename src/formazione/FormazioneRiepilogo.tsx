@@ -12,17 +12,17 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   type RiepilogoCliente, type Catalogo, type LivelloRischio,
   assemblaRiepilogo,
-} from './lib/admin/formazione';
-import { costruisciSnapshot, firmaOrganigramma } from './lib/admin/organigramma-revisioni';
+} from '../lib/admin/formazione';
+import { costruisciSnapshot, firmaOrganigramma } from './organigramma-revisioni';
 import {
   caricaOrganigrammaLocale, prefetchOrganigramma, type OrganigrammaLocale,
   salvaFormazione, salvaFormazioneConAllegato, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaConfermaOrganigramma, salvaPersona, eliminaPersona, salvaNomina, eliminaNomina,
   accodaRevisioneOrganigramma,
-} from './lib/sync';
-import { supabase, MAX_ATTESTATO_BYTES, urlFirmatoAttestato } from './lib/supabase';
-import { db, type OrganigrammaConferma } from './lib/db';
-import { newId } from './lib/types';
+} from '../lib/sync';
+import { supabase, MAX_ATTESTATO_BYTES, urlFirmatoAttestato } from '../lib/supabase';
+import { db, type OrganigrammaConferma } from '../lib/db';
+import { newId } from '../lib/types';
 import OrganigrammaView, { type OrganigrammaAdapter } from './OrganigrammaView';
 
 const RK_KEY = (clienteId: string) => 'formazione:rischio:' + clienteId;

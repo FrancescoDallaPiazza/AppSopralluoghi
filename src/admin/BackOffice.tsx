@@ -13,7 +13,7 @@ import TemplateList from './TemplateList';
 import CapitoliList from './CapitoliList';
 import Pianificazione from './Pianificazione';
 import Disponibilita from './Disponibilita';
-import CatalogoFormazione from './Formazione';
+import { CatalogoFormazione } from '../formazione';
 import CoseDaFare from './CoseDaFare';
 
 type Sezione =

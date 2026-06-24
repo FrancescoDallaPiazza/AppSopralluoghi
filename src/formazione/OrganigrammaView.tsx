@@ -19,8 +19,8 @@ import {
   type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
   type CorsoCatalogo, type Catalogo,
   nomePersona, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
-} from './lib/admin/formazione';
-import { newId } from './lib/types';
+} from '../lib/admin/formazione';
+import { newId } from '../lib/types';
 
 // Adapter delle SCRITTURE: il guscio inietta online (back-office) o offline (campo).
 export interface OrganigrammaAdapter {

@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { caricaBoxComposti, aggiungiComponente, type BoxComposto } from './lib/box';
 import { renderVoce, I } from './vociRender';
-import FormazioneRiepilogo from './FormazioneRiepilogo';
+import { FormazioneRiepilogo } from './formazione';
 import type { MotoreVoci } from './lib/useCompilazioneVoci';
 import type { AreaInterna } from './lib/types';
 import type { TecnicoAssegnabile, AzioneConContesto } from './lib/azioni';

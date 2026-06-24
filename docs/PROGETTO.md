@@ -50,22 +50,27 @@ src/
   MieiSopralluoghi.tsx    # lista del tecnico (Da fare / Completati) + report
   MieCoseDaFare.tsx       # azioni assegnate al singolo
   Compilazione.tsx        # schermata di campo (scelta checklist + check-list + cose da fare)
-  OrganigrammaView.tsx    # RENDER CONDIVISO organigramma/formazione (back-office + campo)
-  FormazioneRiepilogo.tsx # guscio CAMPO: carica offline + conferma + adapter -> OrganigrammaView
   NotaVocale.tsx          # dettatura vocale note
+  formazione/             # MODULO formazione/organigramma (confine netto - vedi §2-bis)
+    index.ts              #   CONTRATTO: unica porta d'ingresso verso il resto dell'app
+    OrganigrammaView.tsx  #   render condiviso organigramma (back-office + campo)
+    FormazioneRiepilogo.tsx #  guscio CAMPO: carica offline + conferma + adapter
+    Formazione.tsx        #   OrganigrammaCliente (scheda cliente) + CatalogoFormazione (globale)
+    organigramma-revisioni.ts # snapshot versionato organigramma
+    ateco.ts              #   tabella ATECO -> rischio + helper
   admin/                  # back-office (solo admin)
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
     CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx,
     EditorIncarico.tsx,  # editor incarico (vive nel tab Incarichi/Pianificazione)
-    Disponibilita.tsx,
-    Formazione.tsx  # esporta OrganigrammaCliente (per-cliente, nella scheda Anagrafiche)
-                    # e CatalogoFormazione (globale, tab "Catalogo formazione")
+    Disponibilita.tsx
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
     auth.ts, sopralluoghi.ts, azioni.ts, report.ts, prefetch.ts,
     compilazione.ts, onboarding.ts
     admin/ (anagrafiche, tecnici, aree, templates, assistita, cosedafare,
             pianificazione, disponibilita, formazione)
+                    # NB: lib/admin/formazione.ts e' il MOTORE puro (canonico):
+                    # resta qui, usato dall'infrastruttura condivisa (sync.ts, db.ts)
 supabase/
   migrations/             # schema + seed (vedi §5)
   functions/              # Edge Functions (vedi §4)
@@ -73,7 +78,40 @@ supabase/
 
 ---
 
-## 3. Workflow di rilascio (IMPORTANTE)
+## 2-bis. Modulo formazione/organigramma (confine)
+
+La parte organigramma/formazione e' isolata nel modulo `src/formazione/` per
+poterla sviluppare in parallelo ai sopralluoghi senza interferenze.
+
+**Contratto (`src/formazione/index.ts`)** — unica porta d'ingresso. Il resto
+dell'app importa SOLO da qui (`from '../formazione'` / `from './formazione'`),
+mai dai file interni del modulo. Superficie pubblica esposta oggi:
+- `FormazioneRiepilogo` — riepilogo organigramma da montare in campo
+  (usato da `Compilazione.tsx`, `BoxGenerico.tsx`);
+- `OrganigrammaCliente` — pannello nella scheda cliente (`admin/Anagrafiche.tsx`);
+- `CatalogoFormazione` — catalogo globale nel back-office (`admin/BackOffice.tsx`);
+- helper ATECO: `risolviAteco`, `cercaAteco`, `ETICHETTA_RISCHIO`,
+  tipi `AtecoDivisione`, `RischioAteco`.
+
+**Motore puro**: `src/lib/admin/formazione.ts` resta il percorso canonico (NON
+spostato). E' usato direttamente solo dall'infrastruttura condivisa (`sync.ts`,
+`db.ts`), non dal codice-feature dei sopralluoghi. Un duplicato del motore ha
+gia' rotto il build in passato: non duplicarlo.
+
+**Regola di confine (operativa)**
+- Lavoro sui *sopralluoghi*: si tocca tutto TRANNE `src/formazione/`. L'organigramma
+  e' congelato, niente regressioni.
+- Lavoro su *organigramma/formazione*: si tocca SOLO `src/formazione/`. Finche'
+  `index.ts` non cambia, il lato sopralluoghi non se ne accorge.
+- Serve un nuovo aggancio fra le due aree? Si aggiunge UNA riga a `index.ts`
+  (gesto esplicito e tracciabile), non un import sparso.
+
+**Promozione futura (se servisse vera indipendenza)**: il modulo, gia' con la sua
+porta d'ingresso, si trasforma in un package di workspace (`@app/formazione`) con
+un cambio piccolo. Non serve un fork ne' una seconda app: il flusso di campo, lo
+scadenzario `azione`, l'anagrafica cliente e il layer offline restano condivisi.
+
+
 
 Le modifiche **non** sono tutte uguali: viaggiano per tre canali diversi.
 
@@ -582,6 +620,19 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Modulo formazione/organigramma con confine netto** (`src/formazione/`).
+  Spostati nel modulo: `OrganigrammaView.tsx`, `Formazione.tsx`,
+  `FormazioneRiepilogo.tsx`, `ateco.ts`, `organigramma-revisioni.ts`. Creato il
+  contratto `src/formazione/index.ts` che espone SOLO l'interfaccia pubblica
+  (`FormazioneRiepilogo`, `OrganigrammaCliente`, `CatalogoFormazione`, helper
+  ATECO). Il resto dell'app importa esclusivamente da `'../formazione'` /
+  `'./formazione'` (ritargettizzati Anagrafiche, BackOffice, Compilazione,
+  BoxGenerico). **Regola di confine**: il codice-feature dei sopralluoghi importa
+  la formazione SOLO dal contratto; il MOTORE puro resta in
+  `src/lib/admin/formazione.ts` (canonico) ed e' usato direttamente solo
+  dall'infrastruttura condivisa (`sync.ts`, `db.ts`). Aggiungere un nuovo aggancio
+  cross-confine = aggiungere una riga a `index.ts`. Le due aree si sviluppano in
+  parallelo senza interferenze. `tsc -b` + `vite build` verdi. Solo canale 1 (push).
 - **Scadenza del credito/esonero monitorata come una formazione** (`migration 043` +
   `lib/types.ts`, `lib/admin/formazione.ts`, `lib/sync.ts`, `OrganigrammaView.tsx`).
   Nel form Esonero ora c'e' "Data di scadenza del credito": se un esonero da credito
