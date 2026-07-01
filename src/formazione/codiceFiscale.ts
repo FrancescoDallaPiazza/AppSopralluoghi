@@ -97,9 +97,17 @@ export function estraiBase(cf: string, oggiISO?: string): Omit<DatiCF, 'comune' 
 }
 
 // Tabella Belfiore caricata pigramente (una sola volta).
+// ponytail: offline-first. Se il chunk Belfiore (~402KB, code-split) non e'
+// raggiungibile - campo al primo avvio prima che il service worker abbia
+// precache-ato gli asset, o cache evictata - si degrada a tabella vuota senza
+// memorizzarla: analizzaCF restituisce comunque data/sesso (belfiore-free) e
+// luogoNoto=false, e il prossimo uso ritenta l'import quando SW/rete tornano.
 let belfiore: Record<string, string> | null = null;
 async function tabellaBelfiore(): Promise<Record<string, string>> {
-  if (!belfiore) belfiore = (await import('./belfiore.json')).default as Record<string, string>;
+  if (!belfiore) {
+    try { belfiore = (await import('./belfiore.json')).default as Record<string, string>; }
+    catch { return {}; }
+  }
   return belfiore;
 }
 
