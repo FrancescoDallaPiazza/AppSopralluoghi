@@ -33,12 +33,13 @@ const CREDITI_RUOLI: Record<string, Record<Colonna, Credito>> = {
   preposto: { rls: 'F', dl: 'F', lavGen: 'F', lavSpec: 'F', dirigente: 'F', preposto: '-' },
 };
 
-// Figura app (nomina) -> riga della matrice. cspcse e il datore non-RSPP non
-// hanno una figura dedicata nell'app: non mappati (nessun credito da loro).
+// Figura app (figura_sicurezza.codice, come in figureSet) -> riga della matrice.
+// 'lavoratore' non credita altri ruoli (righe lavGen/lavSpec tutte 'F'): non
+// mappato. addetto_antincendio/addetto_primo_soccorso non creditano: non mappati.
 const FIGURA_TO_ROLE: Record<string, string> = {
-  RSPP: 'rspp', ASPP: 'aspp', DL_RSPP_BASE: 'dlRspp', DL_RSPP_COMUNE: 'dlRspp',
-  DIRIGENTE: 'dirigente', PREPOSTO: 'preposto', RLS: 'rls',
-  LAV_GEN: 'lavGen', LAV_SPEC: 'lavSpec',
+  rspp: 'rspp', aspp: 'aspp',
+  dl_rspp: 'dlRspp', datore_lavoro: 'dl',
+  dirigente: 'dirigente', preposto: 'preposto', rls: 'rls',
 };
 
 // Corso richiesto -> colonna della matrice.
