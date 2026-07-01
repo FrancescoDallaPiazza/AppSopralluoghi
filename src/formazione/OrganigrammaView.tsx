@@ -13,6 +13,7 @@
 // quindi rende bene sia sotto .compila (campo) sia nel back-office (.bo).
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { pulisci as pulisciCF, valido as cfValido, crossCheck as cfCrossCheck, analizzaCF, type DatiCF } from './codiceFiscale';
 import {
   type RiepilogoCliente, type RequisitoValutato, type StatoRequisito,
   type TipoEsonero, type Formazione, type Esonero,
@@ -209,6 +210,13 @@ function PersonaForm({
   const [nome, setNome] = useState(persona?.nome ?? '');
   const [mansione, setMansione] = useState(persona?.mansione ?? '');
   const [cf, setCf] = useState(persona?.codice_fiscale ?? '');
+  const [cfInfo, setCfInfo] = useState<DatiCF | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    if (!cfValido(cf)) { setCfInfo(null); return; }
+    analizzaCF(cf).then((d) => { if (vivo) setCfInfo(d); }).catch(() => { if (vivo) setCfInfo(null); });
+    return () => { vivo = false; };
+  }, [cf]);
   const [pregressa, setPregressa] = useState(persona?.formazione_pregressa ?? false);
   const [busy, setBusy] = useState(false);
 
@@ -263,6 +271,26 @@ function PersonaForm({
       <div className="fzr-field">
         <label>Codice fiscale (facoltativo)</label>
         <input type="text" value={cf} onChange={(e) => setCf(e.target.value.toUpperCase())} />
+        {(() => {
+          const c = pulisciCF(cf);
+          if (c.length === 0) return null;
+          if (c.length !== 16) return <small style={{ color: 'var(--faint)' }}>Codice fiscale incompleto ({c.length}/16).</small>;
+          if (!cfValido(c)) return <small style={{ color: 'var(--no)' }}>Carattere di controllo non valido.</small>;
+          const x = cfCrossCheck(cognome, nome, c);
+          const warn: string[] = [];
+          if (x.cognomeOk === false) warn.push('cognome');
+          if (x.nomeOk === false) warn.push('nome');
+          return warn.length
+            ? <small style={{ color: 'var(--hi-dark)' }}>Valido, ma non combacia col {warn.join(' e ')}.</small>
+            : <small style={{ color: 'var(--ok)' }}>Codice fiscale valido.</small>;
+        })()}
+        {cfInfo && cfInfo.dataISO && (
+          <small style={{ color: 'var(--faint)', display: 'block' }}>
+            Nato il {cfInfo.dataISO.split('-').reverse().join('/')}
+            {cfInfo.luogoNoto ? ` a ${cfInfo.estero ? cfInfo.stato : `${cfInfo.comune} (${cfInfo.prov})`}` : ''}
+            {` \u00b7 ${cfInfo.sesso === 'F' ? 'F' : 'M'}`}
+          </small>
+        )}
       </div>
       <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '2px 0 4px' }}>
         <input type="checkbox" checked={pregressa} onChange={(e) => setPregressa(e.target.checked)} />

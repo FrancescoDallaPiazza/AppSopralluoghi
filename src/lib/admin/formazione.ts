@@ -16,6 +16,7 @@
 
 import { supabase } from '../supabase';
 import { newId } from '../types';
+import { applicaCreditiAllegatoIII } from '../../formazione/creditiAllegatoIII';
 
 // ============================ TIPI ============================
 
@@ -594,6 +595,12 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
 
   // ordine di presentazione: per figura/ordine catalogo non banale -> per nome corso
   requisiti.sort((a, b) => a.corso_nome.localeCompare(b.corso_nome));
+
+  // Crediti tra ruoli (Allegato III ASR 17/04/2025): un ruolo posseduto puo'
+  // creditare il corso richiesto da un altro ruolo della stessa persona. Marca
+  // 'esonerato' i requisiti coperti, prima di derivare lo stato complessivo.
+  const nomeFigura = new Map(cat.figure.map((f) => [f.codice, f.nome]));
+  applicaCreditiAllegatoIII(requisiti, figureSet, (c) => nomeFigura.get(c) ?? c);
 
   const statoPersona = requisiti.reduce<StatoRequisito>((acc, r) => peggiore(acc, r.stato), 'conforme');
 
