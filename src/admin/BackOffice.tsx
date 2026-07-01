@@ -15,10 +15,11 @@ import Pianificazione from './Pianificazione';
 import Disponibilita from './Disponibilita';
 import { CatalogoFormazione } from '../formazione';
 import CoseDaFare from './CoseDaFare';
+import ImportWerp from './ImportWerp';
 
 type Sezione =
   | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
-  | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare';
+  | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare' | 'importwerp';
 
 export default function BackOffice({
   tecnico, onVaiAllApp,
@@ -58,6 +59,8 @@ export default function BackOffice({
             onClick={() => setSezione('formazione')}>Catalogo formazione</button>
           <button className={`bo-tab ${sezione === 'cosedafare' ? 'on' : ''}`}
             onClick={() => setSezione('cosedafare')}>Cose da fare</button>
+          <button className={`bo-tab ${sezione === 'importwerp' ? 'on' : ''}`}
+            onClick={() => setSezione('importwerp')}>Import Werp</button>
         </nav>
       </header>
 
@@ -71,6 +74,7 @@ export default function BackOffice({
         {sezione === 'disponibilita' && <Disponibilita />}
         {sezione === 'formazione' && <CatalogoFormazione />}
         {sezione === 'cosedafare' && <CoseDaFare />}
+        {sezione === 'importwerp' && <ImportWerp />}
       </main>
     </div>
   );
