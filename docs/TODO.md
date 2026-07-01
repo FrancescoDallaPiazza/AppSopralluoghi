@@ -251,16 +251,30 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ---
 
-## D · Allineamento documentazione
-
-- [ ] **PROGETTO.md §8** elenca ancora "Rigenerazione automatica scadenze
-  ricorrenti → DA FARE", ma la migration `013_scadenze_ricorrenti.sql` (commit
-  `d1669c0`) implementa il trigger `azione_rigenera_scadenza_ricorrente` che
-  copre il caso. Aggiornare PROGETTO.md spostando il punto in "Fatti".
-
----
-
 ## ✅ Fatti di recente
+
+- [x] **2026-07-01** Fase 3 · **scadenzario unico** (read-model). Il back-office
+  "Cose da fare" fonde in un unico elenco ordinato per data: scadenze formative +
+  azioni correttive (gia' `azione`) + **sopralluoghi pianificati** (righe
+  `sopralluogo` in stato pianificato/in_corso, lette in SOLA LETTURA senza
+  duplicarle in `azione` -- il ciclo del sopralluogo resta in Pianificazione/campo).
+  Nuovo filtro "Tipo" (Formazione/Correttive/Sopralluoghi); scadute evidenziate.
+  `cosedafare.ts` (`CosaDaFareAdmin` diventa union discriminata su `kind`;
+  `caricaCoseDaFare` unisce le due sorgenti) + `CoseDaFare.tsx`. **Nessuna
+  migration** (solo Canale 1). `tsc -b` + `vite build` verdi.
+- [x] **2026-07-01** Fase 3 · **standalone dismettibile**. Parita' funzionale
+  raggiunta (CF/Belfiore, crediti Allegato III, import catalogo -- Fase 1) e dati
+  migrati one-shot (046/047, la standalone conteneva solo OVERALL GROUP). Verificato
+  che NON esiste alcuna dipendenza viva app -> standalone nel repo (nessun link,
+  nessuna UI d'import: la migrazione fu solo SQL). Lo spegnimento e' quindi
+  un'azione operativa ESTERNA (eliminare il deploy della standalone), non un
+  intervento su questo repo.
+- [x] **2026-07-01** Allineamento doc (nessun codice): chiusa la nota §D. Verificato
+  che `PROGETTO.md §8` NON elenca piu' "rigenerazione scadenze ricorrenti -> DA FARE"
+  (l'unico DA FARE di §8 resta il collegamento Werp, corretto); la tabella di
+  copertura dice gia' "Coperto ... via trigger, migration 013" e §9 e' allineata
+  (correzione applicata in una sessione precedente). La sezione §D e' stata rimossa
+  perche' vuota.
 
 - [x] **2026-06-23** Monitoraggio automatico scadenze formazione (scelta A).
   Migration 042 (`azione.origine_formazione_id` FK cascade + backfill). Una
