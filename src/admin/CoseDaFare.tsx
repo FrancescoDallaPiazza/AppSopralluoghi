@@ -5,8 +5,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   caricaCoseDaFare, aggiornaStatoAzioneAdmin,
-  LABEL_STATO_AZIONE, LABEL_TIPO_AZIONE, LABEL_PRIORITA,
-  type CosaDaFareAdmin, type DestinatarioTipo,
+  LABEL_STATO_AZIONE, LABEL_PRIORITA, LABEL_RIGA,
+  type CosaDaFareAdmin, type DestinatarioTipo, type RigaTipo,
 } from '../lib/admin/cosedafare';
 import type { AzioneStato } from '../lib/types';
 import { notificaAzione } from '../lib/notifiche';
@@ -21,6 +21,7 @@ const fmt = (d: string | null) => {
 type FStato = 'aperte' | 'concluse' | 'tutte';
 type FScad = 'tutte' | 'scadute' | 'prossime';
 type FDest = 'tutti' | DestinatarioTipo;
+type FTipo = 'tutti' | RigaTipo;
 
 const STATI: AzioneStato[] = ['aperta', 'in_corso', 'conclusa'];
 
@@ -33,6 +34,7 @@ export default function CoseDaFare() {
   const [fStato, setFStato] = useState<FStato>('aperte');
   const [fScad, setFScad] = useState<FScad>('tutte');
   const [fDest, setFDest] = useState<FDest>('tutti');
+  const [fTipo, setFTipo] = useState<FTipo>('tutti');
   const [q, setQ] = useState('');
 
   function carica() {
@@ -45,7 +47,15 @@ export default function CoseDaFare() {
     setBusy(id); setMsg(null);
     try {
       await aggiornaStatoAzioneAdmin(id, s);
-      setRighe((rs) => rs.map((r) => (r.azione.id === id ? { ...r, azione: { ...r.azione, stato: s } } : r)));
+      setRighe((rs) => rs.map((r) =>
+        r.id === id && r.kind === 'azione'
+          ? {
+              ...r,
+              conclusa: s === 'conclusa',
+              scaduta: !!(r.data && r.data < oggiISO() && s !== 'conclusa'),
+              azione: { ...r.azione, stato: s },
+            }
+          : r));
     } catch (e: any) {
       setMsg(e?.message ?? 'Aggiornamento non riuscito.');
     } finally { setBusy(null); }
@@ -65,30 +75,27 @@ export default function CoseDaFare() {
     const ago = q.trim().toLowerCase();
     const o = oggiISO(); const lim = fra30();
     return righe.filter((r) => {
-      const a = r.azione;
-      if (fStato === 'aperte' && a.stato === 'conclusa') return false;
-      if (fStato === 'concluse' && a.stato !== 'conclusa') return false;
+      if (fStato === 'aperte' && r.conclusa) return false;
+      if (fStato === 'concluse' && !r.conclusa) return false;
       if (fDest !== 'tutti' && r.destinatario_tipo !== fDest) return false;
-      if (fScad === 'scadute' && !(a.data_scadenza && a.data_scadenza < o && a.stato !== 'conclusa')) return false;
-      if (fScad === 'prossime' && !(a.data_scadenza && a.data_scadenza >= o && a.data_scadenza <= lim)) return false;
+      if (fTipo !== 'tutti' && r.riga_tipo !== fTipo) return false;
+      if (fScad === 'scadute' && !r.scaduta) return false;
+      if (fScad === 'prossime' && !(r.data && r.data >= o && r.data <= lim)) return false;
       if (ago) {
-        const blob = [a.descrizione, r.cliente_nome, r.destinatario_nome, r.origine_voce]
+        const blob = [r.descrizione, r.cliente_nome, r.destinatario_nome, r.origine_voce, r.sopralluogo_label]
           .filter(Boolean).join(' ').toLowerCase();
         if (!blob.includes(ago)) return false;
       }
       return true;
     }).sort((x, y) => {
       // scadenza crescente, nulli in fondo
-      const dx = x.azione.data_scadenza ?? '9999-99-99';
-      const dy = y.azione.data_scadenza ?? '9999-99-99';
+      const dx = x.data ?? '9999-99-99';
+      const dy = y.data ?? '9999-99-99';
       return dx < dy ? -1 : dx > dy ? 1 : 0;
     });
-  }, [righe, fStato, fScad, fDest, q]);
+  }, [righe, fStato, fScad, fDest, fTipo, q]);
 
-  const scadute = useMemo(
-    () => righe.filter((r) => r.azione.data_scadenza && r.azione.data_scadenza < oggiISO() && r.azione.stato !== 'conclusa').length,
-    [righe],
-  );
+  const scadute = useMemo(() => righe.filter((r) => r.scaduta).length, [righe]);
 
   const destLabel = (t: DestinatarioTipo) =>
     t === 'cliente' ? 'Cliente' : t === 'area' ? 'Area' : 'Tecnico';
@@ -99,7 +106,7 @@ export default function CoseDaFare() {
         <div className="grow">
           <h2 className="bo-h">Cose da fare</h2>
           <p className="bo-sub" style={{ margin: 0 }}>
-            Azioni correttive e scadenze ricorrenti di tutti i sopralluoghi.
+            Scadenze formative, azioni correttive e sopralluoghi pianificati, in un unico elenco.
           </p>
         </div>
         {scadute > 0 && <span className="bo-pill warn">{scadute} scadute</span>}
@@ -121,6 +128,15 @@ export default function CoseDaFare() {
             <option value="cliente">Cliente</option>
             <option value="tecnico">Tecnico</option>
             <option value="area">Area</option>
+          </select>
+        </label>
+        <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
+          <span>Tipo</span>
+          <select value={fTipo} onChange={(e) => setFTipo(e.target.value as FTipo)}>
+            <option value="tutti">Tutti</option>
+            <option value="formazione">Formazione</option>
+            <option value="correttiva">Correttive</option>
+            <option value="sopralluogo">Sopralluoghi</option>
           </select>
         </label>
         <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
@@ -146,45 +162,46 @@ export default function CoseDaFare() {
       )}
 
       {visibili.map((r) => {
-        const a = r.azione;
-        const scaduta = a.data_scadenza && a.data_scadenza < oggiISO() && a.stato !== 'conclusa';
+        const scaduta = r.scaduta;
         return (
-          <div key={a.id} className={`bo-card ${a.stato === 'conclusa' ? 'dim' : ''}`}
+          <div key={r.id} className={`bo-card ${r.conclusa ? 'dim' : ''}`}
             style={scaduta ? { borderLeft: '3px solid var(--no)' } : undefined}>
             <div className="bo-row">
               <div className="grow">
-                <div className="bo-title">{a.descrizione}</div>
+                <div className="bo-title">{r.descrizione}</div>
                 <div className="bo-meta">
                   {r.cliente_nome && <span>{r.cliente_nome}</span>}
                   <span className={`bo-pill ${r.destinatario_tipo === 'area' ? 'usato' : 'archiviato'}`}>
                     {destLabel(r.destinatario_tipo)}{r.destinatario_nome ? `: ${r.destinatario_nome}` : ''}
                   </span>
-                  <span>{LABEL_TIPO_AZIONE[a.tipo]}</span>
-                  {a.tipo === 'scadenza_ricorrente' && a.periodicita_mesi != null &&
-                    <span>ogni {a.periodicita_mesi} mesi</span>}
-                  <span>priorità {LABEL_PRIORITA[a.priorita]}</span>
+                  <span>{LABEL_RIGA[r.riga_tipo]}</span>
+                  {r.kind === 'azione' && r.azione.tipo === 'scadenza_ricorrente' && r.azione.periodicita_mesi != null &&
+                    <span>ogni {r.azione.periodicita_mesi} mesi</span>}
+                  {r.kind === 'azione' && <span>priorità {LABEL_PRIORITA[r.azione.priorita]}</span>}
                 </div>
                 <div className="bo-meta" style={{ marginTop: 6 }}>
                   <span className={scaduta ? 'bo-pill warn' : ''}>
-                    {scaduta ? 'Scaduta · ' : 'Scadenza '}{fmt(a.data_scadenza)}
+                    {scaduta ? 'Scaduta · ' : (r.kind === 'sopralluogo' ? 'Pianificata ' : 'Scadenza ')}{fmt(r.data)}
                   </span>
                   {r.sopralluogo_label && <span>{r.sopralluogo_label}</span>}
                   {r.origine_voce && <span>da: {r.origine_voce}</span>}
                 </div>
               </div>
-              <label className="bo-field" style={{ margin: 0, minWidth: 140 }}>
-                <span>Stato</span>
-                <select value={a.stato} disabled={busy === a.id}
-                  onChange={(e) => void cambiaStato(a.id, e.target.value as AzioneStato)}>
-                  {STATI.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
-                </select>
-              </label>
+              {r.kind === 'azione' && (
+                <label className="bo-field" style={{ margin: 0, minWidth: 140 }}>
+                  <span>Stato</span>
+                  <select value={r.azione.stato} disabled={busy === r.id}
+                    onChange={(e) => void cambiaStato(r.id, e.target.value as AzioneStato)}>
+                    {STATI.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
+                  </select>
+                </label>
+              )}
             </div>
-            {r.destinatario_tipo !== 'cliente' && a.stato !== 'conclusa' && (
+            {r.kind === 'azione' && r.destinatario_tipo !== 'cliente' && !r.conclusa && (
               <div className="bo-bar" style={{ marginTop: 10 }}>
                 <span className="bo-sp" />
-                <button className="bo-btn ghost sm" disabled={busy === a.id}
-                  onClick={() => void avvisa(a.id)}
+                <button className="bo-btn ghost sm" disabled={busy === r.id}
+                  onClick={() => void avvisa(r.id)}
                   title="Invia un'email di avviso al destinatario interno">
                   ✉ Avvisa via email
                 </button>
