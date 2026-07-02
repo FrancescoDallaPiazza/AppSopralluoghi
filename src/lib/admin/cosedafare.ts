@@ -25,7 +25,7 @@ const COLONNE_AZIONE = [
   'responsabile_area_id',
   'data_scadenza', 'priorita', 'stato', 'sopralluogo_verifica_id',
   'data_verifica', 'periodicita_mesi', 'werp_attivita_id', 'notificata_il',
-  'origine_formazione_id', 'origine_esonero_id',
+  'origine_formazione_id', 'origine_esonero_id', 'origine_ramo',
 ] as const;
 
 const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
@@ -130,7 +130,7 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
 
     const conclusa = r.stato === 'conclusa';
     const riga_tipo: RigaTipo =
-      (r.origine_formazione_id || r.origine_esonero_id) ? 'formazione' : 'correttiva';
+      (r.origine_formazione_id || r.origine_esonero_id || r.origine_ramo === 'formazione') ? 'formazione' : 'correttiva';
 
     return {
       kind: 'azione',

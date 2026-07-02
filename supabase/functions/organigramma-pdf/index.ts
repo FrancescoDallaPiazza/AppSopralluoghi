@@ -114,27 +114,52 @@ function dataIT(iso: string): string {
   return `${dd}/${mm}/${d.getFullYear()} ${hh}:${mi}`;
 }
 
+function dataBreve(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return esc(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+// PDF a 3 colonne: RUOLO organigramma -> ANAGRAFICA persona -> EVIDENZE
+// (formazione/esonero). I ruoli scoperti compaiono con "Nessun incaricato".
 function renderSnapshot(s: Snap, numero: number | null): string {
   const c = s.conteggi ?? {};
   const metrica = (k: string, v: number, col?: string) =>
     `<div class="m"><div class="mk">${esc(k)}</div><div class="mv" style="${col ? 'color:' + col : ''}">${v ?? 0}</div></div>`;
 
-  const scoperti = (s.figure_scoperte ?? []).length
-    ? `<div class="crit"><b>Ruoli obbligatori senza incaricato:</b> ${s.figure_scoperte.map((f) => esc(f.nome) + (f.corso_emergenza ? ' <i>(corso: ' + esc(f.corso_emergenza) + ')</i>' : '')).join(', ')}</div>`
-    : '';
+  // Elenco ruoli: unione delle figure incaricate e dei ruoli scoperti.
+  const ruoli = new Map<string, string>();
+  for (const p of s.persone ?? []) {
+    for (const f of p.figure ?? []) if (!ruoli.has(f.codice)) ruoli.set(f.codice, f.nome);
+  }
+  for (const f of s.figure_scoperte ?? []) if (!ruoli.has(f.codice)) ruoli.set(f.codice, f.nome);
 
-  const persone = (s.persone ?? []).map((p) => {
-    const figure = p.figure?.length ? `<div class="fig">${p.figure.map((f) => esc(f.nome)).join(' &middot; ')}</div>` : '';
+  const evidenzeDi = (p: SnapPersona): string => {
     const reqs = (p.requisiti ?? []).map((r) =>
-      `<div class="row"><span class="corso">${esc(r.corso_nome)}${r.dettaglio ? ' &mdash; ' + esc(r.dettaglio) : ''}</span>${chip(r.stato)}</div>`).join('');
+      `<div class="ev"><span class="corso">${esc(r.corso_nome)}${r.dettaglio ? ' &mdash; ' + esc(r.dettaglio) : ''}${r.scadenza ? ' <span class="scad">(scad. ' + dataBreve(r.scadenza) + ')</span>' : ''}</span>${chip(r.stato)}</div>`);
     const mods = (p.moduli ?? []).map((m) =>
-      `<div class="row"><span class="corso">${esc(m.corso_nome)} <span class="tag">modulo</span>${m.dettaglio ? ' &mdash; ' + esc(m.dettaglio) : ''}</span>${chip(m.stato)}</div>`).join('');
-    return `
-      <div class="p">
-        <div class="ptop"><span class="pn">${esc(p.nome)}${p.mansione ? ' &mdash; ' + esc(p.mansione) : ''}</span>${chip(p.stato)}</div>
-        ${figure}
-        ${reqs}${mods}
-      </div>`;
+      `<div class="ev"><span class="corso">${esc(m.corso_nome)} <span class="tag">modulo</span>${m.dettaglio ? ' &mdash; ' + esc(m.dettaglio) : ''}</span>${chip(m.stato)}</div>`);
+    const all = [...reqs, ...mods];
+    return all.length ? all.join('') : '<span class="none">nessuna evidenza</span>';
+  };
+
+  const righe = [...ruoli.entries()].map(([codice, nome]) => {
+    const titolari = (s.persone ?? []).filter((p) => (p.figure ?? []).some((f) => f.codice === codice));
+    if (titolari.length === 0) {
+      const sc = (s.figure_scoperte ?? []).find((f) => f.codice === codice);
+      const em = sc?.corso_emergenza ? ` <i>(corso: ${esc(sc.corso_emergenza)})</i>` : '';
+      return `<tr><td class="ruolo">${esc(nome)}</td><td class="vuoto" colspan="2">Nessun incaricato${em}</td></tr>`;
+    }
+    return titolari.map((p, i) => {
+      const roleCell = i === 0 ? `<td class="ruolo" rowspan="${titolari.length}">${esc(nome)}</td>` : '';
+      const anag = `<div class="pn">${esc(p.nome)}</div>`
+        + ((p.mansione || p.reparto) ? `<div class="pm">${[p.mansione, p.reparto].filter(Boolean).map(esc).join(' &middot; ')}</div>` : '')
+        + `<div class="pchip">${chip(p.stato)}</div>`;
+      return `<tr>${roleCell}<td class="cpers">${anag}</td><td>${evidenzeDi(p)}</td></tr>`;
+    }).join('');
   }).join('');
 
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><style>
@@ -142,13 +167,19 @@ function renderSnapshot(s: Snap, numero: number | null): string {
     h1{font-size:19px;margin:0 0 2px} .sub{color:#5b5f66;font-size:12px;margin:0 0 14px}
     .metrics{display:flex;gap:10px;margin:0 0 14px} .m{flex:1;border:1px solid #e3ddd2;border-radius:10px;padding:8px 10px}
     .mk{font-size:10px;color:#5b5f66} .mv{font-size:20px;font-weight:800;margin-top:1px}
-    .crit{background:#fbe3e0;border:1px solid #e7b3ab;color:#a33227;border-radius:9px;padding:8px 10px;margin:0 0 12px;font-size:12px}
-    .p{border:1px solid #e3ddd2;border-radius:10px;padding:9px 11px;margin:0 0 8px;page-break-inside:avoid}
-    .ptop{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .pn{font-weight:700} .fig{color:#5b5f66;font-size:11px;margin:2px 0 4px}
-    .row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid #f0ece4}
-    .corso{font-size:11.5px} .tag{font-size:9px;font-weight:800;text-transform:uppercase;color:#5b5f66;background:#eef1f4;border-radius:5px;padding:1px 5px}
-    .chip{font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 8px;border-radius:999px;white-space:nowrap;flex:0 0 auto}
+    table{width:100%;border-collapse:collapse;font-size:11.5px}
+    thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#5b5f66;background:#f4f1ea;border:1px solid #e3ddd2;padding:6px 9px}
+    td{border:1px solid #e3ddd2;padding:7px 9px;vertical-align:top}
+    td.ruolo{font-weight:700;width:26%;background:#faf8f3}
+    td.cpers{width:30%}
+    .pn{font-weight:700} .pm{color:#5b5f66;font-size:10.5px;margin-top:1px} .pchip{margin-top:4px}
+    td.vuoto{color:#a33227;background:#fbe3e0}
+    .ev{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:3px 0}
+    .ev+.ev{border-top:1px solid #f0ece4}
+    .corso{font-size:11px} .scad{color:#5b5f66} .none{color:#9a958c;font-style:italic}
+    .tag{font-size:9px;font-weight:800;text-transform:uppercase;color:#5b5f66;background:#eef1f4;border-radius:5px;padding:1px 5px}
+    .chip{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 7px;border-radius:999px;white-space:nowrap;flex:0 0 auto}
+    tr{page-break-inside:avoid}
     .foot{margin-top:16px;color:#9a958c;font-size:10px;border-top:1px solid #e3ddd2;padding-top:8px}
   </style></head><body>
     <h1>Organigramma sicurezza &mdash; ${esc(s.cliente_nome)}</h1>
@@ -159,8 +190,10 @@ function renderSnapshot(s: Snap, numero: number | null): string {
       ${metrica('In scadenza', c.in_scadenza ?? 0, '#9a6206')}
       ${metrica('Critici', c.critico ?? 0, '#a33227')}
     </div>
-    ${scoperti}
-    ${persone || '<p class="sub">Nessuna persona in organigramma.</p>'}
+    <table>
+      <thead><tr><th>Ruolo organigramma</th><th>Anagrafica persona</th><th>Evidenze formazione / esonero</th></tr></thead>
+      <tbody>${righe || '<tr><td class="vuoto" colspan="3">Nessun ruolo in organigramma.</td></tr>'}</tbody>
+    </table>
     <div class="foot">Documento generato automaticamente da AppSopralluoghi. Lo stato formativo e' fotografato alla data di generazione.</div>
   </body></html>`;
 }

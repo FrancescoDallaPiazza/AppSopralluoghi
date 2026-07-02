@@ -225,13 +225,6 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
     } finally { setPdfBusy(false); }
   }
 
-  async function setRischio(v: LivelloRischio | null) {
-    const { error } = await supabase.from('cliente').update({ livello_rischio: v }).eq('id', clienteId);
-    if (error) { setErrore(error.message); return; }
-    setCliente((c) => (c ? { ...c, livello_rischio: v } : c));
-    dopoModifica();
-  }
-
   async function impostaRlsTerritoriale(v: boolean) {
     const { error } = await supabase.from('cliente').update({ rls_territoriale: v }).eq('id', clienteId);
     if (error) { setErrore(error.message); return; }
@@ -242,20 +235,6 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
   return (
     <>
       <style>{CSS_FZ}</style>
-
-      <div className="bo-row" style={{ margin: '22px 0 12px', gap: 14, flexWrap: 'wrap', alignItems: 'baseline' }}>
-        <div className="grow"><h2 className="bo-h" style={{ margin: 0 }}>Formazione e organigramma</h2></div>
-        {cliente && (
-          <select value={cliente.livello_rischio ?? ''}
-            style={{ width: 'auto', ...(cliente.livello_rischio ? {} : { borderColor: 'var(--hi-dark)', background: '#fbf0d6', fontWeight: 700 }) }}
-            onChange={(e) => setRischio((e.target.value || null) as LivelloRischio | null)} title="Livello di rischio">
-            <option value="">rischio: n.d.</option>
-            <option value="basso">rischio basso</option>
-            <option value="medio">rischio medio</option>
-            <option value="alto">rischio alto</option>
-          </select>
-        )}
-      </div>
 
       {errore && <div className="bo-err">{errore}</div>}
       {caricando && !riep && <div className="bo-empty">Carico…</div>}
@@ -278,7 +257,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
           </div>
 
           {!cliente.livello_rischio && (
-            <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate. Impostalo dal menù a tendina "rischio" qui sopra.</div>
+            <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate. Impostalo nella sezione Dati anagrafici (proposto dal codice ATECO).</div>
           )}
 
           {/* organigramma atteso - render CONDIVISO col campo (OrganigrammaView) */}
@@ -407,7 +386,7 @@ function PannelloGenerazione({
         onClick={async () => {
           setSalvando(true);
           try {
-            const n = await generaCoseDaFare(proposte, { includiInScadenza, versoArea, areaId: versoArea ? areaId : null, clienteId: versoArea ? null : clienteId });
+            const n = await generaCoseDaFare(proposte, { includiInScadenza, versoArea, areaId: versoArea ? areaId : null, clienteId });
             onFatto(n);
           } catch (e: any) {
             alert('Errore: ' + (e?.message ?? String(e)));

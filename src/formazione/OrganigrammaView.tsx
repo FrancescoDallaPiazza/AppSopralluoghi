@@ -335,8 +335,6 @@ function AssegnaFiguraPanel({
   const adapter = useAdapter();
   const titolariIds = useMemo(() => titolari.map((t) => t.personaId), [titolari]);
   const [sel, setSel] = useState<Set<string>>(() => new Set(titolariIds));
-  const [nuovoCognome, setNuovoCognome] = useState('');
-  const [nuovoNome, setNuovoNome] = useState('');
   const [busy, setBusy] = useState(false);
   // passo 2: per chi e' appena stato assegnato si chiede la formazione pregressa
   const [step, setStep] = useState<'assegna' | 'pregressa'>('assegna');
@@ -351,18 +349,6 @@ function AssegnaFiguraPanel({
     try {
       const dopo = new Set(sel);
       const aggiunte: Persona[] = [];
-      // crea la nuova persona, se indicata
-      if (nuovoCognome.trim() || nuovoNome.trim()) {
-        const creata: Persona = {
-          id: newId(), cliente_id: clienteId,
-          nome: nuovoNome.trim(), cognome: nuovoCognome.trim() || null,
-          codice_fiscale: null, mansione: null, reparto: null, data_assunzione: null,
-          livello_rischio: null, attivo: true, note: null, formazione_pregressa: false,
-        };
-        await adapter.salvaPersona(creata);
-        dopo.add(creata.id);
-        aggiunte.push(creata);
-      }
       // aggiunte: selezionati ora ma non titolari prima
       for (const id of dopo) {
         if (titolariIds.includes(id)) continue;
@@ -443,30 +429,43 @@ function AssegnaFiguraPanel({
 
   return (
     <div className="fzr-ed">
-      {persone.length > 0 ? (
-        <>
-          <div className="fzr-grp" style={{ marginTop: 0 }}>Assegna una persona gi&agrave; in organigramma</div>
-          {persone.map((p) => (
-            <label key={p.id} className="fzr-fig-row">
-              <input type="checkbox" checked={sel.has(p.id)} disabled={busy} onChange={() => toggle(p.id)} />
-              <span>{nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}</span>
-            </label>
+      <div className="fzr-grp" style={{ marginTop: 0 }}>Assegnatari del ruolo</div>
+      {persone.filter((p) => sel.has(p.id)).length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+          {persone.filter((p) => sel.has(p.id)).map((p) => (
+            <span key={p.id} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
+              background: '#eef5ef', border: '1px solid #cfe6d8', color: '#1f5b38',
+              borderRadius: 999, padding: '3px 6px 3px 11px',
+            }}>
+              {nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}
+              <button type="button" disabled={busy} onClick={() => toggle(p.id)}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>&times;</button>
+            </span>
           ))}
-        </>
+        </div>
       ) : (
-        <div className="fzr-d" style={{ marginTop: 0 }}>Nessuna persona ancora in organigramma: creane una qui sotto.</div>
+        <div className="fzr-d" style={{ marginTop: 0 }}>Nessun assegnatario: scegli una o pi&ugrave; risorse dalla tendina.</div>
       )}
-      <div className="fzr-grp">Crea e assegna una nuova persona</div>
-      <div className="fzr-row2">
-        <div className="fzr-field">
-          <label>Cognome</label>
-          <input type="text" value={nuovoCognome} disabled={busy} onChange={(e) => setNuovoCognome(e.target.value.toUpperCase())} />
-        </div>
-        <div className="fzr-field">
-          <label>Nome</label>
-          <input type="text" value={nuovoNome} disabled={busy} onChange={(e) => setNuovoNome(e.target.value.toUpperCase())} />
-        </div>
+
+      <div className="fzr-field" style={{ marginTop: 8 }}>
+        <label>Aggiungi assegnatario (dalle risorse umane)</label>
+        <select value="" disabled={busy || persone.filter((p) => !sel.has(p.id)).length === 0}
+          onChange={(e) => { const id = e.target.value; if (id) toggle(id); }}>
+          <option value="">
+            {persone.filter((p) => !sel.has(p.id)).length ? '+ scegli una risorsa\u2026' : 'tutte le risorse sono gi\u00e0 assegnate'}
+          </option>
+          {persone.filter((p) => !sel.has(p.id)).map((p) => (
+            <option key={p.id} value={p.id}>{nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}</option>
+          ))}
+        </select>
       </div>
+      {persone.length === 0 && (
+        <div className="fzr-hint" style={{ marginTop: 8 }}>
+          Nessuna risorsa disponibile: aggiungi prima le persone nella sezione &laquo;Risorse Umane&raquo; della scheda cliente.
+        </div>
+      )}
+
       <div className="fzr-actions">
         <button className="fzr-btn primary" disabled={busy} onClick={() => void salva()}>Salva</button>
         <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>

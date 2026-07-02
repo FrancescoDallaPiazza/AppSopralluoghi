@@ -1050,7 +1050,7 @@ export interface OpzioniGenerazione {
   // destinatario: area interna OPPURE cliente
   versoArea: boolean;
   areaId: string | null;       // se versoArea
-  clienteId: string | null;    // se !versoArea
+  clienteId: string | null;    // cliente d'origine (sempre): destinatario se !versoArea, contesto se versoArea
 }
 
 export interface CosaDaFareProposta {
@@ -1110,16 +1110,22 @@ export async function generaCoseDaFare(
 ): Promise<number> {
   if (!proposte.length) return 0;
   if (opt.versoArea && !opt.areaId) throw new Error('Area destinataria mancante');
-  if (!opt.versoArea && !opt.clienteId) throw new Error('Cliente destinatario mancante');
+  if (!opt.clienteId) throw new Error('Cliente d\u2019origine mancante');
 
   const righe = proposte.map((p) => ({
     id: newId(),
     tipo: 'azione_correttiva' as const,
     origine_esito_id: null,
     sopralluogo_origine_id: null,
+    // Sono gap FORMATIVI: marca il ramo cosi' finiscono in categoria "Formazione"
+    // (non hanno una riga `formazione` di origine da cui dedurlo).
+    origine_ramo: 'formazione' as const,
     descrizione: p.descrizione,
     responsabile_tipo: opt.versoArea ? ('risorsa_interna' as const) : ('cliente' as const),
-    responsabile_cliente_id: opt.versoArea ? null : opt.clienteId,
+    // Sempre valorizzato (anche verso area): e' il cliente d'ORIGINE, cosi' il
+    // gap compare nello Scadenzario della scheda cliente. Come le azioni di
+    // formazione automatiche, che tengono responsabile_cliente_id per contesto.
+    responsabile_cliente_id: opt.clienteId,
     responsabile_interno_id: null,
     responsabile_area_id: opt.versoArea ? opt.areaId : null,
     data_scadenza: p.scadenza,
