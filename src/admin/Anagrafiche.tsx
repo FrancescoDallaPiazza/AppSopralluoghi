@@ -17,6 +17,7 @@ import {
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
+import CoseDaFare from './CoseDaFare';
 
 export default function Anagrafiche() {
   // null = elenco; { id } = scheda esistente; { nuovo:true } = scheda nuova
@@ -404,6 +405,14 @@ function SchedaCliente({
               </p>
             </>
           )}
+        </Sezione>
+      )}
+
+      {/* --- scadenzario del cliente: copia di "Cose da fare" filtrata su questo cliente --- */}
+      {persistito && (
+        <Sezione titolo="Scadenzario" sommario="formazione, documenti, autorizzazioni e attività"
+          aperta={aperte.has('scadenzario')} onToggle={() => toggle('scadenzario')}>
+          <CoseDaFare clienteId={cliente.id} />
         </Sezione>
       )}
 

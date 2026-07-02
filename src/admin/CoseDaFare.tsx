@@ -1,6 +1,11 @@
 // Back-office · "Cose da fare" / scadenzario. Vista d'insieme di tutte le azioni
-// (correttive e scadenze ricorrenti) con filtri per stato, destinatario e
-// scadenza, evidenza delle scadute, e cambio stato. Online-first.
+// (formative, correttive, sopralluoghi pianificati), ANNIDIATA nelle 4 voci
+// della tassonomia (Formazione · Documenti · Autorizzazioni · Cose da fare),
+// ciascuna in un blocco col proprio colore e titolo. Filtri per stato,
+// destinatario e scadenza, evidenza delle scadute, cambio stato. Online-first.
+//
+// Riuso: con `clienteId` la stessa vista diventa lo SCADENZARIO della scheda
+// cliente (tab Anagrafiche), filtrato sul cliente d'origine.
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -25,7 +30,7 @@ type FDest = 'tutti' | DestinatarioTipo;
 // Tassonomia lato cliente del feed unico. Oggi hanno dati solo 'formazione'
 // (Ramo A) e 'cosedafare' (correttive + sopralluoghi, Ramo B). 'documenti' e
 // 'autorizzazioni' sono i rami Edificio/Lavorazioni della mappa dei flussi:
-// previsti ma non ancora modellati, quindi il filtro esiste ma resta vuoto
+// previsti ma non ancora modellati, quindi il blocco esiste ma resta vuoto
 // finche' quel ramo non produce righe (nessuna tabella speculativa).
 type Categoria = 'formazione' | 'documenti' | 'autorizzazioni' | 'cosedafare';
 const CATEGORIA_DI: Record<RigaTipo, Categoria> = {
@@ -33,11 +38,18 @@ const CATEGORIA_DI: Record<RigaTipo, Categoria> = {
   correttiva: 'cosedafare',
   sopralluogo: 'cosedafare',
 };
-type FTipo = 'tutti' | Categoria;
+
+// Blocchi nell'ordine di visualizzazione, con il proprio colore identificativo.
+const CATEGORIE: { key: Categoria; titolo: string; bg: string; bordo: string; ink: string }[] = [
+  { key: 'formazione', titolo: 'Formazione', bg: '#e7f3ea', bordo: '#bfe0c8', ink: '#1f6b3a' },
+  { key: 'documenti', titolo: 'Documenti', bg: '#e6eefb', bordo: '#c4d6f2', ink: '#274a86' },
+  { key: 'autorizzazioni', titolo: 'Autorizzazioni', bg: '#fbf1dd', bordo: '#ecd9ad', ink: '#8a6212' },
+  { key: 'cosedafare', titolo: 'Cose da fare', bg: '#f1eee9', bordo: '#ddd5c7', ink: '#4a4a4a' },
+];
 
 const STATI: AzioneStato[] = ['aperta', 'in_corso', 'conclusa'];
 
-export default function CoseDaFare() {
+export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
   const [righe, setRighe] = useState<CosaDaFareAdmin[]>([]);
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
   const [busy, setBusy] = useState<string | null>(null);
@@ -46,14 +58,15 @@ export default function CoseDaFare() {
   const [fStato, setFStato] = useState<FStato>('aperte');
   const [fScad, setFScad] = useState<FScad>('tutte');
   const [fDest, setFDest] = useState<FDest>('tutti');
-  const [fTipo, setFTipo] = useState<FTipo>('tutti');
   const [q, setQ] = useState('');
+
+  const dentroScheda = clienteId != null; // usato come scadenzario nella scheda cliente
 
   function carica() {
     setStato('loading');
-    caricaCoseDaFare().then((r) => { setRighe(r); setStato('ok'); }).catch(() => setStato('errore'));
+    caricaCoseDaFare(clienteId).then((r) => { setRighe(r); setStato('ok'); }).catch(() => setStato('errore'));
   }
-  useEffect(carica, []);
+  useEffect(carica, [clienteId]);
 
   async function cambiaStato(id: string, s: AzioneStato) {
     setBusy(id); setMsg(null);
@@ -90,7 +103,6 @@ export default function CoseDaFare() {
       if (fStato === 'aperte' && r.conclusa) return false;
       if (fStato === 'concluse' && !r.conclusa) return false;
       if (fDest !== 'tutti' && r.destinatario_tipo !== fDest) return false;
-      if (fTipo !== 'tutti' && CATEGORIA_DI[r.riga_tipo] !== fTipo) return false;
       if (fScad === 'scadute' && !r.scaduta) return false;
       if (fScad === 'prossime' && !(r.data && r.data >= o && r.data <= lim)) return false;
       if (ago) {
@@ -100,31 +112,82 @@ export default function CoseDaFare() {
       }
       return true;
     }).sort((x, y) => {
-      // scadenza crescente, nulli in fondo
       const dx = x.data ?? '9999-99-99';
       const dy = y.data ?? '9999-99-99';
       return dx < dy ? -1 : dx > dy ? 1 : 0;
     });
-  }, [righe, fStato, fScad, fDest, fTipo, q]);
+  }, [righe, fStato, fScad, fDest, q]);
 
   const scadute = useMemo(() => righe.filter((r) => r.scaduta).length, [righe]);
 
   const destLabel = (t: DestinatarioTipo) =>
     t === 'cliente' ? 'Cliente' : t === 'area' ? 'Area' : 'Tecnico';
 
+  function Riga({ r }: { r: CosaDaFareAdmin }) {
+    const scaduta = r.scaduta;
+    return (
+      <div className={`bo-card ${r.conclusa ? 'dim' : ''}`}
+        style={{ marginBottom: 8, ...(scaduta ? { borderLeft: '3px solid var(--no)' } : {}) }}>
+        <div className="bo-row">
+          <div className="grow">
+            <div className="bo-title">{r.descrizione}</div>
+            <div className="bo-meta">
+              {!dentroScheda && r.cliente_nome && <span>{r.cliente_nome}</span>}
+              <span className={`bo-pill ${r.destinatario_tipo === 'area' ? 'usato' : 'archiviato'}`}>
+                {destLabel(r.destinatario_tipo)}{r.destinatario_nome ? `: ${r.destinatario_nome}` : ''}
+              </span>
+              <span>{LABEL_RIGA[r.riga_tipo]}</span>
+              {r.kind === 'azione' && r.azione.tipo === 'scadenza_ricorrente' && r.azione.periodicita_mesi != null &&
+                <span>ogni {r.azione.periodicita_mesi} mesi</span>}
+              {r.kind === 'azione' && <span>priorità {LABEL_PRIORITA[r.azione.priorita]}</span>}
+            </div>
+            <div className="bo-meta" style={{ marginTop: 6 }}>
+              <span className={scaduta ? 'bo-pill warn' : ''}>
+                {scaduta ? 'Scaduta · ' : (r.kind === 'sopralluogo' ? 'Pianificata ' : 'Scadenza ')}{fmt(r.data)}
+              </span>
+              {r.sopralluogo_label && <span>{r.sopralluogo_label}</span>}
+              {r.origine_voce && <span>da: {r.origine_voce}</span>}
+            </div>
+          </div>
+          {r.kind === 'azione' && (
+            <label className="bo-field" style={{ margin: 0, minWidth: 140 }}>
+              <span>Stato</span>
+              <select value={r.azione.stato} disabled={busy === r.id}
+                onChange={(e) => void cambiaStato(r.id, e.target.value as AzioneStato)}>
+                {STATI.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
+        {r.kind === 'azione' && r.destinatario_tipo !== 'cliente' && !r.conclusa && (
+          <div className="bo-bar" style={{ marginTop: 10 }}>
+            <span className="bo-sp" />
+            <button className="bo-btn ghost sm" disabled={busy === r.id}
+              onClick={() => void avvisa(r.id)}
+              title="Invia un'email di avviso al destinatario interno">
+              ✉ Avvisa via email
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="bo-row" style={{ marginBottom: 6 }}>
-        <div className="grow">
-          <h2 className="bo-h">Cose da fare</h2>
-          <p className="bo-sub" style={{ margin: 0 }}>
-            Scadenze formative, azioni correttive e sopralluoghi pianificati, in un unico elenco.
-          </p>
+      {!dentroScheda && (
+        <div className="bo-row" style={{ marginBottom: 6 }}>
+          <div className="grow">
+            <h2 className="bo-h">Cose da fare</h2>
+            <p className="bo-sub" style={{ margin: 0 }}>
+              Scadenze formative, documenti, autorizzazioni e attività dal campo, in un unico elenco per categoria.
+            </p>
+          </div>
+          {scadute > 0 && <span className="bo-pill warn">{scadute} scadute</span>}
         </div>
-        {scadute > 0 && <span className="bo-pill warn">{scadute} scadute</span>}
-      </div>
+      )}
 
-      <div className="bo-row" style={{ gap: 16, flexWrap: 'wrap', margin: '12px 0 4px' }}>
+      <div className="bo-row" style={{ gap: 16, flexWrap: 'wrap', margin: dentroScheda ? '0 0 4px' : '12px 0 4px' }}>
         <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
           <span>Stato</span>
           <select value={fStato} onChange={(e) => setFStato(e.target.value as FStato)}>
@@ -133,25 +196,17 @@ export default function CoseDaFare() {
             <option value="tutte">Tutte</option>
           </select>
         </label>
-        <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
-          <span>Destinatario</span>
-          <select value={fDest} onChange={(e) => setFDest(e.target.value as FDest)}>
-            <option value="tutti">Tutti</option>
-            <option value="cliente">Cliente</option>
-            <option value="tecnico">Tecnico</option>
-            <option value="area">Area</option>
-          </select>
-        </label>
-        <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
-          <span>Tipo</span>
-          <select value={fTipo} onChange={(e) => setFTipo(e.target.value as FTipo)}>
-            <option value="tutti">Tutti</option>
-            <option value="formazione">Formazione</option>
-            <option value="documenti">Documenti</option>
-            <option value="autorizzazioni">Autorizzazioni</option>
-            <option value="cosedafare">Cose da fare</option>
-          </select>
-        </label>
+        {!dentroScheda && (
+          <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
+            <span>Destinatario</span>
+            <select value={fDest} onChange={(e) => setFDest(e.target.value as FDest)}>
+              <option value="tutti">Tutti</option>
+              <option value="cliente">Cliente</option>
+              <option value="tecnico">Tecnico</option>
+              <option value="area">Area</option>
+            </select>
+          </label>
+        )}
         <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
           <span>Scadenza</span>
           <select value={fScad} onChange={(e) => setFScad(e.target.value as FScad)}>
@@ -162,7 +217,7 @@ export default function CoseDaFare() {
         </label>
         <label className="bo-field" style={{ margin: 0, flex: 1, minWidth: 200 }}>
           <span>Cerca</span>
-          <input type="text" placeholder="Descrizione, cliente, destinatario…"
+          <input type="text" placeholder="Descrizione, destinatario…"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
       </div>
@@ -170,56 +225,23 @@ export default function CoseDaFare() {
       {msg && <div className="bo-err">{msg}</div>}
       {stato === 'loading' && <div className="bo-empty">Carico…</div>}
       {stato === 'errore' && <div className="bo-err">Errore nel caricamento delle cose da fare.</div>}
-      {stato === 'ok' && visibili.length === 0 && (
-        <div className="bo-empty">Nessuna cosa da fare con questi filtri.</div>
-      )}
 
-      {visibili.map((r) => {
-        const scaduta = r.scaduta;
+      {stato === 'ok' && CATEGORIE.map((cat) => {
+        const gruppo = visibili.filter((r) => CATEGORIA_DI[r.riga_tipo] === cat.key);
         return (
-          <div key={r.id} className={`bo-card ${r.conclusa ? 'dim' : ''}`}
-            style={scaduta ? { borderLeft: '3px solid var(--no)' } : undefined}>
-            <div className="bo-row">
-              <div className="grow">
-                <div className="bo-title">{r.descrizione}</div>
-                <div className="bo-meta">
-                  {r.cliente_nome && <span>{r.cliente_nome}</span>}
-                  <span className={`bo-pill ${r.destinatario_tipo === 'area' ? 'usato' : 'archiviato'}`}>
-                    {destLabel(r.destinatario_tipo)}{r.destinatario_nome ? `: ${r.destinatario_nome}` : ''}
-                  </span>
-                  <span>{LABEL_RIGA[r.riga_tipo]}</span>
-                  {r.kind === 'azione' && r.azione.tipo === 'scadenza_ricorrente' && r.azione.periodicita_mesi != null &&
-                    <span>ogni {r.azione.periodicita_mesi} mesi</span>}
-                  {r.kind === 'azione' && <span>priorità {LABEL_PRIORITA[r.azione.priorita]}</span>}
-                </div>
-                <div className="bo-meta" style={{ marginTop: 6 }}>
-                  <span className={scaduta ? 'bo-pill warn' : ''}>
-                    {scaduta ? 'Scaduta · ' : (r.kind === 'sopralluogo' ? 'Pianificata ' : 'Scadenza ')}{fmt(r.data)}
-                  </span>
-                  {r.sopralluogo_label && <span>{r.sopralluogo_label}</span>}
-                  {r.origine_voce && <span>da: {r.origine_voce}</span>}
-                </div>
-              </div>
-              {r.kind === 'azione' && (
-                <label className="bo-field" style={{ margin: 0, minWidth: 140 }}>
-                  <span>Stato</span>
-                  <select value={r.azione.stato} disabled={busy === r.id}
-                    onChange={(e) => void cambiaStato(r.id, e.target.value as AzioneStato)}>
-                    {STATI.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
-                  </select>
-                </label>
-              )}
+          <div key={cat.key} style={{
+            background: cat.bg, border: `1px solid ${cat.bordo}`, borderRadius: 14,
+            padding: '12px 14px 14px', marginTop: 12,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: gruppo.length ? 10 : 2,
+            }}>
+              <span style={{ fontWeight: 800, fontSize: 14.5, color: cat.ink }}>{cat.titolo}</span>
+              <span style={{ fontSize: 12, color: cat.ink, opacity: .8 }}>
+                {gruppo.length || 'nessuna voce'}
+              </span>
             </div>
-            {r.kind === 'azione' && r.destinatario_tipo !== 'cliente' && !r.conclusa && (
-              <div className="bo-bar" style={{ marginTop: 10 }}>
-                <span className="bo-sp" />
-                <button className="bo-btn ghost sm" disabled={busy === r.id}
-                  onClick={() => void avvisa(r.id)}
-                  title="Invia un'email di avviso al destinatario interno">
-                  ✉ Avvisa via email
-                </button>
-              </div>
-            )}
+            {gruppo.map((r) => <Riga key={r.id} r={r} />)}
           </div>
         );
       })}

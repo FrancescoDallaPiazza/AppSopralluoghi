@@ -45,6 +45,7 @@ interface CosaDaFareBase {
   data: string | null;               // scadenza (azione) o data pianificata (sopralluogo)
   scaduta: boolean;                  // in ritardo e non ancora conclusa
   conclusa: boolean;                 // "fatto" (i sopralluoghi pianificati qui non lo sono mai)
+  cliente_id: string | null;         // cliente d'origine (per lo scadenzario per-anagrafica)
   cliente_nome: string | null;       // cliente d'origine (di quale cliente parla)
   sopralluogo_label: string | null;
   origine_voce: string | null;
@@ -58,12 +59,14 @@ export type CosaDaFareAdmin =
   | (CosaDaFareBase & { kind: 'azione'; azione: Azione })
   | (CosaDaFareBase & { kind: 'sopralluogo'; azione: null });
 
-export async function caricaCoseDaFare(): Promise<CosaDaFareAdmin[]> {
+export async function caricaCoseDaFare(clienteId?: string): Promise<CosaDaFareAdmin[]> {
   const [azioni, sopralluoghi] = await Promise.all([
     caricaAzioni(),
     caricaSopralluoghiPianificati(),
   ]);
-  return [...azioni, ...sopralluoghi];
+  const tutte = [...azioni, ...sopralluoghi];
+  // Scadenzario per-anagrafica: stessa vista, filtrata sul cliente d'origine.
+  return clienteId ? tutte.filter((r) => r.cliente_id === clienteId) : tutte;
 }
 
 async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
@@ -74,12 +77,14 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       origine:esito_voce!origine_esito_id ( voce_testo ),
       area:area_interna!responsabile_area_id ( nome ),
       tecnico:tecnico!responsabile_interno_id ( nome ),
-      cli_resp:cliente!responsabile_cliente_id ( ragione_sociale ),
+      cli_resp:cliente!responsabile_cliente_id ( id, ragione_sociale ),
+      f_orig:formazione!origine_formazione_id ( persona:persona!persona_id ( cliente_id ) ),
+      e_orig:esonero!origine_esonero_id ( persona:persona!persona_id ( cliente_id ) ),
       sopr:sopralluogo!sopralluogo_origine_id (
         progressivo,
         incarico:incarico!incarico_id (
           tipo_attivita,
-          cliente:cliente!cliente_id ( ragione_sociale )
+          cliente:cliente!cliente_id ( id, ragione_sociale )
         )
       )
     `);
@@ -94,6 +99,15 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     const area = uno<any>(r.area);
     const tec = uno<any>(r.tecnico);
     const cliResp = uno<any>(r.cli_resp);
+    const fPers = uno<any>(uno<any>(r.f_orig)?.persona);
+    const ePers = uno<any>(uno<any>(r.e_orig)?.persona);
+
+    // Cliente d'origine: sopralluogo (correttive) -> responsabile cliente
+    // (formazione verso cliente) -> persona della formazione/esonero (azioni
+    // di formazione instradate a un'area, senza responsabile_cliente_id).
+    const clienteId: string | null =
+      cliOrig?.id ?? r.responsabile_cliente_id ?? fPers?.cliente_id ?? ePers?.cliente_id ?? null;
+    const clienteNome: string | null = cliOrig?.ragione_sociale ?? cliResp?.ragione_sociale ?? null;
 
     let dTipo: DestinatarioTipo;
     let dNome: string | null;
@@ -126,7 +140,8 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       data: r.data_scadenza ?? null,
       scaduta: !!(r.data_scadenza && r.data_scadenza < o && !conclusa),
       conclusa,
-      cliente_nome: cliOrig?.ragione_sociale ?? null,
+      cliente_id: clienteId,
+      cliente_nome: clienteNome,
       sopralluogo_label: label,
       origine_voce: orig?.voce_testo ?? null,
       destinatario_tipo: dTipo,
@@ -147,7 +162,7 @@ async function caricaSopralluoghiPianificati(): Promise<CosaDaFareAdmin[]> {
       tecnico:tecnico!tecnico_id ( nome, cognome ),
       incarico:incarico!incarico_id (
         tipo_attivita,
-        cliente:cliente!cliente_id ( ragione_sociale )
+        cliente:cliente!cliente_id ( id, ragione_sociale )
       )
     `)
     .in('stato', ['pianificato', 'in_corso']);
@@ -170,6 +185,7 @@ async function caricaSopralluoghiPianificati(): Promise<CosaDaFareAdmin[]> {
       // se la data e' passata, e' in ritardo.
       scaduta: !!(r.data_pianificata && r.data_pianificata < o),
       conclusa: false,
+      cliente_id: cli?.id ?? null,
       cliente_nome: cli?.ragione_sociale ?? null,
       sopralluogo_label: inc?.tipo_attivita ?? null,
       origine_voce: null,
