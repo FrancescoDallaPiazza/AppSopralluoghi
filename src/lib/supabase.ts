@@ -1,12 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Variabili in .env.local (vedi README)
-const url = import.meta.env.VITE_SUPABASE_URL as string;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// Variabili in .env.local (vedi README) e nelle Environment Variables di Vercel.
+const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const supabase = createClient(url, anon, {
-  auth: { persistSession: true, autoRefreshToken: true },
-});
+// True solo se la build ha davvero le variabili. Se sono assenti (tipico: env
+// non impostate su Vercel per quel deploy), NON facciamo esplodere l'import con
+// "supabaseUrl is required" — che lascia la pagina bianca e muta. main.tsx legge
+// questo flag e mostra una schermata leggibile invece di montare l'app.
+export const SUPABASE_CONFIGURATO = Boolean(url && anon);
+
+export const supabase = createClient(
+  url || 'https://placeholder.supabase.co',
+  anon || 'placeholder-anon-key',
+  {
+    auth: { persistSession: true, autoRefreshToken: true },
+  },
+);
 
 export const FOTO_BUCKET = 'foto-sopralluoghi';
 
