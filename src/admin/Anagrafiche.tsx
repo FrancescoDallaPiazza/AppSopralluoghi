@@ -344,50 +344,59 @@ function SchedaCliente({
           corso da erogare in base a questi valori.
         </p>
         <div className="bo-grid" style={{ alignItems: 'start' }}>
+          {/* incendio */}
           <div>
             <div style={{ color: 'var(--no)', fontWeight: 800, fontSize: 15, marginBottom: 6 }}>
               Livello rischio incendio
             </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <select style={{ flex: '1 1 150px' }} value={cliente.livello_antincendio ?? ''}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
+              <select style={{ flex: '1 1 150px', height: 40, boxSizing: 'border-box' }}
+                value={cliente.livello_antincendio ?? ''}
                 onChange={(e) => patch({ livello_antincendio: (e.target.value || null) as Cliente['livello_antincendio'] })}>
                 <option value="">— non definito —</option>
                 <option value="1">Livello 1 — corso 4h</option>
                 <option value="2">Livello 2 — corso 8h</option>
                 <option value="3">Livello 3 — corso 16h</option>
               </select>
-              <label className="bo-field" style={{ flex: '1 1 150px', margin: 0 }}>
-                <span>Definito mediante</span>
-                <input type="text" value={cliente.antincendio_definito_mediante ?? ''}
-                  onChange={(e) => patch({ antincendio_definito_mediante: e.target.value || null })} />
-              </label>
+              <input type="text" placeholder="Definito mediante"
+                style={{ flex: '1 1 150px', height: 40, boxSizing: 'border-box' }}
+                value={cliente.antincendio_definito_mediante ?? ''}
+                onChange={(e) => patch({ antincendio_definito_mediante: e.target.value || null })} />
             </div>
           </div>
+          {/* primo soccorso */}
           <div>
             <div style={{ color: 'var(--no)', fontWeight: 800, fontSize: 15, marginBottom: 6 }}>
               Gruppo primo soccorso
             </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" className="bo-btn ghost" onClick={() => setWizardPS(true)}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
+              <button type="button" className="bo-btn ghost"
+                style={{ height: 40, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center' }}
+                onClick={() => setWizardPS(true)}>
                 Determina col flusso
               </button>
-              {cliente.gruppo_primo_soccorso && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{
-                    background: gruppoColore(cliente.gruppo_primo_soccorso), color: '#fff',
-                    fontWeight: 800, fontSize: 14, borderRadius: 8, padding: '5px 12px',
-                  }}>
-                    {cliente.gruppo_primo_soccorso === 'BC' ? 'Gruppi B/C' : `Gruppo ${cliente.gruppo_primo_soccorso}`}
-                    {' '}· {cliente.gruppo_primo_soccorso === 'A' ? '16h' : '12h'}
-                  </span>
-                  {cliente.primo_soccorso_definito_mediante && (
-                    <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
-                      {cliente.primo_soccorso_definito_mediante}
-                    </span>
-                  )}
-                </div>
-              )}
+              <div style={{
+                flex: '1 1 150px', height: 40, boxSizing: 'border-box',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 10, fontSize: 14,
+                ...(cliente.gruppo_primo_soccorso
+                  ? { background: gruppoColore(cliente.gruppo_primo_soccorso), color: '#fff', fontWeight: 800 }
+                  : { background: 'var(--paper)', color: 'var(--faint)', border: '1px solid var(--line)', fontWeight: 600 }),
+              }}>
+                {cliente.gruppo_primo_soccorso
+                  ? `${cliente.gruppo_primo_soccorso === 'BC' ? 'Gruppi B/C' : 'Gruppo ' + cliente.gruppo_primo_soccorso} · ${cliente.gruppo_primo_soccorso === 'A' ? '16h' : '12h'}`
+                  : '— non definito —'}
+              </div>
             </div>
+            {cliente.gruppo_primo_soccorso && (
+              <div style={{ fontSize: 12, marginTop: 6 }}>
+                {cliente.primo_soccorso_definito_mediante
+                  ? <span style={{ color: 'var(--ink-soft)' }}>Definito mediante: {cliente.primo_soccorso_definito_mediante}</span>
+                  : <span style={{ color: 'var(--hi-dark)' }}>
+                      Definito manualmente (nessuna motivazione registrata) — usa «Determina col flusso» per registrarla.
+                    </span>}
+              </div>
+            )}
           </div>
         </div>
         {wizardPS && (
