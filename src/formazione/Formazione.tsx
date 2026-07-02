@@ -241,15 +241,6 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
 
       {riep && cliente && (
         <>
-          <div className="fz-metrics">
-            <div className="fz-metric"><div className="k">Persone</div><div className="v">{riep.persone.length}</div></div>
-            <div className="fz-metric"><div className="k">Conformi</div><div className="v" style={{ color: 'var(--ok)' }}>{riep.conteggi.conforme}</div></div>
-            <div className="fz-metric"><div className="k">In scadenza</div><div className="v" style={{ color: 'var(--hi-dark)' }}>{riep.conteggi.in_scadenza}</div></div>
-            <div className="fz-metric"><div className="k">Critici</div><div className="v" style={{ color: 'var(--no)' }}>{riep.conteggi.critico}</div></div>
-            {riep.conteggi.da_verificare > 0 && <div className="fz-metric"><div className="k">Da verificare</div><div className="v" style={{ color: '#51607a' }}>{riep.conteggi.da_verificare}</div></div>}
-            {riep.figureScoperte.length > 0 && <div className="fz-metric"><div className="k">Ruoli scoperti</div><div className="v" style={{ color: 'var(--no)' }}>{riep.figureScoperte.length}</div></div>}
-          </div>
-
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
             <button className="bo-btn ghost" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length}>Genera cose da fare per i gap</button>
             <button className="bo-btn ghost" onClick={esportaPdf} disabled={pdfBusy}>{pdfBusy ? 'Genero PDF…' : 'Esporta PDF organigramma'}</button>
