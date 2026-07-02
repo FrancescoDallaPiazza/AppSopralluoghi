@@ -21,7 +21,19 @@ const fmt = (d: string | null) => {
 type FStato = 'aperte' | 'concluse' | 'tutte';
 type FScad = 'tutte' | 'scadute' | 'prossime';
 type FDest = 'tutti' | DestinatarioTipo;
-type FTipo = 'tutti' | RigaTipo;
+
+// Tassonomia lato cliente del feed unico. Oggi hanno dati solo 'formazione'
+// (Ramo A) e 'cosedafare' (correttive + sopralluoghi, Ramo B). 'documenti' e
+// 'autorizzazioni' sono i rami Edificio/Lavorazioni della mappa dei flussi:
+// previsti ma non ancora modellati, quindi il filtro esiste ma resta vuoto
+// finche' quel ramo non produce righe (nessuna tabella speculativa).
+type Categoria = 'formazione' | 'documenti' | 'autorizzazioni' | 'cosedafare';
+const CATEGORIA_DI: Record<RigaTipo, Categoria> = {
+  formazione: 'formazione',
+  correttiva: 'cosedafare',
+  sopralluogo: 'cosedafare',
+};
+type FTipo = 'tutti' | Categoria;
 
 const STATI: AzioneStato[] = ['aperta', 'in_corso', 'conclusa'];
 
@@ -78,7 +90,7 @@ export default function CoseDaFare() {
       if (fStato === 'aperte' && r.conclusa) return false;
       if (fStato === 'concluse' && !r.conclusa) return false;
       if (fDest !== 'tutti' && r.destinatario_tipo !== fDest) return false;
-      if (fTipo !== 'tutti' && r.riga_tipo !== fTipo) return false;
+      if (fTipo !== 'tutti' && CATEGORIA_DI[r.riga_tipo] !== fTipo) return false;
       if (fScad === 'scadute' && !r.scaduta) return false;
       if (fScad === 'prossime' && !(r.data && r.data >= o && r.data <= lim)) return false;
       if (ago) {
@@ -135,8 +147,9 @@ export default function CoseDaFare() {
           <select value={fTipo} onChange={(e) => setFTipo(e.target.value as FTipo)}>
             <option value="tutti">Tutti</option>
             <option value="formazione">Formazione</option>
-            <option value="correttiva">Correttive</option>
-            <option value="sopralluogo">Sopralluoghi</option>
+            <option value="documenti">Documenti</option>
+            <option value="autorizzazioni">Autorizzazioni</option>
+            <option value="cosedafare">Cose da fare</option>
           </select>
         </label>
         <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>

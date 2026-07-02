@@ -21,6 +21,14 @@ export const CSS_BACKOFFICE = `
   padding:11px 14px 12px; cursor:pointer; border-bottom:2.5px solid transparent;}
 .bo-tab.on{color:var(--ink); border-bottom-color:var(--hi);}
 
+/* livello 2: sotto-tab del gruppo attivo */
+.bo-subtabs{max-width:1040px; margin:0 auto; padding:6px 18px 0; display:flex; gap:6px; flex-wrap:wrap;
+  border-top:1px solid var(--line); background:#fdfbf7;}
+.bo-subtab{border:1px solid transparent; background:none; font-family:inherit; font-size:12.5px; font-weight:700;
+  color:var(--ink-soft); padding:5px 11px; margin-bottom:6px; border-radius:999px; cursor:pointer;}
+.bo-subtab:hover{border-color:var(--line);}
+.bo-subtab.on{color:#1a1205; background:var(--hi); border-color:var(--hi);}
+
 /* layout */
 .bo-main{max-width:1040px; margin:0 auto; padding:20px 18px 60px;}
 .bo-h{font-size:16px; font-weight:800; margin:0 0 2px;}

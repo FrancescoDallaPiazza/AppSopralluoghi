@@ -1,6 +1,12 @@
-// Shell del back-office (solo amministratori). Sezioni: Anagrafiche, Tecnici,
-// Aree, Template, Pianificazione, Disponibilità, Cose da fare. Header con switch
-// opzionale verso l'app da campo.
+// Shell del back-office (solo amministratori). Navigazione a DUE livelli,
+// organizzata per flusso di gestione:
+//   1. Anagrafiche      - caratterizzazione del cliente (scheda unica)
+//   2. Pianificazione   - attivita' dei tecnici (incarichi, tecnici, aree,
+//                         template, capitoli, disponibilita, import Werp)
+//   3. Cose da fare     - output + scadenzario unico del cliente
+//   4. Regole app       - catalogo formazione + import catalogo
+// Il primo livello sceglie il GRUPPO; il secondo (se il gruppo ha piu' voci)
+// la sezione. I gruppi mono-superficie non mostrano la riga di sotto-tab.
 
 import { useState } from 'react';
 import { useAuth } from '../AuthProvider';
@@ -20,13 +26,58 @@ import ImportCatalogo from './ImportCatalogo';
 
 type Sezione =
   | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
-  | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare' | 'importwerp' | 'importcatalogo';
+  | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare'
+  | 'importwerp' | 'importcatalogo';
+
+interface Gruppo {
+  key: string;
+  label: string;
+  sezioni: { k: Sezione; label: string }[];
+}
+
+const GRUPPI: Gruppo[] = [
+  {
+    key: 'anagrafiche', label: 'Anagrafiche',
+    sezioni: [{ k: 'anagrafiche', label: 'Anagrafiche' }],
+  },
+  {
+    key: 'pianificazione', label: 'Pianificazione',
+    sezioni: [
+      { k: 'pianificazione', label: 'Incarichi' },
+      { k: 'tecnici', label: 'Tecnici' },
+      { k: 'aree', label: 'Aree' },
+      { k: 'template', label: 'Template' },
+      { k: 'capitoli', label: 'Capitoli' },
+      { k: 'disponibilita', label: 'Disponibilità' },
+      { k: 'importwerp', label: 'Import Werp' },
+    ],
+  },
+  {
+    key: 'cosedafare', label: 'Cose da fare',
+    sezioni: [{ k: 'cosedafare', label: 'Cose da fare' }],
+  },
+  {
+    key: 'regole', label: 'Regole app',
+    sezioni: [
+      { k: 'formazione', label: 'Catalogo formazione' },
+      { k: 'importcatalogo', label: 'Import catalogo' },
+    ],
+  },
+];
 
 export default function BackOffice({
   tecnico, onVaiAllApp,
 }: { tecnico: Tecnico; onVaiAllApp?: () => void }) {
   const { signOut } = useAuth();
+  const [gruppoKey, setGruppoKey] = useState<string>('anagrafiche');
   const [sezione, setSezione] = useState<Sezione>('anagrafiche');
+
+  const gruppo = GRUPPI.find((g) => g.key === gruppoKey) ?? GRUPPI[0];
+
+  function apriGruppo(g: Gruppo) {
+    setGruppoKey(g.key);
+    setSezione(g.sezioni[0].k); // prima sezione del gruppo
+  }
 
   return (
     <div className="bo">
@@ -41,30 +92,26 @@ export default function BackOffice({
           )}
           <button className="bo-btn ghost sm" onClick={() => void signOut()}>Esci</button>
         </div>
+
+        {/* livello 1: gruppi-flusso */}
         <nav className="bo-tabs">
-          <button className={`bo-tab ${sezione === 'anagrafiche' ? 'on' : ''}`}
-            onClick={() => setSezione('anagrafiche')}>Anagrafiche</button>
-          <button className={`bo-tab ${sezione === 'tecnici' ? 'on' : ''}`}
-            onClick={() => setSezione('tecnici')}>Tecnici</button>
-          <button className={`bo-tab ${sezione === 'aree' ? 'on' : ''}`}
-            onClick={() => setSezione('aree')}>Aree</button>
-          <button className={`bo-tab ${sezione === 'template' ? 'on' : ''}`}
-            onClick={() => setSezione('template')}>Template</button>
-          <button className={`bo-tab ${sezione === 'capitoli' ? 'on' : ''}`}
-            onClick={() => setSezione('capitoli')}>Capitoli</button>
-          <button className={`bo-tab ${sezione === 'pianificazione' ? 'on' : ''}`}
-            onClick={() => setSezione('pianificazione')}>Incarichi</button>
-          <button className={`bo-tab ${sezione === 'disponibilita' ? 'on' : ''}`}
-            onClick={() => setSezione('disponibilita')}>Disponibilità</button>
-          <button className={`bo-tab ${sezione === 'formazione' ? 'on' : ''}`}
-            onClick={() => setSezione('formazione')}>Catalogo formazione</button>
-          <button className={`bo-tab ${sezione === 'cosedafare' ? 'on' : ''}`}
-            onClick={() => setSezione('cosedafare')}>Cose da fare</button>
-          <button className={`bo-tab ${sezione === 'importwerp' ? 'on' : ''}`}
-            onClick={() => setSezione('importwerp')}>Import Werp</button>
-          <button className={`bo-tab ${sezione === 'importcatalogo' ? 'on' : ''}`}
-            onClick={() => setSezione('importcatalogo')}>Import catalogo</button>
+          {GRUPPI.map((g) => (
+            <button key={g.key}
+              className={`bo-tab ${g.key === gruppoKey ? 'on' : ''}`}
+              onClick={() => apriGruppo(g)}>{g.label}</button>
+          ))}
         </nav>
+
+        {/* livello 2: sezioni del gruppo (solo se piu' d'una) */}
+        {gruppo.sezioni.length > 1 && (
+          <nav className="bo-subtabs">
+            {gruppo.sezioni.map((s) => (
+              <button key={s.k}
+                className={`bo-subtab ${s.k === sezione ? 'on' : ''}`}
+                onClick={() => setSezione(s.k)}>{s.label}</button>
+            ))}
+          </nav>
+        )}
       </header>
 
       <main className="bo-main">

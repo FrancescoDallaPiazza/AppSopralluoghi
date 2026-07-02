@@ -362,20 +362,6 @@ function SchedaCliente({
         </Sezione>
       )}
 
-      {/* --- incarichi: si creano e si pianificano nel tab Pianificazione --- */}
-      {persistito && (
-        <Sezione titolo="Incarichi"
-          sommario={`${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'}` +
-            (incarichi.length ? ` · ${incarichi.filter((r) => r.incarico.stato === 'attivo').length} attivi` : '')}
-          aperta={aperte.has('incarichi')} onToggle={() => toggle('incarichi')}>
-          <div className="bo-note">
-            {incarichi.length === 0
-              ? 'Nessun incarico per questo cliente. Gli incarichi si creano e si pianificano nel tab Incarichi.'
-              : 'Gli incarichi si creano e si pianificano nel tab Incarichi.'}
-          </div>
-        </Sezione>
-      )}
-
       {/* --- organigramma sicurezza / formazione del cliente --- */}
       {persistito && (
         <Sezione titolo="Organigramma sicurezza" sommario="figure, nomine e stato formazione"
@@ -384,8 +370,61 @@ function SchedaCliente({
         </Sezione>
       )}
 
+      {/* --- incarichi del cliente: sola lettura; si creano/pianificano nel tab Incarichi --- */}
+      {persistito && (
+        <Sezione titolo="Incarichi"
+          sommario={`${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'}` +
+            (incarichi.length ? ` · ${incarichi.filter((r) => r.incarico.stato === 'attivo').length} attivi` : '')}
+          aperta={aperte.has('incarichi')} onToggle={() => toggle('incarichi')}>
+          {incarichi.length === 0 ? (
+            <div className="bo-note">
+              Nessun incarico per questo cliente. Gli incarichi si creano e si pianificano nel tab Incarichi.
+            </div>
+          ) : (
+            <>
+              {incarichi.map(({ incarico: i, creati }) => (
+                <div key={i.id} className={`bo-card flat ${i.stato === 'attivo' ? '' : 'dim'}`} style={{ marginBottom: 8 }}>
+                  <div className="bo-row">
+                    <div className="grow">
+                      <div className="bo-title">{i.tipo_attivita || 'Incarico'}</div>
+                      <div className="bo-meta">
+                        <span>{descriviCadenza(i)}</span>
+                        <span>{i.periodo_inizio ? fmtData(i.periodo_inizio) : '—'} → {i.periodo_fine ? fmtData(i.periodo_fine) : '—'}</span>
+                        {i.durata_seduta_stimata_min != null && <span>{i.durata_seduta_stimata_min} min/seduta</span>}
+                        {i.sede_id && <span>{sedi.find((s) => s.id === i.sede_id)?.nome ?? 'sede'}</span>}
+                        <span>{creati}/{i.n_sopralluoghi} pianificati</span>
+                      </div>
+                    </div>
+                    <span className={`bo-pill ${i.stato === 'attivo' ? 'attivo' : 'archiviato'}`}>{i.stato}</span>
+                  </div>
+                </div>
+              ))}
+              <p className="bo-sub" style={{ margin: '4px 0 0' }}>
+                In sola lettura: gli incarichi si creano e si pianificano nel tab Incarichi.
+              </p>
+            </>
+          )}
+        </Sezione>
+      )}
+
     </div>
   );
+}
+
+// Descrizione compatta della cadenza di un incarico: cadenza esplicita se
+// presente, altrimenti numero fisso di sopralluoghi.
+function descriviCadenza(i: { cadenza_valore: number | null; cadenza_unita: string | null; n_sopralluoghi: number }): string {
+  if (i.cadenza_valore != null && i.cadenza_unita) {
+    const v = i.cadenza_valore;
+    return `ogni ${v} ${i.cadenza_unita}`;
+  }
+  return `${i.n_sopralluoghi} ${i.n_sopralluoghi === 1 ? 'sopralluogo' : 'sopralluoghi'} (numero fisso)`;
+}
+
+// Data ISO (yyyy-mm-dd) -> gg/mm/aaaa.
+function fmtData(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return d && m && y ? `${d}/${m}/${y}` : iso;
 }
 
 // Sezione apri/chiudi (accordion) della scheda cliente. Indipendente: piu'

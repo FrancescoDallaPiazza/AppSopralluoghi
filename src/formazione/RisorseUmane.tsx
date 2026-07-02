@@ -46,6 +46,7 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
   const [mostraInattivi, setMostraInattivi] = useState(false);
   const [agg, setAgg] = useState(false);
   const [importa, setImporta] = useState(false);
+  const [q, setQ] = useState('');
 
   function ricarica() {
     setFase('carico');
@@ -60,7 +61,14 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
   useEffect(ricarica, [clienteId]);
 
   const cambiato = () => { ricarica(); onCambia?.(); };
-  const visibili = persone.filter((p) => mostraInattivi || p.attivo);
+
+  const ago = q.trim().toLowerCase();
+  const visibili = persone.filter((p) => {
+    if (!mostraInattivi && !p.attivo) return false;
+    if (!ago) return true;
+    return [p.cognome, p.nome, p.codice_fiscale, p.mansione, p.reparto]
+      .some((v) => (v ?? '').toLowerCase().includes(ago));
+  });
 
   return (
     <>
@@ -91,8 +99,17 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
 
       {fase === 'carico' && <div className="bo-empty">Carico…</div>}
       {fase === 'errore' && <div className="bo-err">Errore nel caricamento del personale.</div>}
+
+      {fase === 'pronto' && persone.length > 0 && (
+        <input type="text" placeholder="Cerca per cognome, nome, CF, mansione o reparto…"
+          value={q} onChange={(e) => setQ(e.target.value)}
+          style={{ maxWidth: 380, marginBottom: 10 }} />
+      )}
+
       {fase === 'pronto' && visibili.length === 0 && !agg && (
-        <div className="bo-empty">Nessuna persona. Aggiungine una o importa da Excel.</div>
+        <div className="bo-empty">
+          {ago ? 'Nessuna persona corrisponde alla ricerca.' : 'Nessuna persona. Aggiungine una o importa da Excel.'}
+        </div>
       )}
 
       {visibili.map((p) => <RigaPersona key={p.id} persona={p} onCambia={cambiato} />)}
