@@ -61,6 +61,7 @@ export interface Cliente {
   livello_antincendio: '1' | '2' | '3' | null;
   antincendio_definito_mediante: string | null;
   gruppo_primo_soccorso: 'A' | 'B' | 'C' | 'BC' | null;
+  primo_soccorso_definito_mediante: string | null;
   referente: string | null;
   telefono: string | null;
   email: string | null;
