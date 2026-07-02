@@ -238,7 +238,7 @@ export const CATEGORIE_NO_PREGRESSA = new Set(['antincendio', 'primo_soccorso'])
 // Definiti a monte sul cliente. Determinano il corso che gli addetti devono
 // avere e, se l'addetto manca, il corso da erogare (indicato nel report).
 export type LivelloAntincendio = '1' | '2' | '3';
-export type GruppoPrimoSoccorso = 'A' | 'BC';
+export type GruppoPrimoSoccorso = 'A' | 'B' | 'C' | 'BC';
 
 // Corsi antincendio per livello (DM 02/09/2021): 4h / 8h / 16h.
 export const CORSI_ANTINCENDIO: Record<LivelloAntincendio, { codice: string; nome: string; ore: number }> = {
@@ -247,8 +247,13 @@ export const CORSI_ANTINCENDIO: Record<LivelloAntincendio, { codice: string; nom
   '3': { codice: 'AI_LIV3', nome: 'Addetto antincendio livello 3', ore: 16 },
 };
 // Corsi primo soccorso per gruppo aziendale (DM 388/2003): A = 16h, B/C = 12h.
+// Il gruppo si determina col flusso in anagrafica; B e C sono distinti per
+// registrazione ma richiedono lo stesso corso 12h (PS_GRBC). 'BC' resta per i
+// dati storici.
 export const CORSI_PRIMO_SOCCORSO: Record<GruppoPrimoSoccorso, { codice: string; nome: string; ore: number }> = {
   'A':  { codice: 'PS_GRA',  nome: 'Addetto primo soccorso gruppo A', ore: 16 },
+  'B':  { codice: 'PS_GRBC', nome: 'Addetto primo soccorso gruppo B', ore: 12 },
+  'C':  { codice: 'PS_GRBC', nome: 'Addetto primo soccorso gruppo C', ore: 12 },
   'BC': { codice: 'PS_GRBC', nome: 'Addetto primo soccorso gruppi B e C', ore: 12 },
 };
 

@@ -56,15 +56,25 @@ export interface Cliente {
   // Livello di rischio (colonna da migration 015): proposto in anagrafica dal
   // codice ATECO (Allegato IV ASR 2025) e sovrascrivibile dall'organigramma.
   livello_rischio: 'basso' | 'medio' | 'alto' | null;
-  // Emergenze (migration 041): livello rischio incendio e gruppo primo soccorso,
-  // definiti a monte; guidano il corso richiesto agli addetti.
+  // Emergenze (migration 041/049): livello rischio incendio e gruppo primo
+  // soccorso, definiti a monte; guidano il corso richiesto agli addetti.
   livello_antincendio: '1' | '2' | '3' | null;
-  gruppo_primo_soccorso: 'A' | 'BC' | null;
+  antincendio_definito_mediante: string | null;
+  gruppo_primo_soccorso: 'A' | 'B' | 'C' | 'BC' | null;
   referente: string | null;
   telefono: string | null;
   email: string | null;
+  // Referente amministrativo e commerciale (migration 049).
+  referente_amm: string | null;
+  telefono_amm: string | null;
+  email_amm: string | null;
+  referente_commerciale: string | null;
+  canale_commerciale: string | null;
+  // Sede legale (migration 049 aggiunge cap e provincia in sigla).
   localita: string | null;
   indirizzo: string | null;
+  cap: string | null;
+  provincia: string | null;
   lat: number | null;
   lng: number | null;
   attivo: boolean;

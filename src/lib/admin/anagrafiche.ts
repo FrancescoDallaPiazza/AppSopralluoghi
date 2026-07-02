@@ -21,8 +21,10 @@ import {
 
 const COLONNE_CLIENTE =
   'id, werp_id, ragione_sociale, partita_iva, codice_fiscale, codice_ateco, ' +
-  'livello_rischio, livello_antincendio, gruppo_primo_soccorso, ' +
-  'referente, telefono, email, localita, indirizzo, lat, lng, attivo';
+  'livello_rischio, livello_antincendio, antincendio_definito_mediante, gruppo_primo_soccorso, ' +
+  'referente, telefono, email, referente_amm, telefono_amm, email_amm, ' +
+  'referente_commerciale, canale_commerciale, ' +
+  'localita, indirizzo, cap, provincia, lat, lng, attivo';
 const COLONNE_INCARICO =
   'id, cliente_id, werp_id, tipo_attivita, n_sopralluoghi, periodo_inizio, ' +
   'periodo_fine, durata_seduta_stimata_min, stato, cadenza_valore, cadenza_unita, sede_id';
@@ -74,12 +76,20 @@ export async function salvaCliente(c: Cliente): Promise<void> {
     codice_ateco: vuotoNull(c.codice_ateco),
     livello_rischio: c.livello_rischio,
     livello_antincendio: c.livello_antincendio,
+    antincendio_definito_mediante: vuotoNull(c.antincendio_definito_mediante),
     gruppo_primo_soccorso: c.gruppo_primo_soccorso,
     referente: vuotoNull(c.referente),
     telefono: vuotoNull(c.telefono),
     email: vuotoNull(c.email),
+    referente_amm: vuotoNull(c.referente_amm),
+    telefono_amm: vuotoNull(c.telefono_amm),
+    email_amm: vuotoNull(c.email_amm),
+    referente_commerciale: vuotoNull(c.referente_commerciale),
+    canale_commerciale: vuotoNull(c.canale_commerciale),
     localita: vuotoNull(c.localita),
     indirizzo: vuotoNull(c.indirizzo),
+    cap: vuotoNull(c.cap),
+    provincia: vuotoNull(c.provincia),
     lat: c.lat,
     lng: c.lng,
     attivo: c.attivo,
@@ -108,9 +118,13 @@ export function clienteVuoto(): Cliente {
   return {
     id: newId(), werp_id: null, ragione_sociale: '',
     partita_iva: null, codice_fiscale: null, codice_ateco: null,
-    livello_rischio: null, livello_antincendio: null, gruppo_primo_soccorso: null,
+    livello_rischio: null, livello_antincendio: null, antincendio_definito_mediante: null,
+    gruppo_primo_soccorso: null,
     referente: null, telefono: null, email: null,
-    localita: null, indirizzo: null, lat: null, lng: null, attivo: true,
+    referente_amm: null, telefono_amm: null, email_amm: null,
+    referente_commerciale: null, canale_commerciale: null,
+    localita: null, indirizzo: null, cap: null, provincia: null,
+    lat: null, lng: null, attivo: true,
   };
 }
 
