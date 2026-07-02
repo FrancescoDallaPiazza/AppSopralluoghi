@@ -20,6 +20,10 @@ export { default as FormazioneRiepilogo } from './FormazioneRiepilogo';
 // formazione globale del back-office (BackOffice.tsx).
 export { OrganigrammaCliente, default as CatalogoFormazione } from './Formazione';
 
+// Sezione "Risorse Umane" nella scheda cliente: anagrafica completa del
+// personale (CRUD + import massivo), sulla stessa tabella `persona`.
+export { RisorseUmane } from './RisorseUmane';
+
 // Tabella ATECO -> rischio e helper, usati dalla scheda cliente.
 export { risolviAteco, cercaAteco, ETICHETTA_RISCHIO } from './ateco';
 export type { AtecoDivisione, RischioAteco } from './ateco';

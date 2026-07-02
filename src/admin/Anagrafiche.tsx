@@ -2,7 +2,7 @@
 // monte della Pianificazione — finché non ci sono clienti/incarichi, la scheda
 // Pianificazione resta vuota. Online-first (scrivania).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   caricaClienti, salvaCliente, impostaStatoCliente, eliminaCliente, clienteVuoto,
   caricaIncarichiCliente,
@@ -16,7 +16,7 @@ import {
   risolviAteco, cercaAteco, ETICHETTA_RISCHIO,
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
-import { OrganigrammaCliente } from '../formazione';
+import { OrganigrammaCliente, RisorseUmane } from '../formazione';
 
 export default function Anagrafiche() {
   // null = elenco; { id } = scheda esistente; { nuovo:true } = scheda nuova
@@ -131,6 +131,17 @@ function SchedaCliente({
   // Bump dopo il salvataggio: forza il ricalcolo dell'organigramma innestato
   // (es. nuovo livello di rischio proposto dall'ATECO, livelli emergenza).
   const [orgRefresh, setOrgRefresh] = useState(0);
+  // Numero risorse umane attive (per il sommario della sezione).
+  const [nPersone, setNPersone] = useState<number | null>(null);
+
+  // Sezioni apri/chiudi indipendenti: piu' d'una puo' restare aperta insieme
+  // (visione panoramica). L'organigramma, pesante, si monta solo da aperto.
+  const [aperte, setAperte] = useState<Set<string>>(() => new Set(['dati']));
+  const toggle = (k: string) => setAperte((s) => {
+    const n = new Set(s);
+    n.has(k) ? n.delete(k) : n.add(k);
+    return n;
+  });
 
   function caricaTutto() {
     if (nuovo) return;
@@ -217,8 +228,9 @@ function SchedaCliente({
 
       {msg && <div className="bo-note">{msg}</div>}
 
-      {/* --- dati cliente --- */}
-      <div className="bo-card">
+      {/* --- dati anagrafici --- */}
+      <Sezione titolo="Dati anagrafici" sommario={cliente.localita ?? undefined}
+        aperta={aperte.has('dati')} onToggle={() => toggle('dati')}>
         <label className="bo-field">
           <span>Ragione sociale *</span>
           <input type="text" value={cliente.ragione_sociale}
@@ -329,32 +341,69 @@ function SchedaCliente({
             </button>
           )}
         </div>
-      </div>
+      </Sezione>
 
       {/* --- sedi --- */}
       {persistito && (
-        <SediCliente clienteId={cliente.id} sedi={sedi} onCambia={ricaricaSedi} />
+        <Sezione titolo="Sedi" sommario={sedi.length ? `${sedi.length} ${sedi.length === 1 ? 'sede' : 'sedi'}` : 'nessuna'}
+          aperta={aperte.has('sedi')} onToggle={() => toggle('sedi')}>
+          <SediCliente clienteId={cliente.id} sedi={sedi} onCambia={ricaricaSedi} />
+        </Sezione>
+      )}
+
+      {/* --- risorse umane: personale del cliente (superset dell'organigramma) --- */}
+      {persistito && (
+        <Sezione titolo="Risorse Umane"
+          sommario={nPersone == null ? undefined : nPersone === 0 ? 'nessuna persona' : `${nPersone} ${nPersone === 1 ? 'persona' : 'persone'}`}
+          aperta={aperte.has('risorse')} onToggle={() => toggle('risorse')}>
+          <RisorseUmane clienteId={cliente.id}
+            onCambia={() => setOrgRefresh((n) => n + 1)}
+            onConteggio={setNPersone} />
+        </Sezione>
       )}
 
       {/* --- incarichi: si creano e si pianificano nel tab Pianificazione --- */}
       {persistito && (
-        <>
-          <div className="bo-row" style={{ margin: '22px 0 12px' }}>
-            <div className="grow"><h2 className="bo-h" style={{ margin: 0 }}>Incarichi</h2></div>
-          </div>
+        <Sezione titolo="Incarichi"
+          sommario={`${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'}` +
+            (incarichi.length ? ` · ${incarichi.filter((r) => r.incarico.stato === 'attivo').length} attivi` : '')}
+          aperta={aperte.has('incarichi')} onToggle={() => toggle('incarichi')}>
           <div className="bo-note">
             {incarichi.length === 0
               ? 'Nessun incarico per questo cliente. Gli incarichi si creano e si pianificano nel tab Incarichi.'
-              : `${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'} `
-                + `(${incarichi.filter((r) => r.incarico.stato === 'attivo').length} attivi). `
-                + 'Si gestiscono nel tab Incarichi.'}
+              : 'Gli incarichi si creano e si pianificano nel tab Incarichi.'}
           </div>
-        </>
+        </Sezione>
       )}
 
       {/* --- organigramma sicurezza / formazione del cliente --- */}
-      {persistito && <OrganigrammaCliente clienteId={cliente.id} refreshToken={orgRefresh} />}
+      {persistito && (
+        <Sezione titolo="Organigramma sicurezza" sommario="figure, nomine e stato formazione"
+          aperta={aperte.has('organigramma')} onToggle={() => toggle('organigramma')}>
+          <OrganigrammaCliente clienteId={cliente.id} refreshToken={orgRefresh} />
+        </Sezione>
+      )}
 
+    </div>
+  );
+}
+
+// Sezione apri/chiudi (accordion) della scheda cliente. Indipendente: piu'
+// sezioni possono restare aperte insieme. Il corpo si monta solo da aperto.
+function Sezione({ titolo, sommario, aperta, onToggle, children }: {
+  titolo: string; sommario?: string; aperta: boolean;
+  onToggle: () => void; children: ReactNode;
+}) {
+  return (
+    <div className={`bo-acc ${aperta ? 'open' : ''}`}>
+      <button type="button" className="bo-acc-head" onClick={onToggle}>
+        <span className="bo-acc-chev">▶</span>
+        <span className="grow">
+          <span className="bo-acc-tit">{titolo}</span>
+          {sommario && <span className="bo-acc-sum"> · {sommario}</span>}
+        </span>
+      </button>
+      {aperta && <div className="bo-acc-body">{children}</div>}
     </div>
   );
 }
@@ -415,9 +464,9 @@ function SediCliente({ clienteId, sedi, onCambia }: {
   const [agg, setAgg] = useState(false);
   return (
     <>
-      <div className="bo-row" style={{ margin: '22px 0 12px' }}>
-        <div className="grow"><h2 className="bo-h" style={{ margin: 0 }}>Sedi</h2></div>
-        {!agg && <button className="bo-btn" onClick={() => setAgg(true)}>+ Aggiungi sede</button>}
+      <div className="bo-row" style={{ margin: '0 0 6px' }}>
+        <span className="grow" />
+        {!agg && <button className="bo-btn sm" onClick={() => setAgg(true)}>+ Aggiungi sede</button>}
       </div>
       <p className="bo-sub" style={{ margin: '0 0 10px' }}>
         Una societa puo avere piu sedi. L'incarico ne sceglie una e il sopralluogo la eredita

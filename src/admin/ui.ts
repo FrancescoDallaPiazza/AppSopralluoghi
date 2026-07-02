@@ -32,6 +32,18 @@ export const CSS_BACKOFFICE = `
 .bo-card.flat{box-shadow:none;}
 .bo-card.dim{opacity:.62;}
 
+/* accordion (sezioni apri/chiudi della scheda cliente) */
+.bo-acc{background:#fff; border:1px solid var(--line); border-radius:14px; margin-bottom:12px;
+  box-shadow:0 14px 40px -32px rgba(0,0,0,.5); overflow:hidden;}
+.bo-acc-head{display:flex; align-items:center; gap:11px; width:100%; text-align:left;
+  border:none; background:none; font-family:inherit; cursor:pointer; padding:14px 16px;}
+.bo-acc-head:hover{background:var(--paper);}
+.bo-acc-chev{font-size:11px; color:var(--faint); transition:transform .15s; flex:none;}
+.bo-acc.open .bo-acc-chev{transform:rotate(90deg);}
+.bo-acc-tit{font-weight:800; font-size:15px; color:var(--ink);}
+.bo-acc-sum{font-size:12.5px; color:var(--ink-soft);}
+.bo-acc-body{padding:2px 16px 16px;}
+
 /* list row */
 .bo-row{display:flex; align-items:center; gap:12px;}
 .bo-row .grow{flex:1; min-width:0;}
