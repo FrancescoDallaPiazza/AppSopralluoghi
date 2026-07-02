@@ -17,6 +17,7 @@
 import { supabase } from '../supabase';
 import { newId } from '../types';
 import { applicaCreditiAllegatoIII } from '../../formazione/creditiAllegatoIII';
+import { oreModuloSettore } from '../../formazione/ateco';
 
 // ============================ TIPI ============================
 
@@ -447,7 +448,7 @@ function valutaModuli(
   return [...out.values()].sort((x, y) => x.corso_nome.localeCompare(y.corso_nome));
 }
 
-export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null): PersonaValutata {
+export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null, atecoCliente: string | null = null): PersonaValutata {
   const byCodice = new Map(cat.corsi.map((c) => [c.codice, c]));
   const figureCodici = d.nomine.filter((n) => n.attiva).map((n) => n.figura_codice);
   const figureSet = new Set(figureCodici);
@@ -482,6 +483,27 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     }
   }
 
+  // Prerequisiti come requisiti: se un corso richiesto ha un prerequisito a
+  // catalogo che nessuna figura della persona richiede gia', lo si fa emergere
+  // una volta sola, attribuito alle STESSE figure (cosi' i crediti Allegato III
+  // non se lo auto-creditano). Caso tipico: il Datore-RSPP assegnato senza la
+  // figura datore_lavoro -> il corso base 16h (DATORE_LAVORO), prerequisito del
+  // modulo comune, comparirebbe altrimenti come obbligo mancante. Nei percorsi
+  // gia' completi (lavoratore, preposto, RSPP) i prerequisiti sono gia' requisiti
+  // diretti della stessa figura: qui non aggiunge nulla.
+  for (const r of [...reqByCorso.values()]) {
+    let codice = byCodice.get(r.corso_codice)?.prerequisito_codice ?? null;
+    const visti = new Set<string>([r.corso_codice]);
+    while (codice && !visti.has(codice)) {
+      visti.add(codice);
+      const pre = byCodice.get(codice);
+      if (pre && pre.attivo && !reqByCorso.has(codice)) {
+        reqByCorso.set(codice, { corso_codice: codice, obbligatorio: true, per_categoria: false, figure: r.figure.slice() });
+      }
+      codice = pre?.prerequisito_codice ?? null;
+    }
+  }
+
   const esoneriAttivi = d.esoneri.filter((e) => e.attivo);
 
   const requisiti: RequisitoValutato[] = [];
@@ -502,6 +524,14 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     // ore: caso LAV_SPEC -> espanse per rischio
     let ore = corso?.ore ?? null;
     if (r.corso_codice === 'LAV_SPEC') ore = rischio ? ORE_SPECIFICA[rischio] : null;
+    // moduli di settore DL-RSPP / RSPP: ore espanse dall'ATECO del cliente. Se
+    // l'ATECO non e' tra i settori speciali (o non e' noto) il modulo NON si
+    // applica: si salta il requisito (niente falso "mancante").
+    if (r.corso_codice === 'DL_RSPP_SETTORE' || r.corso_codice === 'RSPP_MOD_B_SETTORE') {
+      const oreSettore = oreModuloSettore(atecoCliente, r.corso_codice === 'DL_RSPP_SETTORE' ? 'dl_rspp' : 'rspp');
+      if (oreSettore == null) continue;
+      ore = oreSettore;
+    }
 
     // promemoria esoneri ammessi per questo corso
     const promemoria = cat.esoneriAmmessi.filter(
@@ -681,8 +711,10 @@ export function assemblaRiepilogo(
     rlsTerritoriale?: boolean;
     livAntincendio?: LivelloAntincendio | null;
     gruppoPS?: GruppoPrimoSoccorso | null;
+    atecoCliente?: string | null;
   },
 ): RiepilogoCliente {
+  const atecoCliente = opts?.atecoCliente ?? null;
   const valutate = dati.persone
     .filter((p) => p.attivo)
     .map((p) =>
@@ -695,6 +727,7 @@ export function assemblaRiepilogo(
         },
         cat,
         rischio,
+        atecoCliente,
       ),
     );
 
@@ -742,16 +775,18 @@ export async function caricaDatiOrganigramma(
   rlsTerritoriale: boolean;
   livAntincendio: LivelloAntincendio | null;
   gruppoPS: GruppoPrimoSoccorso | null;
+  ateco: string | null;
   dati: DatiOrganigramma;
 }> {
   const cli = await supabase.from('cliente')
-    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso')
+    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco')
     .eq('id', clienteId).single();
   if (cli.error) throw cli.error;
   const rischio = (cli.data?.livello_rischio ?? null) as LivelloRischio | null;
   const rlsTerritoriale = (cli.data?.rls_territoriale ?? false) as boolean;
   const livAntincendio = (cli.data?.livello_antincendio ?? null) as LivelloAntincendio | null;
   const gruppoPS = (cli.data?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null;
+  const ateco = (cli.data?.codice_ateco ?? null) as string | null;
 
   const persone = await caricaPersone(clienteId);
   const ids = persone.map((p) => p.id);
@@ -760,7 +795,7 @@ export async function caricaDatiOrganigramma(
     caricaPerPersone<Formazione>('formazione', ids),
     caricaPerPersone<Esonero>('esonero', ids),
   ]);
-  return { rischio, rlsTerritoriale, livAntincendio, gruppoPS, dati: { persone, nomine, formazioni, esoneri } };
+  return { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati: { persone, nomine, formazioni, esoneri } };
 }
 
 // Valuta l'intero cliente: organigramma + stato formativo per persona.
@@ -768,8 +803,8 @@ export async function caricaDatiOrganigramma(
 // pura `assemblaRiepilogo` (la medesima usata offline in campo).
 export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
   const catalogo = cat ?? (await caricaCatalogo());
-  const { rischio, rlsTerritoriale, livAntincendio, gruppoPS, dati } = await caricaDatiOrganigramma(clienteId);
-  return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale, livAntincendio, gruppoPS });
+  const { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati } = await caricaDatiOrganigramma(clienteId);
+  return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale, livAntincendio, gruppoPS, atecoCliente: ateco });
 }
 
 // ============================ CRUD ============================

@@ -74,6 +74,10 @@ export interface ClienteMeta {
   rls_territoriale: boolean;
   livello_antincendio: string | null;
   gruppo_primo_soccorso: string | null;
+  // Codice ATECO del cliente: serve al motore per espandere il modulo di settore
+  // del percorso DL-RSPP / RSPP anche in campo (parita' con il back-office).
+  // Campo non indicizzato: nessun bump di versione Dexie necessario.
+  codice_ateco: string | null;
 }
 
 class LocalDB extends Dexie {

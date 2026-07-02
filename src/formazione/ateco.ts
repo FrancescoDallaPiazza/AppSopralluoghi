@@ -127,6 +127,29 @@ export function risolviAteco(codice: string | null | undefined): AtecoDivisione 
   return PER_DIVISIONE[div] ?? null;
 }
 
+// Modulo di settore (ore aggiuntive al modulo comune) del percorso DL-RSPP e
+// RSPP/ASPP secondo l'ASR 17/04/2025. Le ore dipendono dalla DIVISIONE ATECO
+// 2007 e riguardano solo alcuni settori "speciali": per tutti gli altri NON c'e'
+// modulo di settore (ritorna null -> il motore non emette il requisito).
+//   DL-RSPP:  A 01-02 16h, A 03 12h, F 16h, C 19-20 16h
+//   RSPP/ASPP: come sopra, piu' Q 86-87 (sanita' e assistenza sociale) 12h
+export type TipoModuloSettore = 'dl_rspp' | 'rspp';
+
+export function oreModuloSettore(
+  codice: string | null | undefined,
+  tipo: TipoModuloSettore,
+): number | null {
+  const v = risolviAteco(codice);
+  if (!v) return null;
+  const div = v.divisione;
+  if (div === '01' || div === '02') return 16; // A 01-02 agricoltura/silvicoltura/zootecnia
+  if (div === '03') return 12;                 // A 03 pesca
+  if (div === '41' || div === '42' || div === '43') return 16; // F costruzioni
+  if (div === '19' || div === '20') return 16; // C 19-20 coke / prodotti chimici
+  if (tipo === 'rspp' && (div === '86' || div === '87')) return 12; // Q 86.1 e 87 sanita'
+  return null;
+}
+
 // Toglie accenti e abbassa: per una ricerca testuale tollerante.
 function norm(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();

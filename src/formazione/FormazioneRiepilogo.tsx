@@ -93,6 +93,7 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
         rlsTerritoriale: o.rls_territoriale,
         livAntincendio: o.livello_antincendio,
         gruppoPS: o.gruppo_primo_soccorso,
+        atecoCliente: o.codice_ateco,
       },
     );
     setOrg(o);
