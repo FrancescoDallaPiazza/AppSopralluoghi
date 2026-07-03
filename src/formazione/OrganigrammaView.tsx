@@ -161,8 +161,8 @@ const CSS = `
 .fzr-node rect{transition:.12s;}
 .fzr-node:hover rect{filter:brightness(1.05);}
 .fzr-node.on rect{stroke:#1c1d20; stroke-width:2.5;}
-.fzr-node text{font-family:inherit; font-weight:700; pointer-events:none;}
-.fzr-node .fzr-node-sub{font-weight:600; opacity:.85;}
+.fzr-node text{font-family:inherit; font-weight:600; pointer-events:none;}
+.fzr-node .fzr-node-sub{font-weight:500; opacity:.85;}
 .fzr-diag-line{stroke:#b9b2a4; stroke-width:1.6; fill:none;}
 .fzr-legenda{display:flex; flex-wrap:wrap; gap:10px 14px; margin:0 0 9px; font-size:11px; color:var(--ink-soft,#5b5f66);}
 .fzr-legenda span{display:inline-flex; align-items:center; gap:5px;}
@@ -1137,11 +1137,11 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   <g key={n.key} className={'fzr-node' + (on ? ' on' : '')} onClick={() => apriNodo(n)}>
                     <rect x={n.x} y={n.y} width={NODE_W} height={NODE_H} rx={9}
                       fill={fill} stroke={presente ? 'rgba(0,0,0,.18)' : '#dcdfe3'} strokeWidth={1.4} />
-                    <text x={n.x + NODE_W / 2} y={n.y + (cnt > 0 ? 20 : 28)} textAnchor="middle"
-                      fontSize={13} fill={txtCol}>{n.label}</text>
+                    <text x={n.x + NODE_W / 2} y={n.y + (cnt > 0 ? 21 : 28)} textAnchor="middle"
+                      fontSize={11} fill={txtCol}>{n.label}</text>
                     {cnt > 0 && (
                       <text x={n.x + NODE_W / 2} y={n.y + 35} textAnchor="middle"
-                        className="fzr-node-sub" fontSize={11} fill={txtCol}>
+                        className="fzr-node-sub" fontSize={10} fill={txtCol}>
                         {cnt} {cnt === 1 ? 'incaricato' : 'incaricati'}
                       </text>
                     )}
