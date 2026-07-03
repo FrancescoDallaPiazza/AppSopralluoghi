@@ -153,9 +153,11 @@ const CSS = `
 .fzr-figchip.neutro{background:#eef0f2; border-color:#dcdfe3; color:var(--ink-soft,#5b5f66);}
 .fzr-figchip.neutro .fzr-dot{box-shadow:0 0 0 2px rgba(255,255,255,.9);}
 /* ---- Diagramma grafico dell'organigramma (schema gerarchico D.Lgs. 81/08) ---- */
-.fzr-diag{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; padding:14px 12px 16px; background:var(--paper,#faf7f1); overflow-x:auto;}
-.fzr-diag-title{font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin:0 0 12px;}
-.fzr-diag-svgwrap{min-width:380px;}
+.fzr-diag{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; padding:0; background:var(--paper,#faf7f1); overflow:hidden;}
+.fzr-diag-toggle{width:100%; display:flex; align-items:center; gap:8px; padding:9px 11px; border:none; background:#f6f2ea; cursor:pointer; font:inherit; font-weight:700; font-size:12px; color:var(--ink-soft,#5b5f66); letter-spacing:.02em; text-transform:uppercase;}
+.fzr-diag-toggle:hover{background:#f0ebe1;}
+.fzr-diag-toggle-pm{font-size:15px; font-weight:800; width:14px; text-align:center; line-height:1; color:var(--ink,#2a2c30);}
+.fzr-diag-svgwrap{min-width:380px; padding:14px 12px 16px; overflow-x:auto;}
 .fzr-diag svg{display:block; width:100%; height:auto; overflow:visible;}
 .fzr-onode{box-sizing:border-box; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:0; border-radius:7px; border:1px solid transparent; padding:1px 3px; cursor:pointer; color:#fff; line-height:1.05; transition:.12s; box-shadow:0 1px 2px rgba(0,0,0,.06);}
 .fzr-onode:hover{filter:brightness(1.05);}
@@ -800,6 +802,8 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const [editPersona, setEditPersona] = useState<string | null>(null); // anagrafica (personaId|figura oppure personaId)
   const [addPersona, setAddPersona] = useState(false);
   const [aperte, setAperte] = useState<Set<string>>(new Set());
+  const [mostraSchema, setMostraSchema] = useState(false);   // schema grafico dietro pulsante
+  const initAperte = useRef(false);                          // apri tutte le figure una sola volta
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
   const toggleFigura = (codice: string) => setAperte((s) => {
     const n = new Set(s);
@@ -833,6 +837,15 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     if (!grp) { grp = { nome: g, righe: [] }; gruppiCopertura.push(grp); }
     grp.righe.push({ figura: f, assegnate });
   }
+
+  // Vista tipo-PDF: all'ingresso apriamo TUTTE le figure attese cosi' l'organigramma
+  // si vede subito per intero (ruolo -> persone -> evidenze), gia' interattivo.
+  // Una sola volta: dopo, l'utente resta libero di collassare/espandere le singole figure.
+  useEffect(() => {
+    if (initAperte.current || figureAttese.length === 0) return;
+    initAperte.current = true;
+    setAperte(new Set(figureAttese.map((f) => f.codice)));
+  }, [figureAttese]);
 
   // #5: colore del bottone-figura con una ratio chiara, dallo stato REALE:
   //   - nessun incaricato + ruolo obbligatorio scoperto -> critico (rosso)
@@ -1137,7 +1150,11 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
 
       {figureAttese.length > 0 && (
         <div className="fzr-diag">
-          <div className="fzr-diag-title">Organigramma della sicurezza {'\u2014'} clicca una casella per aprire la figura</div>
+          <button type="button" className="fzr-diag-toggle" onClick={() => setMostraSchema((v) => !v)}>
+            <span className="fzr-diag-toggle-pm">{mostraSchema ? '\u2212' : '+'}</span>
+            Schema grafico dell{'\u2019'}organigramma
+          </button>
+          {mostraSchema && (
           <div className="fzr-diag-svgwrap">
             <svg viewBox={`0 0 ${DIAG_W} ${DIAG_H}`} role="img" aria-label="Schema organigramma sicurezza">
               {visibili.map((n) => {
@@ -1168,6 +1185,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
               })}
             </svg>
           </div>
+          )}
         </div>
       )}
 
@@ -1175,7 +1193,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
         <div className="fzr-cop">
           <div className="fzr-cop-bar">
             <div className="fzr-cop-barhead">
-              Figure attese {'\u2014'} clicca un ruolo per aprirne la scheda
+              Organigramma atteso {'\u2014'} ruoli, incaricati ed evidenze formative
               {riep.figureScoperte.length > 0 && (
                 <span style={{ color: 'var(--no,#d8442f)', fontWeight: 800 }}> {'\u00b7'} {riep.figureScoperte.length} scoperte</span>
               )}
