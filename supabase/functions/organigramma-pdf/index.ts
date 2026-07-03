@@ -56,6 +56,11 @@ async function htmlToPdf(html: string): Promise<Uint8Array | null> {
   const key = Deno.env.get('PDFBOLT_API_KEY');
   if (!key) return null;
   const htmlB64 = toBase64(new TextEncoder().encode(html));
+  // Footer "Pag. X di Y": PDFBolt usa Chromium, che sostituisce le classi speciali
+  // pageNumber/totalPages nel footerTemplate. Serve displayHeaderFooter + margine
+  // inferiore capiente e un headerTemplate vuoto per non stampare l'intestazione di default.
+  const footer = '<div style="width:100%;font-size:8px;color:#9a958c;text-align:right;padding:0 14mm;">'
+    + 'Pag. <span class="pageNumber"></span> di <span class="totalPages"></span></div>';
   const res = await fetch('https://api.pdfbolt.com/v1/direct', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'API-KEY': key },
@@ -63,7 +68,10 @@ async function htmlToPdf(html: string): Promise<Uint8Array | null> {
       html: htmlB64,
       format: 'A4',
       printBackground: true,
-      margin: { top: '14mm', right: '14mm', bottom: '14mm', left: '14mm' },
+      displayHeaderFooter: true,
+      headerTemplate: '<span></span>',
+      footerTemplate: footer,
+      margin: { top: '14mm', right: '14mm', bottom: '18mm', left: '14mm' },
     }),
   });
   if (!res.ok) {
@@ -123,9 +131,13 @@ function dataBreve(iso: string | null): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
+interface RevRiga { numero: number | null; creata_il: string; autore: string | null; origine: string | null }
+
 // PDF a 3 colonne: RUOLO organigramma -> ANAGRAFICA persona -> EVIDENZE
 // (formazione/esonero). I ruoli scoperti compaiono con "Nessun incaricato".
-function renderSnapshot(s: Snap, numero: number | null): string {
+// `revisioni` (opzionale) alimenta lo storico modifiche in coda; `ultimaRev` la
+// data dell'ultima revisione mostrata in testata.
+function renderSnapshot(s: Snap, numero: number | null, revisioni: RevRiga[], ultimaRev: string | null): string {
   const c = s.conteggi ?? {};
   const metrica = (k: string, v: number, col?: string) =>
     `<div class="m"><div class="mk">${esc(k)}</div><div class="mv" style="${col ? 'color:' + col : ''}">${v ?? 0}</div></div>`;
@@ -166,6 +178,20 @@ function renderSnapshot(s: Snap, numero: number | null): string {
     }).join('');
   }).join('');
 
+  // Storico modifiche (tracking history) dalla rev iniziale a quella corrente.
+  const ORIGINE: Record<string, string> = { 'back-office': 'Ufficio', 'campo': 'Campo' };
+  const storiaRighe = (revisioni ?? []).map((r) =>
+    `<tr><td class="n">${r.numero ?? '&mdash;'}</td><td class="dt">${dataIT(r.creata_il)}</td>`
+    + `<td class="or">${esc(ORIGINE[r.origine ?? ''] ?? r.origine ?? '')}</td>`
+    + `<td>${esc(r.autore ?? '')}</td></tr>`).join('');
+  const storia = storiaRighe
+    ? `<h2>Storico revisioni dell'organigramma</h2>
+       <table class="storia">
+         <thead><tr><th>Rev.</th><th>Data e ora</th><th>Origine</th><th>Autore</th></tr></thead>
+         <tbody>${storiaRighe}</tbody>
+       </table>`
+    : '';
+
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><style>
     *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#23262b;font-size:12px;margin:0}
     h1{font-size:19px;margin:0 0 2px} .sub{color:#5b5f66;font-size:12px;margin:0 0 14px}
@@ -185,9 +211,12 @@ function renderSnapshot(s: Snap, numero: number | null): string {
     .chip{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 7px;border-radius:999px;white-space:nowrap;flex:0 0 auto}
     tr{page-break-inside:avoid}
     .foot{margin-top:16px;color:#9a958c;font-size:10px;border-top:1px solid #e3ddd2;padding-top:8px}
+    h2{font-size:13px;margin:22px 0 6px;page-break-before:auto} .storia{font-size:10.5px}
+    .storia th,.storia td{padding:5px 8px}
+    .storia td.n{font-weight:700;width:12%} .storia td.dt{width:26%} .storia td.or{width:22%}
   </style></head><body>
     <h1>Organigramma sicurezza &mdash; ${esc(s.cliente_nome)}</h1>
-    <p class="sub">Generato il ${dataIT(s.generato_il)}${numero != null ? ' &middot; revisione ' + numero : ''}${s.livello_rischio ? ' &middot; rischio ' + esc(s.livello_rischio) : ''}</p>
+    <p class="sub">Generato il ${dataIT(s.generato_il)}${numero != null ? ' &middot; revisione ' + numero : ''}${ultimaRev ? ' &middot; ultima rev. ' + dataBreve(ultimaRev) : ''}${s.livello_rischio ? ' &middot; rischio ' + esc(s.livello_rischio) : ''}</p>
     <div class="metrics">
       ${metrica('Persone', s.persone?.length ?? 0)}
       ${metrica('Conformi', c.conforme ?? 0, '#1f7a3d')}
@@ -198,6 +227,7 @@ function renderSnapshot(s: Snap, numero: number | null): string {
       <thead><tr><th>Ruolo organigramma</th><th>Anagrafica persona</th><th>Evidenze formazione / esonero</th></tr></thead>
       <tbody>${righe || '<tr><td class="vuoto" colspan="3">Nessun ruolo in organigramma.</td></tr>'}</tbody>
     </table>
+    ${storia}
     <div class="foot">Documento generato automaticamente da AppSopralluoghi. Lo stato formativo e' fotografato alla data di generazione.</div>
   </body></html>`;
 }
@@ -241,7 +271,20 @@ Deno.serve(async (req) => {
     if (!snap) return json({ error: 'Nessuno snapshot da rendere (passa riepilogo, revisione_id o cliente_id).' }, 400);
     if (typeof body.revisione_numero === 'number') numero = body.revisione_numero;
 
-    const html = renderSnapshot(snap, numero);
+    // Storico revisioni del cliente (per il tracking history e la data ultima rev.).
+    let revisioni: RevRiga[] = [];
+    let ultimaRev: string | null = null;
+    if (snap.cliente_id) {
+      const { data: revs } = await sb
+        .from('organigramma_revisione')
+        .select('numero, creata_il, autore, origine')
+        .eq('cliente_id', snap.cliente_id)
+        .order('numero', { ascending: true });
+      revisioni = (revs as RevRiga[] | null) ?? [];
+      if (revisioni.length > 0) ultimaRev = revisioni[revisioni.length - 1]!.creata_il;
+    }
+
+    const html = renderSnapshot(snap, numero, revisioni, ultimaRev);
 
     let bytes: Uint8Array; let ext: string; let contentType: string; let pdfError: string | null = null;
     try {
