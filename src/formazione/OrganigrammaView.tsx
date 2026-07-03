@@ -200,6 +200,22 @@ const CSS = `
 .fzr-modtag{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; margin-left:6px; padding:1px 6px; border-radius:999px; background:#e8ebf0; color:#51607a;}
 .fzr-mod{margin-top:6px;}
 .fzr-mod-stato{display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink-soft,#5b5f66); margin:4px 0;}
+/* ---- Anteprima tabellare (gemella del PDF organigramma-pdf) ---- */
+.fzr-tab{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; overflow:hidden;}
+.fzr-tab-head{padding:9px 11px; background:#f6f2ea; border-bottom:1px solid var(--line,#e3ddd2); font-size:12px; font-weight:700; color:var(--ink-soft,#5b5f66);}
+.fzr-tab table{width:100%; border-collapse:collapse; font-size:12px;}
+.fzr-tab thead th{text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft,#5b5f66); background:#faf7f1; border-bottom:1px solid var(--line,#e3ddd2); padding:6px 10px; font-weight:800;}
+.fzr-tab td{border-top:1px solid var(--line,#e3ddd2); padding:7px 10px; vertical-align:top;}
+.fzr-tab tr.clic{cursor:pointer;} .fzr-tab tr.clic:hover td{background:#faf7ef;}
+.fzr-tab .ruolo{font-weight:700; width:24%; white-space:nowrap;}
+.fzr-tab .cpers{width:26%;}
+.fzr-tab .pn{font-weight:600;} .fzr-tab .pm{font-size:11px; color:var(--ink-soft,#5b5f66); margin-top:1px;}
+.fzr-tab .vuoto{color:var(--no,#d8442f); font-style:italic;}
+.fzr-tab .ev{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:2px 0;}
+.fzr-tab .ev + .ev{border-top:1px dotted #ece7dd;}
+.fzr-tab .corso{font-size:11.5px; line-height:1.35;}
+.fzr-tab .scad{color:var(--ink-soft,#5b5f66);}
+.fzr-tab .none{color:#9a958c; font-style:italic; font-size:11.5px;}
 `;
 
 interface Props {
@@ -804,6 +820,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const [aperte, setAperte] = useState<Set<string>>(new Set());
   const [mostraSchema, setMostraSchema] = useState(false);   // schema grafico dietro pulsante
   const initAperte = useRef(false);                          // apri tutte le figure una sola volta
+  const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
   const toggleFigura = (codice: string) => setAperte((s) => {
     const n = new Set(s);
@@ -955,7 +972,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
       nominaId: pv.figure.find((x) => x.codice === figura.codice)?.nomina_id ?? null,
     }));
     return (
-      <div key={figura.codice} className="fzr-figrow">
+      <div key={figura.codice} className="fzr-figrow" ref={(el) => { figRef.current[figura.codice] = el; }}>
         <div className="fzr-figrow-top">
           <span className="fzr-dot-wrap">
             <span className={'fzr-dot ' + stato} />
@@ -1125,6 +1142,74 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     );
   };
 
+  // Apre (non toggle) la scheda di una figura e ci scorre: usata dall'anteprima tabellare.
+  const apriFigura = (codice: string) => {
+    setAperte((s) => { const n = new Set(s); n.add(codice); return n; });
+    requestAnimationFrame(() => figRef.current[codice]?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  };
+
+  // Evidenze di una persona LIMITATE alla figura (stesso filtro della scheda e del PDF).
+  const evidenzePerFigura = (pv: RiepilogoCliente['persone'][number], figuraCodice: string) => {
+    const reqs = pv.requisiti.filter((r) => r.figura_codici.includes(figuraCodice));
+    const mods = pv.moduli.filter((m) => m.figura_codice === figuraCodice && m.stato !== 'esonerato');
+    return { reqs, mods };
+  };
+
+  // Anteprima tabellare dell'organigramma (ruolo -> persona -> evidenze), gemella del PDF
+  // ma interattiva: cliccando una riga si apre la scheda della figura nella vista sotto.
+  const renderTabella = () => (
+    <div className="fzr-tab">
+      <div className="fzr-tab-head">Organigramma {'\u2014'} ruoli, incaricati ed evidenze {'\u00b7'} clicca una riga per gestirla sotto</div>
+      <table>
+        <thead><tr><th>Ruolo organigramma</th><th>Anagrafica persona</th><th>Evidenze formazione / esonero</th></tr></thead>
+        <tbody>
+          {gruppiCopertura.flatMap((g) => g.righe).map(({ figura, assegnate }) => {
+            if (assegnate.length === 0) {
+              const sc = riep.figureScoperte.find((f) => f.codice === figura.codice);
+              const em = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+              return (
+                <tr key={figura.codice} className="clic" onClick={() => apriFigura(figura.codice)}>
+                  <td className="ruolo">{figura.nome}</td>
+                  <td className="vuoto" colSpan={2}>Nessun incaricato{sc && em ? ' (corso: ' + em.testo + ')' : ''}</td>
+                </tr>
+              );
+            }
+            return assegnate.map((pv, i) => {
+              const { reqs, mods } = evidenzePerFigura(pv, figura.codice);
+              return (
+                <tr key={figura.codice + '|' + pv.persona.id} className="clic" onClick={() => apriFigura(figura.codice)}>
+                  {i === 0 && <td className="ruolo" rowSpan={assegnate.length}>{figura.nome}</td>}
+                  <td className="cpers">
+                    <div className="pn">{nomePersona(pv.persona)}</div>
+                    {(pv.persona.mansione || pv.persona.reparto) && (
+                      <div className="pm">{[pv.persona.mansione, pv.persona.reparto].filter(Boolean).join(' \u00b7 ')}</div>
+                    )}
+                    <div style={{ marginTop: 3 }}><span className={'fzr-st ' + pv.stato}>{TXT[pv.stato]}</span></div>
+                  </td>
+                  <td>
+                    {reqs.length === 0 && mods.length === 0 && <span className="none">nessuna evidenza</span>}
+                    {reqs.map((r) => (
+                      <div key={r.corso_codice} className="ev">
+                        <span className="corso">{r.corso_nome}{r.dettaglio ? ' \u2014 ' + r.dettaglio : ''}{r.scadenza ? ' ' : ''}<span className="scad">{r.scadenza ? '(scad. ' + r.scadenza + ')' : ''}</span></span>
+                        <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
+                      </div>
+                    ))}
+                    {mods.map((m) => (
+                      <div key={'m-' + m.corso_codice} className="ev">
+                        <span className="corso">{m.corso_nome}<span className="fzr-modtag">modulo</span>{m.dettaglio ? ' \u2014 ' + m.dettaglio : ''}</span>
+                        <span className={'fzr-st ' + m.stato}>{TXT[m.stato]}</span>
+                      </div>
+                    ))}
+                  </td>
+                </tr>
+              );
+            });
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <AdapterCtx.Provider value={adapter}>
     <div className="fzr">
@@ -1147,6 +1232,8 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           <PersonaForm persona={null} clienteId={clienteId} onSaved={ricarica} onClose={() => setAddPersona(false)} />
         </div>
       )}
+
+      {figureAttese.length > 0 && renderTabella()}
 
       {figureAttese.length > 0 && (
         <div className="fzr-diag">
