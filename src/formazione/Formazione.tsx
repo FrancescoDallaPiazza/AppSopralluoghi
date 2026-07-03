@@ -147,6 +147,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
 
   const [genOpen, setGenOpen] = useState(false);
   const [storicoOpen, setStoricoOpen] = useState(false);
+  const [schemaOpen, setSchemaOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pregressaPersonaId, setPregressaPersonaId] = useState<string | null>(null);
 
@@ -243,6 +244,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
         <>
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
             <button className="bo-btn ghost" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length}>Genera cose da fare per i gap</button>
+            <button className={'bo-btn ghost' + (schemaOpen ? ' on' : '')} onClick={() => setSchemaOpen((v) => !v)}>{schemaOpen ? '\u2212 Schema grafico organigramma' : '+ Schema grafico organigramma'}</button>
             <button className="bo-btn ghost" onClick={esportaPdf} disabled={pdfBusy}>{pdfBusy ? 'Genero PDF…' : 'Esporta PDF organigramma'}</button>
             <button className="bo-btn ghost" onClick={() => setStoricoOpen(true)}>Storico organigramma</button>
           </div>
@@ -253,10 +255,6 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
 
           {/* organigramma atteso - render CONDIVISO col campo (OrganigrammaView) */}
           <div className="bo-card">
-            <div className="bo-title" style={{ marginBottom: 4 }}>Organigramma atteso</div>
-            <p className="bo-sub" style={{ marginTop: 0, marginBottom: 10 }}>
-              Checklist ragionata: figure per blocco, con quando scattano e cosa serve (fonte: quadro obblighi ASR 17/04/2025).
-            </p>
             <OrganigrammaView
               clienteId={clienteId}
               riep={riep}
@@ -265,6 +263,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
               rlsTerritoriale={cliente.rls_territoriale}
               onRlsTerritoriale={impostaRlsTerritoriale}
               onEvidenzePregresse={(p) => setPregressaPersonaId(p.id)}
+              mostraSchema={schemaOpen}
             />
           </div>
 

@@ -67,9 +67,6 @@ const oggiISO = () => new Date().toISOString().slice(0, 10);
 
 const CSS = `
 .fzr{font-size:13px;}
-.fzr-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;}
-.fzr-tot{display:flex; gap:8px; flex-wrap:wrap;}
-.fzr-add{flex:0 0 auto; background:var(--ink,#2a2c30); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-size:12.5px; font-weight:800; cursor:pointer;}
 .fzr-sem{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;}
 .fzr-sem.conforme{background:var(--ok-bg,#e7f5ec); color:var(--ok,#1f9d57);}
 .fzr-sem.in_scadenza{background:#fbf0d6; color:var(--hi-dark,#9a6206);}
@@ -154,9 +151,6 @@ const CSS = `
 .fzr-figchip.neutro .fzr-dot{box-shadow:0 0 0 2px rgba(255,255,255,.9);}
 /* ---- Diagramma grafico dell'organigramma (schema gerarchico D.Lgs. 81/08) ---- */
 .fzr-diag{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; padding:0; background:var(--paper,#faf7f1); overflow:hidden;}
-.fzr-diag-toggle{width:100%; display:flex; align-items:center; gap:8px; padding:9px 11px; border:none; background:#f6f2ea; cursor:pointer; font:inherit; font-weight:700; font-size:12px; color:var(--ink-soft,#5b5f66); letter-spacing:.02em; text-transform:uppercase;}
-.fzr-diag-toggle:hover{background:#f0ebe1;}
-.fzr-diag-toggle-pm{font-size:15px; font-weight:800; width:14px; text-align:center; line-height:1; color:var(--ink,#2a2c30);}
 .fzr-diag-svgwrap{min-width:380px; padding:14px 12px 16px; overflow-x:auto;}
 .fzr-diag svg{display:block; width:100%; height:auto; overflow:visible;}
 .fzr-onode{box-sizing:border-box; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:0; border-radius:7px; border:1px solid transparent; padding:1px 3px; cursor:pointer; color:#fff; line-height:1.05; transition:.12s; box-shadow:0 1px 2px rgba(0,0,0,.06);}
@@ -200,9 +194,16 @@ const CSS = `
 .fzr-modtag{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; margin-left:6px; padding:1px 6px; border-radius:999px; background:#e8ebf0; color:#51607a;}
 .fzr-mod{margin-top:6px;}
 .fzr-mod-stato{display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink-soft,#5b5f66); margin:4px 0;}
-/* ---- Anteprima tabellare (gemella del PDF organigramma-pdf) ---- */
-.fzr-tab{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; overflow:hidden;}
-.fzr-tab-head{padding:9px 11px; background:#f6f2ea; border-bottom:1px solid var(--line,#e3ddd2); font-size:12px; font-weight:700; color:var(--ink-soft,#5b5f66);}
+/* ---- Layout ORGANIGRAMMA ATTUALE (tabella) + azione AGGIORNA ---- */
+.fzr-split{display:flex; gap:12px; align-items:flex-start;}
+.fzr-split-main{flex:0 0 80%; max-width:80%; min-width:0;}
+.fzr-split-side{flex:1 1 20%; min-width:0; display:flex; flex-direction:column; gap:8px; position:sticky; top:8px;}
+.fzr-col-title{font-size:12px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink,#2a2c30); margin:0 0 8px;}
+.fzr-aggiorna{width:100%; background:var(--ink,#2a2c30); color:#fff; border:none; border-radius:10px; padding:12px 14px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; text-transform:uppercase; letter-spacing:.02em; box-shadow:0 1px 2px rgba(0,0,0,.08);}
+.fzr-aggiorna:hover{filter:brightness(1.08);}
+.fzr-aggiorna.on{background:var(--no,#d8442f);}
+.fzr-side-note{font-size:11.5px; font-weight:700; color:var(--no,#d8442f); text-align:center;}
+.fzr-tab{border:1px solid var(--line,#e3ddd2); border-radius:10px; overflow:hidden;}
 .fzr-tab table{width:100%; border-collapse:collapse; font-size:12px;}
 .fzr-tab thead th{text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft,#5b5f66); background:#faf7f1; border-bottom:1px solid var(--line,#e3ddd2); padding:6px 10px; font-weight:800;}
 .fzr-tab td{border-top:1px solid var(--line,#e3ddd2); padding:7px 10px; vertical-align:top;}
@@ -216,6 +217,7 @@ const CSS = `
 .fzr-tab .corso{font-size:11.5px; line-height:1.35;}
 .fzr-tab .scad{color:var(--ink-soft,#5b5f66);}
 .fzr-tab .none{color:#9a958c; font-style:italic; font-size:11.5px;}
+@media (max-width:720px){ .fzr-split{flex-direction:column;} .fzr-split-main,.fzr-split-side{flex:1 1 100%; max-width:100%;} .fzr-split-side{position:static;} }
 `;
 
 interface Props {
@@ -228,6 +230,8 @@ interface Props {
   onRlsTerritoriale?: (v: boolean) => Promise<void>;
   // Evidenze pregresse (batch): extra del back-office, aperto dal form persona.
   onEvidenzePregresse?: (persona: Persona) => void;
+  // Schema grafico: on/off pilotato dal guscio (bottone nella barra in alto).
+  mostraSchema?: boolean;
 }
 
 // ---------- form anagrafica persona (nuova o modifica) ----------
@@ -812,13 +816,12 @@ function ModuloInline({
   );
 }
 
-export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, rlsTerritoriale, onRlsTerritoriale, onEvidenzePregresse }: Props) {
+export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, rlsTerritoriale, onRlsTerritoriale, onEvidenzePregresse, mostraSchema = false }: Props) {
   // pannelli aperti (stato locale di UI)
   const [editKey, setEditKey] = useState<string | null>(null);       // requisito (personaId|figura|corso)
   const [editPersona, setEditPersona] = useState<string | null>(null); // anagrafica (personaId|figura oppure personaId)
-  const [addPersona, setAddPersona] = useState(false);
   const [aperte, setAperte] = useState<Set<string>>(new Set());
-  const [mostraSchema, setMostraSchema] = useState(false);   // schema grafico dietro pulsante
+  const [aggiornaOpen, setAggiornaOpen] = useState(false);   // box di lavoro (ruoli/evidenze) aperto da "Aggiorna organigramma"
   const initAperte = useRef(false);                          // apri tutte le figure una sola volta
   const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
@@ -1142,10 +1145,12 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     );
   };
 
-  // Apre (non toggle) la scheda di una figura e ci scorre: usata dall'anteprima tabellare.
+  // Apre (non toggle) la scheda di una figura, apre il box di lavoro e ci scorre.
   const apriFigura = (codice: string) => {
+    setAggiornaOpen(true);
     setAperte((s) => { const n = new Set(s); n.add(codice); return n; });
-    requestAnimationFrame(() => figRef.current[codice]?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    requestAnimationFrame(() => requestAnimationFrame(() =>
+      figRef.current[codice]?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
   };
 
   // Evidenze di una persona LIMITATE alla figura (stesso filtro della scheda e del PDF).
@@ -1155,11 +1160,10 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     return { reqs, mods };
   };
 
-  // Anteprima tabellare dell'organigramma (ruolo -> persona -> evidenze), gemella del PDF
-  // ma interattiva: cliccando una riga si apre la scheda della figura nella vista sotto.
+  // ORGANIGRAMMA ATTUALE: tabella ruolo -> persona -> evidenze (esito, gemella del PDF),
+  // interattiva: clic su una riga apre il box di lavoro alla figura corrispondente.
   const renderTabella = () => (
     <div className="fzr-tab">
-      <div className="fzr-tab-head">Organigramma {'\u2014'} ruoli, incaricati ed evidenze {'\u00b7'} clicca una riga per gestirla sotto</div>
       <table>
         <thead><tr><th>Ruolo organigramma</th><th>Anagrafica persona</th><th>Evidenze formazione / esonero</th></tr></thead>
         <tbody>
@@ -1215,33 +1219,8 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     <div className="fzr">
       <style>{CSS}</style>
 
-      <div className="fzr-head">
-        <div className="fzr-tot">
-          <span className="fzr-sem conforme">{riep.conteggi.conforme} conformi</span>
-          <span className="fzr-sem in_scadenza">{riep.conteggi.in_scadenza} in scadenza</span>
-          <span className="fzr-sem critico">{riep.conteggi.critico} critici</span>
-          {riep.conteggi.esonerato > 0 && <span className="fzr-sem esonerato">{riep.conteggi.esonerato} esonerati</span>}
-          {riep.conteggi.da_verificare > 0 && <span className="fzr-sem da_verificare">{riep.conteggi.da_verificare} da verificare</span>}
-        </div>
-        <button className="fzr-add" onClick={() => { setAddPersona((v) => !v); setEditPersona(null); }}>+ Persona</button>
-      </div>
-
-      {addPersona && (
-        <div className="fzr-p">
-          <b>Nuova persona</b>
-          <PersonaForm persona={null} clienteId={clienteId} onSaved={ricarica} onClose={() => setAddPersona(false)} />
-        </div>
-      )}
-
-      {figureAttese.length > 0 && renderTabella()}
-
-      {figureAttese.length > 0 && (
+      {figureAttese.length > 0 && mostraSchema && (
         <div className="fzr-diag">
-          <button type="button" className="fzr-diag-toggle" onClick={() => setMostraSchema((v) => !v)}>
-            <span className="fzr-diag-toggle-pm">{mostraSchema ? '\u2212' : '+'}</span>
-            Schema grafico dell{'\u2019'}organigramma
-          </button>
-          {mostraSchema && (
           <div className="fzr-diag-svgwrap">
             <svg viewBox={`0 0 ${DIAG_W} ${DIAG_H}`} role="img" aria-label="Schema organigramma sicurezza">
               {visibili.map((n) => {
@@ -1272,11 +1251,28 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
               })}
             </svg>
           </div>
-          )}
         </div>
       )}
 
       {figureAttese.length > 0 && (
+        <div className="fzr-split">
+          <div className="fzr-split-main">
+            <div className="fzr-col-title">Organigramma attuale</div>
+            {renderTabella()}
+          </div>
+          <div className="fzr-split-side">
+            <button type="button" className={'fzr-aggiorna' + (aggiornaOpen ? ' on' : '')}
+              onClick={() => setAggiornaOpen((v) => !v)}>
+              {aggiornaOpen ? 'Chiudi aggiornamento' : 'Aggiorna organigramma'}
+            </button>
+            {riep.figureScoperte.length > 0 && (
+              <div className="fzr-side-note">{riep.figureScoperte.length} {riep.figureScoperte.length === 1 ? 'figura scoperta' : 'figure scoperte'}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {figureAttese.length > 0 && aggiornaOpen && (
         <div className="fzr-cop">
           <div className="fzr-cop-bar">
             <div className="fzr-cop-barhead">
@@ -1325,8 +1321,8 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
         </div>
       )}
 
-      {vuoto && !addPersona && (
-        <div className="empty">Nessuna persona in organigramma. Assegna un nominativo a una figura qui sopra, oppure usa "+ Persona".</div>
+      {vuoto && (
+        <div className="empty">Nessuna persona in organigramma. Usa &laquo;Aggiorna organigramma&raquo; e assegna un nominativo a una figura.</div>
       )}
     </div>
     </AdapterCtx.Provider>
