@@ -32,8 +32,8 @@ function json(body: unknown, status = 200): Response {
 interface SnapPersona {
   nome: string; mansione: string | null; reparto: string | null; stato: string;
   figure: { codice: string; nome: string }[];
-  requisiti: { corso_nome: string; stato: string; dettaglio: string; scadenza: string | null }[];
-  moduli: { corso_nome: string; stato: string; dettaglio: string }[];
+  requisiti: { figura_codici?: string[]; corso_nome: string; stato: string; dettaglio: string; scadenza: string | null }[];
+  moduli: { figura_codice?: string; corso_nome: string; stato: string; dettaglio: string }[];
 }
 interface Snap {
   cliente_id: string; cliente_nome: string; livello_rischio: string | null;
@@ -137,10 +137,14 @@ function renderSnapshot(s: Snap, numero: number | null): string {
   }
   for (const f of s.figure_scoperte ?? []) if (!ruoli.has(f.codice)) ruoli.set(f.codice, f.nome);
 
-  const evidenzeDi = (p: SnapPersona): string => {
-    const reqs = (p.requisiti ?? []).map((r) =>
+  // Evidenze della persona LIMITATE alla figura della riga: senza filtro, una
+  // persona con piu' ruoli mostrerebbe tutti i suoi corsi sotto ogni ruolo.
+  // Retro-compatibile: gli snapshot vecchi non hanno figura sui requisiti/moduli
+  // -> in quel caso non si filtra (comportamento precedente).
+  const evidenzeDi = (p: SnapPersona, figuraCodice: string): string => {
+    const reqs = (p.requisiti ?? []).filter((r) => !r.figura_codici || r.figura_codici.includes(figuraCodice)).map((r) =>
       `<div class="ev"><span class="corso">${esc(r.corso_nome)}${r.dettaglio ? ' &mdash; ' + esc(r.dettaglio) : ''}${r.scadenza ? ' <span class="scad">(scad. ' + dataBreve(r.scadenza) + ')</span>' : ''}</span>${chip(r.stato)}</div>`);
-    const mods = (p.moduli ?? []).map((m) =>
+    const mods = (p.moduli ?? []).filter((m) => m.figura_codice == null || m.figura_codice === figuraCodice).map((m) =>
       `<div class="ev"><span class="corso">${esc(m.corso_nome)} <span class="tag">modulo</span>${m.dettaglio ? ' &mdash; ' + esc(m.dettaglio) : ''}</span>${chip(m.stato)}</div>`);
     const all = [...reqs, ...mods];
     return all.length ? all.join('') : '<span class="none">nessuna evidenza</span>';
@@ -158,7 +162,7 @@ function renderSnapshot(s: Snap, numero: number | null): string {
       const anag = `<div class="pn">${esc(p.nome)}</div>`
         + ((p.mansione || p.reparto) ? `<div class="pm">${[p.mansione, p.reparto].filter(Boolean).map(esc).join(' &middot; ')}</div>` : '')
         + `<div class="pchip">${chip(p.stato)}</div>`;
-      return `<tr>${roleCell}<td class="cpers">${anag}</td><td>${evidenzeDi(p)}</td></tr>`;
+      return `<tr>${roleCell}<td class="cpers">${anag}</td><td>${evidenzeDi(p, codice)}</td></tr>`;
     }).join('');
   }).join('');
 

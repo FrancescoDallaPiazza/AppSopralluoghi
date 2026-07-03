@@ -32,8 +32,8 @@ export interface SnapshotPersona {
   reparto: string | null;
   stato: StatoRequisito;
   figure: { codice: string; nome: string }[];
-  requisiti: { corso_nome: string; stato: StatoRequisito; dettaglio: string; scadenza: string | null }[];
-  moduli: { corso_nome: string; stato: StatoRequisito; dettaglio: string }[];
+  requisiti: { figura_codici: string[]; corso_nome: string; stato: StatoRequisito; dettaglio: string; scadenza: string | null }[];
+  moduli: { figura_codice: string; corso_nome: string; stato: StatoRequisito; dettaglio: string }[];
 }
 
 export interface SnapshotOrganigramma {
@@ -89,11 +89,11 @@ export function costruisciSnapshot(
       stato: pv.stato,
       figure: pv.figure.map((f) => ({ codice: f.codice, nome: f.nome })),
       requisiti: pv.requisiti.map((r) => ({
-        corso_nome: r.corso_nome, stato: r.stato, dettaglio: r.dettaglio, scadenza: r.scadenza,
+        figura_codici: r.figura_codici, corso_nome: r.corso_nome, stato: r.stato, dettaglio: r.dettaglio, scadenza: r.scadenza,
       })),
       moduli: pv.moduli
         .filter((m) => m.stato !== 'esonerato')
-        .map((m) => ({ corso_nome: m.corso_nome, stato: m.stato, dettaglio: m.dettaglio })),
+        .map((m) => ({ figura_codice: m.figura_codice, corso_nome: m.corso_nome, stato: m.stato, dettaglio: m.dettaglio })),
     })),
   };
 }
