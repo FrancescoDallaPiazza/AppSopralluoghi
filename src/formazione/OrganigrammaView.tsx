@@ -155,13 +155,13 @@ const CSS = `
 /* ---- Diagramma grafico dell'organigramma (schema gerarchico D.Lgs. 81/08) ---- */
 .fzr-diag{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; padding:14px 12px 16px; background:var(--paper,#faf7f1); overflow-x:auto;}
 .fzr-diag-title{font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin:0 0 12px;}
-.fzr-diag-svgwrap{min-width:520px;}
+.fzr-diag-svgwrap{min-width:440px;}
 .fzr-diag svg{display:block; width:100%; height:auto; overflow:visible;}
-.fzr-onode{box-sizing:border-box; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:1px; border-radius:9px; border:1.5px solid transparent; padding:3px 6px; cursor:pointer; color:#fff; line-height:1.12; transition:.12s; box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.fzr-onode{box-sizing:border-box; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:1px; border-radius:8px; border:1.25px solid transparent; padding:2px 4px; cursor:pointer; color:#fff; line-height:1.08; transition:.12s; box-shadow:0 1px 2px rgba(0,0,0,.06);}
 .fzr-onode:hover{filter:brightness(1.05);}
-.fzr-onode.on{box-shadow:0 0 0 2.5px #1c1d20, 0 1px 2px rgba(0,0,0,.06);}
-.fzr-onode-lab{font-size:11px; font-weight:600;}
-.fzr-onode-n{font-size:10px; font-weight:500; opacity:.9;}
+.fzr-onode.on{box-shadow:0 0 0 2px #1c1d20, 0 1px 2px rgba(0,0,0,.06);}
+.fzr-onode-lab{font-size:9.5px; font-weight:600;}
+.fzr-onode-n{font-size:8.5px; font-weight:500; opacity:.9;}
 .fzr-onode.critico{background:var(--no,#d8442f); border-color:#b8371f;}
 .fzr-onode.in_scadenza{background:var(--hi,#f4a012); border-color:#cf8608; color:#3a2a05;}
 .fzr-onode.conforme{background:var(--ok,#1f9d57); border-color:#178046;}
@@ -911,7 +911,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     while (p) { d++; p = nodeById.get(p)?.parent ?? null; }
     return d;
   };
-  const NODE_W = 122, NODE_H = 52, GAP_X = 22, GAP_Y = 34, PAD = 8;
+  const NODE_W = 100, NODE_H = 44, GAP_X = 18, GAP_Y = 28, PAD = 8;
   const perLivello = new Map<number, ONodo[]>();
   for (const n of visibili) { const d = depth(n); if (!perLivello.has(d)) perLivello.set(d, []); perLivello.get(d)!.push(n); }
   const livelli = [...perLivello.keys()].sort((a, b) => a - b);
