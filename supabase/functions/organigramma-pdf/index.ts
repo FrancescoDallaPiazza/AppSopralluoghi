@@ -57,10 +57,11 @@ async function htmlToPdf(html: string): Promise<Uint8Array | null> {
   if (!key) return null;
   const htmlB64 = toBase64(new TextEncoder().encode(html));
   // Footer "Pag. X di Y": PDFBolt usa Chromium, che sostituisce le classi speciali
-  // pageNumber/totalPages nel footerTemplate. Serve displayHeaderFooter + margine
-  // inferiore capiente e un headerTemplate vuoto per non stampare l'intestazione di default.
+  // pageNumber/totalPages nel footerTemplate. IMPORTANTE: PDFBolt vuole header/footer
+  // template codificati in Base64 (come l'HTML), non come stringa grezza.
   const footer = '<div style="width:100%;font-size:8px;color:#9a958c;text-align:right;padding:0 14mm;">'
     + 'Pag. <span class="pageNumber"></span> di <span class="totalPages"></span></div>';
+  const b64 = (s: string) => toBase64(new TextEncoder().encode(s));
   const res = await fetch('https://api.pdfbolt.com/v1/direct', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'API-KEY': key },
@@ -69,8 +70,8 @@ async function htmlToPdf(html: string): Promise<Uint8Array | null> {
       format: 'A4',
       printBackground: true,
       displayHeaderFooter: true,
-      headerTemplate: '<span></span>',
-      footerTemplate: footer,
+      headerTemplate: b64('<span></span>'),
+      footerTemplate: b64(footer),
       margin: { top: '14mm', right: '14mm', bottom: '18mm', left: '14mm' },
     }),
   });
