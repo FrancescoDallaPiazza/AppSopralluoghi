@@ -474,84 +474,6 @@ function AssegnaFiguraPanel({
   );
 }
 
-// ---------- pannello assegnazione figure per una persona (solo orfani) ----------
-function FigurePanel({
-  persona, figure, attivi, onSaved, onClose,
-}: {
-  persona: Persona;
-  figure: FiguraSicurezza[];
-  attivi: { figuraCodice: string; nominaId: string | null }[];
-  onSaved: () => Promise<void>;
-  onClose: () => void;
-}) {
-  const adapter = useAdapter();
-  const [busy, setBusy] = useState(false);
-  const attiveCodici = useMemo(() => new Set(attivi.map((a) => a.figuraCodice)), [attivi]);
-  // Selezione IN STADIO: spuntare non salva; si conferma con "Salva", "Annulla" scarta.
-  const [sel, setSel] = useState<Set<string>>(() => new Set(attiveCodici));
-
-  const gruppi = useMemo(() => {
-    const fs = figure
-      .filter((f) => f.attiva !== false)
-      .slice()
-      .sort((a, b) => (a.gruppo_ordine ?? 999) - (b.gruppo_ordine ?? 999) || a.ordine - b.ordine);
-    const map = new Map<string, FiguraSicurezza[]>();
-    for (const f of fs) {
-      const g = f.gruppo || 'Altre figure';
-      const arr = map.get(g);
-      if (arr) arr.push(f); else map.set(g, [f]);
-    }
-    return [...map.entries()];
-  }, [figure]);
-
-  const toggleSel = (codice: string) => setSel((s) => {
-    const n = new Set(s);
-    if (n.has(codice)) n.delete(codice); else n.add(codice);
-    return n;
-  });
-
-  const sporco = sel.size !== attiveCodici.size || [...sel].some((c) => !attiveCodici.has(c));
-
-  async function salva() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      // aggiunte: selezionate ora ma non attive prima
-      for (const codice of sel) {
-        if (attiveCodici.has(codice)) continue;
-        await adapter.salvaNomina({ id: newId(), persona_id: persona.id, figura_codice: codice, data_nomina: oggiISO(), attiva: true, note: null });
-      }
-      // rimozioni: attive prima ma non piu' selezionate
-      for (const a of attivi) {
-        if (sel.has(a.figuraCodice)) continue;
-        if (a.nominaId) await adapter.eliminaNomina(a.nominaId);
-      }
-      await onSaved();
-      onClose();
-    } finally { setBusy(false); }
-  }
-
-  return (
-    <div className="fzr-ed">
-      {gruppi.map(([g, fs]) => (
-        <div key={g}>
-          <div className="fzr-grp">{g}</div>
-          {fs.map((f) => (
-            <label key={f.codice} className="fzr-fig-row">
-              <input type="checkbox" checked={sel.has(f.codice)} disabled={busy} onChange={() => toggleSel(f.codice)} />
-              <span>{f.nome}</span>
-            </label>
-          ))}
-        </div>
-      ))}
-      <div className="fzr-actions" style={{ marginTop: 8 }}>
-        <button className="fzr-btn primary" disabled={busy || !sporco} onClick={() => void salva()}>Salva</button>
-        <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>
-      </div>
-    </div>
-  );
-}
-
 // ---------- editor inline di un singolo requisito (attestato / esonero) ----------
 function EditorRequisito({
   personaId, req, figuraCodice, alternative, onSaved, onClose,
@@ -857,7 +779,6 @@ function ModuloInline({
 export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, rlsTerritoriale, onRlsTerritoriale, onEvidenzePregresse }: Props) {
   // pannelli aperti (stato locale di UI)
   const [editKey, setEditKey] = useState<string | null>(null);       // requisito (personaId|figura|corso)
-  const [figPersona, setFigPersona] = useState<string | null>(null); // figure di un orfano
   const [editPersona, setEditPersona] = useState<string | null>(null); // anagrafica (personaId|figura oppure personaId)
   const [addPersona, setAddPersona] = useState(false);
   const [aperte, setAperte] = useState<Set<string>>(new Set());
@@ -919,7 +840,6 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const tuttePersone = riep.persone.map((p) => p.persona);
   const corsoByCodice = new Map(catalogo.corsi.map((c) => [c.codice, c]));
   const ammessoById = new Map(catalogo.esoneriAmmessi.map((a) => [a.id, a]));
-  const orfani = riep.persone.filter((p) => p.figure.length === 0);
 
   // Scheda di una figura: usata INLINE dentro il proprio gruppo (#4), non in coda.
   const renderFigCard = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate']) => {
@@ -1175,39 +1095,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
         </div>
       )}
 
-      {orfani.length > 0 && (
-        <div className="fzr-grp" style={{ marginTop: 14 }}>Persone non ancora assegnate a una figura</div>
-      )}
-
       {vuoto && !addPersona && (
         <div className="empty">Nessuna persona in organigramma. Assegna un nominativo a una figura qui sopra, oppure usa "+ Persona".</div>
       )}
-
-      {orfani.map((pv) => {
-        const figAperto = figPersona === pv.persona.id;
-        const anagAperto = editPersona === pv.persona.id;
-        return (
-          <div key={pv.persona.id} className="fzr-p">
-            <div className="fzr-p-top">
-              <div>
-                <b>{nomePersona(pv.persona)}</b>
-                <div className="fzr-fig">{pv.persona.mansione || 'nessuna figura assegnata'}</div>
-              </div>
-              <span className={'fzr-sem ' + pv.stato}>{TXT[pv.stato]}</span>
-            </div>
-            <div className="fzr-p-actions">
-              <button className={'fzr-mini' + (figAperto ? ' on' : '')} onClick={() => { setFigPersona(figAperto ? null : pv.persona.id); setEditPersona(null); }}>Assegna figure</button>
-              <button className={'fzr-mini' + (anagAperto ? ' on' : '')} onClick={() => { setEditPersona(anagAperto ? null : pv.persona.id); setFigPersona(null); }}>Modifica</button>
-            </div>
-            {anagAperto && (
-              <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} />
-            )}
-            {figAperto && (
-              <FigurePanel persona={pv.persona} figure={catalogo.figure} attivi={[]} onSaved={ricarica} onClose={() => setFigPersona(null)} />
-            )}
-          </div>
-        );
-      })}
     </div>
     </AdapterCtx.Provider>
   );
