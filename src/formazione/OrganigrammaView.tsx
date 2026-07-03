@@ -139,25 +139,43 @@ const CSS = `
 .fzr-figgrp{margin-bottom:8px;}
 .fzr-figgrp:last-child{margin-bottom:0;}
 .fzr-figgrp-name{font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin-bottom:5px;}
-.fzr-figchips{display:flex; flex-wrap:wrap; gap:6px;}
-.fzr-figchip{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line,#e3ddd2); background:#fff; border-radius:999px; padding:4px 10px; font:inherit; font-size:12px; font-weight:600; color:var(--ink,#2a2c30); cursor:pointer; transition:.12s;}
-.fzr-figchip:hover{border-color:var(--hi,#e0a32e);}
-.fzr-figchip.on{background:#fff7e6; border-color:var(--hi,#e0a32e);}
-.fzr-figchip.critico{border-color:#f0c4bc;}
-.fzr-figchip.critico.on{background:#fdeae6; border-color:var(--no,#d8442f);}
-.fzr-figchip.in_scadenza{border-color:#e8cf9b;}
-.fzr-figchip.in_scadenza.on{background:#fbf3df; border-color:var(--hi,#e0a32e);}
-.fzr-figchip.conforme{border-color:#bfe0c9;}
-.fzr-figchip.conforme.on{background:#eaf6ee; border-color:var(--ok,#1f9d57);}
-.fzr-figchip.da_verificare,.fzr-figchip.esonerato{border-color:#cdd4df;}
-.fzr-figchip.neutro{border-color:#e1e3e7; color:var(--ink-soft,#5b5f66);}
-.fzr-figchip.neutro.on{background:#f1f2f4;}
+.fzr-figchips{display:flex; flex-wrap:wrap; gap:8px;}
+/* Chip figura: piu' grandi e con lo STATO come colore di sfondo pieno (non solo la spia). */
+.fzr-figchip{display:inline-flex; align-items:center; gap:8px; border:1.5px solid transparent; background:#fff; border-radius:12px; padding:9px 14px; font:inherit; font-size:14px; font-weight:700; color:#fff; cursor:pointer; transition:.12s; box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.fzr-figchip:hover{filter:brightness(1.04); box-shadow:0 2px 6px rgba(0,0,0,.12);}
+.fzr-figchip.on{box-shadow:0 0 0 3px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.12);}
+.fzr-figchip .fzr-dot{width:12px; height:12px; box-shadow:0 0 0 2px rgba(255,255,255,.6);}
+.fzr-figchip.critico{background:var(--no,#d8442f); border-color:#b8371f;}
+.fzr-figchip.in_scadenza{background:var(--hi,#f4a012); border-color:#cf8608; color:#3a2a05;}
+.fzr-figchip.conforme{background:var(--ok,#1f9d57); border-color:#178046;}
+.fzr-figchip.esonerato{background:#3b6fd0; border-color:#2f5aad;}
+.fzr-figchip.da_verificare{background:#7a8aa6; border-color:#657495;}
+.fzr-figchip.neutro{background:#eef0f2; border-color:#dcdfe3; color:var(--ink-soft,#5b5f66);}
+.fzr-figchip.neutro .fzr-dot{box-shadow:0 0 0 2px rgba(255,255,255,.9);}
+/* ---- Diagramma grafico dell'organigramma (schema gerarchico D.Lgs. 81/08) ---- */
+.fzr-diag{border:1px solid var(--line,#e3ddd2); border-radius:10px; margin:4px 0 12px; padding:14px 12px 16px; background:var(--paper,#faf7f1); overflow-x:auto;}
+.fzr-diag-title{font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin:0 0 12px;}
+.fzr-diag-svgwrap{min-width:520px;}
+.fzr-diag svg{display:block; width:100%; height:auto; overflow:visible;}
+.fzr-onode{box-sizing:border-box; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:1px; border-radius:9px; border:1.5px solid transparent; padding:3px 6px; cursor:pointer; color:#fff; line-height:1.12; transition:.12s; box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.fzr-onode:hover{filter:brightness(1.05);}
+.fzr-onode.on{box-shadow:0 0 0 2.5px #1c1d20, 0 1px 2px rgba(0,0,0,.06);}
+.fzr-onode-lab{font-size:11px; font-weight:600;}
+.fzr-onode-n{font-size:10px; font-weight:500; opacity:.9;}
+.fzr-onode.critico{background:var(--no,#d8442f); border-color:#b8371f;}
+.fzr-onode.in_scadenza{background:var(--hi,#f4a012); border-color:#cf8608; color:#3a2a05;}
+.fzr-onode.conforme{background:var(--ok,#1f9d57); border-color:#178046;}
+.fzr-onode.esonerato{background:#3b6fd0; border-color:#2f5aad;}
+.fzr-onode.da_verificare{background:#7a8aa6; border-color:#657495;}
+.fzr-onode.neutro{background:#eef0f2; border-color:#dcdfe3; color:#5b5f66;}
+.fzr-diag-line{stroke:#b9b2a4; stroke-width:1.6; fill:none;}
 .fzr-legenda{display:flex; flex-wrap:wrap; gap:10px 14px; margin:0 0 9px; font-size:11px; color:var(--ink-soft,#5b5f66);}
 .fzr-legenda span{display:inline-flex; align-items:center; gap:5px;}
 .fzr-emerg{font-size:11.5px; color:var(--hi-dark,#9a6206); background:#fbf0d6; border-radius:8px; padding:5px 8px; margin:5px 0 0 18px; line-height:1.4;}
 .fzr-figchip-nome{white-space:nowrap;}
-.fzr-figchip-n{font-size:10.5px; font-weight:800; background:#efeae0; border-radius:999px; padding:0 6px; min-width:16px; text-align:center;}
-.fzr-figchip-pm{font-size:14px; font-weight:800; color:var(--ink-soft,#5b5f66); width:12px; text-align:center; line-height:1;}
+.fzr-figchip-n{font-size:11px; font-weight:800; background:rgba(255,255,255,.28); color:inherit; border-radius:999px; padding:1px 7px; min-width:18px; text-align:center;}
+.fzr-figchip.neutro .fzr-figchip-n{background:#e0e2e6;}
+.fzr-figchip-pm{font-size:16px; font-weight:800; color:inherit; opacity:.85; width:13px; text-align:center; line-height:1;}
 .fzr-guida{margin:6px 0 6px 20px; padding:0; font-size:11.5px; color:var(--ink-soft,#5b5f66); line-height:1.45;}
 .fzr-guida li{margin:1px 0;}
 .fzr-guida li.sub{list-style:none; margin-left:-6px;}
@@ -841,6 +859,77 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const corsoByCodice = new Map(catalogo.corsi.map((c) => [c.codice, c]));
   const ammessoById = new Map(catalogo.esoneriAmmessi.map((a) => [a.id, a]));
 
+  // ---- Diagramma grafico ADATTIVO dell'organigramma (schema art. 2 D.Lgs. 81/08) ----
+  // Riepilogo per-codice dalle righe di copertura (stato reale via statoFigura).
+  const figByCodice = new Map<string, { figura: FiguraSicurezza; stato: StatoFig; n: number }>();
+  for (const g of gruppiCopertura) {
+    for (const { figura, assegnate } of g.righe) {
+      figByCodice.set(figura.codice, { figura, stato: statoFigura(figura, assegnate), n: assegnate.length });
+    }
+  }
+  // Topologia fissa (la gerarchia e' normativa); le coordinate si calcolano dal dato.
+  // - Il vertice e' UNO: 'datore_lavoro' e 'dl_rspp' sono la stessa figura (il secondo e'
+  //   il datore che svolge anche l'RSPP) -> conteggio per PERSONE DISTINTE, non somma.
+  // - RSPP: coperto dal datore (dl_rspp) o interno/esterno (rspp). ASPP a se'.
+  // - Addetti separati: antincendio e primo soccorso.
+  type ONodo = { key: string; label: string; codici: string[]; parent: string | null };
+  const O_NODI: ONodo[] = [
+    { key: 'dl',   label: 'Datore di lavoro',       codici: ['datore_lavoro', 'dl_rspp'], parent: null },
+    { key: 'rspp', label: 'RSPP',                   codici: ['rspp', 'dl_rspp'],          parent: 'dl' },
+    { key: 'aspp', label: 'ASPP',                   codici: ['aspp'],                     parent: 'dl' },
+    { key: 'dir',  label: 'Dirigenti',              codici: ['dirigente'],                parent: 'dl' },
+    { key: 'mc',   label: 'Medico competente',      codici: ['medico_competente'],        parent: 'dl' },
+    { key: 'prep', label: 'Preposti',               codici: ['preposto'],                 parent: 'dir' },
+    { key: 'ai',   label: 'Addetto antincendio',    codici: ['addetto_antincendio'],      parent: 'dir' },
+    { key: 'ps',   label: 'Addetto primo soccorso', codici: ['addetto_primo_soccorso'],   parent: 'dir' },
+    { key: 'rls',  label: 'RLS',                    codici: ['rls'],                      parent: 'prep' },
+    { key: 'lav',  label: 'Lavoratori',             codici: ['lavoratore'],               parent: 'prep' },
+  ];
+  const nodeById = new Map(O_NODI.map((n) => [n.key, n]));
+  const nodeStato = (codici: string[]): StatoFig => {
+    let worst: StatoFig = 'neutro';
+    for (const c of codici) { const i = figByCodice.get(c); if (i && (RANK[i.stato] ?? 0) > (RANK[worst] ?? 0)) worst = i.stato; }
+    return worst;
+  };
+  // Persone DISTINTE tra i codici del nodo (evita il doppio-conteggio datore/dl_rspp).
+  const nodeCount = (codici: string[]): number => {
+    const ids = new Set<string>();
+    for (const pv of riep.persone) if (pv.figure.some((f) => codici.includes(f.codice))) ids.add(pv.persona.id);
+    return ids.size;
+  };
+  const nodeVisible = (n: ONodo): boolean => n.codici.some((c) => figByCodice.has(c));
+  const visibili = O_NODI.filter(nodeVisible);
+  const visSet = new Set(visibili.map((n) => n.key));
+  // Antenato visibile piu' vicino (se il parent e' nascosto, si risale).
+  const parentVis = (n: ONodo): string | null => {
+    let p = n.parent;
+    while (p) { if (visSet.has(p)) return p; p = nodeById.get(p)?.parent ?? null; }
+    return null;
+  };
+  const depth = (n: ONodo): number => {
+    let d = 0, p = n.parent;
+    while (p) { d++; p = nodeById.get(p)?.parent ?? null; }
+    return d;
+  };
+  const NODE_W = 122, NODE_H = 52, GAP_X = 22, GAP_Y = 34, PAD = 8;
+  const perLivello = new Map<number, ONodo[]>();
+  for (const n of visibili) { const d = depth(n); if (!perLivello.has(d)) perLivello.set(d, []); perLivello.get(d)!.push(n); }
+  const livelli = [...perLivello.keys()].sort((a, b) => a - b);
+  const maxCount = Math.max(...livelli.map((l) => perLivello.get(l)!.length), 1);
+  const DIAG_W = PAD * 2 + maxCount * NODE_W + (maxCount - 1) * GAP_X;
+  const DIAG_H = PAD * 2 + livelli.length * NODE_H + Math.max(livelli.length - 1, 0) * GAP_Y;
+  const layout = new Map<string, { x: number; y: number }>();
+  livelli.forEach((l, ri) => {
+    const row = perLivello.get(l)!;
+    const rowW = row.length * NODE_W + (row.length - 1) * GAP_X;
+    const x0 = (DIAG_W - rowW) / 2;
+    const y = PAD + ri * (NODE_H + GAP_Y);
+    row.forEach((n, ci) => layout.set(n.key, { x: x0 + ci * (NODE_W + GAP_X), y }));
+  });
+  const apriNodo = (n: ONodo) => { const t = n.codici.find((c) => figByCodice.has(c)) ?? n.codici[0]; if (t) toggleFigura(t); };
+  const nodoAperto = (n: ONodo) => n.codici.some((c) => aperte.has(c));
+
+
   // Scheda di una figura: usata INLINE dentro il proprio gruppo (#4), non in coda.
   const renderFigCard = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate']) => {
     const scoperta = scoperteSet.has(figura.codice);
@@ -1043,6 +1132,42 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
         <div className="fzr-p">
           <b>Nuova persona</b>
           <PersonaForm persona={null} clienteId={clienteId} onSaved={ricarica} onClose={() => setAddPersona(false)} />
+        </div>
+      )}
+
+      {figureAttese.length > 0 && (
+        <div className="fzr-diag">
+          <div className="fzr-diag-title">Organigramma della sicurezza {'\u2014'} clicca una casella per aprire la figura</div>
+          <div className="fzr-diag-svgwrap">
+            <svg viewBox={`0 0 ${DIAG_W} ${DIAG_H}`} role="img" aria-label="Schema organigramma sicurezza">
+              {visibili.map((n) => {
+                const pk = parentVis(n); if (!pk) return null;
+                const a = layout.get(pk); const b = layout.get(n.key);
+                if (!a || !b) return null;
+                const x1 = a.x + NODE_W / 2, y1 = a.y + NODE_H;
+                const x2 = b.x + NODE_W / 2, y2 = b.y;
+                const my = (y1 + y2) / 2;
+                return (
+                  <path key={'e-' + n.key} className="fzr-diag-line"
+                    d={`M ${x1} ${y1} L ${x1} ${my} L ${x2} ${my} L ${x2} ${y2}`} />
+                );
+              })}
+              {visibili.map((n) => {
+                const p = layout.get(n.key); if (!p) return null;
+                const stato = nodeStato(n.codici);
+                const cnt = nodeCount(n.codici);
+                const on = nodoAperto(n);
+                return (
+                  <foreignObject key={n.key} x={p.x} y={p.y} width={NODE_W} height={NODE_H}>
+                    <div className={'fzr-onode ' + stato + (on ? ' on' : '')} onClick={() => apriNodo(n)}>
+                      <span className="fzr-onode-lab">{n.label}</span>
+                      {cnt > 0 && <span className="fzr-onode-n">{cnt} {cnt === 1 ? 'incaricato' : 'incaricati'}</span>}
+                    </div>
+                  </foreignObject>
+                );
+              })}
+            </svg>
+          </div>
         </div>
       )}
 
