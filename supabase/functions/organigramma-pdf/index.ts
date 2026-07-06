@@ -132,7 +132,50 @@ function dataBreve(iso: string | null): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-interface RevRiga { numero: number | null; creata_il: string; autore: string | null; origine: string | null }
+interface RevRiga { numero: number | null; creata_il: string; autore: string | null; origine: string | null; modifiche?: string }
+
+// --- diff tra snapshot consecutivi: descrive il TIPO di modifica di ogni revisione ---
+function setNomi(s: Snap | null): Set<string> {
+  return new Set((s?.persone ?? []).map((p) => p.nome));
+}
+function setIncarichi(s: Snap | null): Set<string> {
+  const out = new Set<string>();
+  for (const p of s?.persone ?? []) for (const f of p.figure ?? []) out.add(p.nome + '\u0001' + f.nome);
+  return out;
+}
+function elenco(items: string[], max = 5): string {
+  if (items.length <= max) return items.join(', ');
+  return items.slice(0, max).join(', ') + ` e altri ${items.length - max}`;
+}
+function diffConteggi(a: Record<string, number> = {}, b: Record<string, number> = {}): string {
+  const et: [string, string][] = [['conforme', 'conformi'], ['in_scadenza', 'in scadenza'], ['critico', 'critici']];
+  const parts: string[] = [];
+  for (const [k, lab] of et) { const va = a[k] ?? 0, vb = b[k] ?? 0; if (va !== vb) parts.push(`${lab} ${va}\u2192${vb}`); }
+  return parts.join(', ');
+}
+// Descrizione leggibile del cambiamento tra la revisione precedente e quella corrente.
+function diffSnap(prev: Snap | null, curr: Snap): string {
+  if (!prev) return 'Prima revisione (creazione organigramma)';
+  const parts: string[] = [];
+  const pa = setNomi(prev), pc = setNomi(curr);
+  const addP = [...pc].filter((n) => !pa.has(n));
+  const remP = [...pa].filter((n) => !pc.has(n));
+  if (addP.length) parts.push((addP.length > 1 ? 'Aggiunte persone: ' : 'Aggiunta persona: ') + elenco(addP));
+  if (remP.length) parts.push((remP.length > 1 ? 'Rimosse persone: ' : 'Rimossa persona: ') + elenco(remP));
+
+  // Incarichi (persona -> figura), escludendo quelli gia' impliciti nell'ingresso/uscita persona.
+  const ia = setIncarichi(prev), ic = setIncarichi(curr);
+  const fmt = (x: string) => { const [n, f] = x.split('\u0001'); return n + ' \u2192 ' + f; };
+  const addI = [...ic].filter((x) => !ia.has(x) && !addP.includes(x.split('\u0001')[0]!)).map(fmt);
+  const remI = [...ia].filter((x) => !ic.has(x) && !remP.includes(x.split('\u0001')[0]!)).map(fmt);
+  if (addI.length) parts.push('Nuove nomine: ' + elenco(addI, 4));
+  if (remI.length) parts.push('Nomine rimosse: ' + elenco(remI, 4));
+
+  const dc = diffConteggi(prev.conteggi, curr.conteggi);
+  if (dc) parts.push('Conformita\u0300: ' + dc);
+
+  return parts.length ? parts.join('. ') : 'Aggiornamento evidenze/scadenze formative';
+}
 
 // PDF a 3 colonne: RUOLO organigramma -> ANAGRAFICA persona -> EVIDENZE
 // (formazione/esonero). I ruoli scoperti compaiono con "Nessun incaricato".
@@ -184,11 +227,12 @@ function renderSnapshot(s: Snap, numero: number | null, revisioni: RevRiga[], ul
   const storiaRighe = (revisioni ?? []).map((r) =>
     `<tr><td class="n">${r.numero ?? '&mdash;'}</td><td class="dt">${dataIT(r.creata_il)}</td>`
     + `<td class="or">${esc(ORIGINE[r.origine ?? ''] ?? r.origine ?? '')}</td>`
-    + `<td>${esc(r.autore ?? '')}</td></tr>`).join('');
+    + `<td class="au">${esc(r.autore ?? '')}</td>`
+    + `<td class="mod">${esc(r.modifiche ?? '')}</td></tr>`).join('');
   const storia = storiaRighe
     ? `<h2>Storico revisioni dell'organigramma</h2>
        <table class="storia">
-         <thead><tr><th>Rev.</th><th>Data e ora</th><th>Origine</th><th>Autore</th></tr></thead>
+         <thead><tr><th>Rev.</th><th>Data e ora</th><th>Origine</th><th>Autore</th><th>Modifiche</th></tr></thead>
          <tbody>${storiaRighe}</tbody>
        </table>`
     : '';
@@ -214,7 +258,8 @@ function renderSnapshot(s: Snap, numero: number | null, revisioni: RevRiga[], ul
     .foot{margin-top:16px;color:#9a958c;font-size:10px;border-top:1px solid #e3ddd2;padding-top:8px}
     h2{font-size:13px;margin:22px 0 6px;page-break-before:auto} .storia{font-size:10.5px}
     .storia th,.storia td{padding:5px 8px}
-    .storia td.n{font-weight:700;width:12%} .storia td.dt{width:26%} .storia td.or{width:22%}
+    .storia td.n{font-weight:700;width:7%} .storia td.dt{width:16%} .storia td.or{width:11%} .storia td.au{width:24%}
+    .storia td.mod{width:42%;color:#3a3d43}
   </style></head><body>
     <h1>Organigramma sicurezza &mdash; ${esc(s.cliente_nome)}</h1>
     <p class="sub">Generato il ${dataIT(s.generato_il)}${numero != null ? ' &middot; revisione ' + numero : ''}${ultimaRev ? ' &middot; ultima rev. ' + dataBreve(ultimaRev) : ''}${s.livello_rischio ? ' &middot; rischio ' + esc(s.livello_rischio) : ''}</p>
@@ -273,15 +318,23 @@ Deno.serve(async (req) => {
     if (typeof body.revisione_numero === 'number') numero = body.revisione_numero;
 
     // Storico revisioni del cliente (per il tracking history e la data ultima rev.).
+    // Recupero anche gli snapshot per derivare il TIPO di modifica di ogni revisione
+    // dal confronto con la precedente, poi scarto gli snapshot (non servono nel render).
     let revisioni: RevRiga[] = [];
     let ultimaRev: string | null = null;
     if (snap.cliente_id) {
       const { data: revs } = await sb
         .from('organigramma_revisione')
-        .select('numero, creata_il, autore, origine')
+        .select('numero, creata_il, autore, origine, snapshot')
         .eq('cliente_id', snap.cliente_id)
         .order('numero', { ascending: true });
-      revisioni = (revs as RevRiga[] | null) ?? [];
+      const arr = (revs as Array<RevRiga & { snapshot: Snap | null }> | null) ?? [];
+      let prev: Snap | null = null;
+      for (const r of arr) {
+        r.modifiche = diffSnap(prev, (r.snapshot ?? {} as Snap));
+        if (r.snapshot) prev = r.snapshot;
+      }
+      revisioni = arr.map(({ snapshot: _s, ...rest }) => rest);
       if (revisioni.length > 0) ultimaRev = revisioni[revisioni.length - 1]!.creata_il;
     }
 
