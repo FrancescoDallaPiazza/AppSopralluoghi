@@ -5,7 +5,7 @@
 // promemoria. Stile allineato al back-office (classi .bo-* di ui.ts) + un
 // piccolo foglio supplementare per semafori/metriche/modali (scoping .bo).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, contentTypeAttestato, pathAttestato, urlFirmatoAttestato } from '../lib/supabase';
 import { newId } from '../lib/types';
 import {
@@ -148,6 +148,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
   const [genOpen, setGenOpen] = useState(false);
   const [storicoOpen, setStoricoOpen] = useState(false);
   const [schemaOpen, setSchemaOpen] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pregressaPersonaId, setPregressaPersonaId] = useState<string | null>(null);
 
@@ -173,11 +174,18 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
     return () => { vivo = false; };
   }, [clienteId, refreshToken]);
 
+  const syncFattaPer = useRef<string | null>(null);
   async function ricarica() {
     if (!catalogo) { setRiep(null); return; }
     setCaricando(true); setErrore(null);
     try {
       setRiep(await valutaCliente(clienteId, catalogo));
+      // Allinea lo scadenzario alle scadenze formative del cliente (attestati + esoneri).
+      // Best-effort e idempotente: una volta per cliente, non blocca il render.
+      if (syncFattaPer.current !== clienteId) {
+        syncFattaPer.current = clienteId;
+        backfillAzioniEsoneri(clienteId).catch((e) => console.error('sync scadenzario formazione:', e));
+      }
     } catch (e: any) {
       setErrore(e?.message ?? String(e));
     } finally {
@@ -244,6 +252,12 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
         <>
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
             <button className="bo-btn ghost" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length}>Genera cose da fare per i gap</button>
+            <button className="bo-btn ghost" disabled={syncBusy} onClick={async () => {
+              setSyncBusy(true);
+              try { const n = await backfillAzioniEsoneri(clienteId); alert(n + ' scadenze allineate nello scadenzario.'); }
+              catch (e: any) { alert('Errore: ' + (e?.message ?? String(e))); }
+              finally { setSyncBusy(false); }
+            }}>{syncBusy ? 'Sincronizzo…' : 'Sincronizza scadenzario'}</button>
             <button className={'bo-btn ghost' + (schemaOpen ? ' on' : '')} onClick={() => setSchemaOpen((v) => !v)}>{schemaOpen ? '\u2212 Schema grafico organigramma' : '+ Schema grafico organigramma'}</button>
             <button className="bo-btn ghost" onClick={esportaPdf} disabled={pdfBusy}>{pdfBusy ? 'Genero PDF…' : 'Esporta PDF organigramma'}</button>
             <button className="bo-btn ghost" onClick={() => setStoricoOpen(true)}>Storico organigramma</button>
