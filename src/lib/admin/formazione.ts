@@ -453,6 +453,37 @@ function valutaModuli(
   return [...out.values()].sort((x, y) => x.corso_nome.localeCompare(y.corso_nome));
 }
 
+// Regola A (esonero/credito coprono la sola formazione INIZIALE): dato un corso con
+// aggiornamento periodico, calcola lo stato/scadenza del RINNOVO, che resta dovuto e
+// va gestito come una scadenza normale. Base di calcolo: attestato di aggiornamento
+// registrato, altrimenti la data di partenza fornita (riconoscimento esonero o nomina).
+// Ritorna null se il corso NON e' periodico (in quel caso l'esonero/credito copre tutto).
+export interface EsitoAggiornamento { stato: StatoRequisito; scadenza: string | null; dettaglio: string; formazione_id: string | null; allegato_url: string | null; ore: number | null; }
+export function statoAggiornamentoDopoEsonero(
+  corso: CorsoCatalogo | undefined,
+  req: { corso_codice: string; per_categoria: boolean; categoria: string },
+  formazioni: Formazione[],
+  byCodice: Map<string, CorsoCatalogo>,
+  dataPartenza: string | null,
+): EsitoAggiornamento | null {
+  const aggMesi = corso?.aggiornamento_mesi ?? null;
+  if (aggMesi == null) return null; // corso non periodico -> nessun aggiornamento
+  const ore = corso?.ore_aggiornamento ?? corso?.ore ?? null;
+  const fAgg = scegliFormazione(req, formazioni, byCodice);
+  if (fAgg && fAgg.data_completamento) {
+    const scad = fAgg.scadenza ?? addMesi(fAgg.data_completamento, aggMesi);
+    const { stato, dettaglio } = statoDaScadenza(scad, fAgg.data_completamento);
+    return { stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: fAgg.id, allegato_url: fAgg.allegato_url, ore };
+  }
+  if (dataPartenza) {
+    const scad = addMesi(dataPartenza, aggMesi);
+    const { stato, dettaglio } = statoDaScadenza(scad, dataPartenza);
+    return { stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: null, allegato_url: null, ore };
+  }
+  // nessuna data di partenza: dovuto, scadenza da determinare
+  return { stato: 'da_verificare', scadenza: null, dettaglio: 'aggiornamento periodico dovuto: registrare l\u2019ultimo attestato di aggiornamento', formazione_id: null, allegato_url: null, ore };
+}
+
 export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null, atecoCliente: string | null = null): PersonaValutata {
   const byCodice = new Map(cat.corsi.map((c) => [c.codice, c]));
   const figureCodici = d.nomine.filter((n) => n.attiva).map((n) => n.figura_codice);
@@ -564,12 +595,31 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
         });
       } else {
-        requisiti.push({
-          figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
-          categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
-          dettaglio: base,
-          formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
-        });
+        // Esonero SENZA scadenza. Copre la formazione INIZIALE; se il corso ha un
+        // aggiornamento periodico, il rinnovo resta dovuto e si gestisce come una
+        // scadenza normale (regola A, uniforme con i crediti Allegato III).
+        const dataPartenza = eson.data_riconoscimento
+          ?? nominaByFigura.get(eson.figura_codice ?? '')?.data_nomina
+          ?? d.nomine.find((n) => n.attiva && r.figure.includes(n.figura_codice))?.data_nomina
+          ?? null;
+        const agg = statoAggiornamentoDopoEsonero(corso, { corso_codice: r.corso_codice, per_categoria: r.per_categoria, categoria }, d.formazioni, byCodice, dataPartenza);
+        if (agg) {
+          requisiti.push({
+            figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
+            categoria, ore: agg.ore, obbligatorio: r.obbligatorio,
+            stato: agg.stato, scadenza: agg.scadenza,
+            dettaglio: base + ' (iniziale) \u00b7 ' + agg.dettaglio,
+            formazione_id: agg.formazione_id, esonero_id: eson.id, allegato_url: agg.allegato_url, promemoria,
+          });
+        } else {
+          // Corso senza aggiornamento periodico: l'esonero copre tutto.
+          requisiti.push({
+            figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
+            categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
+            dettaglio: base,
+            formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
+          });
+        }
       }
       continue;
     }
@@ -633,9 +683,16 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
 
   // Crediti tra ruoli (Allegato III ASR 17/04/2025): un ruolo posseduto puo'
   // creditare il corso richiesto da un altro ruolo della stessa persona. Marca
-  // 'esonerato' i requisiti coperti, prima di derivare lo stato complessivo.
+  // 'esonerato' i requisiti coperti (regola A: il credito copre solo la formazione
+  // iniziale; per i corsi periodici il rinnovo resta dovuto come scadenza normale).
   const nomeFigura = new Map(cat.figure.map((f) => [f.codice, f.nome]));
-  applicaCreditiAllegatoIII(requisiti, figureSet, (c) => nomeFigura.get(c) ?? c);
+  applicaCreditiAllegatoIII(requisiti, figureSet, (c) => nomeFigura.get(c) ?? c, (r) => {
+    const corso = byCodice.get(r.corso_codice);
+    const dataPartenza = r.figura_codici
+      .map((fc) => nominaByFigura.get(fc)?.data_nomina)
+      .find((dt): dt is string => !!dt) ?? null;
+    return statoAggiornamentoDopoEsonero(corso, { corso_codice: r.corso_codice, per_categoria: false, categoria: corso?.categoria ?? '' }, d.formazioni, byCodice, dataPartenza);
+  });
 
   const statoPersona = requisiti.reduce<StatoRequisito>((acc, r) => peggiore(acc, r.stato), 'conforme');
 

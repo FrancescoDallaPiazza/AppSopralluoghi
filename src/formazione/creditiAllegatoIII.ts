@@ -16,7 +16,7 @@
 // obbligatori risultano gia' coperti (conforme/in scadenza/esonerato). La
 // derivazione parte dalla copertura BASE (pre-credito), in un solo passaggio.
 
-import type { RequisitoValutato, StatoRequisito } from './../lib/admin/formazione';
+import type { RequisitoValutato, StatoRequisito, EsitoAggiornamento } from './../lib/admin/formazione';
 
 type Credito = 'T' | 'Tstar' | 'F' | '-';
 type Colonna = 'rls' | 'dl' | 'lavGen' | 'lavSpec' | 'dirigente' | 'preposto';
@@ -55,6 +55,9 @@ export function applicaCreditiAllegatoIII(
   requisiti: RequisitoValutato[],
   figureSet: Set<string>,
   nomeFigura: (codice: string) => string,
+  // Regola A: dato il requisito creditato, calcola lo stato del rinnovo se il corso
+  // e' periodico; ritorna null se il corso non ha aggiornamento (credito copre tutto).
+  calcolaAggiornamento?: (r: RequisitoValutato) => EsitoAggiornamento | null,
 ): void {
   // copertura BASE per figura (pre-credito)
   const acquisita = new Map<string, boolean>();
@@ -79,10 +82,23 @@ export function applicaCreditiAllegatoIII(
       if (!best || (best === 'Tstar' && st === 'T')) { best = st; fonte = figura; }
     }
     if (best && fonte) {
-      r.stato = 'esonerato';
-      r.esonero_id = null;
-      r.scadenza = null;
-      r.dettaglio = `Credito da ${nomeFigura(fonte)} (Allegato III ASR 17/04/2025${best === 'Tstar' ? ', stessa azienda' : ''})`;
+      const nota = `Credito da ${nomeFigura(fonte)} (Allegato III ASR 17/04/2025${best === 'Tstar' ? ', stessa azienda' : ''})`;
+      const agg = calcolaAggiornamento?.(r) ?? null;
+      if (agg) {
+        // Il credito copre l'iniziale; il rinnovo resta dovuto (scadenza normale).
+        r.stato = agg.stato;
+        r.esonero_id = null;
+        r.scadenza = agg.scadenza;
+        r.formazione_id = agg.formazione_id;
+        r.allegato_url = agg.allegato_url;
+        if (agg.ore != null) r.ore = agg.ore;
+        r.dettaglio = nota + ' (iniziale) \u00b7 ' + agg.dettaglio;
+      } else {
+        r.stato = 'esonerato';
+        r.esonero_id = null;
+        r.scadenza = null;
+        r.dettaglio = nota;
+      }
     }
   }
 }
