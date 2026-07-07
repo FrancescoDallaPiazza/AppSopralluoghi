@@ -72,6 +72,19 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
 
   return (
     <>
+      <style>{`
+        .ru-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+        .ru-tbl thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#5b5f66);font-weight:800;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.08)}
+        .ru-tr td{padding:8px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
+        .ru-tr:last-child td{border-bottom:none}
+        .ru-tr.dim{opacity:.5}
+        .ru-cog{width:24%;font-weight:700}
+        .ru-nom{width:22%;font-weight:600}
+        .ru-cf{width:26%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3a3d43}
+        .ru-cf.bad{color:var(--no,#d8442f)}
+        .ru-man{width:22%}
+        .ru-act{width:6%;text-align:right;white-space:nowrap}
+      `}</style>
       <div className="bo-row" style={{ margin: '0 0 10px' }}>
         <p className="bo-sub grow" style={{ margin: 0 }}>
           Tutto il personale del cliente. Le nomine (RSPP, preposto, addetti…) si assegnano
@@ -91,12 +104,6 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
           onAnnulla={() => setImporta(false)} />
       )}
 
-      {agg && (
-        <RigaPersona persona={personaVuota(clienteId)}
-          onCambia={() => { setAgg(false); cambiato(); }}
-          onAnnulla={() => setAgg(false)} />
-      )}
-
       {fase === 'carico' && <div className="bo-empty">Carico…</div>}
       {fase === 'errore' && <div className="bo-err">Errore nel caricamento del personale.</div>}
 
@@ -112,7 +119,27 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
         </div>
       )}
 
-      {visibili.map((p) => <RigaPersona key={p.id} persona={p} onCambia={cambiato} />)}
+      {(agg || visibili.length > 0) && (
+        <table className="ru-tbl">
+          <thead>
+            <tr>
+              <th>Cognome</th>
+              <th>Nome</th>
+              <th>CF</th>
+              <th>Mansione</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {agg && (
+              <RigaPersona persona={personaVuota(clienteId)}
+                onCambia={() => { setAgg(false); cambiato(); }}
+                onAnnulla={() => setAgg(false)} />
+            )}
+            {visibili.map((p) => <RigaPersona key={p.id} persona={p} onCambia={cambiato} />)}
+          </tbody>
+        </table>
+      )}
 
       {fase === 'pronto' && persone.some((p) => !p.attivo) && (
         <label className="chk" style={{ marginTop: 8 }}>
@@ -166,95 +193,93 @@ function RigaPersona({ persona, onCambia, onAnnulla }: {
   if (!modifica) {
     const cfBad = p.codice_fiscale != null && !cfValido(p.codice_fiscale);
     return (
-      <div className={`bo-card flat ${p.attivo ? '' : 'dim'}`} style={{ marginBottom: 8 }}>
-        <div className="bo-row">
-          <div className="grow">
-            <div className="bo-title">
-              {[p.cognome, p.nome].filter(Boolean).join(' ') || p.nome || '—'}
-            </div>
-            <div className="bo-meta">
-              {p.mansione && <span>{p.mansione}</span>}
-              {p.reparto && <span>{p.reparto}</span>}
-              {p.codice_fiscale && (
-                <span style={cfBad ? { color: 'var(--no)' } : undefined}>
-                  {p.codice_fiscale}{cfBad ? ' · CF non valido' : ''}
-                </span>
-              )}
-              {!p.attivo && <span className="bo-pill archiviato">disattivato</span>}
-            </div>
-          </div>
+      <tr className={'ru-tr' + (p.attivo ? '' : ' dim')}>
+        <td className="ru-cog">{p.cognome ?? '—'}</td>
+        <td className="ru-nom">{p.nome || '—'}</td>
+        <td className={'ru-cf' + (cfBad ? ' bad' : '')}>
+          {p.codice_fiscale ?? '—'}{cfBad ? ' · CF non valido' : ''}
+        </td>
+        <td className="ru-man">
+          {p.mansione ?? '—'}
+          {!p.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 8 }}>disattivato</span>}
+        </td>
+        <td className="ru-act">
           <button className="bo-btn ghost sm" onClick={() => setModifica(true)}>Modifica</button>
-        </div>
-      </div>
+        </td>
+      </tr>
     );
   }
 
   return (
-    <div className="bo-card flat" style={{ marginBottom: 8 }}>
-      {msg && <div className="bo-err">{msg}</div>}
-      <div className="bo-grid">
-        <label className="bo-field">
-          <span>Cognome</span>
-          <input type="text" value={p.cognome ?? ''}
-            onChange={(e) => set({ cognome: e.target.value.toUpperCase() || null })} />
-        </label>
-        <label className="bo-field">
-          <span>Nome *</span>
-          <input type="text" value={p.nome}
-            onChange={(e) => set({ nome: e.target.value.toUpperCase() })} />
-        </label>
-        <label className="bo-field">
-          <span>Codice fiscale</span>
-          <input type="text" value={p.codice_fiscale ?? ''}
-            onChange={(e) => set({ codice_fiscale: e.target.value.toUpperCase().trim() || null })} />
-        </label>
-        <label className="bo-field">
-          <span>Data assunzione</span>
-          <input type="date" value={p.data_assunzione ?? ''}
-            onChange={(e) => set({ data_assunzione: e.target.value || null })} />
-        </label>
-        <label className="bo-field">
-          <span>Mansione</span>
-          <input type="text" value={p.mansione ?? ''}
-            onChange={(e) => set({ mansione: e.target.value || null })} />
-        </label>
-        <label className="bo-field">
-          <span>Reparto</span>
-          <input type="text" value={p.reparto ?? ''}
-            onChange={(e) => set({ reparto: e.target.value || null })} />
-        </label>
-        <label className="bo-field">
-          <span>Rischio (override)</span>
-          <select value={p.livello_rischio ?? ''}
-            onChange={(e) => set({ livello_rischio: (e.target.value || null) as RischioPersona })}>
-            <option value="">— eredita dal cliente —</option>
-            <option value="basso">basso</option>
-            <option value="medio">medio</option>
-            <option value="alto">alto</option>
-          </select>
-        </label>
-        <label className="bo-field" style={{ marginBottom: 0 }}>
-          <span>Note</span>
-          <input type="text" value={p.note ?? ''}
-            onChange={(e) => set({ note: e.target.value || null })} />
-        </label>
-      </div>
-      <div className="bo-bar">
-        <button className="bo-btn sm" onClick={() => void salva()} disabled={busy}>
-          {busy ? 'Salvo…' : nuova ? 'Aggiungi' : 'Salva'}
-        </button>
-        {nuova
-          ? onAnnulla && <button className="bo-btn ghost sm" onClick={onAnnulla} disabled={busy}>Annulla</button>
-          : <>
-              <button className="bo-btn ghost sm" onClick={() => { setP(persona); setModifica(false); }} disabled={busy}>Chiudi</button>
-              <button className="bo-btn ghost sm" onClick={() => void toggle()} disabled={busy}>
-                {persona.attivo ? 'Disattiva' : 'Riattiva'}
-              </button>
-              <span className="bo-sp" />
-              <button className="bo-btn danger sm" onClick={() => void elimina()} disabled={busy}>Elimina</button>
-            </>}
-      </div>
-    </div>
+    <tr className="ru-tr">
+      <td colSpan={5} style={{ padding: 0 }}>
+        <div className="bo-card flat" style={{ marginBottom: 8 }}>
+          {msg && <div className="bo-err">{msg}</div>}
+          <div className="bo-grid">
+            <label className="bo-field">
+              <span>Cognome</span>
+              <input type="text" value={p.cognome ?? ''}
+                onChange={(e) => set({ cognome: e.target.value.toUpperCase() || null })} />
+            </label>
+            <label className="bo-field">
+              <span>Nome *</span>
+              <input type="text" value={p.nome}
+                onChange={(e) => set({ nome: e.target.value.toUpperCase() })} />
+            </label>
+            <label className="bo-field">
+              <span>Codice fiscale</span>
+              <input type="text" value={p.codice_fiscale ?? ''}
+                onChange={(e) => set({ codice_fiscale: e.target.value.toUpperCase().trim() || null })} />
+            </label>
+            <label className="bo-field">
+              <span>Data assunzione</span>
+              <input type="date" value={p.data_assunzione ?? ''}
+                onChange={(e) => set({ data_assunzione: e.target.value || null })} />
+            </label>
+            <label className="bo-field">
+              <span>Mansione</span>
+              <input type="text" value={p.mansione ?? ''}
+                onChange={(e) => set({ mansione: e.target.value || null })} />
+            </label>
+            <label className="bo-field">
+              <span>Reparto</span>
+              <input type="text" value={p.reparto ?? ''}
+                onChange={(e) => set({ reparto: e.target.value || null })} />
+            </label>
+            <label className="bo-field">
+              <span>Rischio (override)</span>
+              <select value={p.livello_rischio ?? ''}
+                onChange={(e) => set({ livello_rischio: (e.target.value || null) as RischioPersona })}>
+                <option value="">— eredita dal cliente —</option>
+                <option value="basso">basso</option>
+                <option value="medio">medio</option>
+                <option value="alto">alto</option>
+              </select>
+            </label>
+            <label className="bo-field" style={{ marginBottom: 0 }}>
+              <span>Note</span>
+              <input type="text" value={p.note ?? ''}
+                onChange={(e) => set({ note: e.target.value || null })} />
+            </label>
+          </div>
+          <div className="bo-bar">
+            <button className="bo-btn sm" onClick={() => void salva()} disabled={busy}>
+              {busy ? 'Salvo…' : nuova ? 'Aggiungi' : 'Salva'}
+            </button>
+            {nuova
+              ? onAnnulla && <button className="bo-btn ghost sm" onClick={onAnnulla} disabled={busy}>Annulla</button>
+              : <>
+                  <button className="bo-btn ghost sm" onClick={() => { setP(persona); setModifica(false); }} disabled={busy}>Chiudi</button>
+                  <button className="bo-btn ghost sm" onClick={() => void toggle()} disabled={busy}>
+                    {persona.attivo ? 'Disattiva' : 'Riattiva'}
+                  </button>
+                  <span className="bo-sp" />
+                  <button className="bo-btn danger sm" onClick={() => void elimina()} disabled={busy}>Elimina</button>
+                </>}
+          </div>
+        </div>
+      </td>
+    </tr>
   );
 }
 
