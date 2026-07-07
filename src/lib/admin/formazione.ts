@@ -942,11 +942,17 @@ export async function areaFormazioneId(): Promise<string | null> {
 // Se l'area Formazione non e' configurata, ripiega sul cliente. Omette di
 // proposito `stato`/`priorita`: in upsert PostgREST non tocca le colonne assenti,
 // quindi un eventuale stato gia' chiuso dall'utente NON viene riaperto; in insert
-// valgono i default. Null se non c'e' scadenza da monitorare.
+// valgono i default.
+// La scadenza da monitorare e' quella EFFETTIVA: esplicita (f.scadenza) oppure
+// derivata dalla periodicita' del corso (data_completamento + aggiornamento_mesi),
+// esattamente come la calcola il motore. Senza aggMesi valorizzato e senza scadenza
+// esplicita il corso "non scade" -> nessuna azione.
 export function azioneScadenzaFormazione(
-  f: Formazione, clienteId: string, areaFormazione: string | null, personaNome?: string,
+  f: Formazione, clienteId: string, areaFormazione: string | null, personaNome?: string, aggMesi?: number | null,
 ): Record<string, unknown> | null {
-  if (!f.scadenza) return null;
+  let scadenza = f.scadenza ?? null;
+  if (!scadenza && aggMesi != null && f.data_completamento) scadenza = addMesi(f.data_completamento, aggMesi);
+  if (!scadenza) return null;
   const nome = (f.corso_nome ?? '').trim() || f.corso_codice || 'corso';
   const az: Record<string, unknown> = {
     id: f.id,
@@ -956,7 +962,7 @@ export function azioneScadenzaFormazione(
     origine_formazione_id: f.id,
     descrizione: 'Rinnovo formazione - ' + nome + (personaNome ? ' (' + personaNome + ')' : ''),
     responsabile_cliente_id: clienteId,
-    data_scadenza: f.scadenza,
+    data_scadenza: scadenza,
   };
   if (areaFormazione) {
     az.responsabile_tipo = 'risorsa_interna';
@@ -1005,10 +1011,12 @@ export function azioneScadenzaEsonero(
 }
 
 // Backfill: rigenera le azioni di scadenzario per TUTTI gli esoneri attivi di un
-// cliente. Serve dopo l'introduzione della regola A (il rinnovo dovuto degli esoneri
-// senza scadenza propria su corsi periodici non veniva generato al salvataggio
-// originario). Riusa azioneScadenzaEsonero: upsert idempotente per id = id esonero,
-// delete quando non c'e' scadenza da monitorare. Ritorna il numero di azioni scritte.
+// Backfill: rigenera le azioni di scadenzario per attestati ED esoneri di un
+// cliente. Serve perche' molti record sono stati importati/registrati senza generare
+// l'azione collegata, oppure avevano scadenza solo CALCOLATA (non esplicita) e le
+// vecchie funzioni la ignoravano. Riusa azioneScadenzaFormazione/azioneScadenzaEsonero:
+// upsert idempotente per id = id record, delete quando non c'e' scadenza da monitorare.
+// Ritorna il numero di azioni scritte.
 export async function backfillAzioniEsoneri(clienteId: string): Promise<number> {
   const areaId = await areaFormazioneId();
   // persone del cliente
@@ -1019,17 +1027,30 @@ export async function backfillAzioniEsoneri(clienteId: string): Promise<number> 
   const personaById = new Map(persone.map((p) => [p.id, p]));
   const ids = persone.map((p) => p.id);
 
-  const [esR, nmR, coR] = await Promise.all([
+  const [esR, nmR, coR, foR] = await Promise.all([
     supabase.from('esonero').select('*').in('persona_id', ids).eq('attivo', true),
     supabase.from('nomina').select('persona_id, figura_codice, data_nomina, attiva').in('persona_id', ids),
     supabase.from('corso_catalogo').select('codice, nome, aggiornamento_mesi'),
+    supabase.from('formazione').select('*').in('persona_id', ids),
   ]);
   if (esR.error) throw esR.error;
+  if (foR.error) throw foR.error;
   const esoneri = (esR.data ?? []) as Esonero[];
+  const formazioni = (foR.data ?? []) as Formazione[];
   const nomine = (nmR.data ?? []) as { persona_id: string; figura_codice: string | null; data_nomina: string | null; attiva: boolean }[];
   const corsi = new Map(((coR.data ?? []) as { codice: string; nome: string | null; aggiornamento_mesi: number | null }[]).map((c) => [c.codice, c]));
 
   let scritte = 0;
+  // Attestati: azione di rinnovo per ogni scadenza EFFETTIVA (esplicita o calcolata
+  // dalla periodicita' del corso). I corsi che non scadono non generano nulla.
+  for (const f of formazioni) {
+    const p = personaById.get(f.persona_id);
+    const corso = f.corso_codice ? corsi.get(f.corso_codice) : undefined;
+    const az = azioneScadenzaFormazione(f, clienteId, areaId, p ? nomePersona(p) : undefined, corso?.aggiornamento_mesi ?? null);
+    if (az) { const { error } = await supabase.from('azione').upsert(az); if (error) throw error; scritte++; }
+    else { await supabase.from('azione').delete().eq('origine_formazione_id', f.id); }
+  }
+  // Esoneri/crediti: rinnovo dovuto (regola A).
   for (const e of esoneri) {
     const p = personaById.get(e.persona_id);
     const corso = e.corso_codice ? corsi.get(e.corso_codice) : undefined;
@@ -1073,7 +1094,12 @@ export async function salvaFormazione(f: Formazione): Promise<Formazione> {
     const clienteId = (per.data?.cliente_id ?? null) as string | null;
     if (clienteId) {
       const areaId = await areaFormazioneId();
-      const az = azioneScadenzaFormazione(salvata, clienteId, areaId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }));
+      let aggMesi: number | null = null;
+      if (salvata.corso_codice) {
+        const c = await supabase.from('corso_catalogo').select('aggiornamento_mesi').eq('codice', salvata.corso_codice).maybeSingle();
+        aggMesi = (c.data?.aggiornamento_mesi ?? null) as number | null;
+      }
+      const az = azioneScadenzaFormazione(salvata, clienteId, areaId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }), aggMesi);
       if (az) await supabase.from('azione').upsert(az);
       else await supabase.from('azione').delete().eq('origine_formazione_id', salvata.id);
     }

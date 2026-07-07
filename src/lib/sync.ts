@@ -147,7 +147,8 @@ async function mantieniAzioneScadenza(r: Formazione): Promise<void> {
   if (!clienteId) return;
   let areaId: string | null = null;
   try { areaId = localStorage.getItem('area:formazione:id') || null; } catch { areaId = null; }
-  const az = azioneScadenzaFormazione(r, clienteId, areaId, per ? nomePersona(per) : undefined);
+  const corso = r.corso_codice ? await db.corsi.get(r.corso_codice) : undefined;
+  const az = azioneScadenzaFormazione(r, clienteId, areaId, per ? nomePersona(per) : undefined, corso?.aggiornamento_mesi ?? null);
   if (az) await enqueueRow('azione', az);
   else await enqueueDelete('azione', r.id);
 }
