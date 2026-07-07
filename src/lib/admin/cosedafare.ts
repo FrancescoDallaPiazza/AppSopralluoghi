@@ -79,8 +79,8 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       area:area_interna!responsabile_area_id ( nome ),
       tecnico:tecnico!responsabile_interno_id ( nome ),
       cli_resp:cliente!responsabile_cliente_id ( id, ragione_sociale ),
-      f_orig:formazione!origine_formazione_id ( corso_codice, persona:persona!persona_id ( cliente_id ), corso:corso_catalogo!corso_codice ( ore, ore_aggiornamento ) ),
-      e_orig:esonero!origine_esonero_id ( persona:persona!persona_id ( cliente_id ), corso:corso_catalogo!corso_codice ( ore, ore_aggiornamento ) ),
+      f_orig:formazione!origine_formazione_id ( corso_codice, persona:persona!persona_id ( cliente_id ) ),
+      e_orig:esonero!origine_esonero_id ( corso_codice, persona:persona!persona_id ( cliente_id ) ),
       sopr:sopralluogo!sopralluogo_origine_id (
         progressivo,
         incarico:incarico!incarico_id (
@@ -91,6 +91,14 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     `);
   if (error) throw error;
   const o = oggiISO();
+
+  // Ore di formazione risolte via mappa dal catalogo: corso_codice su formazione/esonero
+  // e' testo libero (nessuna FK a corso_catalogo), quindi niente embed PostgREST.
+  const { data: corsiData } = await supabase.from('corso_catalogo').select('codice, ore, ore_aggiornamento');
+  const oreByCorso = new Map<string, number | null>(
+    ((corsiData ?? []) as { codice: string; ore: number | null; ore_aggiornamento: number | null }[])
+      .map((c) => [c.codice, c.ore_aggiornamento ?? c.ore ?? null]),
+  );
 
   return (data ?? []).map((r: any): CosaDaFareAdmin => {
     const sopr = uno<any>(r.sopr);
@@ -104,8 +112,8 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     const ePers = uno<any>(uno<any>(r.e_orig)?.persona);
     // Ore di formazione: le voci di scadenzario sono RINNOVI, quindi si mostrano le
     // ore di aggiornamento del corso (se definite), altrimenti le ore base.
-    const corsoOre = uno<any>(uno<any>(r.f_orig)?.corso) ?? uno<any>(uno<any>(r.e_orig)?.corso);
-    const ore: number | null = corsoOre ? (corsoOre.ore_aggiornamento ?? corsoOre.ore ?? null) : null;
+    const corsoCodice: string | null = uno<any>(r.f_orig)?.corso_codice ?? uno<any>(r.e_orig)?.corso_codice ?? null;
+    const ore: number | null = corsoCodice ? (oreByCorso.get(corsoCodice) ?? null) : null;
 
     // Cliente d'origine: sopralluogo (correttive) -> responsabile cliente
     // (formazione verso cliente) -> persona della formazione/esonero (azioni
