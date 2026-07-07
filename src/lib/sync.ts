@@ -206,7 +206,12 @@ async function mantieniAzioneEsonero(r: Esonero): Promise<void> {
   let areaId: string | null = null;
   try { areaId = localStorage.getItem('area:formazione:id') || null; } catch { areaId = null; }
   const corso = r.corso_codice ? await db.corsi.get(r.corso_codice) : undefined;
-  const az = azioneScadenzaEsonero(r, clienteId, areaId, per ? nomePersona(per) : undefined, corso?.nome);
+  let dataNomina: string | null = null;
+  if (r.figura_codice) {
+    const noms = await db.nomine.where('persona_id').equals(r.persona_id).toArray();
+    dataNomina = noms.find((n) => n.attiva && n.figura_codice === r.figura_codice)?.data_nomina ?? null;
+  }
+  const az = azioneScadenzaEsonero(r, clienteId, areaId, per ? nomePersona(per) : undefined, corso?.nome, corso?.aggiornamento_mesi ?? null, dataNomina);
   if (az) await enqueueRow('azione', az);
   else await enqueueDelete('azione', r.id);
 }

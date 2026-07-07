@@ -473,12 +473,14 @@ export function statoAggiornamentoDopoEsonero(
   if (fAgg && fAgg.data_completamento) {
     const scad = fAgg.scadenza ?? addMesi(fAgg.data_completamento, aggMesi);
     const { stato, dettaglio } = statoDaScadenza(scad, fAgg.data_completamento);
-    return { stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: fAgg.id, allegato_url: fAgg.allegato_url, ore };
+    // Iniziale coperto dall'esonero: finche' il rinnovo e' lontano (conforme) la riga
+    // resta ESONERATO; si accende (in scadenza/critico) solo quando serve agire.
+    return { stato: stato === 'conforme' ? 'esonerato' : stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: fAgg.id, allegato_url: fAgg.allegato_url, ore };
   }
   if (dataPartenza) {
     const scad = addMesi(dataPartenza, aggMesi);
     const { stato, dettaglio } = statoDaScadenza(scad, dataPartenza);
-    return { stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: null, allegato_url: null, ore };
+    return { stato: stato === 'conforme' ? 'esonerato' : stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: null, allegato_url: null, ore };
   }
   // nessuna data di partenza: dovuto, scadenza da determinare
   return { stato: 'da_verificare', scadenza: null, dettaglio: 'aggiornamento periodico dovuto: registrare l\u2019ultimo attestato di aggiornamento', formazione_id: null, allegato_url: null, ore };
@@ -967,11 +969,21 @@ export function azioneScadenzaFormazione(
 
 // Gemello di azioneScadenzaFormazione per un esonero/credito con scadenza.
 // id azione = id esonero; origine_esonero_id = id esonero. Stesse regole
-// (indirizzata all'area Formazione; omette stato/priorita). Null se senza scadenza.
+// (indirizzata all'area Formazione; omette stato/priorita).
+// Regola A: se l'esonero NON ha scadenza propria ma copre un corso con aggiornamento
+// periodico, il rinnovo resta dovuto: la scadenza si calcola dalla data di
+// riconoscimento (o dalla nomina) + aggiornamento_mesi. Null solo se non c'e' alcuna
+// scadenza da monitorare (esonero senza scadenza su corso non periodico).
 export function azioneScadenzaEsonero(
   e: Esonero, clienteId: string, areaFormazione: string | null, personaNome?: string, corsoNome?: string,
+  aggMesi?: number | null, dataNomina?: string | null,
 ): Record<string, unknown> | null {
-  if (!e.scadenza) return null;
+  let scadenza = e.scadenza ?? null;
+  if (!scadenza && aggMesi != null) {
+    const base = e.data_riconoscimento ?? dataNomina ?? null;
+    if (base) scadenza = addMesi(base, aggMesi);
+  }
+  if (!scadenza) return null;
   const nome = (corsoNome ?? '').trim() || e.corso_codice || (e.motivazione ?? '').trim() || 'credito';
   const az: Record<string, unknown> = {
     id: e.id,
@@ -981,7 +993,7 @@ export function azioneScadenzaEsonero(
     origine_esonero_id: e.id,
     descrizione: 'Rinnovo credito/esonero - ' + nome + (personaNome ? ' (' + personaNome + ')' : ''),
     responsabile_cliente_id: clienteId,
-    data_scadenza: e.scadenza,
+    data_scadenza: scadenza,
   };
   if (areaFormazione) {
     az.responsabile_tipo = 'risorsa_interna';
@@ -990,6 +1002,49 @@ export function azioneScadenzaEsonero(
     az.responsabile_tipo = 'cliente';
   }
   return az;
+}
+
+// Backfill: rigenera le azioni di scadenzario per TUTTI gli esoneri attivi di un
+// cliente. Serve dopo l'introduzione della regola A (il rinnovo dovuto degli esoneri
+// senza scadenza propria su corsi periodici non veniva generato al salvataggio
+// originario). Riusa azioneScadenzaEsonero: upsert idempotente per id = id esonero,
+// delete quando non c'e' scadenza da monitorare. Ritorna il numero di azioni scritte.
+export async function backfillAzioniEsoneri(clienteId: string): Promise<number> {
+  const areaId = await areaFormazioneId();
+  // persone del cliente
+  const per = await supabase.from('persona').select('id, nome, cognome').eq('cliente_id', clienteId);
+  if (per.error) throw per.error;
+  const persone = (per.data ?? []) as { id: string; nome: string | null; cognome: string | null }[];
+  if (persone.length === 0) return 0;
+  const personaById = new Map(persone.map((p) => [p.id, p]));
+  const ids = persone.map((p) => p.id);
+
+  const [esR, nmR, coR] = await Promise.all([
+    supabase.from('esonero').select('*').in('persona_id', ids).eq('attivo', true),
+    supabase.from('nomina').select('persona_id, figura_codice, data_nomina, attiva').in('persona_id', ids),
+    supabase.from('corso_catalogo').select('codice, nome, aggiornamento_mesi'),
+  ]);
+  if (esR.error) throw esR.error;
+  const esoneri = (esR.data ?? []) as Esonero[];
+  const nomine = (nmR.data ?? []) as { persona_id: string; figura_codice: string | null; data_nomina: string | null; attiva: boolean }[];
+  const corsi = new Map(((coR.data ?? []) as { codice: string; nome: string | null; aggiornamento_mesi: number | null }[]).map((c) => [c.codice, c]));
+
+  let scritte = 0;
+  for (const e of esoneri) {
+    const p = personaById.get(e.persona_id);
+    const corso = e.corso_codice ? corsi.get(e.corso_codice) : undefined;
+    const dataNomina = e.figura_codice
+      ? (nomine.find((n) => n.persona_id === e.persona_id && n.figura_codice === e.figura_codice && n.attiva)?.data_nomina ?? null)
+      : null;
+    const az = azioneScadenzaEsonero(
+      e, clienteId, areaId,
+      p ? nomePersona(p) : undefined,
+      corso?.nome ?? undefined, corso?.aggiornamento_mesi ?? null, dataNomina,
+    );
+    if (az) { const { error } = await supabase.from('azione').upsert(az); if (error) throw error; scritte++; }
+    else { await supabase.from('azione').delete().eq('origine_esonero_id', e.id); }
+  }
+  return scritte;
 }
 
 export async function salvaFormazione(f: Formazione): Promise<Formazione> {
@@ -1058,11 +1113,18 @@ export async function salvaEsonero(e: Esonero): Promise<Esonero> {
     if (clienteId) {
       const areaId = await areaFormazioneId();
       let corsoNome: string | undefined;
+      let aggMesi: number | null = null;
       if (salvato.corso_codice) {
-        const c = await supabase.from('corso_catalogo').select('nome').eq('codice', salvato.corso_codice).maybeSingle();
+        const c = await supabase.from('corso_catalogo').select('nome, aggiornamento_mesi').eq('codice', salvato.corso_codice).maybeSingle();
         corsoNome = (c.data?.nome ?? undefined) as string | undefined;
+        aggMesi = (c.data?.aggiornamento_mesi ?? null) as number | null;
       }
-      const az = azioneScadenzaEsonero(salvato, clienteId, areaId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }), corsoNome);
+      let dataNomina: string | null = null;
+      if (salvato.figura_codice) {
+        const nm = await supabase.from('nomina').select('data_nomina').eq('persona_id', salvato.persona_id).eq('figura_codice', salvato.figura_codice).eq('attiva', true).maybeSingle();
+        dataNomina = (nm.data?.data_nomina ?? null) as string | null;
+      }
+      const az = azioneScadenzaEsonero(salvato, clienteId, areaId, nomePersona(per.data as { nome?: string | null; cognome?: string | null }), corsoNome, aggMesi, dataNomina);
       if (az) await supabase.from('azione').upsert(az);
       else await supabase.from('azione').delete().eq('origine_esonero_id', salvato.id);
     }

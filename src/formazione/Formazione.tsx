@@ -17,7 +17,7 @@ import {
   salvaPersona, eliminaPersona, salvaNomina,
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
-  proponiCoseDaFare, generaCoseDaFare,
+  proponiCoseDaFare, generaCoseDaFare, backfillAzioniEsoneri,
   nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA,
 } from '../lib/admin/formazione';
 import {
@@ -377,6 +377,9 @@ function PannelloGenerazione({
           setSalvando(true);
           try {
             const n = await generaCoseDaFare(proposte, { includiInScadenza, versoArea, areaId: versoArea ? areaId : null, clienteId });
+            // Rigenera anche le scadenze di rinnovo degli esoneri esistenti (regola A):
+            // gli esoneri senza scadenza propria su corsi periodici non le avevano.
+            await backfillAzioniEsoneri(clienteId);
             onFatto(n);
           } catch (e: any) {
             alert('Errore: ' + (e?.message ?? String(e)));
