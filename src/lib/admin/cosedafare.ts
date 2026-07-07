@@ -51,6 +51,7 @@ interface CosaDaFareBase {
   origine_voce: string | null;
   destinatario_tipo: DestinatarioTipo;
   destinatario_nome: string | null;  // nome del responsabile risolto
+  ore: number | null;                // ore di formazione del corso (aggiornamento se rinnovo)
 }
 
 // Union discriminata su `kind`: solo le righe azione portano l'Azione completa
@@ -78,8 +79,8 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       area:area_interna!responsabile_area_id ( nome ),
       tecnico:tecnico!responsabile_interno_id ( nome ),
       cli_resp:cliente!responsabile_cliente_id ( id, ragione_sociale ),
-      f_orig:formazione!origine_formazione_id ( persona:persona!persona_id ( cliente_id ) ),
-      e_orig:esonero!origine_esonero_id ( persona:persona!persona_id ( cliente_id ) ),
+      f_orig:formazione!origine_formazione_id ( corso_codice, persona:persona!persona_id ( cliente_id ), corso:corso_catalogo!corso_codice ( ore, ore_aggiornamento ) ),
+      e_orig:esonero!origine_esonero_id ( persona:persona!persona_id ( cliente_id ), corso:corso_catalogo!corso_codice ( ore, ore_aggiornamento ) ),
       sopr:sopralluogo!sopralluogo_origine_id (
         progressivo,
         incarico:incarico!incarico_id (
@@ -101,6 +102,10 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     const cliResp = uno<any>(r.cli_resp);
     const fPers = uno<any>(uno<any>(r.f_orig)?.persona);
     const ePers = uno<any>(uno<any>(r.e_orig)?.persona);
+    // Ore di formazione: le voci di scadenzario sono RINNOVI, quindi si mostrano le
+    // ore di aggiornamento del corso (se definite), altrimenti le ore base.
+    const corsoOre = uno<any>(uno<any>(r.f_orig)?.corso) ?? uno<any>(uno<any>(r.e_orig)?.corso);
+    const ore: number | null = corsoOre ? (corsoOre.ore_aggiornamento ?? corsoOre.ore ?? null) : null;
 
     // Cliente d'origine: sopralluogo (correttive) -> responsabile cliente
     // (formazione verso cliente) -> persona della formazione/esonero (azioni
@@ -146,6 +151,7 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       origine_voce: orig?.voce_testo ?? null,
       destinatario_tipo: dTipo,
       destinatario_nome: dNome,
+      ore,
       azione: azione as unknown as Azione,
     };
   });
@@ -191,6 +197,7 @@ async function caricaSopralluoghiPianificati(): Promise<CosaDaFareAdmin[]> {
       origine_voce: null,
       destinatario_tipo: 'tecnico',
       destinatario_nome: tecNome,
+      ore: null,
       azione: null,
     };
   });

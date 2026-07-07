@@ -1010,62 +1010,74 @@ export function azioneScadenzaEsonero(
   return az;
 }
 
-// Backfill: rigenera le azioni di scadenzario per TUTTI gli esoneri attivi di un
-// Backfill: rigenera le azioni di scadenzario per attestati ED esoneri di un
-// cliente. Serve perche' molti record sono stati importati/registrati senza generare
-// l'azione collegata, oppure avevano scadenza solo CALCOLATA (non esplicita) e le
-// vecchie funzioni la ignoravano. Riusa azioneScadenzaFormazione/azioneScadenzaEsonero:
-// upsert idempotente per id = id record, delete quando non c'e' scadenza da monitorare.
-// Ritorna il numero di azioni scritte.
-export async function backfillAzioniEsoneri(clienteId: string): Promise<number> {
+// Sincronizza lo scadenzario formativo di un cliente PARTENDO DAI REQUISITI VALUTATI
+// dal motore (non dai record grezzi): il motore ha gia' scelto, per ogni corso,
+// l'attestato piu' recente (vincente) e calcolato la scadenza corretta, applicando
+// esoneri/crediti/pregressa. Cosi' si evitano azioni "fantasma" da attestati superati
+// e ogni discrepanza tra la vista e lo scadenzario.
+// Idempotente: chiave azione = id dell'attestato/esonero vincente. Fa upsert delle
+// azioni attese (requisiti CON scadenza) e cancella gli orfani (azioni collegate a
+// formazioni/esoneri del cliente che non corrispondono piu' a un requisito con scadenza).
+export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoCliente): Promise<number> {
+  if (!riep) return 0; // senza requisiti valutati non si sincronizza
   const areaId = await areaFormazioneId();
-  // persone del cliente
-  const per = await supabase.from('persona').select('id, nome, cognome').eq('cliente_id', clienteId);
-  if (per.error) throw per.error;
-  const persone = (per.data ?? []) as { id: string; nome: string | null; cognome: string | null }[];
-  if (persone.length === 0) return 0;
-  const personaById = new Map(persone.map((p) => [p.id, p]));
-  const ids = persone.map((p) => p.id);
 
-  const [esR, nmR, coR, foR] = await Promise.all([
-    supabase.from('esonero').select('*').in('persona_id', ids).eq('attivo', true),
-    supabase.from('nomina').select('persona_id, figura_codice, data_nomina, attiva').in('persona_id', ids),
-    supabase.from('corso_catalogo').select('codice, nome, aggiornamento_mesi'),
-    supabase.from('formazione').select('*').in('persona_id', ids),
-  ]);
-  if (esR.error) throw esR.error;
-  if (foR.error) throw foR.error;
-  const esoneri = (esR.data ?? []) as Esonero[];
-  const formazioni = (foR.data ?? []) as Formazione[];
-  const nomine = (nmR.data ?? []) as { persona_id: string; figura_codice: string | null; data_nomina: string | null; attiva: boolean }[];
-  const corsi = new Map(((coR.data ?? []) as { codice: string; nome: string | null; aggiornamento_mesi: number | null }[]).map((c) => [c.codice, c]));
+  // Azioni attese: una per ogni requisito CON scadenza, chiave = attestato o esonero.
+  const attese = new Map<string, Record<string, unknown>>();
+  for (const pv of riep.persone) {
+    const nome = nomePersona(pv.persona);
+    for (const r of pv.requisiti) {
+      if (!r.scadenza) continue; // solo scadenze monitorabili
+      const base = (extra: Record<string, unknown>): Record<string, unknown> => {
+        const az: Record<string, unknown> = {
+          tipo: 'azione_correttiva', origine_esito_id: null, sopralluogo_origine_id: null,
+          origine_formazione_id: null, origine_esonero_id: null,
+          responsabile_cliente_id: clienteId, data_scadenza: r.scadenza, ...extra,
+        };
+        if (areaId) { az.responsabile_tipo = 'risorsa_interna'; az.responsabile_area_id = areaId; }
+        else { az.responsabile_tipo = 'cliente'; }
+        return az;
+      };
+      if (r.formazione_id) {
+        attese.set(r.formazione_id, base({
+          id: r.formazione_id, origine_formazione_id: r.formazione_id,
+          descrizione: 'Rinnovo formazione - ' + r.corso_nome + ' (' + nome + ')',
+        }));
+      } else if (r.esonero_id) {
+        attese.set(r.esonero_id, base({
+          id: r.esonero_id, origine_esonero_id: r.esonero_id,
+          descrizione: 'Rinnovo credito/esonero - ' + r.corso_nome + ' (' + nome + ')',
+        }));
+      }
+    }
+  }
 
-  let scritte = 0;
-  // Attestati: azione di rinnovo per ogni scadenza EFFETTIVA (esplicita o calcolata
-  // dalla periodicita' del corso). I corsi che non scadono non generano nulla.
-  for (const f of formazioni) {
-    const p = personaById.get(f.persona_id);
-    const corso = f.corso_codice ? corsi.get(f.corso_codice) : undefined;
-    const az = azioneScadenzaFormazione(f, clienteId, areaId, p ? nomePersona(p) : undefined, corso?.aggiornamento_mesi ?? null);
-    if (az) { const { error } = await supabase.from('azione').upsert(az); if (error) throw error; scritte++; }
-    else { await supabase.from('azione').delete().eq('origine_formazione_id', f.id); }
+  if (attese.size) {
+    const { error } = await supabase.from('azione').upsert([...attese.values()]);
+    if (error) throw error;
   }
-  // Esoneri/crediti: rinnovo dovuto (regola A).
-  for (const e of esoneri) {
-    const p = personaById.get(e.persona_id);
-    const corso = e.corso_codice ? corsi.get(e.corso_codice) : undefined;
-    const dataNomina = e.figura_codice
-      ? (nomine.find((n) => n.persona_id === e.persona_id && n.figura_codice === e.figura_codice && n.attiva)?.data_nomina ?? null)
-      : null;
-    const az = azioneScadenzaEsonero(
-      e, clienteId, areaId,
-      p ? nomePersona(p) : undefined,
-      corso?.nome ?? undefined, corso?.aggiornamento_mesi ?? null, dataNomina,
-    );
-    if (az) { const { error } = await supabase.from('azione').upsert(az); if (error) throw error; scritte++; }
-    else { await supabase.from('azione').delete().eq('origine_esonero_id', e.id); }
+
+  // Delete orfani: azioni collegate a formazioni/esoneri delle persone del cliente,
+  // il cui id non e' piu' tra le attese (attestati superati o scadenze sparite).
+  const persIds = riep.persone.map((p) => p.persona.id);
+  if (persIds.length) {
+    const [foR, esR] = await Promise.all([
+      supabase.from('formazione').select('id').in('persona_id', persIds),
+      supabase.from('esonero').select('id').in('persona_id', persIds),
+    ]);
+    const origiIds = [
+      ...((foR.data ?? []) as { id: string }[]).map((x) => x.id),
+      ...((esR.data ?? []) as { id: string }[]).map((x) => x.id),
+    ];
+    if (origiIds.length) {
+      const es = await supabase.from('azione').select('id, origine_formazione_id, origine_esonero_id')
+        .or(`origine_formazione_id.in.(${origiIds.join(',')}),origine_esonero_id.in.(${origiIds.join(',')})`);
+      const daCancellare = ((es.data ?? []) as { id: string }[]).map((a) => a.id).filter((id) => !attese.has(id));
+      if (daCancellare.length) await supabase.from('azione').delete().in('id', daCancellare);
+    }
   }
-  return scritte;
+
+  return attese.size;
 }
 
 export async function salvaFormazione(f: Formazione): Promise<Formazione> {

@@ -179,12 +179,13 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
     if (!catalogo) { setRiep(null); return; }
     setCaricando(true); setErrore(null);
     try {
-      setRiep(await valutaCliente(clienteId, catalogo));
-      // Allinea lo scadenzario alle scadenze formative del cliente (attestati + esoneri).
-      // Best-effort e idempotente: una volta per cliente, non blocca il render.
+      const nuovoRiep = await valutaCliente(clienteId, catalogo);
+      setRiep(nuovoRiep);
+      // Allinea lo scadenzario dai requisiti valutati (attestato vincente): idempotente,
+      // una volta per cliente, non blocca il render.
       if (syncFattaPer.current !== clienteId) {
         syncFattaPer.current = clienteId;
-        backfillAzioniEsoneri(clienteId).catch((e) => console.error('sync scadenzario formazione:', e));
+        backfillAzioniEsoneri(clienteId, nuovoRiep).catch((e) => console.error('sync scadenzario formazione:', e));
       }
     } catch (e: any) {
       setErrore(e?.message ?? String(e));
@@ -254,7 +255,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
             <button className="bo-btn ghost" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length}>Genera cose da fare per i gap</button>
             <button className="bo-btn ghost" disabled={syncBusy} onClick={async () => {
               setSyncBusy(true);
-              try { const n = await backfillAzioniEsoneri(clienteId); alert(n + ' scadenze allineate nello scadenzario.'); }
+              try { const n = await backfillAzioniEsoneri(clienteId, riep); alert(n + ' scadenze allineate nello scadenzario.'); }
               catch (e: any) { alert('Errore: ' + (e?.message ?? String(e))); }
               finally { setSyncBusy(false); }
             }}>{syncBusy ? 'Sincronizzo…' : 'Sincronizza scadenzario'}</button>
