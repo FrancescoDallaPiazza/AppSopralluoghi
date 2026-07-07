@@ -123,10 +123,49 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
   const destLabel = (t: DestinatarioTipo) =>
     t === 'cliente' ? 'Cliente' : t === 'area' ? 'Area' : 'Tecnico';
 
-  function Riga({ r }: { r: CosaDaFareAdmin }) {
+  // Rimuove i prefissi tecnici e il suffisso persona dalla descrizione, come fallback
+  // quando i campi strutturati (persona_nome/corso_nome) non sono disponibili.
+  function corsoDaDescrizione(desc: string): string {
+    return desc
+      .replace(/^Rinnovo formazione - /, '')
+      .replace(/^Rinnovo credito\/esonero - /, '')
+      .replace(/\s*\([^)]*\)\s*$/, '')
+      .trim();
+  }
+
+  function Riga({ r, formazione }: { r: CosaDaFareAdmin; formazione: boolean }) {
     const scaduta = r.scaduta;
-    // Le ore hanno senso solo per le scadenze di formazione (rinnovi corsi).
-    const oreCella = r.riga_tipo === 'formazione' ? (r.ore != null ? r.ore + 'h' : '—') : '';
+    const statoCell = r.kind === 'azione' ? (
+      <select value={r.azione.stato} disabled={busy === r.id}
+        onChange={(e) => void cambiaStato(r.id, e.target.value as AzioneStato)}>
+        {STATI.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
+      </select>
+    ) : <span className="bo-sub">—</span>;
+    const actCell = r.kind === 'azione' && r.destinatario_tipo !== 'cliente' && !r.conclusa ? (
+      <button className="bo-btn ghost sm" disabled={busy === r.id}
+        onClick={() => void avvisa(r.id)}
+        title="Invia un'email di avviso al destinatario interno">✉</button>
+    ) : null;
+    const scadCell = (
+      <td className={'cdf-scad' + (scaduta ? ' warn' : '')}>
+        {scaduta ? 'Scaduta ' : (r.kind === 'sopralluogo' ? 'Pianif. ' : '')}{fmt(r.data)}
+      </td>
+    );
+
+    if (formazione) {
+      const corso = r.corso_nome ?? corsoDaDescrizione(r.descrizione);
+      return (
+        <tr className={'cdf-tr' + (r.conclusa ? ' dim' : '') + (scaduta ? ' scad' : '')}>
+          <td className="cdf-disc"><div className="cdf-d">{r.persona_nome ?? '—'}</div></td>
+          <td className="cdf-corso">{corso}</td>
+          <td className="cdf-ore">{r.ore != null ? r.ore + 'h' : '—'}</td>
+          {scadCell}
+          <td className="cdf-stato">{statoCell}</td>
+          <td className="cdf-act">{actCell}</td>
+        </tr>
+      );
+    }
+
     return (
       <tr className={'cdf-tr' + (r.conclusa ? ' dim' : '') + (scaduta ? ' scad' : '')}>
         <td className="cdf-desc">
@@ -140,30 +179,14 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
             {r.origine_voce && <span>da: {r.origine_voce}</span>}
           </div>
         </td>
-        <td className="cdf-ore">{oreCella}</td>
         <td className="cdf-dest">
           <span className={`bo-pill ${r.destinatario_tipo === 'area' ? 'usato' : 'archiviato'}`}>
             {destLabel(r.destinatario_tipo)}{r.destinatario_nome ? `: ${r.destinatario_nome}` : ''}
           </span>
         </td>
-        <td className={'cdf-scad' + (scaduta ? ' warn' : '')}>
-          {scaduta ? 'Scaduta ' : (r.kind === 'sopralluogo' ? 'Pianif. ' : '')}{fmt(r.data)}
-        </td>
-        <td className="cdf-stato">
-          {r.kind === 'azione' ? (
-            <select value={r.azione.stato} disabled={busy === r.id}
-              onChange={(e) => void cambiaStato(r.id, e.target.value as AzioneStato)}>
-              {STATI.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
-            </select>
-          ) : <span className="bo-sub">—</span>}
-        </td>
-        <td className="cdf-act">
-          {r.kind === 'azione' && r.destinatario_tipo !== 'cliente' && !r.conclusa && (
-            <button className="bo-btn ghost sm" disabled={busy === r.id}
-              onClick={() => void avvisa(r.id)}
-              title="Invia un'email di avviso al destinatario interno">✉</button>
-          )}
-        </td>
+        {scadCell}
+        <td className="cdf-stato">{statoCell}</td>
+        <td className="cdf-act">{actCell}</td>
       </tr>
     );
   }
@@ -178,9 +201,11 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
         .cdf-tr.dim{opacity:.5}
         .cdf-tr.scad td.cdf-desc{box-shadow:inset 3px 0 0 var(--no,#d8442f)}
         .cdf-desc{width:44%}
+        .cdf-disc{width:26%;font-weight:600}
+        .cdf-corso{width:34%;line-height:1.25}
         .cdf-d{font-weight:600;line-height:1.25}
         .cdf-sub{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;font-size:11px;color:var(--ink-soft,#5b5f66)}
-        .cdf-ore{width:7%;white-space:nowrap;font-weight:700;color:#3a3d43}
+        .cdf-ore{width:9%;white-space:nowrap;font-weight:700;color:#3a3d43}
         .cdf-dest{width:19%}
         .cdf-scad{width:14%;white-space:nowrap;color:var(--ink-soft,#5b5f66)}
         .cdf-scad.warn{color:var(--no,#d8442f);font-weight:700}
@@ -258,17 +283,27 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
             {gruppo.length > 0 && (
               <table className="cdf-tbl">
                 <thead>
-                  <tr>
-                    <th>Descrizione</th>
-                    <th>{cat.key === 'formazione' ? 'Ore' : ''}</th>
-                    <th>Destinatario</th>
-                    <th>Scadenza</th>
-                    <th>Stato</th>
-                    <th></th>
-                  </tr>
+                  {cat.key === 'formazione' ? (
+                    <tr>
+                      <th>Dati discente</th>
+                      <th>Corso aggiornamento</th>
+                      <th>Ore corso</th>
+                      <th>Scadenza</th>
+                      <th>Stato</th>
+                      <th></th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th>Descrizione</th>
+                      <th>Destinatario</th>
+                      <th>Scadenza</th>
+                      <th>Stato</th>
+                      <th></th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
-                  {gruppo.map((r) => <Riga key={r.id} r={r} />)}
+                  {gruppo.map((r) => <Riga key={r.id} r={r} formazione={cat.key === 'formazione'} />)}
                 </tbody>
               </table>
             )}

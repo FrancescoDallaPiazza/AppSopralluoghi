@@ -52,6 +52,8 @@ interface CosaDaFareBase {
   destinatario_tipo: DestinatarioTipo;
   destinatario_nome: string | null;  // nome del responsabile risolto
   ore: number | null;                // ore di formazione del corso (aggiornamento se rinnovo)
+  persona_nome: string | null;       // discente (cognome nome), per le scadenze di formazione
+  corso_nome: string | null;         // tipo corso dal catalogo, per le scadenze di formazione
 }
 
 // Union discriminata su `kind`: solo le righe azione portano l'Azione completa
@@ -79,8 +81,8 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       area:area_interna!responsabile_area_id ( nome ),
       tecnico:tecnico!responsabile_interno_id ( nome ),
       cli_resp:cliente!responsabile_cliente_id ( id, ragione_sociale ),
-      f_orig:formazione!origine_formazione_id ( corso_codice, persona:persona!persona_id ( cliente_id ) ),
-      e_orig:esonero!origine_esonero_id ( corso_codice, persona:persona!persona_id ( cliente_id ) ),
+      f_orig:formazione!origine_formazione_id ( corso_codice, persona:persona!persona_id ( cliente_id, nome, cognome ) ),
+      e_orig:esonero!origine_esonero_id ( corso_codice, persona:persona!persona_id ( cliente_id, nome, cognome ) ),
       sopr:sopralluogo!sopralluogo_origine_id (
         progressivo,
         incarico:incarico!incarico_id (
@@ -94,10 +96,10 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
 
   // Ore di formazione risolte via mappa dal catalogo: corso_codice su formazione/esonero
   // e' testo libero (nessuna FK a corso_catalogo), quindi niente embed PostgREST.
-  const { data: corsiData } = await supabase.from('corso_catalogo').select('codice, ore, ore_aggiornamento');
-  const oreByCorso = new Map<string, number | null>(
-    ((corsiData ?? []) as { codice: string; ore: number | null; ore_aggiornamento: number | null }[])
-      .map((c) => [c.codice, c.ore_aggiornamento ?? c.ore ?? null]),
+  const { data: corsiData } = await supabase.from('corso_catalogo').select('codice, nome, ore, ore_aggiornamento');
+  const corsoInfo = new Map<string, { nome: string | null; ore: number | null }>(
+    ((corsiData ?? []) as { codice: string; nome: string | null; ore: number | null; ore_aggiornamento: number | null }[])
+      .map((c) => [c.codice, { nome: c.nome, ore: c.ore_aggiornamento ?? c.ore ?? null }]),
   );
 
   return (data ?? []).map((r: any): CosaDaFareAdmin => {
@@ -110,10 +112,15 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     const cliResp = uno<any>(r.cli_resp);
     const fPers = uno<any>(uno<any>(r.f_orig)?.persona);
     const ePers = uno<any>(uno<any>(r.e_orig)?.persona);
-    // Ore di formazione: le voci di scadenzario sono RINNOVI, quindi si mostrano le
-    // ore di aggiornamento del corso (se definite), altrimenti le ore base.
+    // Ore + nome del corso (tipo corso) dal catalogo; nome persona (discente) dai join.
     const corsoCodice: string | null = uno<any>(r.f_orig)?.corso_codice ?? uno<any>(r.e_orig)?.corso_codice ?? null;
-    const ore: number | null = corsoCodice ? (oreByCorso.get(corsoCodice) ?? null) : null;
+    const ci = corsoCodice ? corsoInfo.get(corsoCodice) : undefined;
+    const ore: number | null = ci?.ore ?? null;
+    const corso_nome: string | null = ci?.nome ?? null;
+    const pAnag = fPers ?? ePers;
+    const persona_nome: string | null = pAnag
+      ? [pAnag.cognome, pAnag.nome].filter(Boolean).join(' ') || null
+      : null;
 
     // Cliente d'origine: sopralluogo (correttive) -> responsabile cliente
     // (formazione verso cliente) -> persona della formazione/esonero (azioni
@@ -160,6 +167,8 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       destinatario_tipo: dTipo,
       destinatario_nome: dNome,
       ore,
+      persona_nome,
+      corso_nome,
       azione: azione as unknown as Azione,
     };
   });
@@ -206,6 +215,8 @@ async function caricaSopralluoghiPianificati(): Promise<CosaDaFareAdmin[]> {
       destinatario_tipo: 'tecnico',
       destinatario_nome: tecNome,
       ore: null,
+      persona_nome: null,
+      corso_nome: null,
       azione: null,
     };
   });
