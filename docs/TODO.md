@@ -11,6 +11,22 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+Per attivare la **revisione scheda organigramma** (due macro-blocchi
+obbligatorie/eventuali, figura *Datore delegato ex art. 16* con estremi procura,
+*evidenze della nomina* con visura/atto-procura per il datore), nell'ordine:
+
+- [ ] Eseguire `supabase/migrations/053_organigramma_deleghe_evidenze_nomina.sql`
+  nell'**SQL Editor** di Supabase (Canale 3): colonne `figura_sicurezza.macro` e
+  `nomina.estremi_procura`, figura `datore_lavoro_art16`, tabella
+  `nomina_evidenza` + RLS. Idempotente, ASCII-only, `pglast` OK.
+- [ ] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy) + refresh PWA.
+  Tocca: `OrganigrammaView.tsx`, `Formazione.tsx`, `lib/admin/formazione.ts`.
+  `tsc -b` + `vite build` verdi.
+- [ ] Verifica in back-office → Formazione → cliente: i due blocchi
+  *Figure obbligatorie* / *Figure eventuali*; Preposto e RLS non piu' segnalati
+  come scoperti; sotto Datore/Datore-art.16 compaiono *Evidenze della nomina*
+  (visura camerale + atto/procura) e, sul delegato, *Estremi procura*.
+
 Per attivare in produzione lo **snapshot versionato dell'organigramma + PDF**
 (Parte 3, vedi `PROGETTO.md` §7-bis), nell'ordine:
 
@@ -45,6 +61,18 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 ---
 
 ## B · Aperti (sviluppi pianificati)
+
+### Organigramma / formazione
+
+- [ ] **Modello di nomina per figura** (step successivo della revisione scheda
+  organigramma, deciso 2026-07-08). Generare un `.docx` precompilato con dati
+  cliente + persona per ogni figura (atto di nomina), sullo stile dell'export
+  organigramma PDF (Edge Function / PDFBolt o skill docx). Deve valere per tutte
+  le figure con nomina (tutte tranne i Lavoratori); per Datore e Datore delegato
+  ex art. 16 richiamare gli allegati attesi (visura camerale, atto/procura). La
+  parte dati (figura `datore_lavoro_art16` con `nomina.estremi_procura`,
+  evidenze in `nomina_evidenza`) e' gia' pronta lato DB/UI: qui manca solo la
+  generazione documentale.
 
 ### UX trasversale
 

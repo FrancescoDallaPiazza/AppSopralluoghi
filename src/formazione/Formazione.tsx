@@ -17,6 +17,7 @@ import {
   salvaPersona, eliminaPersona, salvaNomina,
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
+  caricaEvidenzeNomina, salvaEvidenzaNomina, eliminaEvidenzaNomina,
   proponiCoseDaFare, generaCoseDaFare, backfillAzioniEsoneri,
   nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA,
 } from '../lib/admin/formazione';
@@ -217,6 +218,15 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
         .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
       if (up.error) throw up.error;
       return salvaFormazione({ ...f, allegato_url: path });
+    },
+    evidenzeNomina: caricaEvidenzeNomina,
+    eliminaEvidenzaNomina,
+    caricaEvidenzaNomina: async (nominaId, tipo, note, file) => {
+      const path = pathAttestato('nomina_' + nominaId, newId(), estensioneAttestato(file));
+      const up = await supabase.storage.from(ATTESTATI_BUCKET)
+        .upload(path, file, { upsert: true, contentType: contentTypeAttestato(file) });
+      if (up.error) throw up.error;
+      return salvaEvidenzaNomina({ id: newId(), nomina_id: nominaId, tipo, allegato_url: path, note });
     },
     apriAllegato,
     maxAllegatoBytes: MAX_ATTESTATO_BYTES,

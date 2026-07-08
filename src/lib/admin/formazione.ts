@@ -49,6 +49,9 @@ export interface FiguraSicurezza {
   gruppo_ordine?: number | null;
   guida?: string | null;
   obbligo?: string | null;
+  // Macro-blocco della scheda organigramma: 'obbligatoria' (figure che ci devono
+  // essere) oppure 'eventuale' (valutazione caso per caso). Vedi migration 053.
+  macro?: string | null;
 }
 
 export interface FiguraRequisito {
@@ -81,6 +84,20 @@ export interface Nomina {
   figura_codice: string;
   data_nomina: string | null;
   attiva: boolean;
+  note: string | null;
+  // Estremi della procura, valorizzati solo per il datore delegato ex art. 16
+  // (repertorio/data/notaio). Vedi migration 053.
+  estremi_procura?: string | null;
+}
+
+// Evidenza documentale collegata a una nomina (atto di nomina, e per il datore
+// e il delegato ex art. 16 anche visura camerale e atto/procura notarile).
+// Il file vive su Storage (bucket attestati), come gli attestati. Migration 053.
+export interface NominaEvidenza {
+  id: string;
+  nomina_id: string;
+  tipo: string;                 // visura_camerale | atto_procura | atto_nomina | altro
+  allegato_url: string | null;
   note: string | null;
 }
 
@@ -175,7 +192,7 @@ export interface ModuloValutato {
 
 export interface PersonaValutata {
   persona: Persona;
-  figure: { codice: string; nome: string; nomina_id: string | null; data_nomina: string | null }[];
+  figure: { codice: string; nome: string; nomina_id: string | null; data_nomina: string | null; estremi_procura: string | null }[];
   requisiti: RequisitoValutato[];
   stato: StatoRequisito;        // peggiore tra i requisiti (esonerato non peggiora)
   moduli: ModuloValutato[];     // moduli condizionati (cantieri, ...), valutati a parte
@@ -498,6 +515,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       codice: f.codice, nome: f.nome,
       nomina_id: nominaByFigura.get(f.codice)?.id ?? null,
       data_nomina: nominaByFigura.get(f.codice)?.data_nomina ?? null,
+      estremi_procura: nominaByFigura.get(f.codice)?.estremi_procura ?? null,
     }));
 
   const rischio = d.persona.livello_rischio ?? rischioCliente;
@@ -906,10 +924,37 @@ export async function salvaNomina(n: Nomina): Promise<Nomina> {
     data_nomina: vuotoNull(n.data_nomina),
     attiva: n.attiva,
     note: vuotoNull(n.note),
+    estremi_procura: vuotoNull(n.estremi_procura ?? null),
   };
   const { data, error } = await supabase.from('nomina').upsert(row).select().single();
   if (error) throw error;
   return data as Nomina;
+}
+
+// --- Evidenze documentali della nomina (Storage) - migration 053 ---------------
+export async function caricaEvidenzeNomina(nominaId: string): Promise<NominaEvidenza[]> {
+  const { data, error } = await supabase
+    .from('nomina_evidenza').select('*').eq('nomina_id', nominaId).order('created_at');
+  if (error) throw error;
+  return (data ?? []) as NominaEvidenza[];
+}
+
+export async function salvaEvidenzaNomina(e: NominaEvidenza): Promise<NominaEvidenza> {
+  const row = {
+    id: e.id || newId(),
+    nomina_id: e.nomina_id,
+    tipo: e.tipo,
+    allegato_url: e.allegato_url,
+    note: vuotoNull(e.note),
+  };
+  const { data, error } = await supabase.from('nomina_evidenza').upsert(row).select().single();
+  if (error) throw error;
+  return data as NominaEvidenza;
+}
+
+export async function eliminaEvidenzaNomina(id: string): Promise<void> {
+  const { error } = await supabase.from('nomina_evidenza').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function eliminaNomina(id: string): Promise<void> {

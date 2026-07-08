@@ -12,13 +12,13 @@
 // Eredita la palette del contesto (var --ok/--no/--hi/--ink/--line) con fallback,
 // quindi rende bene sia sotto .compila (campo) sia nel back-office (.bo).
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { pulisci as pulisciCF, valido as cfValido, crossCheck as cfCrossCheck, analizzaCF, type DatiCF } from './codiceFiscale';
 import {
   type RiepilogoCliente, type RequisitoValutato, type StatoRequisito,
   type TipoEsonero, type Formazione, type Esonero,
   type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
-  type CorsoCatalogo, type Catalogo,
+  type CorsoCatalogo, type Catalogo, type NominaEvidenza,
   nomePersona, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
@@ -37,6 +37,11 @@ export interface OrganigrammaAdapter {
   apriAllegato(path: string): Promise<void>;
   maxAllegatoBytes: number;
   onCambia(): Promise<void>;   // ricarica/rivaluta dopo una scrittura
+  // Evidenze documentali della nomina. Opzionali: presenti solo nel back-office
+  // (scrivania). In campo l'organigramma resta in sola lettura su questo fronte.
+  evidenzeNomina?(nominaId: string): Promise<NominaEvidenza[]>;
+  caricaEvidenzaNomina?(nominaId: string, tipo: string, note: string | null, file: File): Promise<NominaEvidenza>;
+  eliminaEvidenzaNomina?(id: string): Promise<void>;
 }
 
 const AdapterCtx = createContext<OrganigrammaAdapter | null>(null);
@@ -136,6 +141,19 @@ const CSS = `
 .fzr-figgrp{margin-bottom:8px;}
 .fzr-figgrp:last-child{margin-bottom:0;}
 .fzr-figgrp-name{font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin-bottom:5px;}
+.fzr-macro{margin-bottom:12px;}
+.fzr-macro-name{font-size:12px; font-weight:800; letter-spacing:.02em; padding:5px 10px; border-radius:8px; margin:10px 0 8px;}
+.fzr-macro-name.obbligatoria{background:var(--no-bg,#fdecea); color:var(--no,#d8442f);}
+.fzr-macro-name.eventuale{background:#eef1f4; color:var(--ink-soft,#5b5f66);}
+.fzr-evnom{margin:8px 0 4px; padding:8px 10px; border:1px dashed var(--line,#e3ddd2); border-radius:10px; background:#fbfaf7;}
+.fzr-evnom-h{font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin-bottom:6px;}
+.fzr-evnom-empty{font-size:11.5px; color:var(--ink-soft,#8a8f98); margin-bottom:6px;}
+.fzr-evnom-row{display:flex; align-items:center; gap:8px; margin:3px 0; font-size:12px;}
+.fzr-evnom-tipo{flex:1 1 auto; min-width:0; color:var(--ink,#2a2c30); font-weight:600;}
+.fzr-evnom-add{display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap;}
+.fzr-evnom-add select{padding:5px 8px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:12px; font-family:inherit; background:#fff; color:var(--ink,#2a2c30);}
+.fzr-evnom-add input[type=file]{font-size:11.5px; max-width:100%;}
+.fzr-mini.danger{color:var(--no,#d8442f); border-color:var(--no,#d8442f);}
 .fzr-figchips{display:flex; flex-wrap:wrap; gap:8px;}
 /* Chip figura: piu' grandi e con lo STATO come colore di sfondo pieno (non solo la spia). */
 .fzr-figchip{display:inline-flex; align-items:center; gap:8px; border:1.5px solid transparent; background:#fff; border-radius:12px; padding:9px 14px; font:inherit; font-size:14px; font-weight:700; color:#fff; cursor:pointer; transition:.12s; box-shadow:0 1px 2px rgba(0,0,0,.06);}
@@ -749,6 +767,122 @@ function NominaInline({ nomina, onSaved }: { nomina: Nomina | null; onSaved: () 
   );
 }
 
+// ---------- estremi procura del datore delegato ex art. 16 (inline) ----------
+function EstremiProcuraInline({ nomina, onSaved }: { nomina: Nomina; onSaved: () => Promise<void>; }) {
+  const adapter = useAdapter();
+  const [v, setV] = useState(nomina.estremi_procura ?? '');
+  const [busy, setBusy] = useState(false);
+  const editing = useRef(false);
+  useEffect(() => { if (!editing.current) setV(nomina.estremi_procura ?? ''); }, [nomina.estremi_procura]);
+  async function commit() {
+    editing.current = false;
+    const nuovo = v.trim() || null;
+    if ((nomina.estremi_procura ?? null) === nuovo) return;
+    setBusy(true);
+    try { await adapter.salvaNomina({ ...nomina, estremi_procura: nuovo }); await onSaved(); }
+    finally { setBusy(false); }
+  }
+  return (
+    <label className="fzr-nomina">
+      <span>Estremi procura</span>
+      <input type="text" value={v} disabled={busy || !nomina.id} placeholder="Repertorio, data, notaio (delega di funzioni)"
+        onFocus={() => { editing.current = true; }}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => void commit()} />
+    </label>
+  );
+}
+
+// ---------- evidenze documentali della nomina (solo back-office) ----------
+const LABEL_TIPO_EVIDENZA: Record<string, string> = {
+  visura_camerale: 'Visura camerale',
+  atto_procura: 'Atto / procura notarile',
+  atto_nomina: 'Atto di nomina',
+  altro: 'Altro',
+};
+// Il datore e il delegato ex art. 16 richiedono visura + atto/procura; le altre
+// figure la sola evidenza dell'atto di nomina (con "Altro" a supporto).
+function tipiEvidenzaPer(figuraCodice: string): Array<{ v: string; l: string }> {
+  const base = (figuraCodice === 'datore_lavoro' || figuraCodice === 'datore_lavoro_art16')
+    ? ['visura_camerale', 'atto_procura', 'atto_nomina', 'altro']
+    : ['atto_nomina', 'altro'];
+  return base.map((v) => ({ v, l: LABEL_TIPO_EVIDENZA[v] ?? v }));
+}
+
+function EvidenzeNomina({ nominaId, figuraCodice, onSaved }: { nominaId: string; figuraCodice: string; onSaved: () => Promise<void>; }) {
+  const adapter = useAdapter();
+  const tipi = tipiEvidenzaPer(figuraCodice);
+  const [lista, setLista] = useState<NominaEvidenza[] | null>(null);
+  const [tipo, setTipo] = useState<string>(tipi[0]?.v ?? 'atto_nomina');
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const carica = useCallback(async () => {
+    if (!adapter.evidenzeNomina) { setLista([]); return; }
+    try { setLista(await adapter.evidenzeNomina(nominaId)); } catch { setLista([]); }
+  }, [adapter, nominaId]);
+  useEffect(() => { void carica(); }, [carica]);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !adapter.caricaEvidenzaNomina) return;
+    if (file.size > adapter.maxAllegatoBytes) {
+      window.alert('File troppo grande (max ' + Math.round(adapter.maxAllegatoBytes / (1024 * 1024)) + ' MB).');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    setBusy(true);
+    try {
+      await adapter.caricaEvidenzaNomina(nominaId, tipo, null, file);
+      await carica();
+      await onSaved();
+    } catch (err: unknown) {
+      window.alert('Caricamento non riuscito: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function rimuovi(id: string) {
+    if (!adapter.eliminaEvidenzaNomina) return;
+    if (!window.confirm('Rimuovere questa evidenza della nomina?')) return;
+    setBusy(true);
+    try { await adapter.eliminaEvidenzaNomina(id); await carica(); await onSaved(); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="fzr-evnom">
+      <div className="fzr-evnom-h">Evidenze della nomina</div>
+      {lista === null ? (
+        <div className="fzr-evnom-empty">{'\u2026'}</div>
+      ) : lista.length === 0 ? (
+        <div className="fzr-evnom-empty">nessuna evidenza allegata</div>
+      ) : (
+        lista.map((ev) => (
+          <div key={ev.id} className="fzr-evnom-row">
+            <span className="fzr-evnom-tipo">{LABEL_TIPO_EVIDENZA[ev.tipo] ?? ev.tipo}</span>
+            {ev.allegato_url && (
+              <button type="button" className="fzr-mini" disabled={busy}
+                onClick={() => void adapter.apriAllegato(ev.allegato_url as string)}>vedi</button>
+            )}
+            <button type="button" className="fzr-mini danger" disabled={busy}
+              onClick={() => void rimuovi(ev.id)}>rimuovi</button>
+          </div>
+        ))
+      )}
+      <div className="fzr-evnom-add">
+        <select value={tipo} disabled={busy} onChange={(e) => setTipo(e.target.value)}>
+          {tipi.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}
+        </select>
+        <input ref={fileRef} type="file" disabled={busy}
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.heic" onChange={(e) => void onFile(e)} />
+      </div>
+    </div>
+  );
+}
+
 // ---------- modulo aggiuntivo condizionato (es. cantieri), offline ----------
 function ModuloInline({
   ammesso, corso, personaId, valutato, onSaved,
@@ -833,6 +967,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
 
   const ricarica = adapter.onCambia;
   const vuoto = riep.persone.length === 0;
+  // Gestione evidenze/estremi della nomina: solo dove l'adapter le fornisce
+  // (back-office/scrivania). In campo l'organigramma resta in sola lettura qui.
+  const gestioneNomina = typeof adapter.evidenzeNomina === 'function';
 
   // Il Datore di lavoro che svolge l'RSPP copre la figura RSPP: non la riproponiamo.
   const dlRsppCoperto = riep.persone.some((pv) => pv.figure.some((f) => f.codice === 'dl_rspp'));
@@ -849,12 +986,12 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     if (figuraChiedePregressa(f.codice, catalogo.requisiti, catalogo.corsi)) figureChePregressa.add(f.codice);
   }
   type RigaCop = { figura: FiguraSicurezza; assegnate: typeof riep.persone };
-  const gruppiCopertura: { nome: string; righe: RigaCop[] }[] = [];
+  const gruppiCopertura: { nome: string; macro: string; righe: RigaCop[] }[] = [];
   for (const f of figureAttese) {
     const assegnate = riep.persone.filter((p) => p.figure.some((x) => x.codice === f.codice));
     const g = f.gruppo || 'Altre figure';
     let grp = gruppiCopertura.find((x) => x.nome === g);
-    if (!grp) { grp = { nome: g, righe: [] }; gruppiCopertura.push(grp); }
+    if (!grp) { grp = { nome: g, macro: f.macro || 'eventuale', righe: [] }; gruppiCopertura.push(grp); }
     grp.righe.push({ figura: f, assegnate });
   }
 
@@ -1039,7 +1176,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
             {assegnate.map((pv) => {
               const fg = pv.figure.find((x) => x.codice === figura.codice);
               const nomina: Nomina | null = fg
-                ? { id: fg.nomina_id ?? '', persona_id: pv.persona.id, figura_codice: figura.codice, data_nomina: fg.data_nomina, attiva: true, note: null }
+                ? { id: fg.nomina_id ?? '', persona_id: pv.persona.id, figura_codice: figura.codice, data_nomina: fg.data_nomina, attiva: true, note: null, estremi_procura: fg.estremi_procura }
                 : null;
               const anagKey = pv.persona.id + '|' + figura.codice;
               const anagAperto = editPersona === anagKey;
@@ -1080,6 +1217,13 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   )}
 
                   {nomina && (nomina.id || nomina.data_nomina) && <NominaInline nomina={nomina} onSaved={ricarica} />}
+
+                  {gestioneNomina && nomina && nomina.id && figura.codice === 'datore_lavoro_art16' && (
+                    <EstremiProcuraInline nomina={nomina} onSaved={ricarica} />
+                  )}
+                  {gestioneNomina && nomina && nomina.id && figura.codice !== 'lavoratore' && (
+                    <EvidenzeNomina nominaId={nomina.id} figuraCodice={figura.codice} onSaved={ricarica} />
+                  )}
 
                   {reqs.map((r) => {
                     const key = pv.persona.id + '|' + figura.codice + '|' + r.corso_codice;
@@ -1288,7 +1432,16 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
               <span><span className="fzr-dot conforme" /> in regola</span>
               <span><span className="fzr-dot neutro" /> non assegnata (eventuale)</span>
             </div>
-            {gruppiCopertura.map((g) => {
+            {([
+              { k: 'obbligatoria', l: 'Figure obbligatorie' },
+              { k: 'eventuale', l: 'Figure eventuali (valutazione caso per caso)' },
+            ] as const).map((macro) => {
+              const grpMacro = gruppiCopertura.filter((g) => g.macro === macro.k);
+              if (grpMacro.length === 0) return null;
+              return (
+              <div key={macro.k} className="fzr-macro">
+                <div className={'fzr-macro-name ' + macro.k}>{macro.l}</div>
+            {grpMacro.map((g) => {
               const aperteGrp = g.righe.filter(({ figura }) => aperte.has(figura.codice));
               return (
               <div key={g.nome} className="fzr-figgrp">
@@ -1314,6 +1467,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                     {aperteGrp.map(({ figura, assegnate }) => renderFigCard(figura, assegnate))}
                   </div>
                 )}
+              </div>
+              );
+            })}
               </div>
               );
             })}
