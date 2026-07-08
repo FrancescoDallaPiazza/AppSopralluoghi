@@ -251,18 +251,26 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
 
       {riep && cliente && (
         <>
-          <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14 }}>
-            <button className="bo-btn ghost" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length}>Genera cose da fare per i gap</button>
-            <button className="bo-btn ghost" disabled={syncBusy} onClick={async () => {
+          <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14, gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="bo-grp">Scadenzario</span>
+            <button className="bo-btn ghost sm" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length} title="Proponi voci di scadenzario per i corsi mancanti o scaduti (gap formativi)">Genera dai gap</button>
+            <button className="bo-btn ghost sm" disabled={syncBusy} title="Riallinea lo scadenzario alle scadenze formative reali (attestati e rinnovi)" onClick={async () => {
               setSyncBusy(true);
               try { const n = await backfillAzioniEsoneri(clienteId, riep); alert(n + ' scadenze allineate nello scadenzario.'); }
               catch (e: any) { alert('Errore: ' + (e?.message ?? String(e))); }
               finally { setSyncBusy(false); }
-            }}>{syncBusy ? 'Sincronizzo…' : 'Sincronizza scadenzario'}</button>
-            <button className={'bo-btn ghost' + (schemaOpen ? ' on' : '')} onClick={() => setSchemaOpen((v) => !v)}>{schemaOpen ? '\u2212 Schema grafico organigramma' : '+ Schema grafico organigramma'}</button>
-            <button className="bo-btn ghost" onClick={esportaPdf} disabled={pdfBusy}>{pdfBusy ? 'Genero PDF…' : 'Esporta PDF organigramma'}</button>
-            <button className="bo-btn ghost" onClick={() => setStoricoOpen(true)}>Storico organigramma</button>
+            }}>{syncBusy ? 'Sincronizzo…' : 'Sincronizza'}</button>
+            <span className="bo-sep" />
+            <button className={'bo-btn ghost sm' + (schemaOpen ? ' on' : '')} title="Mostra/nascondi il diagramma gerarchico dell'organigramma" onClick={() => setSchemaOpen((v) => !v)}>{schemaOpen ? '\u2212 Schema' : '+ Schema'}</button>
+            <span className="bo-sep" />
+            <span className="bo-grp">Documenti</span>
+            <button className="bo-btn ghost sm" onClick={esportaPdf} disabled={pdfBusy} title="Genera il PDF dell'organigramma con lo storico revisioni">{pdfBusy ? 'Genero PDF…' : 'PDF'}</button>
+            <button className="bo-btn ghost sm" onClick={() => setStoricoOpen(true)} title="Elenco delle revisioni salvate dell'organigramma">Storico</button>
           </div>
+          <style>{`
+            .bo-grp{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#7a756a)}
+            .bo-sep{width:1px;height:20px;background:rgba(0,0,0,.12);margin:0 2px}
+          `}</style>
 
           {!cliente.livello_rischio && (
             <div className="bo-note">Livello di rischio non impostato: le ore della formazione specifica lavoratori non possono essere calcolate. Impostalo nella sezione Dati anagrafici (proposto dal codice ATECO).</div>
