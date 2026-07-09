@@ -131,6 +131,20 @@ create table if not exists nomina_evidenza (
 create index if not exists idx_nomina_evidenza_nomina on nomina_evidenza(nomina_id);
 
 -- ---------------------------------------------------------------------
+-- 4-bis. Aggancio dello scadenzario ("Cose da fare") alla nomina.
+--    Una azione "correttiva" per ogni nomina identificata ma priva di atto
+--    ufficiale (evidenza da ottenere). Chiave azione = id nomina; cascade sulla
+--    nomina cosi' l'azione sparisce se la nomina viene rimossa. La sincronia
+--    (upsert quando manca l'evidenza / delete quando arriva) e' lato client, come
+--    per gli esoneri (backfillAzioniNominaEvidenza).
+-- ---------------------------------------------------------------------
+alter table azione add column if not exists origine_nomina_id uuid;
+alter table azione drop constraint if exists azione_origine_nomina_fk;
+alter table azione add constraint azione_origine_nomina_fk
+  foreign key (origine_nomina_id) references nomina(id) on delete cascade;
+create index if not exists idx_azione_origine_nomina on azione(origine_nomina_id);
+
+-- ---------------------------------------------------------------------
 -- 5. RLS + trigger updated_at (coerente con 015: staff_full permissiva)
 -- ---------------------------------------------------------------------
 alter table nomina_evidenza enable row level security;

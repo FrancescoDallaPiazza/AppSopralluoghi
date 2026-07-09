@@ -145,9 +145,11 @@ const CSS = `
 .fzr-macro-name{font-size:12px; font-weight:800; letter-spacing:.02em; padding:5px 10px; border-radius:8px; margin:10px 0 8px;}
 .fzr-macro-name.obbligatoria{background:var(--no-bg,#fdecea); color:var(--no,#d8442f);}
 .fzr-macro-name.eventuale{background:#eef1f4; color:var(--ink-soft,#5b5f66);}
-.fzr-evnom{margin:8px 0 4px; padding:8px 10px; border:1px dashed var(--line,#e3ddd2); border-radius:10px; background:#fbfaf7;}
+.fzr-evnom{margin:6px 0 2px;}
 .fzr-evnom-h{font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--ink-soft,#5b5f66); margin-bottom:6px;}
 .fzr-evnom-empty{font-size:11.5px; color:var(--ink-soft,#8a8f98); margin-bottom:6px;}
+.fzr-evnom-warn{display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:var(--hi-dark,#9a6206); background:var(--hi-bg,#fdf3e0); border:1px solid var(--hi,#e6a700); border-radius:8px; padding:5px 8px; margin-bottom:6px;}
+.fzr-evnom-warn-dot{width:8px; height:8px; border-radius:50%; background:var(--hi,#e6a700); flex:0 0 auto;}
 .fzr-evnom-row{display:flex; align-items:center; gap:8px; margin:3px 0; font-size:12px;}
 .fzr-evnom-tipo{flex:1 1 auto; min-width:0; color:var(--ink,#2a2c30); font-weight:600;}
 .fzr-evnom-add{display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap;}
@@ -197,6 +199,11 @@ const CSS = `
 .fzr-inc{margin:6px 0 2px 6px;}
 .fzr-inc-h{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft,#5b5f66); margin:4px 0 4px;}
 .fzr-inc-card{border:1px solid var(--line,#e3ddd2); border-radius:10px; padding:9px 10px; margin-bottom:8px; background:var(--card,#fff);}
+.fzr-step{margin-top:8px; padding:8px 10px 6px; border:1px solid var(--line,#e3ddd2); border-radius:9px; background:#fcfbf9;}
+.fzr-step + .fzr-step{margin-top:8px;}
+.fzr-step-h{display:flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink,#2a2c30); margin-bottom:6px;}
+.fzr-step-n{display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px; border-radius:50%; background:var(--ink,#2a2c30); color:#fff; font-size:10.5px; font-weight:800;}
+.fzr-step-empty{font-size:11.5px; color:var(--ink-soft,#8a8f98);}
 .fzr-inc-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
 .fzr-inc-nome{display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; min-width:0;}
 .fzr-nomina{display:flex; align-items:center; gap:8px; margin:7px 0; font-size:11.5px; color:var(--ink-soft,#5b5f66);}
@@ -858,7 +865,10 @@ function EvidenzeNomina({ nominaId, figuraCodice, onSaved }: { nominaId: string;
       {lista === null ? (
         <div className="fzr-evnom-empty">{'\u2026'}</div>
       ) : lista.length === 0 ? (
-        <div className="fzr-evnom-empty">nessuna evidenza allegata</div>
+        <div className="fzr-evnom-warn">
+          <span className="fzr-evnom-warn-dot" />
+          Evidenza da ottenere: nomina identificata ma manca l{'\u0027'}atto ufficiale.
+        </div>
       ) : (
         lista.map((ev) => (
           <div key={ev.id} className="fzr-evnom-row">
@@ -1021,6 +1031,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
       for (const m of pv.moduli.filter((x) => x.figura_codice === figura.codice && x.stato !== 'esonerato')) {
         if ((RANK[m.stato] ?? 0) > (RANK[worst] ?? 0)) worst = m.stato as StatoFig;
       }
+      // Nomina identificata ma senza atto ufficiale: attenzione (da verificare).
+      const fe = pv.figure.find((x) => x.codice === figura.codice);
+      if (fe?.evidenza_mancante && (RANK['da_verificare'] ?? 0) > (RANK[worst] ?? 0)) worst = 'da_verificare';
     }
     return worst;
   };
@@ -1216,15 +1229,22 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                     <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} mostraRimuoviPersona={false} />
                   )}
 
-                  {nomina && (nomina.id || nomina.data_nomina) && <NominaInline nomina={nomina} onSaved={ricarica} />}
+                  <div className="fzr-step">
+                    <div className="fzr-step-h"><span className="fzr-step-n">1</span>{figura.codice === 'lavoratore' ? 'Adibizione' : 'Nomina'}</div>
+                    {nomina && (nomina.id || nomina.data_nomina) && <NominaInline nomina={nomina} onSaved={ricarica} />}
+                    {gestioneNomina && nomina && nomina.id && figura.codice === 'datore_lavoro_art16' && (
+                      <EstremiProcuraInline nomina={nomina} onSaved={ricarica} />
+                    )}
+                    {gestioneNomina && nomina && nomina.id && figura.codice !== 'lavoratore' && (
+                      <EvidenzeNomina nominaId={nomina.id} figuraCodice={figura.codice} onSaved={ricarica} />
+                    )}
+                  </div>
 
-                  {gestioneNomina && nomina && nomina.id && figura.codice === 'datore_lavoro_art16' && (
-                    <EstremiProcuraInline nomina={nomina} onSaved={ricarica} />
-                  )}
-                  {gestioneNomina && nomina && nomina.id && figura.codice !== 'lavoratore' && (
-                    <EvidenzeNomina nominaId={nomina.id} figuraCodice={figura.codice} onSaved={ricarica} />
-                  )}
-
+                  <div className="fzr-step">
+                    <div className="fzr-step-h"><span className="fzr-step-n">2</span>Formazione</div>
+                    {reqs.length === 0 && mods.length === 0 && (
+                      <div className="fzr-step-empty">Nessun percorso formativo sicurezza per questa figura: e{'\u0027'} sufficiente la nomina.</div>
+                    )}
                   {reqs.map((r) => {
                     const key = pv.persona.id + '|' + figura.codice + '|' + r.corso_codice;
                     const apertoR = editKey === key;
@@ -1280,6 +1300,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                       />
                     </div>
                   ))}
+                  </div>
                 </div>
               );
             })}

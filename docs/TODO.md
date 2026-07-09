@@ -16,16 +16,22 @@ obbligatorie/eventuali, figura *Datore delegato ex art. 16* con estremi procura,
 *evidenze della nomina* con visura/atto-procura per il datore), nell'ordine:
 
 - [ ] Eseguire `supabase/migrations/053_organigramma_deleghe_evidenze_nomina.sql`
-  nell'**SQL Editor** di Supabase (Canale 3): colonne `figura_sicurezza.macro` e
-  `nomina.estremi_procura`, figura `datore_lavoro_art16`, tabella
-  `nomina_evidenza` + RLS. Idempotente, ASCII-only, `pglast` OK.
+  nell'**SQL Editor** di Supabase (Canale 3): colonne `figura_sicurezza.macro`,
+  `nomina.estremi_procura` e `azione.origine_nomina_id`, figura
+  `datore_lavoro_art16`, tabella `nomina_evidenza` + RLS. Idempotente, ASCII-only,
+  `pglast` OK.
 - [ ] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy) + refresh PWA.
   Tocca: `OrganigrammaView.tsx`, `Formazione.tsx`, `lib/admin/formazione.ts`.
   `tsc -b` + `vite build` verdi.
-- [ ] Verifica in back-office → Formazione → cliente: i due blocchi
+- [ ] Verifica in back-office -> Formazione -> cliente: i due blocchi
   *Figure obbligatorie* / *Figure eventuali*; Preposto e RLS non piu' segnalati
-  come scoperti; sotto Datore/Datore-art.16 compaiono *Evidenze della nomina*
-  (visura camerale + atto/procura) e, sul delegato, *Estremi procura*.
+  come scoperti; sotto ogni figura (tranne Lavoratori) la scheda a due passi
+  *1 Nomina* (data + evidenze; procura per il delegato art. 16) e *2 Formazione*.
+  Se la nomina e' identificata ma manca l'atto ufficiale: avviso ambra "Evidenza
+  da ottenere", il **semaforo** della figura va a giallo (da verificare) e in
+  **Cose da fare** compare la voce correttiva "Evidenza di nomina da ottenere -
+  ...". Caricando l'evidenza e ri-sincronizzando (apertura cliente o bottone
+  *Sincronizza*) l'avviso e la voce spariscono.
 
 Per attivare in produzione lo **snapshot versionato dell'organigramma + PDF**
 (Parte 3, vedi `PROGETTO.md` §7-bis), nell'ordine:

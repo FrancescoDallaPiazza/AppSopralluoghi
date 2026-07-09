@@ -192,7 +192,7 @@ export interface ModuloValutato {
 
 export interface PersonaValutata {
   persona: Persona;
-  figure: { codice: string; nome: string; nomina_id: string | null; data_nomina: string | null; estremi_procura: string | null }[];
+  figure: { codice: string; nome: string; nomina_id: string | null; data_nomina: string | null; estremi_procura: string | null; evidenza_mancante: boolean }[];
   requisiti: RequisitoValutato[];
   stato: StatoRequisito;        // peggiore tra i requisiti (esonerato non peggiora)
   moduli: ModuloValutato[];     // moduli condizionati (cantieri, ...), valutati a parte
@@ -503,20 +503,29 @@ export function statoAggiornamentoDopoEsonero(
   return { stato: 'da_verificare', scadenza: null, dettaglio: 'aggiornamento periodico dovuto: registrare l\u2019ultimo attestato di aggiornamento', formazione_id: null, allegato_url: null, ore };
 }
 
-export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null, atecoCliente: string | null = null): PersonaValutata {
+export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null, atecoCliente: string | null = null, nomineConEvidenza?: Set<string>): PersonaValutata {
   const byCodice = new Map(cat.corsi.map((c) => [c.codice, c]));
   const figureCodici = d.nomine.filter((n) => n.attiva).map((n) => n.figura_codice);
   const figureSet = new Set(figureCodici);
   const nominaByFigura = new Map(d.nomine.filter((n) => n.attiva).map((n) => [n.figura_codice, n]));
+  // Evidenza dell'atto di nomina: dovuta per ogni figura tranne i Lavoratori.
+  // "Da ottenere" = nomina identificata ma senza alcuna evidenza caricata. Si
+  // valuta solo se l'insieme e' noto (online): offline non si segnala.
+  const evidenzaMancante = (codice: string, nominaId: string | null): boolean =>
+    codice !== 'lavoratore' && !!nominaId && nomineConEvidenza != null && !nomineConEvidenza.has(nominaId);
   const figure = cat.figure
     .filter((f) => figureSet.has(f.codice))
     .sort((a, b) => a.ordine - b.ordine)
-    .map((f) => ({
-      codice: f.codice, nome: f.nome,
-      nomina_id: nominaByFigura.get(f.codice)?.id ?? null,
-      data_nomina: nominaByFigura.get(f.codice)?.data_nomina ?? null,
-      estremi_procura: nominaByFigura.get(f.codice)?.estremi_procura ?? null,
-    }));
+    .map((f) => {
+      const nId = nominaByFigura.get(f.codice)?.id ?? null;
+      return {
+        codice: f.codice, nome: f.nome,
+        nomina_id: nId,
+        data_nomina: nominaByFigura.get(f.codice)?.data_nomina ?? null,
+        estremi_procura: nominaByFigura.get(f.codice)?.estremi_procura ?? null,
+        evidenza_mancante: evidenzaMancante(f.codice, nId),
+      };
+    });
 
   const rischio = d.persona.livello_rischio ?? rischioCliente;
 
@@ -777,6 +786,9 @@ export interface DatiOrganigramma {
   nomine: Nomina[];
   formazioni: Formazione[];
   esoneri: Esonero[];
+  // Id delle nomine che hanno almeno un'evidenza documentale caricata. Popolato
+  // solo online (back-office); offline resta undefined e non si segnala nulla.
+  nomineConEvidenza?: Set<string>;
 }
 
 // Assemblaggio del riepilogo cliente: PURO. Dati il catalogo, il rischio del
@@ -810,6 +822,7 @@ export function assemblaRiepilogo(
         cat,
         rischio,
         atecoCliente,
+        dati.nomineConEvidenza,
       ),
     );
 
@@ -877,7 +890,14 @@ export async function caricaDatiOrganigramma(
     caricaPerPersone<Formazione>('formazione', ids),
     caricaPerPersone<Esonero>('esonero', ids),
   ]);
-  return { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati: { persone, nomine, formazioni, esoneri } };
+  // Nomine con almeno un'evidenza documentale caricata (per il flag "da ottenere").
+  const nominaIds = nomine.map((n) => n.id).filter(Boolean);
+  const nomineConEvidenza = new Set<string>();
+  if (nominaIds.length) {
+    const ev = await supabase.from('nomina_evidenza').select('nomina_id').in('nomina_id', nominaIds);
+    for (const r of (ev.data ?? []) as { nomina_id: string }[]) nomineConEvidenza.add(r.nomina_id);
+  }
+  return { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati: { persone, nomine, formazioni, esoneri, nomineConEvidenza } };
 }
 
 // Valuta l'intero cliente: organigramma + stato formativo per persona.
@@ -1117,6 +1137,54 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
     if (origiIds.length) {
       const es = await supabase.from('azione').select('id, origine_formazione_id, origine_esonero_id')
         .or(`origine_formazione_id.in.(${origiIds.join(',')}),origine_esonero_id.in.(${origiIds.join(',')})`);
+      const daCancellare = ((es.data ?? []) as { id: string }[]).map((a) => a.id).filter((id) => !attese.has(id));
+      if (daCancellare.length) await supabase.from('azione').delete().in('id', daCancellare);
+    }
+  }
+
+  return attese.size;
+}
+
+// Sincronizza nello scadenzario ("Cose da fare") le EVIDENZE DI NOMINA DA OTTENERE:
+// una azione (correttiva, verso il cliente, senza scadenza) per ogni nomina
+// identificata ma priva di atto ufficiale (pv.figure[].evidenza_mancante).
+// Chiave azione = id nomina (origine_nomina_id); idempotente: upsert delle attese
+// e delete degli orfani (evidenza ora caricata o nomina rimossa). Richiede un riep
+// valutato ONLINE (con nomineConEvidenza noto); offline non produce nulla.
+export async function backfillAzioniNominaEvidenza(clienteId: string, riep?: RiepilogoCliente): Promise<number> {
+  if (!riep) return 0;
+  const attese = new Map<string, Record<string, unknown>>();
+  for (const pv of riep.persone) {
+    const nome = nomePersona(pv.persona);
+    for (const f of pv.figure) {
+      if (!f.evidenza_mancante || !f.nomina_id) continue;
+      attese.set(f.nomina_id, {
+        id: f.nomina_id,
+        tipo: 'azione_correttiva',
+        origine_esito_id: null, sopralluogo_origine_id: null,
+        origine_formazione_id: null, origine_esonero_id: null,
+        origine_nomina_id: f.nomina_id,
+        descrizione: 'Evidenza di nomina da ottenere - ' + f.nome + ' (' + nome + '): manca l\u2019atto ufficiale',
+        responsabile_tipo: 'cliente',
+        responsabile_cliente_id: clienteId,
+        data_scadenza: null,
+      });
+    }
+  }
+
+  if (attese.size) {
+    const { error } = await supabase.from('azione').upsert([...attese.values()]);
+    if (error) throw error;
+  }
+
+  // Delete orfani: azioni collegate a nomine delle persone del cliente il cui id
+  // non e' piu' tra le attese (evidenza caricata) - le nomine rimosse cascano da sole.
+  const persIds = riep.persone.map((p) => p.persona.id);
+  if (persIds.length) {
+    const nomR = await supabase.from('nomina').select('id').in('persona_id', persIds);
+    const nomIds = ((nomR.data ?? []) as { id: string }[]).map((x) => x.id);
+    if (nomIds.length) {
+      const es = await supabase.from('azione').select('id, origine_nomina_id').in('origine_nomina_id', nomIds);
       const daCancellare = ((es.data ?? []) as { id: string }[]).map((a) => a.id).filter((id) => !attese.has(id));
       if (daCancellare.length) await supabase.from('azione').delete().in('id', daCancellare);
     }
