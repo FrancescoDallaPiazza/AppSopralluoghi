@@ -81,9 +81,14 @@ copia TUTTO (anagrafica sede + persone + nomine + formazione + esoneri), marcato
   `da_confermare` su persona/nomina/formazione/esonero; `persona.sede_id`. Per ogni
   cliente crea la "Sede legale" (principale) copiandone i campi e riaggancia le
   persone. Non breaking (persona.cliente_id resta). Idempotente, pglast OK.
-- [ ] **Fase 2 - motore** (`formazione.ts`): da `valutaCliente(clienteId)` a
-  `valutaSede(sedeId)`; query `persona.cliente_id` -> `sede_id`; rischio/ATECO/PS/
-  antincendio/RLS letti dalla sede. `assemblaRiepilogo` resta puro.
+- [x] **Fase 2 - motore** (`formazione.ts`): aggiunte `valutaSede(sedeId)` +
+  `caricaDatiOrganigrammaSede` + `caricaPersonePerSede` + `sedePrincipaleId`;
+  rischio/ATECO/PS/antincendio/RLS letti dalla SEDE, persone filtrate per
+  `sede_id`. `valutaCliente` ora delega alla sede legale (compat con la UI
+  ancora per-cliente); `salvaPersona` aggancia le nuove persone alla sede legale.
+  `assemblaRiepilogo` resta puro. Non breaking. Nota per Fase 3: lo snapshot
+  `organigramma-revisioni` e la roster RisorseUmane restano per-cliente finche'
+  la UI non diventa per-sede.
 - [ ] **Fase 3 - UI sedi + copia** (SchedaCliente): la sezione Sedi diventa il
   perno; ogni sede ha scheda anagrafica completa e proprio tab Organigramma;
   bottone "Copia da sede" (copia tutto, esiti marcati `da_confermare` con badge +

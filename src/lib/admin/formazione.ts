@@ -66,6 +66,9 @@ export interface FiguraRequisito {
 export interface Persona {
   id: string;
   cliente_id: string;
+  // La persona appartiene a una sede (mig. 054). Puo' essere null solo in
+  // transitorio: salvaPersona la riaggancia alla sede legale del cliente.
+  sede_id?: string | null;
   nome: string;
   cognome: string | null;
   codice_fiscale: string | null;
@@ -771,6 +774,22 @@ export async function caricaPersone(clienteId: string): Promise<Persona[]> {
   return (data ?? []) as Persona[];
 }
 
+// Persone di una SEDE (mig. 054): base della valutazione per sede.
+export async function caricaPersonePerSede(sedeId: string): Promise<Persona[]> {
+  const { data, error } = await supabase
+    .from('persona').select('*')
+    .eq('sede_id', sedeId).order('cognome').order('nome');
+  if (error) throw error;
+  return (data ?? []) as Persona[];
+}
+
+// Id della sede legale (principale) di un cliente, o null se non c'e'.
+export async function sedePrincipaleId(clienteId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('sede').select('id').eq('cliente_id', clienteId).eq('principale', true).maybeSingle();
+  return (data?.id ?? null) as string | null;
+}
+
 async function caricaPerPersone<T>(tabella: string, personaIds: string[]): Promise<T[]> {
   if (!personaIds.length) return [];
   const { data, error } = await supabase.from(tabella).select('*').in('persona_id', personaIds);
@@ -900,11 +919,62 @@ export async function caricaDatiOrganigramma(
   return { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati: { persone, nomine, formazioni, esoneri, nomineConEvidenza } };
 }
 
-// Valuta l'intero cliente: organigramma + stato formativo per persona.
-// Online-first: carica i dati da Supabase e delega l'assemblaggio alla funzione
-// pura `assemblaRiepilogo` (la medesima usata offline in campo).
+// Come sopra ma per una SEDE (mig. 054): rischio/ATECO/PS/antincendio/RLS letti
+// dalla sede, persone filtrate per sede_id. Ritorna anche il cliente_id della
+// sede (serve allo stamp del riepilogo e allo scadenzario a livello cliente).
+export async function caricaDatiOrganigrammaSede(
+  sedeId: string,
+): Promise<{
+  clienteId: string;
+  rischio: LivelloRischio | null;
+  rlsTerritoriale: boolean;
+  livAntincendio: LivelloAntincendio | null;
+  gruppoPS: GruppoPrimoSoccorso | null;
+  ateco: string | null;
+  dati: DatiOrganigramma;
+}> {
+  const sed = await supabase.from('sede')
+    .select('cliente_id, livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco')
+    .eq('id', sedeId).single();
+  if (sed.error) throw sed.error;
+  const clienteId = sed.data?.cliente_id as string;
+  const rischio = (sed.data?.livello_rischio ?? null) as LivelloRischio | null;
+  const rlsTerritoriale = (sed.data?.rls_territoriale ?? false) as boolean;
+  const livAntincendio = (sed.data?.livello_antincendio ?? null) as LivelloAntincendio | null;
+  const gruppoPS = (sed.data?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null;
+  const ateco = (sed.data?.codice_ateco ?? null) as string | null;
+
+  const persone = await caricaPersonePerSede(sedeId);
+  const ids = persone.map((p) => p.id);
+  const [nomine, formazioni, esoneri] = await Promise.all([
+    caricaPerPersone<Nomina>('nomina', ids),
+    caricaPerPersone<Formazione>('formazione', ids),
+    caricaPerPersone<Esonero>('esonero', ids),
+  ]);
+  const nominaIds = nomine.map((n) => n.id).filter(Boolean);
+  const nomineConEvidenza = new Set<string>();
+  if (nominaIds.length) {
+    const ev = await supabase.from('nomina_evidenza').select('nomina_id').in('nomina_id', nominaIds);
+    for (const r of (ev.data ?? []) as { nomina_id: string }[]) nomineConEvidenza.add(r.nomina_id);
+  }
+  return { clienteId, rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati: { persone, nomine, formazioni, esoneri, nomineConEvidenza } };
+}
+
+// Valuta una SEDE: organigramma + stato formativo delle persone della sede.
+export async function valutaSede(sedeId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
+  const catalogo = cat ?? (await caricaCatalogo());
+  const { clienteId, rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati } = await caricaDatiOrganigrammaSede(sedeId);
+  return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale, livAntincendio, gruppoPS, atecoCliente: ateco });
+}
+
+// Valuta il cliente attraverso la sua SEDE LEGALE (principale). Compat: finche' la
+// UI e' per-cliente, mostra l'organigramma della sede legale (dove la mig. 054 ha
+// riagganciato tutte le persone). Fallback al vecchio percorso per-cliente solo se
+// manca la sede legale (non dovrebbe capitare post-054).
 export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
   const catalogo = cat ?? (await caricaCatalogo());
+  const sedeId = await sedePrincipaleId(clienteId);
+  if (sedeId) return valutaSede(sedeId, catalogo);
   const { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati } = await caricaDatiOrganigramma(clienteId);
   return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale, livAntincendio, gruppoPS, atecoCliente: ateco });
 }
@@ -912,9 +982,13 @@ export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<
 // ============================ CRUD ============================
 
 export async function salvaPersona(p: Persona): Promise<Persona> {
+  // Ogni persona appartiene a una sede (mig. 054). Se non specificata (creazione
+  // dalla UI ancora per-cliente), si aggancia alla sede legale del cliente.
+  const sedeId = p.sede_id ?? (await sedePrincipaleId(p.cliente_id));
   const row = {
     id: p.id || newId(),
     cliente_id: p.cliente_id,
+    sede_id: sedeId,
     nome: p.nome.trim(),
     cognome: vuotoNull(p.cognome),
     codice_fiscale: vuotoNull(p.codice_fiscale),
