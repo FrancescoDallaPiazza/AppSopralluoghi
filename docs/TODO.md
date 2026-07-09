@@ -68,6 +68,31 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## B · Aperti (sviluppi pianificati)
 
+### Sede entita' di prima classe (Piano B) - organigramma per sede
+
+Deciso 2026-07-08: la sede diventa di prima classe e l'organigramma si ancora
+alla SEDE, non piu' al cliente. Copia-e-conferma: creando una sede operativa si
+copia TUTTO (anagrafica sede + persone + nomine + formazione + esoneri), marcato
+`da_confermare` finche' non lo si conferma/modifica. Fasi (ognuna validata a se'):
+
+- [x] **Fase 1 - schema + migrazione dati** (`054_sede_prima_classe_fase1.sql`,
+  Canale 3): `sede` allargata coi campi anagrafici e organigramma (rischio, ATECO,
+  primo soccorso, antincendio, RLS) + `principale` + `da_confermare`; flag
+  `da_confermare` su persona/nomina/formazione/esonero; `persona.sede_id`. Per ogni
+  cliente crea la "Sede legale" (principale) copiandone i campi e riaggancia le
+  persone. Non breaking (persona.cliente_id resta). Idempotente, pglast OK.
+- [ ] **Fase 2 - motore** (`formazione.ts`): da `valutaCliente(clienteId)` a
+  `valutaSede(sedeId)`; query `persona.cliente_id` -> `sede_id`; rischio/ATECO/PS/
+  antincendio/RLS letti dalla sede. `assemblaRiepilogo` resta puro.
+- [ ] **Fase 3 - UI sedi + copia** (SchedaCliente): la sezione Sedi diventa il
+  perno; ogni sede ha scheda anagrafica completa e proprio tab Organigramma;
+  bottone "Copia da sede" (copia tutto, esiti marcati `da_confermare` con badge +
+  azione Conferma). Testi: sede legale in anagrafica, operative solo se diverse.
+- [ ] **Fase 4 - scadenzario** (`cosedafare.ts`): roll-up per cliente delle azioni
+  delle sedi, con etichetta della sede di provenienza.
+- [ ] **Fase 5 - offline**: il riepilogo in campo segue la sede del sopralluogo
+  (gia' ereditata dall'incarico/sopralluogo).
+
 ### Organigramma / formazione
 
 - [ ] **Modello di nomina per figura** (step successivo della revisione scheda

@@ -63,6 +63,18 @@ function ElencoClienti({
 
   return (
     <>
+      <style>{`
+        .cl-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+        .cl-tbl thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#5b5f66);font-weight:800;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.08)}
+        .cl-tr td{padding:9px 8px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
+        .cl-tr:last-child td{border-bottom:none}
+        .cl-tr.dim{opacity:.5}
+        .cl-rs{width:40%;font-weight:700}
+        .cl-sede{width:24%;color:#3a3d43}
+        .cl-piva{width:18%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3a3d43}
+        .cl-inc{width:12%;white-space:nowrap}
+        .cl-act{width:6%;text-align:right;white-space:nowrap}
+      `}</style>
       <div className="bo-row" style={{ marginBottom: 14 }}>
         <div className="grow">
           <h2 className="bo-h">Clienti</h2>
@@ -93,26 +105,39 @@ function ElencoClienti({
         </div>
       )}
 
-      {visibili.map((r) => (
-        <div key={r.cliente.id} className={`bo-card ${r.cliente.attivo ? '' : 'dim'}`}>
-          <div className="bo-row">
-            <div className="grow">
-              <div className="bo-title">{r.cliente.ragione_sociale}</div>
-              <div className="bo-meta">
-                {r.cliente.localita && <span>{r.cliente.localita}</span>}
-                {r.cliente.referente && <span>{r.cliente.referente}</span>}
-                {r.cliente.telefono && <span>{r.cliente.telefono}</span>}
-                {r.cliente.email && <span>{r.cliente.email}</span>}
-                <span className={`bo-pill ${r.n_incarichi_attivi > 0 ? 'attivo' : 'archiviato'}`}>
-                  {r.n_incarichi} {r.n_incarichi === 1 ? 'incarico' : 'incarichi'}
-                </span>
-                {!r.cliente.attivo && <span className="bo-pill archiviato">disattivato</span>}
-              </div>
-            </div>
-            <button className="bo-btn ghost sm" onClick={() => onApri(r.cliente.id)}>Apri</button>
-          </div>
-        </div>
-      ))}
+      {stato === 'ok' && visibili.length > 0 && (
+        <table className="cl-tbl">
+          <thead>
+            <tr>
+              <th>Anagrafica</th>
+              <th>Sede</th>
+              <th>P.IVA</th>
+              <th>Incarichi</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {visibili.map((r) => (
+              <tr key={r.cliente.id} className={'cl-tr' + (r.cliente.attivo ? '' : ' dim')}>
+                <td className="cl-rs">
+                  {r.cliente.ragione_sociale}
+                  {!r.cliente.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 8 }}>disattivato</span>}
+                </td>
+                <td className="cl-sede">{r.cliente.localita ?? '—'}</td>
+                <td className="cl-piva">{r.cliente.partita_iva ?? '—'}</td>
+                <td className="cl-inc">
+                  <span className={`bo-pill ${r.n_incarichi_attivi > 0 ? 'attivo' : 'archiviato'}`}>
+                    {r.n_incarichi} {r.n_incarichi === 1 ? 'incarico' : 'incarichi'}
+                  </span>
+                </td>
+                <td className="cl-act">
+                  <button className="bo-btn ghost sm" onClick={() => onApri(r.cliente.id)}>Apri</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </>
   );
 }
