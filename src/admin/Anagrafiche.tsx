@@ -468,7 +468,7 @@ function SchedaCliente({
         {/* Sedi: fanno parte dell'anagrafica del cliente */}
         {persistito && (
           <div className="bo-subsez">
-            <div className="bo-subsez-tit">Sedi{sedi.length ? ` · ${sedi.length} ${sedi.length === 1 ? 'sede' : 'sedi'}` : ''}</div>
+            <div className="bo-subsez-tit">Sedi{(() => { const n = sedi.filter((s) => !s.principale).length; return n ? ` · ${n} operativ${n === 1 ? 'a' : 'e'}` : ''; })()}</div>
             <SediCliente clienteId={cliente.id} sedi={sedi} onCambia={ricaricaSedi} />
           </div>
         )}
@@ -606,12 +606,29 @@ function RigaSede({ sede, onCambia }: { sede: Sede; onCambia: () => void }) {
           <span>Nome sede</span>
           <input type="text" value={s.nome}
             onChange={(e) => setS({ ...s, nome: e.target.value.toUpperCase() })}
-            placeholder="es. SEDE LEGALE, STABILIMENTO 1" />
+            placeholder="es. STABILIMENTO 1, MAGAZZINO" />
         </label>
         <label className="bo-field" style={{ marginBottom: 0 }}>
           <span>Indirizzo</span>
           <input type="text" value={s.indirizzo ?? ''}
             onChange={(e) => setS({ ...s, indirizzo: e.target.value.toUpperCase() || null })} />
+        </label>
+      </div>
+      <div className="bo-grid" style={{ gridTemplateColumns: '1fr 2fr 0.7fr' }}>
+        <label className="bo-field" style={{ marginBottom: 0 }}>
+          <span>CAP</span>
+          <input type="text" value={s.cap ?? ''} inputMode="numeric" maxLength={5}
+            onChange={(e) => setS({ ...s, cap: e.target.value.replace(/\D/g, '').slice(0, 5) || null })} />
+        </label>
+        <label className="bo-field" style={{ marginBottom: 0 }}>
+          <span>Localita</span>
+          <input type="text" value={s.localita ?? ''}
+            onChange={(e) => setS({ ...s, localita: e.target.value.toUpperCase() || null })} />
+        </label>
+        <label className="bo-field" style={{ marginBottom: 0 }}>
+          <span>Prov.</span>
+          <input type="text" value={s.provincia ?? ''} maxLength={2}
+            onChange={(e) => setS({ ...s, provincia: e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) || null })} />
         </label>
       </div>
       <div className="bo-bar">
@@ -632,25 +649,31 @@ function SediCliente({ clienteId, sedi, onCambia }: {
   clienteId: string; sedi: Sede[]; onCambia: () => void;
 }) {
   const [agg, setAgg] = useState(false);
+  // La sede legale e' gestita dall'anagrafica qui sopra: nella lista compaiono
+  // solo le sedi OPERATIVE, da aggiungere quando differiscono dalla sede legale.
+  const operative = sedi.filter((s) => !s.principale);
   return (
     <>
       <div className="bo-row" style={{ margin: '0 0 6px' }}>
         <span className="grow" />
-        {!agg && <button className="bo-btn sm" onClick={() => setAgg(true)}>+ Aggiungi sede</button>}
+        {!agg && <button className="bo-btn sm" onClick={() => setAgg(true)}>+ Aggiungi sede operativa</button>}
       </div>
       <p className="bo-sub" style={{ margin: '0 0 10px' }}>
-        Una societa puo avere piu sedi. L'incarico ne sceglie una e il sopralluogo la eredita
-        (modificabile in testata). Senza sedi, vale l'indirizzo del cliente.
+        La sede legale e' gia' quella indicata nell'anagrafica qui sopra. Aggiungi una
+        sede operativa <strong>solo se diversa dalla sede legale</strong>: se la sede
+        operativa coincide con la legale non serve aggiungerla. Ogni sede operativa ha
+        lo stesso inquadramento topografico della sede legale (indirizzo, CAP, localita,
+        provincia) e potra' avere un proprio organigramma.
       </p>
 
       {agg && (
         <RigaSede sede={sedeVuota(clienteId)}
           onCambia={() => { onCambia(); setAgg(false); }} />
       )}
-      {sedi.length === 0 && !agg && (
-        <div className="bo-empty">Nessuna sede registrata.</div>
+      {operative.length === 0 && !agg && (
+        <div className="bo-empty">Nessuna sede operativa: la sede legale coincide con l'operativa.</div>
       )}
-      {sedi.map((s) => <RigaSede key={s.id} sede={s} onCambia={onCambia} />)}
+      {operative.map((s) => <RigaSede key={s.id} sede={s} onCambia={onCambia} />)}
     </>
   );
 }

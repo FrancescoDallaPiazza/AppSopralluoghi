@@ -89,10 +89,18 @@ copia TUTTO (anagrafica sede + persone + nomine + formazione + esoneri), marcato
   `assemblaRiepilogo` resta puro. Non breaking. Nota per Fase 3: lo snapshot
   `organigramma-revisioni` e la roster RisorseUmane restano per-cliente finche'
   la UI non diventa per-sede.
-- [ ] **Fase 3 - UI sedi + copia** (SchedaCliente): la sezione Sedi diventa il
-  perno; ogni sede ha scheda anagrafica completa e proprio tab Organigramma;
-  bottone "Copia da sede" (copia tutto, esiti marcati `da_confermare` con badge +
-  azione Conferma). Testi: sede legale in anagrafica, operative solo se diverse.
+- [~] **Fase 3 - UI sedi + copia** (SchedaCliente): *in corso*.
+  - [x] Sezione Sedi: testo esplicito (sede operativa solo se diversa dalla
+    legale), form sede con inquadramento topografico completo (indirizzo/CAP/
+    localita/provincia) come la sede legale, sede legale nascosta dalla lista
+    operative (si gestisce dall'anagrafica).
+  - [x] Write-through: `salvaCliente` riversa gli attributi (topografia +
+    rischio/ATECO/PS/antincendio/RLS) sulla sede legale (principale), che dalla
+    Fase 2 e' cio' che il motore legge.
+  - [ ] Ogni sede ha il proprio tab Organigramma (oggi l'organigramma e' quello
+    della sede legale via `valutaCliente`); serve poter scegliere la sede.
+  - [ ] Bottone "Copia da sede" (copia tutto: persone + nomine + formazione +
+    esoneri, marcati `da_confermare` con badge + azione Conferma).
 - [ ] **Fase 4 - scadenzario** (`cosedafare.ts`): roll-up per cliente delle azioni
   delle sedi, con etichetta della sede di provenienza.
 - [ ] **Fase 5 - offline**: il riepilogo in campo segue la sede del sopralluogo

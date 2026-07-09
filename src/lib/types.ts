@@ -255,6 +255,12 @@ export interface Sede {
   cliente_id: string;
   nome: string;
   indirizzo: string | null;
+  // Inquadramento topografico, come la sede legale (mig. 054).
+  localita: string | null;
+  cap: string | null;
+  provincia: string | null;
+  // La sede legale del cliente (gestita dall'anagrafica, non dalla lista sedi).
+  principale: boolean;
   attivo: boolean;
 }
 

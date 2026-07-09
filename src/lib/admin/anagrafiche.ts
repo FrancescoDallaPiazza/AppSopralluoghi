@@ -96,6 +96,26 @@ export async function salvaCliente(c: Cliente): Promise<void> {
     attivo: c.attivo,
   }, { onConflict: 'id' });
   if (error) throw error;
+
+  // Write-through alla SEDE LEGALE (principale): dalla mig. 054 il motore legge
+  // gli attributi dell'organigramma (rischio/ATECO/PS/antincendio/RLS) e
+  // l'inquadramento topografico dalla sede, quindi la sede legale deve rispecchiare
+  // l'anagrafica. Rileggo i valori canonici dal cliente (alcuni, es. rls_territoriale,
+  // sono aggiornati da flussi diversi) e li riverso sulla sede principale; se manca,
+  // la creo.
+  const cli = await supabase.from('cliente')
+    .select('indirizzo, localita, cap, provincia, codice_ateco, livello_rischio, livello_antincendio, gruppo_primo_soccorso, rls_territoriale, antincendio_definito_mediante')
+    .eq('id', c.id).single();
+  if (cli.error) throw cli.error;
+  const campiSede = cli.data as Record<string, unknown>;
+  const upd = await supabase.from('sede').update(campiSede)
+    .eq('cliente_id', c.id).eq('principale', true).select('id');
+  if (upd.error) throw upd.error;
+  if (!upd.data || upd.data.length === 0) {
+    const ins = await supabase.from('sede')
+      .insert({ cliente_id: c.id, nome: 'Sede legale', principale: true, attivo: true, ...campiSede });
+    if (ins.error) throw ins.error;
+  }
 }
 
 export async function impostaStatoCliente(id: string, attivo: boolean): Promise<void> {
