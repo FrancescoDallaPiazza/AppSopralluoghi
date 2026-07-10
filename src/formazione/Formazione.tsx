@@ -13,7 +13,8 @@ import {
   type Persona, type Formazione,
   type EsoneroAmmesso, type AreaInterna, type LivelloRischio, type TipoEsonero,
   type CosaDaFareProposta,
-  caricaCatalogo, caricaAreeInterne, valutaCliente,
+  caricaCatalogo, caricaAreeInterne, valutaCliente, valutaSede,
+  copiaOrganigrammaSede, confermaCopiaPersona,
   salvaPersona, eliminaPersona, salvaNomina,
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
@@ -27,6 +28,8 @@ import {
   type RevisioneOrganigramma, type SnapshotOrganigramma,
 } from './organigramma-revisioni';
 import OrganigrammaView, { type OrganigrammaAdapter } from './OrganigrammaView';
+import { caricaSedi } from '../lib/admin/sedi';
+import type { Sede } from '../lib/types';
 
 interface ClienteLite { id: string; ragione_sociale: string; livello_rischio: LivelloRischio | null; rls_territoriale: boolean; }
 
@@ -142,6 +145,10 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
   const [aree, setAree] = useState<AreaInterna[]>([]);
   const [cliente, setCliente] = useState<ClienteLite | null>(null);
+  const [sedi, setSedi] = useState<Sede[]>([]);
+  const [sedeSelId, setSedeSelId] = useState<string | null>(null);
+  const [copiaBusy, setCopiaBusy] = useState(false);
+  const [copiaDaId, setCopiaDaId] = useState<string>('');
   const [riep, setRiep] = useState<RiepilogoCliente | null>(null);
   const [caricando, setCaricando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
@@ -157,17 +164,21 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
     let vivo = true;
     (async () => {
       try {
-        const [cat, ar, cli] = await Promise.all([
+        const [cat, ar, cli, sd] = await Promise.all([
           caricaCatalogo(),
           caricaAreeInterne(),
           supabase.from('cliente').select('id, ragione_sociale, livello_rischio, rls_territoriale')
             .eq('id', clienteId).single(),
+          caricaSedi(clienteId),
         ]);
         if (cli.error) throw cli.error;
         if (!vivo) return;
         setCatalogo(cat);
         setAree(ar);
         setCliente(cli.data as ClienteLite);
+        setSedi(sd);
+        const principale = sd.find((s) => s.principale) ?? sd[0] ?? null;
+        setSedeSelId(principale ? principale.id : null);
       } catch (e: any) {
         if (vivo) setErrore(e?.message ?? String(e));
       }
@@ -180,12 +191,16 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
     if (!catalogo) { setRiep(null); return; }
     setCaricando(true); setErrore(null);
     try {
-      const nuovoRiep = await valutaCliente(clienteId, catalogo);
+      // Valuta la SEDE selezionata; se non ancora nota, la sede legale via cliente.
+      const nuovoRiep = sedeSelId
+        ? await valutaSede(sedeSelId, catalogo)
+        : await valutaCliente(clienteId, catalogo);
       setRiep(nuovoRiep);
-      // Allinea lo scadenzario dai requisiti valutati (attestato vincente): idempotente,
-      // una volta per cliente, non blocca il render.
-      if (syncFattaPer.current !== clienteId) {
-        syncFattaPer.current = clienteId;
+      // Allinea lo scadenzario dai requisiti valutati: idempotente, una volta per
+      // sede caricata, non blocca il render.
+      const chiaveSync = sedeSelId ?? clienteId;
+      if (syncFattaPer.current !== chiaveSync) {
+        syncFattaPer.current = chiaveSync;
         backfillAzioniEsoneri(clienteId, nuovoRiep).catch((e) => console.error('sync scadenzario formazione:', e));
         backfillAzioniNominaEvidenza(clienteId, nuovoRiep).catch((e) => console.error('sync evidenze nomina:', e));
       }
@@ -195,7 +210,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
       setCaricando(false);
     }
   }
-  useEffect(() => { ricarica(); /* eslint-disable-next-line */ }, [clienteId, catalogo, refreshToken]);
+  useEffect(() => { ricarica(); /* eslint-disable-next-line */ }, [clienteId, catalogo, sedeSelId, refreshToken]);
 
   async function dopoModifica() {
     if (catalogo && cliente) {
@@ -207,7 +222,9 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
   }
 
   const adapter: OrganigrammaAdapter = {
-    salvaPersona, eliminaPersona, salvaNomina,
+    salvaPersona: (p) => salvaPersona({ ...p, sede_id: p.sede_id ?? sedeSelId ?? undefined }),
+    confermaPersona: async (id: string) => { await confermaCopiaPersona(id); await ricarica(); },
+    eliminaPersona, salvaNomina,
     eliminaNomina: async (id: string) => {
       const { error } = await supabase.from('nomina').delete().eq('id', id);
       if (error) throw error;
@@ -262,6 +279,47 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
 
       {riep && cliente && (
         <>
+          {sedi.length > 0 && sedeSelId && (
+            <div className="bo-bar" style={{ marginTop: 0, marginBottom: 12, gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="bo-grp">Sede</span>
+              <select value={sedeSelId} onChange={(e) => setSedeSelId(e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--line,#e3ddd2)', fontFamily: 'inherit', fontSize: 13 }}>
+                {sedi.map((s) => (
+                  <option key={s.id} value={s.id}>{s.principale ? 'Sede legale' : s.nome}{!s.attivo ? ' (archiviata)' : ''}</option>
+                ))}
+              </select>
+              {sedi.length > 1 && (
+                <>
+                  <span className="bo-sep" />
+                  <span className="bo-grp">Copia organigramma da</span>
+                  <select value={copiaDaId} onChange={(e) => setCopiaDaId(e.target.value)}
+                    style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--line,#e3ddd2)', fontFamily: 'inherit', fontSize: 13 }}>
+                    <option value="">- scegli sede -</option>
+                    {sedi.filter((s) => s.id !== sedeSelId).map((s) => (
+                      <option key={s.id} value={s.id}>{s.principale ? 'Sede legale' : s.nome}</option>
+                    ))}
+                  </select>
+                  <button className="bo-btn ghost sm" disabled={!copiaDaId || copiaBusy}
+                    title="Copia tutto l'organigramma della sede scelta in questa sede (persone, nomine, formazione, esoneri), da confermare"
+                    onClick={async () => {
+                      const src = sedi.find((s) => s.id === copiaDaId);
+                      const dst = sedi.find((s) => s.id === sedeSelId);
+                      if (!src || !dst) return;
+                      if (!window.confirm('Copiare tutto l\u2019organigramma da \u00ab' + (src.principale ? 'Sede legale' : src.nome) + '\u00bb in \u00ab' + (dst.principale ? 'Sede legale' : dst.nome) + '\u00bb? Le righe copiate saranno marcate "da confermare".')) return;
+                      setCopiaBusy(true);
+                      try {
+                        const r = await copiaOrganigrammaSede(copiaDaId, sedeSelId!);
+                        setCopiaDaId('');
+                        syncFattaPer.current = null; // forza il re-sync dello scadenzario per questa sede
+                        await ricarica();
+                        alert(r.persone + ' persone copiate, da confermare.');
+                      } catch (e: any) { alert('Copia non riuscita: ' + (e?.message ?? String(e))); }
+                      finally { setCopiaBusy(false); }
+                    }}>{copiaBusy ? 'Copio\u2026' : 'Copia'}</button>
+                </>
+              )}
+            </div>
+          )}
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14, gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="bo-grp">Scadenzario</span>
             <button className="bo-btn ghost sm" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length} title="Proponi voci di scadenzario per i corsi mancanti o scaduti (gap formativi)">Genera dai gap</button>

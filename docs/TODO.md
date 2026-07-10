@@ -89,18 +89,20 @@ copia TUTTO (anagrafica sede + persone + nomine + formazione + esoneri), marcato
   `assemblaRiepilogo` resta puro. Non breaking. Nota per Fase 3: lo snapshot
   `organigramma-revisioni` e la roster RisorseUmane restano per-cliente finche'
   la UI non diventa per-sede.
-- [~] **Fase 3 - UI sedi + copia** (SchedaCliente): *in corso*.
-  - [x] Sezione Sedi: testo esplicito (sede operativa solo se diversa dalla
-    legale), form sede con inquadramento topografico completo (indirizzo/CAP/
-    localita/provincia) come la sede legale, sede legale nascosta dalla lista
-    operative (si gestisce dall'anagrafica).
-  - [x] Write-through: `salvaCliente` riversa gli attributi (topografia +
-    rischio/ATECO/PS/antincendio/RLS) sulla sede legale (principale), che dalla
-    Fase 2 e' cio' che il motore legge.
-  - [ ] Ogni sede ha il proprio tab Organigramma (oggi l'organigramma e' quello
-    della sede legale via `valutaCliente`); serve poter scegliere la sede.
-  - [ ] Bottone "Copia da sede" (copia tutto: persone + nomine + formazione +
-    esoneri, marcati `da_confermare` con badge + azione Conferma).
+- [x] **Fase 3 - UI sedi + copia** (SchedaCliente / tab Organigramma).
+  - [x] Sezione Sedi: testo esplicito, form sede con inquadramento topografico
+    completo, sede legale gestita dall'anagrafica (nascosta dalla lista operative).
+  - [x] Write-through `salvaCliente` -> sede legale (principale).
+  - [x] Tab Organigramma: selettore Sede; l'organigramma si valuta per sede
+    (`valutaSede`); backfill scadenzario per-sede; le nuove persone create dal tab
+    ereditano la sede selezionata.
+  - [x] Bottone "Copia organigramma da": copia tutto (persone/nomine/formazione/
+    esoneri) come righe `da_confermare`; le evidenze nomina NON si copiano (atti
+    specifici della sede, compaiono come "evidenza da ottenere"). Badge "copia da
+    confermare" + azione Conferma per persona (azzera il flag su persona e record).
+  - [ ] Follow-up minore: rendere la roster RisorseUmane sede-aware (oggi le
+    persone create dalla roster vanno alla sede legale; per popolare una sede
+    operativa si usa la Copia).
 - [ ] **Fase 4 - scadenzario** (`cosedafare.ts`): roll-up per cliente delle azioni
   delle sedi, con etichetta della sede di provenienza.
 - [ ] **Fase 5 - offline**: il riepilogo in campo segue la sede del sopralluogo

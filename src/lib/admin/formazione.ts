@@ -79,6 +79,8 @@ export interface Persona {
   attivo: boolean;
   note: string | null;
   formazione_pregressa: boolean;
+  // Nasce da una copia di un'altra sede: va rivista/confermata (mig. 054).
+  da_confermare?: boolean;
 }
 
 export interface Nomina {
@@ -977,6 +979,65 @@ export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<
   if (sedeId) return valutaSede(sedeId, catalogo);
   const { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati } = await caricaDatiOrganigramma(clienteId);
   return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale, livAntincendio, gruppoPS, atecoCliente: ateco });
+}
+
+// Copia TUTTO l'organigramma di una sede sorgente in una sede destinazione:
+// persone + nomine + formazione + esoneri, come NUOVE righe marcate da_confermare
+// (da rivedere/confermare). Le evidenze della nomina (atti ufficiali) NON si
+// copiano: sono specifiche della sede e vanno riottenute (compaiono come
+// "evidenza da ottenere"). Ritorna quante persone sono state copiate.
+export async function copiaOrganigrammaSede(sorgenteSedeId: string, destSedeId: string): Promise<{ persone: number }> {
+  if (sorgenteSedeId === destSedeId) return { persone: 0 };
+  const sd = await supabase.from('sede').select('cliente_id').eq('id', destSedeId).single();
+  if (sd.error) throw sd.error;
+  const clienteIdDest = sd.data?.cliente_id as string;
+
+  const persone = await caricaPersonePerSede(sorgenteSedeId);
+  if (persone.length === 0) return { persone: 0 };
+  const ids = persone.map((p) => p.id);
+  const [nomine, formazioni, esoneri] = await Promise.all([
+    caricaPerPersone<Nomina>('nomina', ids),
+    caricaPerPersone<Formazione>('formazione', ids),
+    caricaPerPersone<Esonero>('esonero', ids),
+  ]);
+
+  const perCopia = (row: Record<string, unknown>, extra: Record<string, unknown>): Record<string, unknown> => {
+    const o: Record<string, unknown> = { ...row };
+    delete o.id; delete o.created_at; delete o.updated_at;
+    return { ...o, ...extra, da_confermare: true };
+  };
+
+  const mappa = new Map<string, string>();
+  const nuovePersone = persone.map((p) => {
+    const nid = newId(); mappa.set(p.id, nid);
+    return perCopia(p as unknown as Record<string, unknown>, { id: nid, cliente_id: clienteIdDest, sede_id: destSedeId });
+  });
+  const insP = await supabase.from('persona').insert(nuovePersone);
+  if (insP.error) throw insP.error;
+
+  const rimappa = (righe: { persona_id: string }[]) => righe
+    .filter((r) => mappa.has(r.persona_id))
+    .map((r) => perCopia(r as unknown as Record<string, unknown>, { id: newId(), persona_id: mappa.get(r.persona_id)! }));
+
+  const nn = rimappa(nomine);
+  if (nn.length) { const e = await supabase.from('nomina').insert(nn); if (e.error) throw e.error; }
+  const nf = rimappa(formazioni);
+  if (nf.length) { const e = await supabase.from('formazione').insert(nf); if (e.error) throw e.error; }
+  const ne = rimappa(esoneri);
+  if (ne.length) { const e = await supabase.from('esonero').insert(ne); if (e.error) throw e.error; }
+
+  return { persone: persone.length };
+}
+
+// Conferma la copia di una persona: azzera da_confermare sulla persona e su tutti
+// i suoi record collegati (nomine/formazione/esoneri).
+export async function confermaCopiaPersona(personaId: string): Promise<void> {
+  const upd = (tab: string, col: string) => supabase.from(tab).update({ da_confermare: false }).eq(col, personaId);
+  const [p, n, f, e] = await Promise.all([
+    supabase.from('persona').update({ da_confermare: false }).eq('id', personaId),
+    upd('nomina', 'persona_id'), upd('formazione', 'persona_id'), upd('esonero', 'persona_id'),
+  ]);
+  for (const r of [p, n, f, e]) if (r.error) throw r.error;
 }
 
 // ============================ CRUD ============================

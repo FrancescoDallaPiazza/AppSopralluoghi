@@ -27,6 +27,9 @@ import { newId } from '../lib/types';
 export interface OrganigrammaAdapter {
   salvaPersona(p: Persona): Promise<Persona>;
   eliminaPersona(id: string): Promise<void>;
+  // Conferma una copia (azzera da_confermare su persona + record collegati).
+  // Opzionale: presente solo nel back-office.
+  confermaPersona?(id: string): Promise<void>;
   salvaNomina(n: Nomina): Promise<Nomina>;
   eliminaNomina(id: string): Promise<void>;
   salvaFormazione(f: Formazione): Promise<Formazione>;
@@ -199,6 +202,7 @@ const CSS = `
 .fzr-inc{margin:6px 0 2px 6px;}
 .fzr-inc-h{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft,#5b5f66); margin:4px 0 4px;}
 .fzr-inc-card{border:1px solid var(--line,#e3ddd2); border-radius:10px; padding:9px 10px; margin-bottom:8px; background:var(--card,#fff);}
+.fzr-dacnf{font-size:9.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--hi-dark,#9a6206); background:var(--hi-bg,#fdf3e0); border:1px solid var(--hi,#e6a700); border-radius:6px; padding:2px 6px; white-space:nowrap;}
 .fzr-step{margin-top:8px; padding:8px 10px 6px; border:1px solid var(--line,#e3ddd2); border-radius:9px; background:#fcfbf9;}
 .fzr-step + .fzr-step{margin-top:8px;}
 .fzr-step-h{display:flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink,#2a2c30); margin-bottom:6px;}
@@ -1202,6 +1206,15 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                       <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
                       {nomePersona(pv.persona)}
                     </span>
+                    {pv.persona.da_confermare && (
+                      <span className="fzr-dacnf" title="Riga copiata da un'altra sede: verificala e confermala">copia da confermare</span>
+                    )}
+                    {pv.persona.da_confermare && adapter.confermaPersona && (
+                      <button className="fzr-edit-btn" style={{ borderColor: 'var(--ok-dark,#1f6b3a)', color: 'var(--ok-dark,#1f6b3a)' }}
+                        onClick={() => { void (async () => { await adapter.confermaPersona!(pv.persona.id); })(); }}>
+                        Conferma
+                      </button>
+                    )}
                     {pv.persona.formazione_pregressa && onEvidenzePregresse
                       && figureChePregressa.has(figura.codice)
                       && reqs.some((r) => r.stato === 'da_verificare' || r.stato === 'critico') && (

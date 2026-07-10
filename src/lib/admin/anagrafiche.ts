@@ -66,6 +66,25 @@ export async function caricaClienti(): Promise<ClienteRiga[]> {
 }
 
 // Upsert per id (gli id sono generati lato client, come nel resto dell'app).
+// Duplica l'ANAGRAFICA di un cliente in un nuovo cliente ("(COPIA)"), da
+// modificare. Copia solo i dati anagrafici (non sedi operative ne' organigramma);
+// il werp_id NON si copia (link gestionale univoco). salvaCliente crea in automatico
+// la sede legale del nuovo cliente. Ritorna l'id del nuovo cliente.
+export async function duplicaCliente(clienteId: string): Promise<string> {
+  const { data, error } = await supabase.from('cliente').select('*').eq('id', clienteId).single();
+  if (error) throw error;
+  const src = data as Cliente & Record<string, unknown>;
+  const nuovo = {
+    ...src,
+    id: newId(),
+    werp_id: null,
+    ragione_sociale: (src.ragione_sociale || 'Cliente') + ' (COPIA)',
+    attivo: true,
+  } as Cliente;
+  await salvaCliente(nuovo);
+  return nuovo.id;
+}
+
 export async function salvaCliente(c: Cliente): Promise<void> {
   const { error } = await supabase.from('cliente').upsert({
     id: c.id,

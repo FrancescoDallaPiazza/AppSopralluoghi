@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  caricaClienti, salvaCliente, impostaStatoCliente, eliminaCliente, clienteVuoto,
+  caricaClienti, salvaCliente, impostaStatoCliente, eliminaCliente, clienteVuoto, duplicaCliente,
   caricaIncarichiCliente,
   type ClienteRiga, type IncaricoRiga,
 } from '../lib/admin/anagrafiche';
@@ -42,12 +42,27 @@ function ElencoClienti({
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
   const [q, setQ] = useState('');
   const [mostraInattivi, setMostraInattivi] = useState(false);
+  const [copiaId, setCopiaId] = useState<string | null>(null);
 
-  useEffect(() => {
+  function ricarica() {
     caricaClienti()
       .then((r) => { setRighe(r); setStato('ok'); })
       .catch(() => setStato('errore'));
-  }, []);
+  }
+  useEffect(() => { ricarica(); }, []);
+
+  async function copia(id: string) {
+    setCopiaId(id);
+    try {
+      const nuovoId = await duplicaCliente(id);
+      ricarica();
+      onApri(nuovoId);
+    } catch (e) {
+      window.alert('Copia non riuscita: ' + ((e as Error)?.message ?? String(e)));
+    } finally {
+      setCopiaId(null);
+    }
+  }
 
   const visibili = useMemo(() => {
     const ago = q.trim().toLowerCase();
@@ -64,16 +79,20 @@ function ElencoClienti({
   return (
     <>
       <style>{`
-        .cl-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
-        .cl-tbl thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#5b5f66);font-weight:800;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.08)}
-        .cl-tr td{padding:9px 8px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
+        .cl-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:6px 14px 8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+        .cl-tbl{width:100%;border-collapse:collapse;font-size:13px}
+        .cl-tbl thead th{text-align:left;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--no,#d8442f);font-weight:800;padding:10px 8px;border-bottom:2px solid var(--no,#d8442f)}
+        .cl-tr td{padding:12px 8px;border-bottom:1px solid rgba(0,0,0,.07);vertical-align:middle}
         .cl-tr:last-child td{border-bottom:none}
+        .cl-tr:nth-child(even) td{background:#faf8f4}
+        .cl-tr:hover td{background:#f2ede3}
         .cl-tr.dim{opacity:.5}
-        .cl-rs{width:40%;font-weight:700}
-        .cl-sede{width:24%;color:#3a3d43}
-        .cl-piva{width:18%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3a3d43}
+        .cl-rs{width:36%;font-weight:800;font-size:14px;color:#1c1e22}
+        .cl-sede{width:22%;color:#3a3d43}
+        .cl-piva{width:16%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#3a3d43}
         .cl-inc{width:12%;white-space:nowrap}
-        .cl-act{width:6%;text-align:right;white-space:nowrap}
+        .cl-act{width:14%;text-align:right;white-space:nowrap}
+        .cl-act .bo-btn{margin-left:6px}
       `}</style>
       <div className="bo-row" style={{ marginBottom: 14 }}>
         <div className="grow">
@@ -106,6 +125,7 @@ function ElencoClienti({
       )}
 
       {stato === 'ok' && visibili.length > 0 && (
+        <div className="cl-card">
         <table className="cl-tbl">
           <thead>
             <tr>
@@ -131,12 +151,18 @@ function ElencoClienti({
                   </span>
                 </td>
                 <td className="cl-act">
+                  <button className="bo-btn ghost sm" disabled={copiaId === r.cliente.id}
+                    title="Duplica l'anagrafica in un nuovo cliente (COPIA) da modificare"
+                    onClick={() => void copia(r.cliente.id)}>
+                    {copiaId === r.cliente.id ? 'Copio…' : 'Copia'}
+                  </button>
                   <button className="bo-btn ghost sm" onClick={() => onApri(r.cliente.id)}>Apri</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );
