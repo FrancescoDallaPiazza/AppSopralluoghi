@@ -685,11 +685,7 @@ function SediCliente({ clienteId, sedi, onCambia }: {
         {!agg && <button className="bo-btn sm" onClick={() => setAgg(true)}>+ Aggiungi sede operativa</button>}
       </div>
       <p className="bo-sub" style={{ margin: '0 0 10px' }}>
-        La sede legale e' gia' quella indicata nell'anagrafica qui sopra. Aggiungi una
-        sede operativa <strong>solo se diversa dalla sede legale</strong>: se la sede
-        operativa coincide con la legale non serve aggiungerla. Ogni sede operativa ha
-        lo stesso inquadramento topografico della sede legale (indirizzo, CAP, localita,
-        provincia) e potra' avere un proprio organigramma.
+        Aggiungi una sede operativa solo se diversa dalla sede legale.
       </p>
 
       {agg && (
