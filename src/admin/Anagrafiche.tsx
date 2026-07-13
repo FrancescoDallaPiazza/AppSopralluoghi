@@ -9,7 +9,7 @@ import {
   type ClienteRiga, type IncaricoRiga,
 } from '../lib/admin/anagrafiche';
 import {
-  caricaSedi, salvaSede, impostaStatoSede, sedeVuota,
+  caricaSedi, salvaSede, impostaStatoSede, sedeVuota, eliminaSede,
 } from '../lib/admin/sedi';
 import type { Cliente, Sede } from '../lib/types';
 import {
@@ -633,6 +633,16 @@ function RigaSede({ sede, onCambia }: { sede: Sede; onCambia: () => void }) {
     catch { setMsg('Operazione non riuscita.'); }
     finally { setBusy(false); }
   }
+  async function elimina() {
+    if (!window.confirm('Eliminare definitivamente la sede operativa \u00ab' + (sede.nome || '') + '\u00bb? Le persone eventualmente collegate tornano alla sede legale.')) return;
+    setBusy(true); setMsg(null);
+    try {
+      await eliminaSede(sede.id);
+      await allineaPersoneOrganigramma(sede.cliente_id);
+      onCambia();
+    }
+    catch (e) { setMsg((e as Error)?.message ?? 'Eliminazione non riuscita.'); setBusy(false); }
+  }
 
   return (
     <div className={`bo-card ${s.attivo ? '' : 'dim'}`} style={{ marginBottom: 8 }}>
@@ -674,6 +684,11 @@ function RigaSede({ sede, onCambia }: { sede: Sede; onCambia: () => void }) {
         {!nuova && (
           <button className="bo-btn ghost sm" onClick={() => void toggle()} disabled={busy}>
             {sede.attivo ? 'Archivia' : 'Riattiva'}
+          </button>
+        )}
+        {!nuova && (
+          <button className="bo-btn danger sm" onClick={() => void elimina()} disabled={busy}>
+            Elimina
           </button>
         )}
       </div>

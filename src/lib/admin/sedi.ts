@@ -43,3 +43,25 @@ export async function impostaStatoSede(id: string, attivo: boolean): Promise<voi
   const { error } = await supabase.from('sede').update({ attivo }).eq('id', id);
   if (error) throw error;
 }
+
+// Elimina definitivamente una sede OPERATIVA. La sede legale (principale) non si
+// elimina. Prima sposta eventuali persone di questa sede sulla sede legale, cosi'
+// non vengono cancellate dal cascade su persona.sede_id (mig. 054). Incarichi e
+// sopralluoghi collegati restano (il loro sede_id va a null).
+export async function eliminaSede(id: string): Promise<void> {
+  const s = await supabase.from('sede').select('cliente_id, principale').eq('id', id).single();
+  if (s.error) throw s.error;
+  if (s.data?.principale) throw new Error('La sede legale non puo\u2019 essere eliminata.');
+  const clienteId = s.data?.cliente_id as string;
+
+  const leg = await supabase.from('sede')
+    .select('id').eq('cliente_id', clienteId).eq('principale', true).maybeSingle();
+  const legaleId = leg.data?.id as string | undefined;
+  if (legaleId) {
+    const mv = await supabase.from('persona').update({ sede_id: legaleId }).eq('sede_id', id);
+    if (mv.error) throw mv.error;
+  }
+
+  const del = await supabase.from('sede').delete().eq('id', id);
+  if (del.error) throw del.error;
+}
