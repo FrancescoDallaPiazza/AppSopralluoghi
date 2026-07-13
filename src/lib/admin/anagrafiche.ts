@@ -40,6 +40,9 @@ export interface ClienteRiga {
   cliente: Cliente;
   n_incarichi: number;
   n_incarichi_attivi: number;
+  // Sede operativa attiva (non principale), se presente: la si mostra accanto alla
+  // sede legale nella lista clienti.
+  sede_operativa: { nome: string; localita: string | null } | null;
 }
 
 export async function caricaClienti(): Promise<ClienteRiga[]> {
@@ -58,10 +61,20 @@ export async function caricaClienti(): Promise<ClienteRiga[]> {
     if (r.stato === 'attivo') att.set(r.cliente_id, (att.get(r.cliente_id) ?? 0) + 1);
   }
 
+  // Sede operativa attiva (non principale) per cliente, se presente.
+  const { data: sedi } = await supabase
+    .from('sede').select('cliente_id, nome, localita')
+    .eq('principale', false).eq('attivo', true);
+  const oper = new Map<string, { nome: string; localita: string | null }>();
+  for (const s of (sedi ?? []) as { cliente_id: string; nome: string; localita: string | null }[]) {
+    if (!oper.has(s.cliente_id)) oper.set(s.cliente_id, { nome: s.nome, localita: s.localita });
+  }
+
   return (cli ?? []).map((c: any): ClienteRiga => ({
     cliente: c as Cliente,
     n_incarichi: tot.get(c.id) ?? 0,
     n_incarichi_attivi: att.get(c.id) ?? 0,
+    sede_operativa: oper.get(c.id) ?? null,
   }));
 }
 

@@ -89,7 +89,12 @@ function ElencoClienti({
         .cl-tr:hover td{background:#f2ede3}
         .cl-tr.dim{opacity:.5}
         .cl-rs{width:36%;font-weight:800;font-size:14px;color:#1c1e22}
-        .cl-sede{width:22%;color:#3a3d43}
+        .cl-sede{width:24%;color:#3a3d43}
+        .cl-sede-line{display:flex;align-items:center;gap:6px;line-height:1.5;font-size:12.5px}
+        .cl-sede-line + .cl-sede-line{margin-top:2px}
+        .cl-tag{font-size:9px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:1px 5px;border-radius:5px;flex:0 0 auto}
+        .cl-tag.legale{background:#eef1f4;color:#5b5f66}
+        .cl-tag.oper{background:var(--ok-bg,#e6f4ea);color:var(--ok-dark,#1f6b3a)}
         .cl-piva{width:16%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#3a3d43}
         .cl-inc{width:12%;white-space:nowrap}
         .cl-act{width:14%;text-align:right;white-space:nowrap}
@@ -144,7 +149,12 @@ function ElencoClienti({
                   {r.cliente.ragione_sociale}
                   {!r.cliente.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 8 }}>disattivato</span>}
                 </td>
-                <td className="cl-sede">{r.cliente.localita ?? '—'}</td>
+                <td className="cl-sede">
+                  <div className="cl-sede-line"><span className="cl-tag legale">Legale</span>{r.cliente.localita ?? '—'}</div>
+                  {r.sede_operativa && (
+                    <div className="cl-sede-line"><span className="cl-tag oper">Operativa</span>{r.sede_operativa.localita || r.sede_operativa.nome}</div>
+                  )}
+                </td>
                 <td className="cl-piva">{r.cliente.partita_iva ?? '—'}</td>
                 <td className="cl-inc">
                   <span className={`bo-pill ${r.n_incarichi_attivi > 0 ? 'attivo' : 'archiviato'}`}>
