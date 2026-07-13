@@ -68,45 +68,31 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## B · Aperti (sviluppi pianificati)
 
-### Sede entita' di prima classe (Piano B) - organigramma per sede
+### Sede: modello semplificato (deciso 2026-07-08, rivisto)
 
-Deciso 2026-07-08: la sede diventa di prima classe e l'organigramma si ancora
-alla SEDE, non piu' al cliente. Copia-e-conferma: creando una sede operativa si
-copia TUTTO (anagrafica sede + persone + nomine + formazione + esoneri), marcato
-`da_confermare` finche' non lo si conferma/modifica. Fasi (ognuna validata a se'):
+Un solo organigramma per cliente. La sede legale sta nell'anagrafica; si aggiunge
+UNA sola sede operativa solo se la legale non e' nella disponibilita' dell'azienda
+(es. commercialista). L'organigramma vive sulla sede operativa se presente,
+altrimenti sulla legale; gli attributi che lo guidano (rischio/ATECO/PS/antincendio/
+RLS) sono aziendali e si leggono dal CLIENTE. Stato:
 
-- [x] **Fase 1 - schema + migrazione dati** (`054_sede_prima_classe_fase1.sql`,
-  Canale 3): `sede` allargata coi campi anagrafici e organigramma (rischio, ATECO,
-  primo soccorso, antincendio, RLS) + `principale` + `da_confermare`; flag
-  `da_confermare` su persona/nomina/formazione/esonero; `persona.sede_id`. Per ogni
-  cliente crea la "Sede legale" (principale) copiandone i campi e riaggancia le
-  persone. Non breaking (persona.cliente_id resta). Idempotente, pglast OK.
-- [x] **Fase 2 - motore** (`formazione.ts`): aggiunte `valutaSede(sedeId)` +
-  `caricaDatiOrganigrammaSede` + `caricaPersonePerSede` + `sedePrincipaleId`;
-  rischio/ATECO/PS/antincendio/RLS letti dalla SEDE, persone filtrate per
-  `sede_id`. `valutaCliente` ora delega alla sede legale (compat con la UI
-  ancora per-cliente); `salvaPersona` aggancia le nuove persone alla sede legale.
-  `assemblaRiepilogo` resta puro. Non breaking. Nota per Fase 3: lo snapshot
-  `organigramma-revisioni` e la roster RisorseUmane restano per-cliente finche'
-  la UI non diventa per-sede.
-- [x] **Fase 3 - UI sedi + copia** (SchedaCliente / tab Organigramma).
-  - [x] Sezione Sedi: testo esplicito, form sede con inquadramento topografico
-    completo, sede legale gestita dall'anagrafica (nascosta dalla lista operative).
-  - [x] Write-through `salvaCliente` -> sede legale (principale).
-  - [x] Tab Organigramma: selettore Sede; l'organigramma si valuta per sede
-    (`valutaSede`); backfill scadenzario per-sede; le nuove persone create dal tab
-    ereditano la sede selezionata.
-  - [x] Bottone "Copia organigramma da": copia tutto (persone/nomine/formazione/
-    esoneri) come righe `da_confermare`; le evidenze nomina NON si copiano (atti
-    specifici della sede, compaiono come "evidenza da ottenere"). Badge "copia da
-    confermare" + azione Conferma per persona (azzera il flag su persona e record).
-  - [ ] Follow-up minore: rendere la roster RisorseUmane sede-aware (oggi le
-    persone create dalla roster vanno alla sede legale; per popolare una sede
-    operativa si usa la Copia).
-- [ ] **Fase 4 - scadenzario** (`cosedafare.ts`): roll-up per cliente delle azioni
-  delle sedi, con etichetta della sede di provenienza.
-- [ ] **Fase 5 - offline**: il riepilogo in campo segue la sede del sopralluogo
-  (gia' ereditata dall'incarico/sopralluogo).
+- [x] Schema sede di prima classe (`054`): sede con campi topografici + org +
+  `principale` + `da_confermare`; `persona.sede_id`; sede legale per cliente.
+- [x] Motore (`formazione.ts`): `valutaSede`; `valutaCliente` risolve la
+  sede-organigramma (`sedeOrganigrammaId` = operativa attiva altrimenti legale);
+  gli attributi si leggono dal cliente; `salvaPersona` aggancia alla sede-organigramma.
+- [x] UI: una sola sede operativa (bottone nascosto se gia' presente); testo
+  aggiornato (commercialista); `allineaPersoneOrganigramma` sposta le persone sulla
+  sede-organigramma quando si aggiunge/archivia l'operativa. Selettore multi-sede e
+  copia tra sedi RIMOSSI (non servono con un solo organigramma).
+- [ ] Fase 4 - scadenzario: opzionale etichetta della sede sulle voci (roll-up
+  multi-sede non serve piu': una sola sede-organigramma per cliente).
+- [ ] Fase 5 - offline: il riepilogo in campo segue la sede-organigramma del cliente
+  del sopralluogo (sola lettura, offline).
+
+Note: colonne org su `sede`, write-through in `salvaCliente`, flag `da_confermare` e
+badge in OrganigrammaView restano ma sono ridondanti/dormienti (nessuna copia tra
+sedi li accende; gli attributi si leggono dal cliente).
 
 ### Organigramma / formazione
 

@@ -792,6 +792,28 @@ export async function sedePrincipaleId(clienteId: string): Promise<string | null
   return (data?.id ?? null) as string | null;
 }
 
+// Sede del (singolo) organigramma del cliente: la sede OPERATIVA attiva se presente
+// (aggiunta solo quando la legale non e' la sede di lavoro, es. commercialista),
+// altrimenti la sede LEGALE. C'e' un solo organigramma per cliente.
+export async function sedeOrganigrammaId(clienteId: string): Promise<string | null> {
+  const { data } = await supabase.from('sede')
+    .select('id, principale, attivo').eq('cliente_id', clienteId);
+  const righe = (data ?? []) as { id: string; principale: boolean; attivo: boolean }[];
+  const operativa = righe.find((s) => !s.principale && s.attivo);
+  if (operativa) return operativa.id;
+  return righe.find((s) => s.principale)?.id ?? righe[0]?.id ?? null;
+}
+
+// Porta TUTTE le persone del cliente sulla sede dell'organigramma corrente. Da
+// chiamare quando si aggiunge/archivia la sede operativa, cosi' l'unico
+// organigramma segue la sede di lavoro. Idempotente.
+export async function allineaPersoneOrganigramma(clienteId: string): Promise<void> {
+  const sedeId = await sedeOrganigrammaId(clienteId);
+  if (!sedeId) return;
+  const { error } = await supabase.from('persona').update({ sede_id: sedeId }).eq('cliente_id', clienteId);
+  if (error) throw error;
+}
+
 async function caricaPerPersone<T>(tabella: string, personaIds: string[]): Promise<T[]> {
   if (!personaIds.length) return [];
   const { data, error } = await supabase.from(tabella).select('*').in('persona_id', personaIds);
@@ -935,16 +957,21 @@ export async function caricaDatiOrganigrammaSede(
   ateco: string | null;
   dati: DatiOrganigramma;
 }> {
-  const sed = await supabase.from('sede')
-    .select('cliente_id, livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco')
-    .eq('id', sedeId).single();
+  const sed = await supabase.from('sede').select('cliente_id').eq('id', sedeId).single();
   if (sed.error) throw sed.error;
   const clienteId = sed.data?.cliente_id as string;
-  const rischio = (sed.data?.livello_rischio ?? null) as LivelloRischio | null;
-  const rlsTerritoriale = (sed.data?.rls_territoriale ?? false) as boolean;
-  const livAntincendio = (sed.data?.livello_antincendio ?? null) as LivelloAntincendio | null;
-  const gruppoPS = (sed.data?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null;
-  const ateco = (sed.data?.codice_ateco ?? null) as string | null;
+  // Gli attributi che guidano l'organigramma (rischio/ATECO/PS/antincendio/RLS)
+  // sono AZIENDALI: si leggono dal cliente (anagrafica), non dalla sede. La sede
+  // fornisce solo l'inquadramento (indirizzo) e il raggruppamento delle persone.
+  const cli = await supabase.from('cliente')
+    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco')
+    .eq('id', clienteId).single();
+  if (cli.error) throw cli.error;
+  const rischio = (cli.data?.livello_rischio ?? null) as LivelloRischio | null;
+  const rlsTerritoriale = (cli.data?.rls_territoriale ?? false) as boolean;
+  const livAntincendio = (cli.data?.livello_antincendio ?? null) as LivelloAntincendio | null;
+  const gruppoPS = (cli.data?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null;
+  const ateco = (cli.data?.codice_ateco ?? null) as string | null;
 
   const persone = await caricaPersonePerSede(sedeId);
   const ids = persone.map((p) => p.id);
@@ -975,77 +1002,18 @@ export async function valutaSede(sedeId: string, cat?: Catalogo): Promise<Riepil
 // manca la sede legale (non dovrebbe capitare post-054).
 export async function valutaCliente(clienteId: string, cat?: Catalogo): Promise<RiepilogoCliente> {
   const catalogo = cat ?? (await caricaCatalogo());
-  const sedeId = await sedePrincipaleId(clienteId);
+  const sedeId = await sedeOrganigrammaId(clienteId);
   if (sedeId) return valutaSede(sedeId, catalogo);
   const { rischio, rlsTerritoriale, livAntincendio, gruppoPS, ateco, dati } = await caricaDatiOrganigramma(clienteId);
   return assemblaRiepilogo(clienteId, rischio, dati, catalogo, { rlsTerritoriale, livAntincendio, gruppoPS, atecoCliente: ateco });
 }
 
-// Copia TUTTO l'organigramma di una sede sorgente in una sede destinazione:
-// persone + nomine + formazione + esoneri, come NUOVE righe marcate da_confermare
-// (da rivedere/confermare). Le evidenze della nomina (atti ufficiali) NON si
-// copiano: sono specifiche della sede e vanno riottenute (compaiono come
-// "evidenza da ottenere"). Ritorna quante persone sono state copiate.
-export async function copiaOrganigrammaSede(sorgenteSedeId: string, destSedeId: string): Promise<{ persone: number }> {
-  if (sorgenteSedeId === destSedeId) return { persone: 0 };
-  const sd = await supabase.from('sede').select('cliente_id').eq('id', destSedeId).single();
-  if (sd.error) throw sd.error;
-  const clienteIdDest = sd.data?.cliente_id as string;
-
-  const persone = await caricaPersonePerSede(sorgenteSedeId);
-  if (persone.length === 0) return { persone: 0 };
-  const ids = persone.map((p) => p.id);
-  const [nomine, formazioni, esoneri] = await Promise.all([
-    caricaPerPersone<Nomina>('nomina', ids),
-    caricaPerPersone<Formazione>('formazione', ids),
-    caricaPerPersone<Esonero>('esonero', ids),
-  ]);
-
-  const perCopia = (row: Record<string, unknown>, extra: Record<string, unknown>): Record<string, unknown> => {
-    const o: Record<string, unknown> = { ...row };
-    delete o.id; delete o.created_at; delete o.updated_at;
-    return { ...o, ...extra, da_confermare: true };
-  };
-
-  const mappa = new Map<string, string>();
-  const nuovePersone = persone.map((p) => {
-    const nid = newId(); mappa.set(p.id, nid);
-    return perCopia(p as unknown as Record<string, unknown>, { id: nid, cliente_id: clienteIdDest, sede_id: destSedeId });
-  });
-  const insP = await supabase.from('persona').insert(nuovePersone);
-  if (insP.error) throw insP.error;
-
-  const rimappa = (righe: { persona_id: string }[]) => righe
-    .filter((r) => mappa.has(r.persona_id))
-    .map((r) => perCopia(r as unknown as Record<string, unknown>, { id: newId(), persona_id: mappa.get(r.persona_id)! }));
-
-  const nn = rimappa(nomine);
-  if (nn.length) { const e = await supabase.from('nomina').insert(nn); if (e.error) throw e.error; }
-  const nf = rimappa(formazioni);
-  if (nf.length) { const e = await supabase.from('formazione').insert(nf); if (e.error) throw e.error; }
-  const ne = rimappa(esoneri);
-  if (ne.length) { const e = await supabase.from('esonero').insert(ne); if (e.error) throw e.error; }
-
-  return { persone: persone.length };
-}
-
-// Conferma la copia di una persona: azzera da_confermare sulla persona e su tutti
-// i suoi record collegati (nomine/formazione/esoneri).
-export async function confermaCopiaPersona(personaId: string): Promise<void> {
-  const upd = (tab: string, col: string) => supabase.from(tab).update({ da_confermare: false }).eq(col, personaId);
-  const [p, n, f, e] = await Promise.all([
-    supabase.from('persona').update({ da_confermare: false }).eq('id', personaId),
-    upd('nomina', 'persona_id'), upd('formazione', 'persona_id'), upd('esonero', 'persona_id'),
-  ]);
-  for (const r of [p, n, f, e]) if (r.error) throw r.error;
-}
-
 // ============================ CRUD ============================
 
 export async function salvaPersona(p: Persona): Promise<Persona> {
-  // Ogni persona appartiene a una sede (mig. 054). Se non specificata (creazione
-  // dalla UI ancora per-cliente), si aggancia alla sede legale del cliente.
-  const sedeId = p.sede_id ?? (await sedePrincipaleId(p.cliente_id));
+  // Ogni persona sta sulla sede dell'unico organigramma del cliente (operativa se
+  // presente, altrimenti legale). Se non specificata, la si aggancia li'.
+  const sedeId = p.sede_id ?? (await sedeOrganigrammaId(p.cliente_id));
   const row = {
     id: p.id || newId(),
     cliente_id: p.cliente_id,

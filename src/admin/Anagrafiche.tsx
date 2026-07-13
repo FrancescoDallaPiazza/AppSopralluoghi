@@ -17,6 +17,7 @@ import {
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
+import { allineaPersoneOrganigramma } from '../lib/admin/formazione';
 import CoseDaFare from './CoseDaFare';
 
 export default function Anagrafiche() {
@@ -613,13 +614,22 @@ function RigaSede({ sede, onCambia }: { sede: Sede; onCambia: () => void }) {
 
   async function salva() {
     setBusy(true); setMsg(null);
-    try { await salvaSede(s); onCambia(); if (nuova) setS(sedeVuota(sede.cliente_id)); }
+    try {
+      await salvaSede(s);
+      // L'unico organigramma del cliente segue la sede operativa: riallinea le persone.
+      await allineaPersoneOrganigramma(s.cliente_id);
+      onCambia(); if (nuova) setS(sedeVuota(sede.cliente_id));
+    }
     catch (e) { setMsg((e as Error)?.message ?? 'Salvataggio non riuscito.'); }
     finally { setBusy(false); }
   }
   async function toggle() {
     setBusy(true); setMsg(null);
-    try { await impostaStatoSede(sede.id, !sede.attivo); onCambia(); }
+    try {
+      await impostaStatoSede(sede.id, !sede.attivo);
+      await allineaPersoneOrganigramma(sede.cliente_id);
+      onCambia();
+    }
     catch { setMsg('Operazione non riuscita.'); }
     finally { setBusy(false); }
   }
@@ -675,18 +685,24 @@ function SediCliente({ clienteId, sedi, onCambia }: {
   clienteId: string; sedi: Sede[]; onCambia: () => void;
 }) {
   const [agg, setAgg] = useState(false);
-  // La sede legale e' gestita dall'anagrafica qui sopra: nella lista compaiono
-  // solo le sedi OPERATIVE, da aggiungere quando differiscono dalla sede legale.
+  // Al massimo UNA sede operativa per cliente, aggiunta solo quando la legale non e'
+  // nella disponibilita' dell'azienda. La legale si gestisce dall'anagrafica.
   const operative = sedi.filter((s) => !s.principale);
+  const haOperativaAttiva = operative.some((s) => s.attivo);
   return (
     <>
       <div className="bo-row" style={{ margin: '0 0 6px' }}>
         <span className="grow" />
-        {!agg && <button className="bo-btn sm" onClick={() => setAgg(true)}>+ Aggiungi sede operativa</button>}
+        {!agg && !haOperativaAttiva && <button className="bo-btn sm" onClick={() => setAgg(true)}>+ Aggiungi sede operativa</button>}
       </div>
       <p className="bo-sub" style={{ margin: '0 0 10px' }}>
-        Aggiungi una sede operativa solo se diversa dalla sede legale.
+        Aggiungi una sede operativa solo se la sede legale non e' nella disponibilita' dell'azienda (es. sede del commercialista). L'organigramma del cliente e' uno solo e vive su questa sede.
       </p>
+      {haOperativaAttiva && (
+        <p className="bo-sub" style={{ margin: '-4px 0 10px', color: 'var(--ink-soft,#8a8f98)' }}>
+          Serve un'altra sede operativa? Crea una nuova anagrafica (bottone <strong>Copia</strong> nella lista clienti): ogni sede operativa in piu' e' un'anagrafica a se'.
+        </p>
+      )}
 
       {agg && (
         <RigaSede sede={sedeVuota(clienteId)}
