@@ -395,10 +395,25 @@ function PannelloImport({ clienteId, esistenti, onFatto, onAnnulla }: {
     } catch (e: any) { setErr(e?.message ?? 'Import non riuscito.'); setBusy(''); }
   }
 
+  function scaricaModello() {
+    const esempio = [
+      { Cognome: 'ROSSI', Nome: 'MARIO', 'Codice fiscale': 'RSSMRA80A01H501U', Mansione: 'Operaio', Reparto: 'Produzione', 'Data assunzione': '01/03/2020' },
+      { Cognome: 'BIANCHI', Nome: 'LUCIA', 'Codice fiscale': 'BNCLCU85M41F205X', Mansione: 'Impiegata', Reparto: 'Uffici', 'Data assunzione': '15/09/2019' },
+    ];
+    const ws = XLSX.utils.json_to_sheet(esempio, {
+      header: ['Cognome', 'Nome', 'Codice fiscale', 'Mansione', 'Reparto', 'Data assunzione'],
+    });
+    ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Personale');
+    XLSX.writeFile(wb, 'modello_risorse_umane.xlsx');
+  }
+
   return (
     <div className="bo-card" style={{ marginBottom: 10, borderColor: 'var(--hi)' }}>
       <div className="bo-row" style={{ marginBottom: 8 }}>
         <div className="grow"><div className="bo-title">Importazione massiva</div></div>
+        <button className="bo-btn ghost sm" onClick={scaricaModello} disabled={busy !== ''}>Scarica modello</button>
         <button className="bo-btn ghost sm" onClick={onAnnulla} disabled={busy !== ''}>Chiudi</button>
       </div>
       <p className="bo-sub" style={{ marginTop: 0 }}>
