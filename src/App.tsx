@@ -21,11 +21,11 @@ function Schermo({ titolo, testo, azione }: {
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24,
-      background: '#d9d4ca', textAlign: 'center',
-      fontFamily: '-apple-system,system-ui,sans-serif', color: '#16181c',
+      background: '#d5cec1', textAlign: 'center',
+      fontFamily: '"Hanken Grotesk Variable",-apple-system,system-ui,sans-serif', color: '#1b1c1f',
     }}>
       <div style={{ fontWeight: 800, fontSize: 17 }}>{titolo}</div>
-      <div style={{ fontSize: 13.5, color: '#5b5f66', maxWidth: 320, lineHeight: 1.5 }}>{testo}</div>
+      <div style={{ fontSize: 13.5, color: '#5c5f66', maxWidth: 320, lineHeight: 1.5 }}>{testo}</div>
       {azione && (
         <button onClick={azione.onClick} style={{
           marginTop: 6, border: '1px solid #c9c2b4', background: '#fff',
@@ -47,7 +47,7 @@ function MenuAccount() {
     <>
       {cambia && <CambiaPassword onChiudi={() => setCambia(false)} />}
       <div style={{ position: 'fixed', right: 14, bottom: 16, zIndex: 9998,
-        fontFamily: '-apple-system,system-ui,sans-serif' }}>
+        fontFamily: '"Hanken Grotesk Variable",-apple-system,system-ui,sans-serif' }}>
         {apri && (
           <div style={{
             position: 'absolute', right: 0, bottom: 52, width: 190,
@@ -64,7 +64,7 @@ function MenuAccount() {
         <button onClick={() => setApri((v) => !v)} aria-label="Account"
           style={{
             width: 46, height: 46, borderRadius: '50%', border: '1px solid #2c2f36',
-            background: '#16181c', color: '#fff', fontSize: 18, fontWeight: 800,
+            background: '#1b1c1f', color: '#fff', fontSize: 18, fontWeight: 800,
             cursor: 'pointer', boxShadow: '0 10px 24px -10px rgba(0,0,0,.6)',
           }}>⋯</button>
       </div>
@@ -75,7 +75,7 @@ function MenuAccount() {
 const menuItem: CSSProperties = {
   display: 'block', width: '100%', textAlign: 'left', border: 'none',
   background: 'none', padding: '12px 14px', fontSize: 14, fontWeight: 700,
-  color: '#16181c', cursor: 'pointer', fontFamily: 'inherit',
+  color: '#1b1c1f', cursor: 'pointer', fontFamily: 'inherit',
 };
 
 // Le due schede + la schermata di campo.
@@ -143,9 +143,9 @@ function Pronto({ tecnico }: { tecnico: Tecnico }) {
           onClick={() => setVista('auto')}
           style={{
             position: 'fixed', top: 8, right: 8, zIndex: 9999,
-            border: '1px solid #c9c2b4', background: '#fffdf9', color: '#16181c',
+            border: '1px solid #c9c2b4', background: '#fffdf9', color: '#1b1c1f',
             borderRadius: 999, padding: '6px 12px', fontWeight: 800, fontSize: 12,
-            fontFamily: '-apple-system,system-ui,sans-serif', cursor: 'pointer',
+            fontFamily: '"Hanken Grotesk Variable",-apple-system,system-ui,sans-serif', cursor: 'pointer',
             boxShadow: '0 6px 18px -10px rgba(0,0,0,.5)',
           }}
         >

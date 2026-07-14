@@ -11,10 +11,10 @@ export default defineConfig({
         name: 'Sopralluoghi',
         short_name: 'Sopralluoghi',
         display: 'standalone',
-        background_color: '#f5f2ec',
-        theme_color: '#16181c',
+        background_color: '#f6f3ec',
+        theme_color: '#1b1c1f',
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png}'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,woff}'] },
     }),
   ],
 });

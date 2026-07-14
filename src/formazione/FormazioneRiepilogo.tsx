@@ -44,15 +44,15 @@ interface Props {
 
 const CSS = `
 .fzr-shell{font-size:13px;}
-.fzr-warn{font-size:11.5px; color:var(--hi-dark,#9a6206); background:#fbf0d6; border-radius:8px; padding:6px 9px; margin-bottom:10px;}
-.fzr-conf{margin-top:14px; border-top:2px solid var(--line,#e3ddd2); padding-top:12px;}
+.fzr-warn{font-size:11.5px; color:var(--hi-dark,#8f5a06); background:#fbf0d6; border-radius:8px; padding:6px 9px; margin-bottom:10px;}
+.fzr-conf{margin-top:14px; border-top:2px solid var(--line,#e7e1d6); padding-top:12px;}
 .fzr-conf h4{margin:0 0 6px; font-size:13px; font-weight:800;}
-.fzr-conf-last{font-size:11.5px; color:var(--ink-soft,#5b5f66); margin-bottom:8px;}
-.fzr-conf textarea{width:100%; box-sizing:border-box; padding:8px 9px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-size:13px; font-family:inherit; min-height:54px; resize:vertical; background:#fff; color:var(--ink,#2a2c30); margin-bottom:8px;}
+.fzr-conf-last{font-size:11.5px; color:var(--ink-soft,#5c5f66); margin-bottom:8px;}
+.fzr-conf textarea{width:100%; box-sizing:border-box; padding:8px 9px; border:1px solid var(--line,#e7e1d6); border-radius:8px; font-size:13px; font-family:inherit; min-height:54px; resize:vertical; background:#fff; color:var(--ink,#2a2c30); margin-bottom:8px;}
 .fzr-conf-actions{display:flex; gap:8px;}
 .fzr-conf-btn{flex:1; padding:8px 10px; border-radius:8px; border:none; font-size:12.5px; font-weight:800; cursor:pointer;}
-.fzr-conf-btn.primary{background:var(--ok,#1f9d57); color:#fff;}
-.fzr-conf-btn.ghost{background:#fff; border:1px solid var(--line,#e3ddd2); color:var(--ink,#2a2c30);}
+.fzr-conf-btn.primary{background:var(--ok,#2e8b4c); color:#fff;}
+.fzr-conf-btn.ghost{background:#fff; border:1px solid var(--line,#e7e1d6); color:var(--ink,#2a2c30);}
 .fzr-conf-btn:disabled{opacity:.55; cursor:default;}
 `;
 

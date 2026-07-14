@@ -82,7 +82,7 @@ function ElencoClienti({
       <style>{`
         .cl-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:6px 14px 8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
         .cl-tbl{width:100%;border-collapse:collapse;font-size:13px}
-        .cl-tbl thead th{text-align:left;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--no,#d8442f);font-weight:800;padding:10px 8px;border-bottom:2px solid var(--no,#d8442f)}
+        .cl-tbl thead th{text-align:left;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--no,#d24028);font-weight:800;padding:10px 8px;border-bottom:2px solid var(--no,#d24028)}
         .cl-tr td{padding:12px 8px;border-bottom:1px solid rgba(0,0,0,.07);vertical-align:middle}
         .cl-tr:last-child td{border-bottom:none}
         .cl-tr:nth-child(even) td{background:#faf8f4}
@@ -93,7 +93,7 @@ function ElencoClienti({
         .cl-sede-line{display:flex;align-items:center;gap:6px;line-height:1.5;font-size:12.5px}
         .cl-sede-line + .cl-sede-line{margin-top:2px}
         .cl-tag{font-size:9px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:1px 5px;border-radius:5px;flex:0 0 auto}
-        .cl-tag.legale{background:#eef1f4;color:#5b5f66}
+        .cl-tag.legale{background:#eef1f4;color:#5c5f66}
         .cl-tag.oper{background:var(--ok-bg,#e6f4ea);color:var(--ok-dark,#1f6b3a)}
         .cl-piva{width:16%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#3a3d43}
         .cl-inc{width:12%;white-space:nowrap}

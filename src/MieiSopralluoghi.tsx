@@ -527,16 +527,17 @@ function RiepilogoView({
 // ---------- stile (stessa palette dei mockup) ----------
 const CSS = `
 .misopr{
-  --disp:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
-  --ink:#16181c; --ink-soft:#5b5f66; --faint:#8a8f97; --line:#e3ddd2;
-  --paper:#f5f2ec; --card:#fff;
-  --hi:#f4a012; --hi-dark:#9a6206;
-  --ok:#1f9d57; --ok-bg:#e7f5ec;
-  --no:#d8442f; --no-bg:#fbeae6;
+  --disp:"Hanken Grotesk Variable",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
+  --serif:"Fraunces Variable","Hanken Grotesk Variable",Georgia,serif;
+  --ink:#1b1c1f; --ink-soft:#5c5f66; --faint:#8b8e94; --line:#e7e1d6;
+  --paper:#f6f3ec; --card:#fff;
+  --hi:#e8920c; --hi-dark:#8f5a06;
+  --ok:#2e8b4c; --ok-bg:#e7f3ea;
+  --no:#d24028; --no-bg:#fbeae6;
   --na-bg:#eceae5;
   --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 24px -16px rgba(0,0,0,.25);
   font-family:var(--disp); color:var(--ink);
-  background:#d9d4ca; display:flex; justify-content:center; min-height:100vh;
+  background:#d5cec1; display:flex; justify-content:center; min-height:100vh;
 }
 .misopr *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 .misopr .phone{width:100%; max-width:440px; background:var(--paper); min-height:100vh;
@@ -545,7 +546,7 @@ const CSS = `
 .misopr header{position:sticky; top:0; z-index:20; background:var(--ink); color:#fff; border-bottom:3px solid var(--hi);}
 .misopr .h-pad{padding:13px 16px 0;}
 .misopr .h-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
-.misopr .h-title{font-weight:800; font-size:18px; letter-spacing:-.2px;}
+.misopr .h-title{font-family:var(--serif); font-weight:600; font-size:19px; letter-spacing:-.01em;}
 .misopr .h-user{display:flex; align-items:center; gap:8px; font-size:12.5px; color:#c7cad0; font-weight:600;}
 .misopr .ava{width:28px;height:28px;border-radius:50%;background:var(--hi);color:#1a1205;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
 .misopr .tabs{display:flex; gap:22px; margin-top:12px;}

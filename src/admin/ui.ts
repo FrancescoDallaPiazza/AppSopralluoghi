@@ -3,17 +3,19 @@
 
 export const CSS_BACKOFFICE = `
 .bo{
-  --ink:#16181c; --ink-soft:#5b5f66; --faint:#8a8d93; --line:#e3ddd2; --paper:#f5f2ec;
-  --hi:#f4a012; --hi-dark:#9a6a07; --no:#d8442f; --no-bg:#fbeae6; --ok:#2f8f4e; --ok-bg:#e7f3ea;
-  font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
-  background:#d9d4ca; color:var(--ink); min-height:100vh;
+  --ink:#1b1c1f; --ink-soft:#5c5f66; --faint:#8b8e94; --line:#e7e1d6; --paper:#f6f3ec;
+  --hi:#e8920c; --hi-dark:#8f5a06; --no:#d24028; --no-bg:#fbeae6; --ok:#2e8b4c; --ok-bg:#e7f3ea;
+  --ui:"Hanken Grotesk Variable",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
+  --serif:"Fraunces Variable","Hanken Grotesk Variable",Georgia,serif;
+  font-family:var(--ui); font-feature-settings:"tnum" 1;
+  background:#d5cec1; color:var(--ink); min-height:100vh;
 }
 .bo *{box-sizing:border-box;}
 
 /* header */
 .bo-top{position:sticky; top:0; z-index:20; background:#fffdf9; border-bottom:1px solid var(--line);}
 .bo-top-in{max-width:1040px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; gap:14px;}
-.bo-brand{font-weight:800; font-size:18px; letter-spacing:-.3px;}
+.bo-brand{font-family:var(--serif); font-weight:600; font-size:19px; letter-spacing:-.01em;}
 .bo-brand small{display:block; font-weight:600; font-size:11.5px; color:var(--ink-soft); letter-spacing:0;}
 .bo-sp{flex:1;}
 .bo-tabs{max-width:1040px; margin:0 auto; padding:0 18px; display:flex; gap:4px;}
@@ -31,7 +33,7 @@ export const CSS_BACKOFFICE = `
 
 /* layout */
 .bo-main{max-width:1040px; margin:0 auto; padding:20px 18px 60px;}
-.bo-h{font-size:16px; font-weight:800; margin:0 0 2px;}
+.bo-h{font-family:var(--serif); font-size:19px; font-weight:600; letter-spacing:-.01em; margin:0 0 2px;}
 .bo-sub{font-size:12.5px; color:var(--ink-soft); margin:0 0 16px;}
 
 /* card */
@@ -67,7 +69,7 @@ export const CSS_BACKOFFICE = `
   width:100%; -webkit-appearance:none; appearance:none; border:1px solid var(--line);
   border-radius:10px; padding:10px 11px; font-family:inherit; font-size:14px; background:#fbfaf7; color:var(--ink);}
 .bo textarea{resize:vertical; min-height:54px;}
-.bo input:focus, .bo select:focus, .bo textarea:focus{outline:none; border-color:var(--hi); background:#fff;}
+.bo input:focus, .bo select:focus, .bo textarea:focus{outline:none; border-color:var(--hi); background:#fff; box-shadow:0 0 0 3px rgba(232,146,12,.15);}
 .bo label.chk{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--ink); cursor:pointer;}
 .bo label.chk input{width:16px; height:16px; accent-color:var(--hi);}
 

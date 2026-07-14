@@ -195,20 +195,20 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
     <>
       <style>{`
         .cdf-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
-        .cdf-tbl thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#5b5f66);font-weight:800;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.08)}
+        .cdf-tbl thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#5c5f66);font-weight:800;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.08)}
         .cdf-tr td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
         .cdf-tr:last-child td{border-bottom:none}
         .cdf-tr.dim{opacity:.5}
-        .cdf-tr.scad td.cdf-desc{box-shadow:inset 3px 0 0 var(--no,#d8442f)}
+        .cdf-tr.scad td.cdf-desc{box-shadow:inset 3px 0 0 var(--no,#d24028)}
         .cdf-desc{width:44%}
         .cdf-disc{width:26%;font-weight:600}
         .cdf-corso{width:34%;line-height:1.25}
         .cdf-d{font-weight:600;line-height:1.25}
-        .cdf-sub{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;font-size:11px;color:var(--ink-soft,#5b5f66)}
+        .cdf-sub{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;font-size:11px;color:var(--ink-soft,#5c5f66)}
         .cdf-ore{width:9%;white-space:nowrap;font-weight:700;color:#3a3d43}
         .cdf-dest{width:19%}
-        .cdf-scad{width:14%;white-space:nowrap;color:var(--ink-soft,#5b5f66)}
-        .cdf-scad.warn{color:var(--no,#d8442f);font-weight:700}
+        .cdf-scad{width:14%;white-space:nowrap;color:var(--ink-soft,#5c5f66)}
+        .cdf-scad.warn{color:var(--no,#d24028);font-weight:700}
         .cdf-stato{width:12%}
         .cdf-stato select{width:100%;font-size:12px;padding:4px 6px}
         .cdf-act{width:6%;text-align:center}

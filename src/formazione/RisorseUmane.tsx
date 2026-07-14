@@ -74,14 +74,14 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
     <>
       <style>{`
         .ru-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
-        .ru-tbl thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#5b5f66);font-weight:800;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.08)}
+        .ru-tbl thead th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#5c5f66);font-weight:800;padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.08)}
         .ru-tr td{padding:8px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
         .ru-tr:last-child td{border-bottom:none}
         .ru-tr.dim{opacity:.5}
         .ru-cog{width:24%;font-weight:700}
         .ru-nom{width:22%;font-weight:600}
         .ru-cf{width:26%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3a3d43}
-        .ru-cf.bad{color:var(--no,#d8442f)}
+        .ru-cf.bad{color:var(--no,#d24028)}
         .ru-man{width:22%}
         .ru-act{width:6%;text-align:right;white-space:nowrap}
       `}</style>

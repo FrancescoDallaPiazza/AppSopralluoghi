@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/hanken-grotesk": "^5.2.8",
     "@supabase/supabase-js": "^2.45.0",
     "dexie": "^4.0.8",
     "react": "^18.3.1",

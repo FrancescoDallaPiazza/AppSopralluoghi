@@ -126,10 +126,11 @@ export default function Login() {
 
 const CSS = `
 .login{
-  --ink:#16181c; --ink-soft:#5b5f66; --line:#e3ddd2; --paper:#f5f2ec;
-  --hi:#f4a012; --no:#d8442f; --no-bg:#fbeae6;
-  font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
-  background:#d9d4ca; color:var(--ink);
+  --ink:#1b1c1f; --ink-soft:#5c5f66; --line:#e7e1d6; --paper:#f6f3ec;
+  --hi:#e8920c; --no:#d24028; --no-bg:#fbeae6;
+  --serif:"Fraunces Variable","Hanken Grotesk Variable",Georgia,serif;
+  font-family:"Hanken Grotesk Variable",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
+  background:#d5cec1; color:var(--ink);
   min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
 }
 .login *{box-sizing:border-box;}
@@ -137,7 +138,7 @@ const CSS = `
   width:100%; max-width:380px; background:#fff; border:1px solid var(--line);
   border-radius:16px; padding:26px 24px 24px; box-shadow:0 18px 50px -28px rgba(0,0,0,.55);
 }
-.login .brand{font-weight:800; font-size:22px; letter-spacing:-.3px;}
+.login .brand{font-family:var(--serif); font-weight:600; font-size:24px; letter-spacing:-.01em;}
 .login .accent{height:3px; width:46px; background:var(--hi); border-radius:3px; margin:10px 0 14px;}
 .login .sub{font-size:13px; color:var(--ink-soft); margin:0 0 18px; line-height:1.45;}
 .login .field{display:block; margin-bottom:13px;}
@@ -146,7 +147,7 @@ const CSS = `
   width:100%; -webkit-appearance:none; appearance:none; border:1px solid var(--line);
   border-radius:10px; padding:12px 12px; font-family:inherit; font-size:15px; background:#fbfaf7; color:var(--ink);
 }
-.login .field input:focus{outline:none; border-color:var(--hi); background:#fff;}
+.login .field input:focus{outline:none; border-color:var(--hi); background:#fff; box-shadow:0 0 0 3px rgba(232,146,12,.15);}
 .login .field input:disabled{opacity:.6;}
 .login .err{
   background:var(--no-bg); color:var(--no); border:1px solid #f1c4b9; border-radius:10px;

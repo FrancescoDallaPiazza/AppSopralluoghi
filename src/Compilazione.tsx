@@ -598,11 +598,12 @@ function Cornice({ children }: { children: ReactNode }) {
 // ---------- stile ----------
 const CSS = `
 .compila{
-  --disp:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
-  --ink:#16181c; --ink-soft:#5b5f66; --line:#e3ddd2; --paper:#f5f2ec; --card:#fff;
-  --hi:#f4a012; --hi-dark:#9a6206; --ok:#1f9d57; --ok-bg:#e7f5ec; --no:#d8442f; --no-bg:#fbeae6; --na:#8a8f97; --na-bg:#eceae5;
+  --disp:"Hanken Grotesk Variable",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
+  --serif:"Fraunces Variable","Hanken Grotesk Variable",Georgia,serif;
+  --ink:#1b1c1f; --ink-soft:#5c5f66; --line:#e7e1d6; --paper:#f6f3ec; --card:#fff;
+  --hi:#e8920c; --hi-dark:#8f5a06; --ok:#2e8b4c; --ok-bg:#e7f3ea; --no:#d24028; --no-bg:#fbeae6; --na:#8b8e94; --na-bg:#eceae5;
   --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 24px -16px rgba(0,0,0,.25);
-  font-family:var(--disp); color:var(--ink); background:#d9d4ca; display:flex; justify-content:center; min-height:100vh;
+  font-family:var(--disp); color:var(--ink); background:#d5cec1; display:flex; justify-content:center; min-height:100vh;
 }
 .compila *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 .compila .phone{width:100%; max-width:440px; background:var(--paper); min-height:100vh; position:relative; display:flex; flex-direction:column; box-shadow:0 0 60px -20px rgba(0,0,0,.5);}
@@ -613,7 +614,7 @@ const CSS = `
 .compila .hb{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:9px; width:34px; height:34px; flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center;}
 .compila .hb svg{width:18px;height:18px;}
 .compila .h-mid{flex:1; min-width:0;}
-.compila .h-client{font-weight:800; font-size:16px; letter-spacing:-.2px; line-height:1.15;}
+.compila .h-client{font-family:var(--serif); font-weight:600; font-size:17px; letter-spacing:-.01em; line-height:1.15;}
 .compila .h-sub{font-size:12px; color:#b9bcc2; margin-top:2px; font-weight:500;}
 .compila .sync{flex-shrink:0; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; padding:6px 9px; border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); white-space:nowrap;}
 .compila .sync .dot{width:7px;height:7px;border-radius:50%;}
@@ -761,7 +762,7 @@ const CSS = `
 .compila .empty{text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; line-height:1.5;}
 
 /* selettore checklist (prima apertura) */
-.compila .pick-client{font-weight:800; font-size:18px; letter-spacing:-.2px; line-height:1.15;}
+.compila .pick-client{font-family:var(--serif); font-weight:600; font-size:19px; letter-spacing:-.01em; line-height:1.15;}
 .compila .pick-sub{font-size:12px; color:var(--ink-soft); margin-top:3px; font-weight:600;}
 .compila .pick-list{display:flex; flex-direction:column; gap:9px;}
 .compila .pick-item{display:flex; align-items:flex-start; gap:11px; width:100%; text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:13px; padding:13px; cursor:pointer; font-family:inherit; box-shadow:var(--shadow);}

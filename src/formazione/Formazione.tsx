@@ -55,7 +55,7 @@ const CSS_FZ = `
 .fz-sem.in_scadenza{background:#fbf0d6; color:var(--hi-dark);}
 .fz-sem.critico{background:var(--no-bg); color:var(--no);}
 .fz-sem.esonerato{background:#e7eefb; color:#27508f;}
-.fz-sem.facoltativo{background:#eef1f4; color:#5b5f66;}
+.fz-sem.facoltativo{background:#eef1f4; color:#5c5f66;}
 .fz-sem.da_verificare{background:#e8ebf0; color:#51607a;}
 .fz-chip{font-size:11.5px; padding:3px 9px; border-radius:999px; border:1px solid var(--line); color:var(--ink-soft);}
 .fz-req{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line);}
@@ -103,11 +103,11 @@ const CSS_FZ = `
 .fz-mod-tag{font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); background:#eef1f4; border-radius:5px; padding:1px 5px; margin-left:5px;}
 .fz-st{font-size:9px; font-weight:800; padding:2px 6px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap; flex:0 0 auto;}
 .st-conforme{background:#e7f3ea; color:#1f7a3d;}
-.st-in_scadenza{background:#fbf0d6; color:#9a6206;}
+.st-in_scadenza{background:#fbf0d6; color:#8f5a06;}
 .st-critico{background:#fbe3e0; color:#a33227;}
-.st-esonerato{background:#eef1f4; color:#5b5f66;}
+.st-esonerato{background:#eef1f4; color:#5c5f66;}
 .st-da_verificare{background:#e8ebf0; color:#51607a;}
-.st-facoltativo{background:#eef1f4; color:#5b5f66;}
+.st-facoltativo{background:#eef1f4; color:#5c5f66;}
 .fz-person-empty{background:#f6f2ea; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
 .fz-person-crit{background:#fbe3e0; border:1px solid #e7b3ab; border-radius:9px; padding:8px 10px; font-size:12.5px; color:#a33227; font-weight:600;}
 .fz-spec-t{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;}

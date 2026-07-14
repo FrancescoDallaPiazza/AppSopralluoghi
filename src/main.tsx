@@ -1,3 +1,5 @@
+import '@fontsource-variable/hanken-grotesk/index.css';
+import '@fontsource-variable/fraunces/index.css';
 import { Component, StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
@@ -10,13 +12,13 @@ function Schermo({ titolo, dettaglio }: { titolo: string; dettaglio?: string }) 
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24,
-      background: '#d9d4ca', textAlign: 'center',
-      fontFamily: '-apple-system,system-ui,sans-serif', color: '#16181c',
+      background: '#d5cec1', textAlign: 'center',
+      fontFamily: '"Hanken Grotesk Variable",-apple-system,system-ui,sans-serif', color: '#1b1c1f',
     }}>
       <div style={{ fontWeight: 800, fontSize: 17 }}>{titolo}</div>
       {dettaglio && (
         <div style={{
-          fontSize: 12.5, color: '#5b5f66', maxWidth: 460, lineHeight: 1.5,
+          fontSize: 12.5, color: '#5c5f66', maxWidth: 460, lineHeight: 1.5,
           whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace,Menlo,monospace',
           background: '#fff', border: '1px solid #c9c2b4', borderRadius: 10, padding: '10px 12px',
         }}>{dettaglio}</div>

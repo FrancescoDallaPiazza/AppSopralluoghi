@@ -83,14 +83,14 @@ export default function CambiaPassword({ onChiudi }: { onChiudi: () => void }) {
 const CSS = `
 .cpw-back{position:fixed;inset:0;z-index:10000;background:rgba(20,22,26,.55);
   display:flex;align-items:center;justify-content:center;padding:20px;
-  font-family:-apple-system,system-ui,sans-serif;}
+  font-family:"Hanken Grotesk Variable",-apple-system,system-ui,sans-serif;}
 .cpw-card{width:100%;max-width:340px;background:#fffdf9;border:1px solid #c9c2b4;
   border-radius:16px;padding:18px;box-shadow:0 24px 60px -24px rgba(0,0,0,.6);}
 .cpw-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.cpw-title{font-weight:800;font-size:16px;color:#16181c;}
-.cpw-x{border:none;background:none;font-size:24px;line-height:1;color:#8a8f97;cursor:pointer;padding:0 2px;}
+.cpw-title{font-weight:800;font-size:16px;color:#1b1c1f;}
+.cpw-x{border:none;background:none;font-size:24px;line-height:1;color:#8b8e94;cursor:pointer;padding:0 2px;}
 .cpw-field{display:block;margin-bottom:11px;}
-.cpw-field span{display:block;font-size:11.5px;font-weight:700;color:#5b5f66;margin-bottom:5px;}
+.cpw-field span{display:block;font-size:11.5px;font-weight:700;color:#5c5f66;margin-bottom:5px;}
 .cpw-field input{width:100%;box-sizing:border-box;border:1px solid #c9c2b4;border-radius:10px;
   padding:10px 12px;font-size:15px;background:#fbf9f4;outline:none;}
 .cpw-field input:focus{border-color:#e8a33d;background:#fff;}

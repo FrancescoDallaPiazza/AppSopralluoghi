@@ -23,7 +23,7 @@ const FINESTRE = [4, 8, 12] as const;
 
 // Colori della cella in base all'occupazione (palette del back-office).
 function coloreOcc(o: Occupazione): { bg: string; fg: string; barra: string } {
-  if (o.perc == null) return { bg: '#f3efe7', fg: '#8a8d93', barra: '#cfc8bb' };
+  if (o.perc == null) return { bg: '#f3efe7', fg: '#8b8e94', barra: '#cfc8bb' };
   if (o.perc > 100) return { bg: 'var(--no-bg)', fg: 'var(--no)', barra: 'var(--no)' };
   if (o.perc > 70) return { bg: '#fbf3df', fg: 'var(--hi-dark)', barra: 'var(--hi)' };
   return { bg: 'var(--ok-bg)', fg: 'var(--ok)', barra: 'var(--ok)' };

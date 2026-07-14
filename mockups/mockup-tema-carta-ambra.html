@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tema "Carta Ambra" — proposta refresh AppSopralluoghi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     TEMA "CARTA AMBRA" — token del refresh.
+     Questi token mappano 1:1 in src/admin/ui.ts (:root/.bo) e
+     nelle superfici da campo (.misopr). Nessuna dipendenza nuova.
+     ============================================================ */
+  :root{
+    --sand:#d5cec1;        /* sfondo app */
+    --paper:#f6f3ec;       /* superficie attenuata */
+    --card:#ffffff;
+    --ink:#1b1c1f;
+    --ink-soft:#5c5f66;
+    --faint:#8b8e94;
+    --line:#e7e1d6;
+    --line-soft:#efe9df;
+
+    --amber:#e8920c;       /* accento firma (prima: #f4a012, più squillante) */
+    --amber-strong:#c9760a;
+    --amber-dark:#8f5a06;
+    --amber-bg:#fbeecb;
+
+    --ok:#2e8b4c;  --ok-bg:#e7f3ea;
+    --no:#d24028;  --no-bg:#fbeae6;
+
+    --shadow-sm:0 1px 2px rgba(27,28,31,.05);
+    --shadow:0 16px 44px -32px rgba(27,28,31,.55);
+    --shadow-lg:0 26px 64px -34px rgba(27,28,31,.5);
+    --r:14px; --r-sm:10px;
+
+    --ui:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
+    --display:"Fraunces","Hanken Grotesk",Georgia,serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--sand);color:var(--ink);font-family:var(--ui);
+    font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased;line-height:1.45;}
+  .wrap{max-width:1120px;margin:0 auto;padding:34px 22px 80px;}
+
+  /* -------- intestazione proposta -------- */
+  .hero{margin-bottom:30px;}
+  .kicker{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-dark);}
+  .hero h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);
+    letter-spacing:-.01em;margin:8px 0 6px;line-height:1.02;}
+  .hero p{font-size:15px;color:var(--ink-soft);max-width:640px;margin:0;}
+
+  .band{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    box-shadow:var(--shadow);padding:22px;margin-bottom:22px;}
+  .band h2{font-family:var(--display);font-weight:600;font-size:20px;margin:0 0 3px;letter-spacing:-.01em;}
+  .band .lead{font-size:13px;color:var(--ink-soft);margin:0 0 18px;}
+
+  /* -------- palette -------- */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;}
+  .sw{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;}
+  .sw .chip{height:64px;}
+  .sw .lab{padding:8px 10px;}
+  .sw .lab b{display:block;font-size:12.5px;font-weight:700;}
+  .sw .lab code{font-size:11px;color:var(--faint);font-family:ui-monospace,monospace;}
+
+  .compare{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
+  .cc{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-soft);
+    border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;background:var(--paper);}
+  .cc .dots{display:flex;}
+  .cc .d{width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:var(--shadow-sm);}
+  .cc .d+.d{margin-left:-7px;}
+
+  /* -------- scala tipografica -------- */
+  .type>div{padding:9px 0;border-bottom:1px dashed var(--line-soft);}
+  .type>div:last-child{border:none;}
+  .t-disp{font-family:var(--display);font-weight:600;font-size:30px;letter-spacing:-.01em;}
+  .t-h{font-weight:800;font-size:18px;}
+  .t-b{font-size:14.5px;}
+  .t-m{font-size:12.5px;color:var(--ink-soft);}
+  .type small{display:block;font-size:10.5px;color:var(--faint);letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px;}
+
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;}
+  @media(max-width:900px){.split{grid-template-columns:1fr;}}
+
+  .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--amber-dark);background:var(--amber-bg);border-radius:7px;padding:4px 9px;margin-bottom:12px;}
+
+  /* ================= BACK-OFFICE (scrivania) ================= */
+  .bo-demo{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--paper);box-shadow:var(--shadow);}
+  .bo-top{background:#fffdf9;border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:12px;}
+  .bo-brand{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:-.01em;line-height:1;}
+  .bo-brand small{display:block;font-family:var(--ui);font-weight:600;font-size:10.5px;color:var(--ink-soft);letter-spacing:.02em;margin-top:2px;}
+  .bo-sp{flex:1;}
+  .bo-tabs{display:flex;gap:2px;padding:0 16px;background:#fffdf9;border-bottom:1px solid var(--line);}
+  .bo-tab{border:none;background:none;font-family:var(--ui);font-size:13px;font-weight:700;color:var(--ink-soft);
+    padding:10px 13px 12px;cursor:pointer;border-bottom:2.5px solid transparent;}
+  .bo-tab.on{color:var(--ink);border-bottom-color:var(--amber);}
+  .bo-subtabs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 16px;background:#fdfbf7;border-bottom:1px solid var(--line);}
+  .bo-subtab{border:1px solid transparent;background:none;font-family:var(--ui);font-size:12px;font-weight:700;
+    color:var(--ink-soft);padding:5px 11px;border-radius:999px;cursor:pointer;}
+  .bo-subtab.on{color:#1a1205;background:var(--amber);border-color:var(--amber);}
+  .bo-body{padding:18px 16px;}
+  .bo-h{font-family:var(--display);font-weight:600;font-size:19px;margin:0 0 2px;}
+  .bo-hsub{font-size:12.5px;color:var(--ink-soft);margin:0 0 16px;}
+
+  .acc{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:12px;}
+  .acc-head{display:flex;align-items:center;gap:11px;padding:14px 16px;}
+  .light{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:0 0 0 3px rgba(0,0,0,.04);}
+  .light.g{background:var(--amber);} .light.gr{background:var(--ok);} .light.r{background:var(--no);}
+  .acc-tit{font-weight:800;font-size:15px;}
+  .acc-sum{font-size:12px;color:var(--ink-soft);}
+  .pill{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:6px;text-transform:uppercase;}
+  .pill.attivo{background:var(--ok-bg);color:var(--ok);}
+  .pill.usato{background:var(--amber-bg);color:var(--amber-dark);}
+  .pill.warn{background:var(--no-bg);color:var(--no);}
+
+  .sched{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+  .srow{display:flex;align-items:center;gap:13px;padding:12px 15px;border-bottom:1px solid var(--line-soft);}
+  .srow:last-child{border:none;}
+  .sdate{font-variant-numeric:tabular-nums;font-weight:800;font-size:12.5px;color:var(--ink);min-width:58px;}
+  .sdate small{display:block;font-weight:600;font-size:10px;color:var(--faint);}
+  .sgrow{flex:1;min-width:0;}
+  .stit{font-weight:700;font-size:14px;}
+  .smeta{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .chip{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:999px;white-space:nowrap;}
+  .chip.g{background:var(--amber-bg);color:var(--amber-dark);}
+  .chip.gr{background:var(--ok-bg);color:var(--ok);}
+  .chip.r{background:var(--no-bg);color:var(--no);}
+
+  .form{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field>span{display:block;font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:5px;letter-spacing:.02em;}
+  .field input,.field select{width:100%;-webkit-appearance:none;appearance:none;border:1px solid var(--line);
+    border-radius:10px;padding:10px 11px;font-family:var(--ui);font-size:14px;background:#fbfaf7;color:var(--ink);}
+  .field input:focus{outline:none;border-color:var(--amber);background:#fff;box-shadow:0 0 0 3px rgba(232,146,12,.15);}
+  .btns{display:flex;gap:10px;margin-top:16px;}
+  .btn{border:1px solid var(--amber);background:var(--amber);color:#1a1205;border-radius:10px;padding:9px 15px;
+    font-family:var(--ui);font-weight:800;font-size:13.5px;cursor:pointer;}
+  .btn.ghost{background:#fff;border-color:var(--line);color:var(--ink);}
+  .btn.danger{background:#fff;border-color:#e9c3ba;color:var(--no);}
+
+  /* ================= APP DA CAMPO (mobile) ================= */
+  .phone{width:100%;max-width:392px;margin:0 auto;background:var(--paper);border-radius:22px;overflow:hidden;
+    box-shadow:var(--shadow-lg);border:1px solid var(--line);}
+  .ph-head{background:var(--ink);color:#fff;border-bottom:3px solid var(--amber);padding:14px 15px 0;}
+  .ph-top{display:flex;align-items:center;gap:9px;}
+  .ph-brand{font-family:var(--display);font-weight:600;font-size:16px;flex:1;}
+  .ava{width:28px;height:28px;border-radius:50%;background:var(--amber);color:#1a1205;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+  .ph-tabs{display:flex;gap:16px;margin-top:12px;}
+  .ph-tab{position:relative;background:none;border:none;color:#9aa0a8;font-family:var(--ui);font-weight:700;font-size:13px;padding:8px 0 11px;cursor:pointer;}
+  .ph-tab.on{color:#fff;}
+  .ph-tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--amber);border-radius:3px 3px 0 0;}
+  .ph-body{padding:13px;}
+  .seg{display:flex;gap:5px;background:#ece7dd;padding:4px;border-radius:11px;margin-bottom:13px;}
+  .seg button{flex:1;border:none;background:transparent;color:var(--ink-soft);font-family:var(--ui);font-weight:700;font-size:12.5px;padding:7px;border-radius:8px;cursor:pointer;}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm);}
+  .it{background:#fff;border:1px solid var(--line);border-left:4px solid var(--faint);border-radius:12px;
+    padding:12px 13px;margin-bottom:10px;box-shadow:var(--shadow-sm);display:flex;gap:11px;align-items:center;}
+  .it.s-corso{border-left-color:var(--amber);}
+  .it.s-fatto{border-left-color:var(--ok);opacity:.9;}
+  .it.s-late{border-left-color:var(--no);}
+  .it .grow{flex:1;min-width:0;}
+  .it-tit{font-weight:700;font-size:14px;}
+  .it-sub{font-size:11.5px;color:var(--faint);margin-top:2px;}
+  .it-m{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink-soft);margin-top:6px;}
+  .it-m.late{color:var(--no);}
+  .it-go{color:var(--faint);font-size:18px;}
+  .late-note{font-size:11.5px;font-weight:700;color:var(--no);background:var(--no-bg);border-radius:8px;padding:7px 10px;margin-bottom:11px;}
+  .cta{border:1px solid var(--amber);background:var(--amber);color:#1a1205;font-family:var(--ui);font-weight:800;
+    font-size:13.5px;border-radius:11px;padding:11px;width:100%;cursor:pointer;margin-top:2px;}
+
+  .note{font-size:12.5px;color:var(--ink-soft);background:var(--amber-bg);border:1px solid #f0e2c2;
+    border-radius:12px;padding:12px 14px;margin-top:8px;}
+  .note b{color:var(--amber-dark);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="kicker">Proposta refresh · da approvare</div>
+    <h1>Carta Ambra</h1>
+    <p>Un'evoluzione, non un reskin: resta il DNA — base carta, ambra come firma, semaforo ok / attenzione / scaduto. Palette rifinita, coppia tipografica <b>Fraunces + Hanken Grotesk</b>, profondità e scala più curate. Zero dipendenze nuove: i token entrano diretti in <code>ui.ts</code>.</p>
+  </div>
+
+  <!-- PALETTE -->
+  <div class="band">
+    <h2>Palette</h2>
+    <p class="lead">I neutri virano su carta calda; l'ambra si fa un filo più profonda e "oro", meno squillante. Verde e rosso restano semantici (stati di conformità).</p>
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#d5cec1"></div><div class="lab"><b>Sabbia</b><code>#d5cec1</code></div></div>
+      <div class="sw"><div class="chip" style="background:#f6f3ec"></div><div class="lab"><b>Carta</b><code>#f6f3ec</code></div></div>
+      <div class="sw"><div class="chip" style="background:#e8920c"></div><div class="lab"><b>Ambra</b><code>#e8920c</code></div></div>
+      <div class="sw"><div class="chip" style="background:#8f5a06"></div><div class="lab"><b>Ambra scura</b><code>#8f5a06</code></div></div>
+      <div class="sw"><div class="chip" style="background:#1b1c1f"></div><div class="lab"><b>Inchiostro</b><code>#1b1c1f</code></div></div>
+      <div class="sw"><div class="chip" style="background:#2e8b4c"></div><div class="lab"><b>OK</b><code>#2e8b4c</code></div></div>
+      <div class="sw"><div class="chip" style="background:#d24028"></div><div class="lab"><b>Scaduto</b><code>#d24028</code></div></div>
+      <div class="sw"><div class="chip" style="background:#e7e1d6"></div><div class="lab"><b>Linea</b><code>#e7e1d6</code></div></div>
+    </div>
+    <div class="compare">
+      <div class="cc"><span class="dots"><span class="d" style="background:#f4a012"></span><span class="d" style="background:#e8920c"></span></span>Ambra: prima → dopo</div>
+      <div class="cc"><span class="dots"><span class="d" style="background:#d9d4ca"></span><span class="d" style="background:#d5cec1"></span></span>Sfondo: prima → dopo</div>
+      <div class="cc"><span class="dots"><span class="d" style="background:#e3ddd2"></span><span class="d" style="background:#e7e1d6"></span></span>Linea: prima → dopo</div>
+    </div>
+  </div>
+
+  <!-- TIPOGRAFIA -->
+  <div class="band">
+    <h2>Tipografia</h2>
+    <p class="lead">Fraunces (serif caldo, "documento") per marchio e titoli di sezione; Hanken Grotesk per UI e testo, con cifre tabulari per date e scadenze.</p>
+    <div class="type">
+      <div><small>Display · Fraunces</small><div class="t-disp">Cose da fare · Scadenzario</div></div>
+      <div><small>Titolo · Hanken Grotesk 800</small><div class="t-h">Az. Agricola Vedova Tarcisio</div></div>
+      <div><small>Corpo · Hanken Grotesk 400</small><div class="t-b">Sopralluogo periodico RSPP — 1/anno. Prossima uscita distribuita evitando weekend e festività.</div></div>
+      <div><small>Meta · Hanken Grotesk · tabular-nums</small><div class="t-m">Scad. 12/09/2026 · Tecnico: Tazio Pradella · Doc #470</div></div>
+    </div>
+  </div>
+
+  <!-- APPLICATO -->
+  <div class="split">
+
+    <!-- BACK-OFFICE -->
+    <div>
+      <span class="tag">◱ Scrivania · Back-office</span>
+      <div class="bo-demo">
+        <div class="bo-top">
+          <div class="bo-brand">Overall<small>App unica · sopralluoghi + organigramma</small></div>
+          <div class="bo-sp"></div>
+        </div>
+        <div class="bo-tabs">
+          <button class="bo-tab">Organigramma</button>
+          <button class="bo-tab on">Pianificazione</button>
+          <button class="bo-tab">Anagrafiche</button>
+          <button class="bo-tab">Tecnici</button>
+        </div>
+        <div class="bo-subtabs">
+          <button class="bo-subtab on">Cose da fare</button>
+          <button class="bo-subtab">Scadenzario</button>
+          <button class="bo-subtab">Import Werp</button>
+        </div>
+        <div class="bo-body">
+          <h3 class="bo-h">Cose da fare</h3>
+          <p class="bo-hsub">Confluenza dei due rami — formazione e sopralluoghi — in un unico elenco.</p>
+
+          <div class="acc">
+            <div class="acc-head">
+              <span class="light g"></span>
+              <div style="flex:1">
+                <div class="acc-tit">Terre Veronesi S.r.l.</div>
+                <div class="acc-sum">RSPP + KIT · 1 sopralluogo/anno · evidenza nomina da ottenere</div>
+              </div>
+              <span class="pill warn">Evidenza</span>
+            </div>
+          </div>
+
+          <div class="sched">
+            <div class="srow">
+              <div class="sdate">12/09<small>2026</small></div>
+              <div class="sgrow"><div class="stit">Sopralluogo periodico RSPP</div><div class="smeta">Tazio Pradella · rimanenti 1 di 1</div></div>
+              <span class="chip g">Da fare</span>
+            </div>
+            <div class="srow">
+              <div class="sdate">30/06<small>2026</small></div>
+              <div class="sgrow"><div class="stit">Aggiornamento preposto — 6h</div><div class="smeta">Zamboni Lucia · aggiornamento biennale</div></div>
+              <span class="chip r">Scaduto</span>
+            </div>
+            <div class="srow">
+              <div class="sdate">15/04<small>2026</small></div>
+              <div class="sgrow"><div class="stit">Formazione lavoratori — iniziale</div><div class="smeta">Vedova Martina · completato</div></div>
+              <span class="chip gr">OK</span>
+            </div>
+          </div>
+
+          <div class="form">
+            <label class="field"><span>Cliente</span><input value="Az. Agricola Vedova Tarcisio"></label>
+            <label class="field"><span>Sopralluoghi/anno</span><input value="2"></label>
+          </div>
+          <div class="btns">
+            <button class="btn">Sincronizza</button>
+            <button class="btn ghost">Copia</button>
+            <button class="btn danger">Elimina</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPO -->
+    <div>
+      <span class="tag">▤ In campo · Mobile (sola lettura organigramma)</span>
+      <div class="phone">
+        <div class="ph-head">
+          <div class="ph-top">
+            <div class="ph-brand">I miei sopralluoghi</div>
+            <span class="ava">TP</span>
+          </div>
+          <div class="ph-tabs">
+            <button class="ph-tab on">Sopralluoghi</button>
+            <button class="ph-tab">Cose da fare</button>
+          </div>
+        </div>
+        <div class="ph-body">
+          <div class="seg">
+            <button class="on">Da fare</button>
+            <button>In corso</button>
+            <button>Fatti</button>
+          </div>
+          <div class="late-note">⚠ 1 sopralluogo in ritardo</div>
+
+          <div class="it s-late">
+            <div class="grow">
+              <div class="it-tit">Metalmeccanica Bassa Srl</div>
+              <div class="it-sub">Sede operativa · Verona</div>
+              <div class="it-m late">◷ Scaduto il 28/06</div>
+            </div>
+            <div class="it-go">›</div>
+          </div>
+          <div class="it s-corso">
+            <div class="grow">
+              <div class="it-tit">Terre Veronesi Srl</div>
+              <div class="it-sub">Periodico RSPP · 1/anno</div>
+              <div class="it-m">◔ In corso · 4 evidenze</div>
+            </div>
+            <div class="it-go">›</div>
+          </div>
+          <div class="it s-fatto">
+            <div class="grow">
+              <div class="it-tit">Vedova Tarcisio</div>
+              <div class="it-sub">Sincronizzato</div>
+              <div class="it-m">✓ Completato 09/07</div>
+            </div>
+            <div class="it-go">›</div>
+          </div>
+
+          <button class="cta">+ Nuovo sopralluogo</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>Nota font / offline-first.</b> Fraunces e Hanken Grotesk qui arrivano da Google Fonts solo per la demo. Sull'app reale (PWA offline-first) i due woff2 si <b>auto-ospitano</b> e si mettono in cache nel service worker — pochi KB — con fallback a <code>system-ui</code>. Nessuna chiamata di rete a runtime, nessun impatto sul campo.
+  </div>
+
+</div>
+</body>
+</html>

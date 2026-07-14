@@ -43,17 +43,17 @@ export default function BottoneInviaCliente({ sopralluogoId }: { sopralluogoId: 
         {s.fase === 'invio' ? 'Invio…' : '✉ Invia al cliente'}
       </button>
       {s.fase === 'ok' && (
-        <span style={msgStyle('#1f9d57')}>
+        <span style={msgStyle('#2e8b4c')}>
           Inviato{ s.to ? ` a ${s.to}` : '' } ✓
         </span>
       )}
       {s.fase === 'no_email' && (
-        <span style={msgStyle('#9a6206')}>
+        <span style={msgStyle('#8f5a06')}>
           Manca l’email del cliente (aggiungila in Anagrafiche)
         </span>
       )}
       {s.fase === 'errore' && (
-        <span style={msgStyle('#d8442f')}>{s.msg}</span>
+        <span style={msgStyle('#d24028')}>{s.msg}</span>
       )}
     </>
   );

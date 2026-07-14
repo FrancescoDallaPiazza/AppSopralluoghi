@@ -98,14 +98,14 @@ export default function ImpostaPassword({ onFatto }: { onFatto: () => void }) {
 
 const CSS = `
 .setpwd{min-height:100vh;display:flex;align-items:center;justify-content:center;
-  padding:24px;background:#d9d4ca;font-family:-apple-system,system-ui,sans-serif;color:#16181c}
+  padding:24px;background:#d5cec1;font-family:"Hanken Grotesk Variable",-apple-system,system-ui,sans-serif;color:#1b1c1f}
 .setpwd .card{width:100%;max-width:360px;background:#fffdf9;border:1px solid #c9c2b4;
   border-radius:16px;padding:24px;box-shadow:0 18px 40px -24px rgba(0,0,0,.5)}
 .setpwd .brand{font-weight:800;font-size:20px;letter-spacing:.2px}
 .setpwd .accent{height:3px;width:44px;background:#e8a33d;border-radius:3px;margin:8px 0 14px}
-.setpwd .sub{font-size:13.5px;color:#5b5f66;margin:0 0 16px;line-height:1.5}
+.setpwd .sub{font-size:13.5px;color:#5c5f66;margin:0 0 16px;line-height:1.5}
 .setpwd .field{display:block;margin-bottom:12px}
-.setpwd .field span{display:block;font-size:12px;font-weight:700;color:#5b5f66;margin-bottom:5px}
+.setpwd .field span{display:block;font-size:12px;font-weight:700;color:#5c5f66;margin-bottom:5px}
 .setpwd .field input{width:100%;box-sizing:border-box;border:1px solid #c9c2b4;border-radius:10px;
   padding:10px 12px;font-size:15px;background:#fbf9f4;outline:none}
 .setpwd .field input:focus{border-color:#e8a33d;background:#fff}
