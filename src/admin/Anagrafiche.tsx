@@ -199,14 +199,10 @@ function SchedaCliente({
   // Wizard "gruppo primo soccorso" (flusso DM 388/2003).
   const [wizardPS, setWizardPS] = useState(false);
 
-  // Sezioni apri/chiudi indipendenti: piu' d'una puo' restare aperta insieme
-  // (visione panoramica). L'organigramma, pesante, si monta solo da aperto.
-  const [aperte, setAperte] = useState<Set<string>>(() => new Set());
-  const toggle = (k: string) => setAperte((s) => {
-    const n = new Set(s);
-    n.has(k) ? n.delete(k) : n.add(k);
-    return n;
-  });
+  // Dashboard: una sola sezione attiva per volta (l'organigramma, pesante, si monta
+  // solo quando la sua tessera e' selezionata).
+  const [sezioneAttiva, setSezioneAttiva] = useState<string>('dati');
+  const seleziona = (k: string) => setSezioneAttiva((cur) => (cur === k ? '' : k));
 
   function caricaTutto() {
     if (nuovo) return;
@@ -278,37 +274,64 @@ function SchedaCliente({
   return (
     <div>
       <style>{`
-        .bo-acc{border-left:4px solid var(--acc,#c9c2b4)}
-        .bo-acc .bo-acc-tit{color:var(--acc-ink,#23262b)}
-        .bo-acc .bo-acc-chev{color:var(--acc,#b7b0a2)}
-        .bo-acc.open{background:var(--acc-bg,#fff)}
         .acc-anagrafica{--acc:#2b6cb0;--acc-ink:#1e4e82;--acc-bg:#f2f7fc}
         .acc-risorse{--acc:#2f855a;--acc-ink:#276749;--acc-bg:#f1f9f4}
         .acc-organigramma{--acc:#805ad5;--acc-ink:#5f3dc4;--acc-bg:#f6f3fc}
         .acc-incarichi{--acc:#b7791f;--acc-ink:#8a5d10;--acc-bg:#fbf6ec}
         .acc-scadenzario{--acc:#c53030;--acc-ink:#9b2020;--acc-bg:#fcf2f2}
+        .dash-topbar{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+        .dash-title{text-align:center;margin:2px 0 20px}
+        .dash-title h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.01em;color:#1c1e22;line-height:1.15}
+        .dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:18px}
+        .dash-tile{text-align:left;cursor:pointer;background:#fff;border:1px solid rgba(0,0,0,.08);border-left:5px solid var(--acc,#c9c2b4);border-radius:12px;padding:14px 16px;min-height:74px;display:flex;flex-direction:column;gap:4px;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:transform .05s ease,box-shadow .1s ease;font-family:inherit}
+        .dash-tile:hover{box-shadow:0 3px 10px rgba(0,0,0,.10);transform:translateY(-1px)}
+        .dash-tile.sel{background:var(--acc-bg,#fff);box-shadow:0 0 0 2px var(--acc,#c9c2b4) inset}
+        .dash-tile-tit{font-size:15px;font-weight:800;color:var(--acc-ink,#23262b)}
+        .dash-tile-sum{font-size:12px;color:#6b7078}
+        .dash-panel{background:#fff;border:1px solid rgba(0,0,0,.08);border-left:5px solid var(--acc,#c9c2b4);border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+        .dash-panel-tit{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--acc-ink,#23262b);margin-bottom:12px}
         .bo-subsez{margin-top:16px;padding-top:14px;border-top:1px dashed rgba(0,0,0,.12)}
         .bo-subsez-tit{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#2b6cb0;margin-bottom:10px}
       `}</style>
-      <div className="bo-row" style={{ marginBottom: 8 }}>
+
+      <div className="dash-topbar">
         <button className="bo-iconbtn" onClick={onIndietro} title="Indietro">←</button>
-        <div className="grow">
-          <h2 className="bo-h" style={{ margin: 0 }}>
-            {nuovo && !persistito ? 'Nuovo cliente' : cliente.ragione_sociale || 'Cliente'}
-          </h2>
-        </div>
+        <span className="grow" />
         {persistito && (
           <span className={`bo-pill ${cliente.attivo ? 'attivo' : 'archiviato'}`}>
             {cliente.attivo ? 'attivo' : 'disattivato'}
           </span>
         )}
       </div>
+      <div className="dash-title">
+        <h1>{nuovo && !persistito ? 'Nuovo cliente' : cliente.ragione_sociale || 'Cliente'}</h1>
+      </div>
 
       {msg && <div className="bo-note">{msg}</div>}
 
+      <div className="dash-grid">
+        {([
+          { key: 'dati', titolo: 'Dati anagrafici', tema: 'anagrafica', sommario: cliente.localita ?? '' },
+          ...(persistito ? [
+            { key: 'risorse', titolo: 'Risorse Umane', tema: 'risorse', sommario: nPersone == null ? '' : nPersone === 0 ? 'nessuna persona' : `${nPersone} ${nPersone === 1 ? 'persona' : 'persone'}` },
+            { key: 'organigramma', titolo: 'Organigramma sicurezza', tema: 'organigramma', sommario: 'figure, nomine e formazione' },
+            { key: 'incarichi', titolo: 'Incarichi', tema: 'incarichi', sommario: `${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'}` },
+            { key: 'scadenzario', titolo: 'Scadenzario', tema: 'scadenzario', sommario: 'formazione, documenti, scadenze' },
+          ] : []),
+        ] as { key: string; titolo: string; tema: string; sommario: string }[]).map((sz) => (
+          <button key={sz.key} type="button"
+            className={`dash-tile acc-${sz.tema} ${sezioneAttiva === sz.key ? 'sel' : ''}`}
+            onClick={() => seleziona(sz.key)}>
+            <span className="dash-tile-tit">{sz.titolo}</span>
+            {sz.sommario && <span className="dash-tile-sum">{sz.sommario}</span>}
+          </button>
+        ))}
+      </div>
+
       {/* --- dati anagrafici --- */}
-      <Sezione titolo="Dati anagrafici" tema="anagrafica" sommario={cliente.localita ?? undefined}
-        aperta={aperte.has('dati')} onToggle={() => toggle('dati')}>
+      {sezioneAttiva === 'dati' && (
+      <div className="dash-panel acc-anagrafica">
+        <div className="dash-panel-tit">Dati anagrafici</div>
         <label className="bo-field">
           <span>Ragione sociale *</span>
           <input type="text" value={cliente.ragione_sociale}
@@ -509,33 +532,31 @@ function SchedaCliente({
             <SediCliente clienteId={cliente.id} sedi={sedi} onCambia={ricaricaSedi} />
           </div>
         )}
-      </Sezione>
+      </div>
+      )}
 
       {/* --- risorse umane: personale del cliente (superset dell'organigramma) --- */}
-      {persistito && (
-        <Sezione titolo="Risorse Umane" tema="risorse"
-          sommario={nPersone == null ? undefined : nPersone === 0 ? 'nessuna persona' : `${nPersone} ${nPersone === 1 ? 'persona' : 'persone'}`}
-          aperta={aperte.has('risorse')} onToggle={() => toggle('risorse')}>
+      {persistito && sezioneAttiva === 'risorse' && (
+        <div className="dash-panel acc-risorse">
+          <div className="dash-panel-tit">Risorse Umane</div>
           <RisorseUmane clienteId={cliente.id}
             onCambia={() => setOrgRefresh((n) => n + 1)}
             onConteggio={setNPersone} />
-        </Sezione>
+        </div>
       )}
 
       {/* --- organigramma sicurezza / formazione del cliente --- */}
-      {persistito && (
-        <Sezione titolo="Organigramma sicurezza" tema="organigramma" sommario="figure, nomine e stato formazione"
-          aperta={aperte.has('organigramma')} onToggle={() => toggle('organigramma')}>
+      {persistito && sezioneAttiva === 'organigramma' && (
+        <div className="dash-panel acc-organigramma">
+          <div className="dash-panel-tit">Organigramma sicurezza</div>
           <OrganigrammaCliente clienteId={cliente.id} refreshToken={orgRefresh} />
-        </Sezione>
+        </div>
       )}
 
       {/* --- incarichi del cliente: sola lettura; si creano/pianificano nel tab Incarichi --- */}
-      {persistito && (
-        <Sezione titolo="Incarichi" tema="incarichi"
-          sommario={`${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'}` +
-            (incarichi.length ? ` · ${incarichi.filter((r) => r.incarico.stato === 'attivo').length} attivi` : '')}
-          aperta={aperte.has('incarichi')} onToggle={() => toggle('incarichi')}>
+      {persistito && sezioneAttiva === 'incarichi' && (
+        <div className="dash-panel acc-incarichi">
+          <div className="dash-panel-tit">Incarichi</div>
           {incarichi.length === 0 ? (
             <div className="bo-note">
               Nessun incarico per questo cliente. Gli incarichi si creano e si pianificano nel tab Incarichi.
@@ -564,15 +585,15 @@ function SchedaCliente({
               </p>
             </>
           )}
-        </Sezione>
+        </div>
       )}
 
       {/* --- scadenzario del cliente: copia di "Cose da fare" filtrata su questo cliente --- */}
-      {persistito && (
-        <Sezione titolo="Scadenzario" tema="scadenzario" sommario="formazione, documenti, autorizzazioni e attività"
-          aperta={aperte.has('scadenzario')} onToggle={() => toggle('scadenzario')}>
+      {persistito && sezioneAttiva === 'scadenzario' && (
+        <div className="dash-panel acc-scadenzario">
+          <div className="dash-panel-tit">Scadenzario</div>
           <CoseDaFare clienteId={cliente.id} />
-        </Sezione>
+        </div>
       )}
 
     </div>
@@ -593,26 +614,6 @@ function descriviCadenza(i: { cadenza_valore: number | null; cadenza_unita: stri
 function fmtData(iso: string): string {
   const [y, m, d] = iso.split('-');
   return d && m && y ? `${d}/${m}/${y}` : iso;
-}
-
-// Sezione apri/chiudi (accordion) della scheda cliente. Indipendente: piu'
-// sezioni possono restare aperte insieme. Il corpo si monta solo da aperto.
-function Sezione({ titolo, sommario, aperta, onToggle, children, tema }: {
-  titolo: string; sommario?: string; aperta: boolean;
-  onToggle: () => void; children: ReactNode; tema?: string;
-}) {
-  return (
-    <div className={`bo-acc acc-${tema ?? 'neutro'} ${aperta ? 'open' : ''}`}>
-      <button type="button" className="bo-acc-head" onClick={onToggle}>
-        <span className="bo-acc-chev">▶</span>
-        <span className="grow">
-          <span className="bo-acc-tit">{titolo}</span>
-          {sommario && <span className="bo-acc-sum"> · {sommario}</span>}
-        </span>
-      </button>
-      {aperta && <div className="bo-acc-body">{children}</div>}
-    </div>
-  );
 }
 
 // --------------------------- sedi di un cliente ---------------------------
