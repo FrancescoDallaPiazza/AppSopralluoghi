@@ -990,6 +990,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const [aperte, setAperte] = useState<Set<string>>(new Set());
   const [aggiornaOpen, setAggiornaOpen] = useState(false);   // box di lavoro (ruoli/evidenze) aperto da "Aggiorna organigramma"
   const [focusFigura, setFocusFigura] = useState<string | null>(null); // scheda singola aperta dal clic sulla tabella
+  const [focusEdit, setFocusEdit] = useState(false);                   // scheda singola in modalita' editor completo
   const initAperte = useRef(false);                          // apri tutte le figure una sola volta
   const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const focusRef = useRef<HTMLDivElement | null>(null);      // ancora per scroll alla scheda singola
@@ -1134,12 +1135,13 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     const y = PAD + ri * (NODE_H + GAP_Y);
     row.forEach((n, ci) => layout.set(n.key, { x: x0 + ci * (NODE_W + GAP_X), y }));
   });
-  const apriNodo = (n: ONodo) => { const t = n.codici.find((c) => figByCodice.has(c)) ?? n.codici[0]; if (t) toggleFigura(t); };
-  const nodoAperto = (n: ONodo) => n.codici.some((c) => aperte.has(c));
+  const apriNodo = (n: ONodo) => { const t = n.codici.find((c) => figByCodice.has(c)) ?? n.codici[0]; if (t) apriFigura(t); };
+  const nodoAperto = (n: ONodo) => n.codici.some((c) => aperte.has(c) || c === focusFigura);
 
 
-  // Scheda di una figura: usata INLINE dentro il proprio gruppo (#4), non in coda.
-  const renderFigCard = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate']) => {
+  // Scheda di una figura: usata INLINE dentro il proprio gruppo (#4), non in coda,
+  // oppure da sola nella scheda singola (onClose la riporta alla vista compatta).
+  const renderFigCard = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate'], onClose?: () => void) => {
     const scoperta = scoperteSet.has(figura.codice);
     const stato = statoFigura(figura, assegnate);
     const aperto = assegnaFigura === figura.codice;
@@ -1162,7 +1164,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           <button className="fzr-edit-btn" onClick={() => setAssegnaFigura(aperto ? null : figura.codice)}>
             {aperto ? 'Chiudi' : (assegnate.length ? 'Modifica' : 'Assegna')}
           </button>
-          <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => toggleFigura(figura.codice)}>{'\u2212'}</button>
+          <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => (onClose ? onClose() : toggleFigura(figura.codice))}>{'\u2212'}</button>
         </div>
 
         {figura.codice === 'rls' && onRlsTerritoriale && (
@@ -1344,20 +1346,15 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     );
   };
 
-  // Clic dalla tabella: apre SOLO la scheda della figura cliccata (non l'intero pannello).
+  // Clic su una figura (tabella o schema): apre SOLO la scheda di quella figura.
+  // Chiude il pannello "Aggiorna organigramma": le due viste sono alternative,
+  // cosi' la figura non viene mai renderizzata due volte (ref/scroll ambigui).
   const apriFigura = (codice: string) => {
+    setAggiornaOpen(false);
+    setFocusEdit(false);
     setFocusFigura(codice);
     requestAnimationFrame(() => requestAnimationFrame(() =>
       focusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
-  };
-
-  // Dalla scheda singola: passa all'editor completo posizionato su questa figura.
-  const modificaNelPannello = (codice: string) => {
-    setFocusFigura(null);
-    setAggiornaOpen(true);
-    setAperte((s) => { const n = new Set(s); n.add(codice); return n; });
-    requestAnimationFrame(() => requestAnimationFrame(() =>
-      figRef.current[codice]?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
   };
 
   // Evidenze di una persona LIMITATE alla figura (stesso filtro della scheda e del PDF).
@@ -1373,6 +1370,14 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     const stato = statoFigura(figura, assegnate);
     const scoperta = scoperteSet.has(figura.codice);
     const emerg = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+    // "Modifica": l'editor completo della SOLA figura scelta, qui dentro.
+    if (focusEdit) {
+      return (
+        <div className="fzr-focus" ref={focusRef}>
+          {renderFigCard(figura, assegnate, () => setFocusEdit(false))}
+        </div>
+      );
+    }
     return (
       <div className="fzr-focus" ref={focusRef}>
         <div className="fzr-focus-top">
@@ -1381,7 +1386,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
             {figura.nome}
             {figura.obbligo && <span className={'fzr-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
           </span>
-          <button className="fzr-edit-btn" onClick={() => modificaNelPannello(figura.codice)}>Modifica</button>
+          <button className="fzr-edit-btn" onClick={() => setFocusEdit(true)}>Modifica</button>
           <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => setFocusFigura(null)}>{'\u2715'}</button>
         </div>
 
@@ -1548,7 +1553,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           </div>
           <div className="fzr-split-side">
             <button type="button" className={'fzr-aggiorna' + (aggiornaOpen ? ' on' : '')}
-              onClick={() => { setFocusFigura(null); setAggiornaOpen((v) => !v); }}>
+              onClick={() => { setFocusFigura(null); setFocusEdit(false); setAggiornaOpen((v) => !v); }}>
               {aggiornaOpen ? 'Chiudi aggiornamento' : 'Aggiorna organigramma'}
             </button>
             {riep.figureScoperte.length > 0 && (
