@@ -21,13 +21,14 @@ import Pianificazione from './Pianificazione';
 import Disponibilita from './Disponibilita';
 import { CatalogoFormazione } from '../formazione';
 import CoseDaFare from './CoseDaFare';
+import Scadenzario from './Scadenzario';
 import ImportWerp from './ImportWerp';
 import ImportCatalogo from './ImportCatalogo';
 
 type Sezione =
   | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
   | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare'
-  | 'importwerp' | 'importcatalogo';
+  | 'scadenzario' | 'importwerp' | 'importcatalogo';
 
 interface Gruppo {
   key: string;
@@ -51,6 +52,10 @@ const GRUPPI: Gruppo[] = [
       { k: 'disponibilita', label: 'Disponibilità' },
       { k: 'importwerp', label: 'Import Werp' },
     ],
+  },
+  {
+    key: 'scadenzario', label: 'Scadenzario',
+    sezioni: [{ k: 'scadenzario', label: 'Scadenzario' }],
   },
   {
     key: 'cosedafare', label: 'Cose da fare',
@@ -123,6 +128,7 @@ export default function BackOffice({
         {sezione === 'pianificazione' && <Pianificazione />}
         {sezione === 'disponibilita' && <Disponibilita />}
         {sezione === 'formazione' && <CatalogoFormazione />}
+        {sezione === 'scadenzario' && <Scadenzario />}
         {sezione === 'cosedafare' && <CoseDaFare />}
         {sezione === 'importwerp' && <ImportWerp />}
         {sezione === 'importcatalogo' && <ImportCatalogo />}

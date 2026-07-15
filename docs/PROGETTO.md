@@ -60,15 +60,16 @@ src/
     ateco.ts              #   tabella ATECO -> rischio + helper
   admin/                  # back-office (solo admin)
     BackOffice.tsx, Anagrafiche.tsx, Tecnici.tsx, Aree.tsx,
-    CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx, Pianificazione.tsx,
+    Scadenzario.tsx, CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx,
+    Pianificazione.tsx,
     EditorIncarico.tsx,  # editor incarico (vive nel tab Incarichi/Pianificazione)
     Disponibilita.tsx
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
     auth.ts, sopralluoghi.ts, azioni.ts, report.ts, prefetch.ts,
     compilazione.ts, onboarding.ts
-    admin/ (anagrafiche, tecnici, aree, templates, assistita, cosedafare,
-            pianificazione, disponibilita, formazione)
+    admin/ (anagrafiche, tecnici, aree, templates, assistita, scadenzario,
+            cosedafare, pianificazione, disponibilita, formazione)
                     # NB: lib/admin/formazione.ts e' il MOTORE puro (canonico):
                     # resta qui, usato dall'infrastruttura condivisa (sync.ts, db.ts)
 supabase/
@@ -620,6 +621,24 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Scadenzario separato da "Cose da fare" + import da gestionale, Fase A**
+  (`migration 055` + `lib/admin/scadenzario.ts`, `admin/Scadenzario.tsx`, split di
+  `cosedafare`). Il feed unico si spacca in due oggetti distinti: lo **Scadenzario**
+  raccoglie le date che discendono da un fatto registrato (attestato, DVR, CPI,
+  visita) in quattro blocchi — Formazione · Documenti · Autorizzazioni ·
+  Sorveglianza sanitaria — e non si scrive a mano; le **Cose da fare** restano le
+  correttive dal campo e le sedute pianificate, con responsabile e ciclo di vita.
+  Il criterio e' l'ORIGINE, non il tema: mescolarli faceva convivere righe che si
+  aggiornano da sole con righe che aggiorni tu. Migrazione 055: tabella
+  `adempimento` (una sola per le tre categorie non-formative: forma identica,
+  cambia solo se pende da sede o da persona; **si scorpora se la sorveglianza
+  acquisisce campi propri** come giudizio di idoneita'/limitazioni), tabella
+  `corso_alias` (testo del gestionale -> catalogo, `corso_codice` null = da
+  mappare, stesso pattern "Da chiarire" dei contratti Werp), e `import_key` su
+  `formazione`/`persona` con indice unique PARZIALE per l'idempotenza dell'import
+  senza toccare i dati esistenti. Gli adempimenti NON materializzano righe in
+  `azione`: la riga ha gia' `data_scadenza`, lo scadenzario la legge diretta.
+  `tsc -b` + `vite build` verdi. Canale 3 (055) poi canale 1 (push).
 - **Modulo formazione/organigramma con confine netto** (`src/formazione/`).
   Spostati nel modulo: `OrganigrammaView.tsx`, `Formazione.tsx`,
   `FormazioneRiepilogo.tsx`, `ateco.ts`, `organigramma-revisioni.ts`. Creato il

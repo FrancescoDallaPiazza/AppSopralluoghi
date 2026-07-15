@@ -31,10 +31,16 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     `user_id` esistente (non si creano account dall'app).
   - **Aree interne** — funzioni del team (Formazione, Preventivi, …) a cui
     assegnare le "cose da fare" interne in alternativa al tecnico.
-  - **Cose da fare** (scadenzario) — vista d'insieme di tutte le azioni correttive
-    e scadenze ricorrenti, con filtri per stato / destinatario (cliente, tecnico,
-    area) / scadenza, ricerca, evidenza delle scadute e cambio stato. È dove si
-    consultano anche le cose-da-fare assegnate a un'area.
+  - **Scadenzario** — le scadenze della ditta in quattro blocchi (Formazione ·
+    Documenti · Autorizzazioni · Sorveglianza sanitaria). Ogni riga discende da
+    un fatto registrato (un attestato, un DVR, un CPI, una visita): non si crea
+    nulla a mano, si rinnova il fatto e la scadenza si ricalcola. Filtri per
+    stato / scadenza, ricerca, evidenza delle scadute. Riusato nella scheda
+    cliente filtrato sul cliente.
+  - **Cose da fare** — le attività che nascono dal campo: correttive dei
+    sopralluoghi e sedute pianificate. Hanno responsabile e ciclo di vita, e si
+    creano a mano. Filtri per stato / destinatario (cliente, tecnico, area) /
+    scadenza. È dove si consultano anche le cose-da-fare assegnate a un'area.
   - **Template** — editor del modello "form configurabile": voci di primo livello
     e sotto-domande, tipi (scelta / multiscelta / testo / data / numero / slider /
     foto / rilievo), opzioni con stato logico e generazione azione, scadenza
@@ -105,7 +111,8 @@ app-sopralluoghi/
          ├─ aree.ts         # CRUD aree interne (destinatari cose-da-fare)
          ├─ templates.ts    # CRUD template + versionamento
          ├─ assistita.ts    # motore pianificazione assistita (carico + distanza)
-         ├─ cosedafare.ts   # vista azioni/scadenzario (back-office)
+         ├─ scadenzario.ts  # scadenze: azioni Ramo A + adempimenti
+         ├─ cosedafare.ts   # correttive dal campo + sedute pianificate
          └─ pianificazione.ts # incarichi, sedute, tecnici
 ```
 

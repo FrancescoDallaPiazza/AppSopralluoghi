@@ -1,11 +1,14 @@
-// Back-office · "Cose da fare" / scadenzario. Vista d'insieme di tutte le azioni
-// (formative, correttive, sopralluoghi pianificati), ANNIDIATA nelle 4 voci
-// della tassonomia (Formazione · Documenti · Autorizzazioni · Cose da fare),
-// ciascuna in un blocco col proprio colore e titolo. Filtri per stato,
-// destinatario e scadenza, evidenza delle scadute, cambio stato. Online-first.
+// Back-office · "Cose da fare". Le attivita' che nascono dal campo: correttive
+// dei sopralluoghi e sedute pianificate. Hanno un responsabile e un ciclo di
+// vita, e si creano a mano.
 //
-// Riuso: con `clienteId` la stessa vista diventa lo SCADENZARIO della scheda
-// cliente (tab Anagrafiche), filtrato sul cliente d'origine.
+// Le SCADENZE (formazione, documenti, autorizzazioni, sorveglianza) NON sono
+// qui: stanno nel tab Scadenzario. Discendono da un fatto registrato e si
+// ricalcolano da se'; mescolarle a queste rendeva la lista un posto dove
+// meta' delle righe si aggiornano da sole e meta' le aggiorni tu.
+//
+// Riuso: con `clienteId` la stessa vista si filtra sul cliente d'origine
+// (usata nella scheda cliente accanto allo scadenzario).
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -26,26 +29,6 @@ const fmt = (d: string | null) => {
 type FStato = 'aperte' | 'concluse' | 'tutte';
 type FScad = 'tutte' | 'scadute' | 'prossime';
 type FDest = 'tutti' | DestinatarioTipo;
-
-// Tassonomia lato cliente del feed unico. Oggi hanno dati solo 'formazione'
-// (Ramo A) e 'cosedafare' (correttive + sopralluoghi, Ramo B). 'documenti' e
-// 'autorizzazioni' sono i rami Edificio/Lavorazioni della mappa dei flussi:
-// previsti ma non ancora modellati, quindi il blocco esiste ma resta vuoto
-// finche' quel ramo non produce righe (nessuna tabella speculativa).
-type Categoria = 'formazione' | 'documenti' | 'autorizzazioni' | 'cosedafare';
-const CATEGORIA_DI: Record<RigaTipo, Categoria> = {
-  formazione: 'formazione',
-  correttiva: 'cosedafare',
-  sopralluogo: 'cosedafare',
-};
-
-// Blocchi nell'ordine di visualizzazione, con il proprio colore identificativo.
-const CATEGORIE: { key: Categoria; titolo: string; bg: string; bordo: string; ink: string }[] = [
-  { key: 'formazione', titolo: 'Formazione', bg: '#e7f3ea', bordo: '#bfe0c8', ink: '#1f6b3a' },
-  { key: 'documenti', titolo: 'Documenti', bg: '#e6eefb', bordo: '#c4d6f2', ink: '#274a86' },
-  { key: 'autorizzazioni', titolo: 'Autorizzazioni', bg: '#fbf1dd', bordo: '#ecd9ad', ink: '#8a6212' },
-  { key: 'cosedafare', titolo: 'Cose da fare', bg: '#f1eee9', bordo: '#ddd5c7', ink: '#4a4a4a' },
-];
 
 const STATI: AzioneStato[] = ['aperta', 'in_corso', 'conclusa'];
 
@@ -123,17 +106,7 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
   const destLabel = (t: DestinatarioTipo) =>
     t === 'cliente' ? 'Cliente' : t === 'area' ? 'Area' : 'Tecnico';
 
-  // Rimuove i prefissi tecnici e il suffisso persona dalla descrizione, come fallback
-  // quando i campi strutturati (persona_nome/corso_nome) non sono disponibili.
-  function corsoDaDescrizione(desc: string): string {
-    return desc
-      .replace(/^Rinnovo formazione - /, '')
-      .replace(/^Rinnovo credito\/esonero - /, '')
-      .replace(/\s*\([^)]*\)\s*$/, '')
-      .trim();
-  }
-
-  function Riga({ r, formazione }: { r: CosaDaFareAdmin; formazione: boolean }) {
+  function Riga({ r }: { r: CosaDaFareAdmin }) {
     const scaduta = r.scaduta;
     const statoCell = r.kind === 'azione' ? (
       <select value={r.azione.stato} disabled={busy === r.id}
@@ -151,20 +124,6 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
         {scaduta ? 'Scaduta ' : (r.kind === 'sopralluogo' ? 'Pianif. ' : '')}{fmt(r.data)}
       </td>
     );
-
-    if (formazione) {
-      const corso = r.corso_nome ?? corsoDaDescrizione(r.descrizione);
-      return (
-        <tr className={'cdf-tr' + (r.conclusa ? ' dim' : '') + (scaduta ? ' scad' : '')}>
-          <td className="cdf-disc"><div className="cdf-d">{r.persona_nome ?? '—'}</div></td>
-          <td className="cdf-corso">{corso}</td>
-          <td className="cdf-ore">{r.ore != null ? r.ore + 'h' : '—'}</td>
-          {scadCell}
-          <td className="cdf-stato">{statoCell}</td>
-          <td className="cdf-act">{actCell}</td>
-        </tr>
-      );
-    }
 
     return (
       <tr className={'cdf-tr' + (r.conclusa ? ' dim' : '') + (scaduta ? ' scad' : '')}>
@@ -201,11 +160,8 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
         .cdf-tr.dim{opacity:.5}
         .cdf-tr.scad td.cdf-desc{box-shadow:inset 3px 0 0 var(--no,#d24028)}
         .cdf-desc{width:44%}
-        .cdf-disc{width:26%;font-weight:600}
-        .cdf-corso{width:34%;line-height:1.25}
         .cdf-d{font-weight:600;line-height:1.25}
         .cdf-sub{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;font-size:11px;color:var(--ink-soft,#5c5f66)}
-        .cdf-ore{width:9%;white-space:nowrap;font-weight:700;color:#3a3d43}
         .cdf-dest{width:19%}
         .cdf-scad{width:14%;white-space:nowrap;color:var(--ink-soft,#5c5f66)}
         .cdf-scad.warn{color:var(--no,#d24028);font-weight:700}
@@ -219,7 +175,8 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
           <div className="grow">
             <h2 className="bo-h">Cose da fare</h2>
             <p className="bo-sub" style={{ margin: 0 }}>
-              Scadenze formative, documenti, autorizzazioni e attività dal campo, in un unico elenco per categoria.
+              Le attività che nascono dal campo: correttive dei sopralluoghi e sedute
+              pianificate. Le scadenze della ditta sono nel tab Scadenzario.
             </p>
           </div>
           {scadute > 0 && <span className="bo-pill warn">{scadute} scadute</span>}
@@ -265,51 +222,27 @@ export default function CoseDaFare({ clienteId }: { clienteId?: string } = {}) {
       {stato === 'loading' && <div className="bo-empty">Carico…</div>}
       {stato === 'errore' && <div className="bo-err">Errore nel caricamento delle cose da fare.</div>}
 
-      {stato === 'ok' && CATEGORIE.map((cat) => {
-        const gruppo = visibili.filter((r) => CATEGORIA_DI[r.riga_tipo] === cat.key);
-        return (
-          <div key={cat.key} style={{
-            background: cat.bg, border: `1px solid ${cat.bordo}`, borderRadius: 14,
-            padding: '12px 14px 14px', marginTop: 12,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: gruppo.length ? 10 : 2,
-            }}>
-              <span style={{ fontWeight: 800, fontSize: 14.5, color: cat.ink }}>{cat.titolo}</span>
-              <span style={{ fontSize: 12, color: cat.ink, opacity: .8 }}>
-                {gruppo.length || 'nessuna voce'}
-              </span>
-            </div>
-            {gruppo.length > 0 && (
-              <table className="cdf-tbl">
-                <thead>
-                  {cat.key === 'formazione' ? (
-                    <tr>
-                      <th>Dati discente</th>
-                      <th>Corso aggiornamento</th>
-                      <th>Ore corso</th>
-                      <th>Scadenza</th>
-                      <th>Stato</th>
-                      <th></th>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <th>Descrizione</th>
-                      <th>Destinatario</th>
-                      <th>Scadenza</th>
-                      <th>Stato</th>
-                      <th></th>
-                    </tr>
-                  )}
-                </thead>
-                <tbody>
-                  {gruppo.map((r) => <Riga key={r.id} r={r} formazione={cat.key === 'formazione'} />)}
-                </tbody>
-              </table>
-            )}
-          </div>
-        );
-      })}
+      {stato === 'ok' && visibili.length === 0 && (
+        <div className="bo-empty">Nessuna cosa da fare con questi filtri.</div>
+      )}
+
+      {stato === 'ok' && visibili.length > 0 && (
+        <table className="cdf-tbl" style={{ marginTop: 10 }}>
+          <thead>
+            <tr>
+              <th>Descrizione</th>
+              <th>Destinatario</th>
+              <th>Scadenza</th>
+              <th>Stato</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibili.map((r) => <Riga key={r.id} r={r} />)}
+          </tbody>
+        </table>
+      )}
+
     </>
   );
 }

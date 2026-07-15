@@ -325,4 +325,35 @@ export interface ComponenteSito {
   attivo: boolean;
 }
 
+// --- Adempimenti (migrazione 055) -----------------------------------------
+// Scadenze NON formative del cliente. Tre categorie, una sola forma:
+// documento/autorizzazione pendono dalla sede, sorveglianza dalla persona.
+export type AdempimentoCategoria = 'documento' | 'autorizzazione' | 'sorveglianza';
+
+export interface Adempimento {
+  id: string;
+  cliente_id: string;
+  categoria: AdempimentoCategoria;
+  sede_id: string | null;
+  persona_id: string | null;
+  tipo: string;
+  descrizione: string | null;
+  data_rilascio: string | null;
+  data_scadenza: string | null;
+  periodicita_mesi: number | null;
+  medico: string | null;
+  note: string | null;
+  allegato_path: string | null;
+  import_key: string | null;
+}
+
+// Dizionario testo-del-gestionale -> corso a catalogo.
+// corso_codice null = da mappare (l'import non si blocca, la voce resta in lista).
+export interface CorsoAlias {
+  id: string;
+  testo_gestionale: string;
+  corso_codice: string | null;
+  note: string | null;
+}
+
 export const newId = (): string => crypto.randomUUID();

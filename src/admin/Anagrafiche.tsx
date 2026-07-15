@@ -18,7 +18,7 @@ import {
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
 import { allineaPersoneOrganigramma } from '../lib/admin/formazione';
-import CoseDaFare from './CoseDaFare';
+import Scadenzario from './Scadenzario';
 
 export default function Anagrafiche() {
   // null = elenco; { id } = scheda esistente; { nuovo:true } = scheda nuova
@@ -588,11 +588,11 @@ function SchedaCliente({
         </div>
       )}
 
-      {/* --- scadenzario del cliente: copia di "Cose da fare" filtrata su questo cliente --- */}
+      {/* --- scadenzario del cliente: stessa vista del tab Scadenzario, filtrata --- */}
       {persistito && sezioneAttiva === 'scadenzario' && (
         <div className="dash-panel acc-scadenzario">
           <div className="dash-panel-tit">Scadenzario</div>
-          <CoseDaFare clienteId={cliente.id} />
+          <Scadenzario clienteId={cliente.id} />
         </div>
       )}
 

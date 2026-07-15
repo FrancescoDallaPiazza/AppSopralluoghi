@@ -1,11 +1,16 @@
-// Strato dati del back-office · "cose da fare" / scadenzario UNICO.
+// Strato dati del back-office · "cose da fare".
 //
-// Feed unico che fonde DUE sorgenti in un'unica lista ordinabile/filtrabile,
-// online-first (scrivania):
-//   - azione  : correttive dei sopralluoghi + scadenze formative. Il Ramo A
-//               (formazione) materializza gia' azioni reali con
-//               origine_formazione_id/origine_esonero_id, instradate all'area
-//               Formazione, quindi entrano da se'.
+// SOLO cio' che nasce da un'osservazione in campo o dalla pianificazione: ha un
+// ciclo di vita (aperta -> in corso -> conclusa), un responsabile, e si crea a
+// mano. Le SCADENZE (formazione, documenti, autorizzazioni, sorveglianza)
+// stanno in `scadenzario.ts`: quelle discendono da un fatto registrato e si
+// ricalcolano da se'. Sono due oggetti diversi, non due filtri della stessa
+// lista.
+//
+// Due sorgenti, online-first (scrivania):
+//   - azione  : correttive dei sopralluoghi. Le azioni del Ramo A (formazione,
+//               con origine_formazione_id/origine_esonero_id/origine_ramo)
+//               sono ESCLUSE: appartengono allo scadenzario.
 //   - sopralluogo pianificato : le prossime uscite in campo (Ramo B) non ancora
 //               effettuate. NON vengono duplicate in `azione`: restano righe
 //               `sopralluogo` col proprio ciclo di vita e qui compaiono in sola
@@ -35,8 +40,8 @@ const oggiISO = () => new Date().toISOString().slice(0, 10);
 
 export type DestinatarioTipo = 'cliente' | 'tecnico' | 'area';
 
-// Tipo di riga del feed unico, per il filtro "Tipo".
-export type RigaTipo = 'formazione' | 'correttiva' | 'sopralluogo';
+// Tipo di riga, per l'etichetta in lista.
+export type RigaTipo = 'correttiva' | 'sopralluogo';
 
 interface CosaDaFareBase {
   id: string;
@@ -90,7 +95,11 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
           cliente:cliente!cliente_id ( id, ragione_sociale )
         )
       )
-    `);
+    `)
+    // le scadenze formative vivono nello scadenzario, non qui.
+    .is('origine_formazione_id', null)
+    .is('origine_esonero_id', null)
+    .or('origine_ramo.is.null,origine_ramo.neq.formazione');
   if (error) throw error;
   const o = oggiISO();
 
@@ -149,13 +158,11 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     for (const k of COLONNE_AZIONE) azione[k] = r[k] ?? null;
 
     const conclusa = r.stato === 'conclusa';
-    const riga_tipo: RigaTipo =
-      (r.origine_formazione_id || r.origine_esonero_id || r.origine_ramo === 'formazione') ? 'formazione' : 'correttiva';
 
     return {
       kind: 'azione',
       id: r.id,
-      riga_tipo,
+      riga_tipo: 'correttiva',
       descrizione: r.descrizione,
       data: r.data_scadenza ?? null,
       scaduta: !!(r.data_scadenza && r.data_scadenza < o && !conclusa),
@@ -252,5 +259,5 @@ export const LABEL_PRIORITA: Record<AzionePriorita, string> = {
   bassa: 'Bassa', media: 'Media', alta: 'Alta',
 };
 export const LABEL_RIGA: Record<RigaTipo, string> = {
-  formazione: 'Formazione', correttiva: 'Correttiva', sopralluogo: 'Sopralluogo',
+  correttiva: 'Correttiva', sopralluogo: 'Sopralluogo',
 };
