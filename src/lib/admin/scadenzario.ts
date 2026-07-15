@@ -11,25 +11,20 @@
 // a mano, e non si "ricalcolano".
 //
 // Quattro blocchi, due sorgenti:
-//   - formazione     : righe `azione` del Ramo A (origine_formazione_id /
-//                      origine_esonero_id / origine_ramo='formazione'), che il
-//                      motore materializza gia' da se'. Hanno stato editabile.
+//   - formazione     : righe `azione` del Ramo A, che il motore materializza
+//                      gia' da se'. Hanno stato editabile. NON si ricaricano
+//                      qui: si riusa `caricaAzioniAdmin` di cosedafare.ts e se
+//                      ne prende la meta' 'formazione'. Un solo caricatore e
+//                      una sola classificazione per le due viste, cosi' nessuna
+//                      riga puo' finire in entrambe o in nessuna.
 //   - documenti      |
 //   - autorizzazioni | : righe `adempimento`, lette DIRETTE (nessuna
 //   - sorveglianza   |   materializzazione in `azione`: la riga ha gia'
 //                        data_scadenza, lo stato si deriva da quella).
 
 import { supabase } from '../supabase';
+import { caricaAzioniAdmin } from './cosedafare';
 import type { Adempimento, AdempimentoCategoria, Azione } from '../types';
-
-const COLONNE_AZIONE = [
-  'id', 'tipo', 'origine_esito_id', 'sopralluogo_origine_id', 'descrizione',
-  'responsabile_tipo', 'responsabile_cliente_id', 'responsabile_interno_id',
-  'responsabile_area_id',
-  'data_scadenza', 'priorita', 'stato', 'sopralluogo_verifica_id',
-  'data_verifica', 'periodicita_mesi', 'werp_attivita_id', 'notificata_il',
-  'origine_formazione_id', 'origine_esonero_id', 'origine_ramo',
-] as const;
 
 const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
   Array.isArray(v) ? v[0] : (v ?? undefined);
@@ -77,61 +72,30 @@ export async function caricaScadenzario(clienteId?: string): Promise<RigaScadenz
   return clienteId ? tutte.filter((r) => r.cliente_id === clienteId) : tutte;
 }
 
-// Ramo A: le azioni gia' materializzate dal motore formazione.
+// Ramo A: le azioni gia' materializzate dal motore, prese dal caricatore
+// condiviso e rimappate sulla forma dello scadenzario.
 async function caricaScadenzeFormative(): Promise<RigaScadenzario[]> {
-  const { data, error } = await supabase
-    .from('azione')
-    .select(`
-      ${COLONNE_AZIONE.join(', ')},
-      cli_resp:cliente!responsabile_cliente_id ( id, ragione_sociale ),
-      f_orig:formazione!origine_formazione_id ( corso_codice, persona:persona!persona_id ( cliente_id, nome, cognome ) ),
-      e_orig:esonero!origine_esonero_id ( corso_codice, persona:persona!persona_id ( cliente_id, nome, cognome ) )
-    `)
-    .or('origine_formazione_id.not.is.null,origine_esonero_id.not.is.null,origine_ramo.eq.formazione');
-  if (error) throw error;
-  const o = oggiISO();
-
-  // Ore + nome corso dal catalogo: corso_codice e' testo libero (nessuna FK),
-  // quindi niente embed PostgREST, si risolve via mappa.
-  const { data: corsiData } = await supabase
-    .from('corso_catalogo').select('codice, nome, ore, ore_aggiornamento');
-  const corsoInfo = new Map<string, { nome: string | null; ore: number | null }>(
-    ((corsiData ?? []) as { codice: string; nome: string | null; ore: number | null; ore_aggiornamento: number | null }[])
-      .map((c) => [c.codice, { nome: c.nome, ore: c.ore_aggiornamento ?? c.ore ?? null }]),
-  );
-
-  return (data ?? []).map((r: any): RigaScadenzario => {
-    const cliResp = uno<any>(r.cli_resp);
-    const fPers = uno<any>(uno<any>(r.f_orig)?.persona);
-    const ePers = uno<any>(uno<any>(r.e_orig)?.persona);
-    const corsoCodice: string | null =
-      uno<any>(r.f_orig)?.corso_codice ?? uno<any>(r.e_orig)?.corso_codice ?? null;
-    const ci = corsoCodice ? corsoInfo.get(corsoCodice) : undefined;
-    const pAnag = fPers ?? ePers;
-
-    const azione: Record<string, unknown> = {};
-    for (const k of COLONNE_AZIONE) azione[k] = r[k] ?? null;
-    const conclusa = r.stato === 'conclusa';
-
-    return {
+  const azioni = await caricaAzioniAdmin();
+  return azioni
+    .filter((r) => r.riga_tipo === 'formazione' && r.kind === 'azione')
+    .map((r): RigaScadenzario => ({
       kind: 'azione',
       id: r.id,
       categoria: 'formazione',
       descrizione: r.descrizione,
-      data: r.data_scadenza ?? null,
-      scaduta: !!(r.data_scadenza && r.data_scadenza < o && !conclusa),
-      conclusa,
-      cliente_id: r.responsabile_cliente_id ?? fPers?.cliente_id ?? ePers?.cliente_id ?? null,
-      cliente_nome: cliResp?.ragione_sociale ?? null,
-      persona_nome: pAnag ? ([pAnag.cognome, pAnag.nome].filter(Boolean).join(' ') || null) : null,
-      corso_nome: ci?.nome ?? null,
-      ore: ci?.ore ?? null,
-      periodicita_mesi: r.periodicita_mesi ?? null,
+      data: r.data,
+      scaduta: r.scaduta,
+      conclusa: r.conclusa,
+      cliente_id: r.cliente_id,
+      cliente_nome: r.cliente_nome,
+      persona_nome: r.persona_nome,
+      corso_nome: r.corso_nome,
+      ore: r.ore,
+      periodicita_mesi: r.kind === 'azione' ? (r.azione.periodicita_mesi ?? null) : null,
       sede_nome: null,
-      azione: azione as unknown as Azione,
+      azione: (r as { azione: Azione }).azione,
       adempimento: null,
-    };
-  });
+    }));
 }
 
 // Documenti / autorizzazioni / sorveglianza: lettura diretta.

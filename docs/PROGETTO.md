@@ -639,6 +639,19 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   senza toccare i dati esistenti. Gli adempimenti NON materializzano righe in
   `azione`: la riga ha gia' `data_scadenza`, lo scadenzario la legge diretta.
   `tsc -b` + `vite build` verdi. Canale 3 (055) poi canale 1 (push).
+  **Correzione post-rilascio**: il primo taglio filtrava le azioni formative
+  LATO SERVER con un `or` PostgREST su origine_formazione_id/origine_esonero_id/
+  origine_ramo, e il blocco Formazione restava vuoto. Due cause: (a) le azioni
+  di evidenza-nomina (`backfillAzioniNominaEvidenza`) hanno come UNICO marcatore
+  `origine_nomina_id`, non toccato dal filtro; (b) il filtro server-side era
+  complessita' nuova su una vista di scrivania che carica qualche centinaio di
+  righe, mentre il codice precedente classificava lato client e funzionava.
+  Rimediato con UN SOLO caricatore condiviso (`caricaAzioniAdmin` in
+  cosedafare.ts) + un solo predicato `ramoFormazione` su tutte e QUATTRO le
+  colonne d'origine: lo scadenzario ne prende la meta' 'formazione', le cose da
+  fare l'altra. Nessuna riga puo' finire in entrambe o in nessuna. Regola:
+  quando si spacca una vista, si spacca la LISTA gia' caricata, non si duplica
+  la query.
 - **Modulo formazione/organigramma con confine netto** (`src/formazione/`).
   Spostati nel modulo: `OrganigrammaView.tsx`, `Formazione.tsx`,
   `FormazioneRiepilogo.tsx`, `ateco.ts`, `organigramma-revisioni.ts`. Creato il

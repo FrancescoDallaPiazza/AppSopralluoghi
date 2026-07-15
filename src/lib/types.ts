@@ -231,6 +231,11 @@ export interface Azione {
   origine_formazione_id?: string | null;
   // Idem per un esonero/credito con scadenza (migration 043): id azione = id esonero.
   origine_esonero_id?: string | null;
+  // Idem per un'evidenza di nomina mancante (migration 053): id azione = id nomina.
+  origine_nomina_id?: string | null;
+  // Ramo che ha prodotto l'azione (migration 052), per i gap formativi che non
+  // hanno una riga d'origine da cui dedurlo.
+  origine_ramo?: string | null;
 }
 
 // Area/funzione interna (Formazione, Preventivi, …): destinatario di una

@@ -8,9 +8,13 @@
 // lista.
 //
 // Due sorgenti, online-first (scrivania):
-//   - azione  : correttive dei sopralluoghi. Le azioni del Ramo A (formazione,
-//               con origine_formazione_id/origine_esonero_id/origine_ramo)
-//               sono ESCLUSE: appartengono allo scadenzario.
+//   - azione  : correttive dei sopralluoghi. Le azioni del Ramo A (formazione)
+//               sono ESCLUSE qui e prese dallo scadenzario, che riusa lo stesso
+//               caricatore `caricaAzioniAdmin` e ne prende l'altra meta'.
+//               La classificazione e' lato client (vedi `ramoFormazione`): il
+//               filtro andava fatto su QUATTRO colonne d'origine diverse, e
+//               spingerlo sul server costava un `or` fragile per risparmiare
+//               qualche centinaio di righe su una vista di scrivania.
 //   - sopralluogo pianificato : le prossime uscite in campo (Ramo B) non ancora
 //               effettuate. NON vengono duplicate in `azione`: restano righe
 //               `sopralluogo` col proprio ciclo di vita e qui compaiono in sola
@@ -30,8 +34,19 @@ const COLONNE_AZIONE = [
   'responsabile_area_id',
   'data_scadenza', 'priorita', 'stato', 'sopralluogo_verifica_id',
   'data_verifica', 'periodicita_mesi', 'werp_attivita_id', 'notificata_il',
-  'origine_formazione_id', 'origine_esonero_id', 'origine_ramo',
+  'origine_formazione_id', 'origine_esonero_id', 'origine_nomina_id', 'origine_ramo',
 ] as const;
+
+// Un'azione appartiene al Ramo A se lo dice UNA QUALSIASI delle sue quattro
+// colonne d'origine. `origine_nomina_id` (evidenza di nomina da ottenere) e'
+// l'unico marcatore di quelle azioni: non hanno ne' origine_formazione_id ne'
+// origine_ramo, e dimenticarlo le fa sparire dallo scadenzario.
+const ramoFormazione = (r: {
+  origine_formazione_id?: string | null; origine_esonero_id?: string | null;
+  origine_nomina_id?: string | null; origine_ramo?: string | null;
+}): boolean =>
+  !!(r.origine_formazione_id || r.origine_esonero_id || r.origine_nomina_id
+     || r.origine_ramo === 'formazione');
 
 const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
   Array.isArray(v) ? v[0] : (v ?? undefined);
@@ -40,8 +55,9 @@ const oggiISO = () => new Date().toISOString().slice(0, 10);
 
 export type DestinatarioTipo = 'cliente' | 'tecnico' | 'area';
 
-// Tipo di riga, per l'etichetta in lista.
-export type RigaTipo = 'correttiva' | 'sopralluogo';
+// Tipo di riga. 'formazione' non compare in questa vista (va allo scadenzario)
+// ma la classificazione vive qui perche' qui vive il caricatore condiviso.
+export type RigaTipo = 'formazione' | 'correttiva' | 'sopralluogo';
 
 interface CosaDaFareBase {
   id: string;
@@ -67,13 +83,22 @@ export type CosaDaFareAdmin =
   | (CosaDaFareBase & { kind: 'azione'; azione: Azione })
   | (CosaDaFareBase & { kind: 'sopralluogo'; azione: null });
 
+// Caricatore condiviso: TUTTE le azioni, gia' classificate. Lo scadenzario ne
+// prende la meta' 'formazione', questa vista l'altra. Una query, una sola
+// classificazione, nessuna possibilita' che una riga finisca in entrambe o in
+// nessuna delle due.
+export async function caricaAzioniAdmin(clienteId?: string): Promise<CosaDaFareAdmin[]> {
+  const azioni = await caricaAzioni();
+  return clienteId ? azioni.filter((r) => r.cliente_id === clienteId) : azioni;
+}
+
 export async function caricaCoseDaFare(clienteId?: string): Promise<CosaDaFareAdmin[]> {
   const [azioni, sopralluoghi] = await Promise.all([
     caricaAzioni(),
     caricaSopralluoghiPianificati(),
   ]);
-  const tutte = [...azioni, ...sopralluoghi];
-  // Scadenzario per-anagrafica: stessa vista, filtrata sul cliente d'origine.
+  // Le scadenze formative vanno allo scadenzario, non qui.
+  const tutte = [...azioni.filter((r) => r.riga_tipo !== 'formazione'), ...sopralluoghi];
   return clienteId ? tutte.filter((r) => r.cliente_id === clienteId) : tutte;
 }
 
@@ -95,11 +120,7 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
           cliente:cliente!cliente_id ( id, ragione_sociale )
         )
       )
-    `)
-    // le scadenze formative vivono nello scadenzario, non qui.
-    .is('origine_formazione_id', null)
-    .is('origine_esonero_id', null)
-    .or('origine_ramo.is.null,origine_ramo.neq.formazione');
+    `);
   if (error) throw error;
   const o = oggiISO();
 
@@ -162,7 +183,7 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     return {
       kind: 'azione',
       id: r.id,
-      riga_tipo: 'correttiva',
+      riga_tipo: ramoFormazione(r) ? 'formazione' : 'correttiva',
       descrizione: r.descrizione,
       data: r.data_scadenza ?? null,
       scaduta: !!(r.data_scadenza && r.data_scadenza < o && !conclusa),
@@ -259,5 +280,5 @@ export const LABEL_PRIORITA: Record<AzionePriorita, string> = {
   bassa: 'Bassa', media: 'Media', alta: 'Alta',
 };
 export const LABEL_RIGA: Record<RigaTipo, string> = {
-  correttiva: 'Correttiva', sopralluogo: 'Sopralluogo',
+  formazione: 'Formazione', correttiva: 'Correttiva', sopralluogo: 'Sopralluogo',
 };
