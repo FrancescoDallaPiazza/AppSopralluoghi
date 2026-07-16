@@ -621,6 +621,19 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Lo scadenzario si riallinea da solo: via la guardia "una volta per cliente"**
+  (`Formazione.tsx`). `ricarica()` gira gia' a ogni modifica (il refreshToken la
+  fa ripartire, il motore rivaluta, la vista si aggiorna), ma la sincronizzazione
+  era avvolta in `if (syncFattaPer.current !== clienteId)`: partiva solo alla
+  PRIMA apertura del cliente. Da li' in poi ogni modifica all'organigramma
+  lasciava lo scadenzario indietro finche' non si premeva "Sincronizza" a mano.
+  Un automatismo che dipende dalla memoria di chi lo usa non e' un automatismo:
+  e' un promemoria. Tolta la guardia -- la sincronizzazione segue ogni
+  rivalutazione, e costa solo l'upsert perche' `riep` e' gia' in mano (nessuna
+  seconda passata del motore). Principio: la guardia proteggeva dal lavoro
+  ridondante e in cambio garantiva il dato sbagliato; fra i due, si sceglie il
+  lavoro ridondante. `tsc -b` + `vite build` verdi, `git diff` riletto.
+  Solo canale 1.
 - **Il backfill che si mangiava le proprie righe + sincronizzazione unica**
   (`sincronizzaScadenzarioCliente`). Due difetti, uno introdotto e uno di
   struttura.

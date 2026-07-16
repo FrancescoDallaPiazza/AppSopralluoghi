@@ -5,7 +5,7 @@
 // promemoria. Stile allineato al back-office (classi .bo-* di ui.ts) + un
 // piccolo foglio supplementare per semafori/metriche/modali (scoping .bo).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase, ATTESTATI_BUCKET, MAX_ATTESTATO_BYTES, estensioneAttestato, contentTypeAttestato, pathAttestato, urlFirmatoAttestato } from '../lib/supabase';
 import { newId } from '../lib/types';
 import {
@@ -175,7 +175,6 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
     return () => { vivo = false; };
   }, [clienteId, refreshToken]);
 
-  const syncFattaPer = useRef<string | null>(null);
   async function ricarica() {
     if (!catalogo) { setRiep(null); return; }
     setCaricando(true); setErrore(null);
@@ -184,13 +183,16 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
       // altrimenti la legale): valutaCliente risolve la sede da solo.
       const nuovoRiep = await valutaCliente(clienteId, catalogo);
       setRiep(nuovoRiep);
-      // Allinea lo scadenzario dai requisiti valutati: idempotente, una volta per
-      // cliente, non blocca il render.
-      if (syncFattaPer.current !== clienteId) {
-        syncFattaPer.current = clienteId;
-        sincronizzaScadenzarioCliente(clienteId, { riep: nuovoRiep, catalogo })
-          .catch((e) => console.error('sync scadenzario:', e));
-      }
+      // Allinea lo scadenzario dai requisiti appena valutati. NIENTE guardia
+      // "una volta per cliente": `ricarica` gira a ogni modifica (refreshToken),
+      // ed e' proprio dopo una modifica che lo scadenzario va riallineato.
+      // Con la guardia si sincronizzava solo alla prima apertura e da li' in poi
+      // ogni modifica lasciava lo scadenzario indietro, finche' non si premeva
+      // "Sincronizza" a mano: un automatismo che dipende dalla memoria di chi lo
+      // usa non e' un automatismo.
+      // Non rivaluta nulla (riep gia' in mano) e non blocca il render.
+      sincronizzaScadenzarioCliente(clienteId, { riep: nuovoRiep, catalogo })
+        .catch((e) => console.error('sync scadenzario:', e));
     } catch (e: any) {
       setErrore(e?.message ?? String(e));
     } finally {
