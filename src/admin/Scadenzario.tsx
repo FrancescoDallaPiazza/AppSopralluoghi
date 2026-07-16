@@ -38,7 +38,14 @@ const CATEGORIE: { key: CategoriaScadenza; titolo: string; bg: string; bordo: st
 
 const STATI: AzioneStato[] = ['aperta', 'in_corso', 'conclusa'];
 
-export default function Scadenzario({ clienteId }: { clienteId?: string }) {
+// `onApriOrganigramma`: una scadenza formativa non si "chiude" da qui. Si chiude
+// registrando l'attestato, che e' un fatto e vive nell'organigramma; fatto quello,
+// la riga si aggiorna o sparisce da se'. Questo pulsante ti porta li'. Dove il
+// riquadro Organigramma non esiste (tab di back-office, tutti i clienti) la prop
+// non arriva e il pulsante non compare: meglio assente che finto.
+export default function Scadenzario(
+  { clienteId, onApriOrganigramma }: { clienteId?: string; onApriOrganigramma?: () => void },
+) {
   const [righe, setRighe] = useState<RigaScadenzario[]>([]);
   const [stato, setStato] = useState<'loading' | 'ok' | 'errore'>('loading');
   const [busy, setBusy] = useState<string | null>(null);
@@ -150,6 +157,11 @@ export default function Scadenzario({ clienteId }: { clienteId?: string }) {
         </td>
         <td className="sc-stato">{statoCell}</td>
         <td className="sc-act">
+          {onApriOrganigramma && (
+            <button className="bo-btn ghost sm" onClick={onApriOrganigramma}
+              title={'Registra l\u2019attestato di ' + (r.persona_nome ?? 'questa persona')
+                     + ' nell\u2019organigramma: la scadenza si aggiorna da se\u2019.'}>&#8599;</button>
+          )}
           {r.kind === 'azione' && !r.conclusa && (
             <button className="bo-btn ghost sm" disabled={busy === r.id}
               onClick={() => void avvisa(r.id)}
@@ -206,7 +218,7 @@ export default function Scadenzario({ clienteId }: { clienteId?: string }) {
         .sc-scad.warn{color:var(--no,#d24028);font-weight:700}
         .sc-stato{width:14%}
         .sc-stato select{width:100%;font-size:12px;padding:4px 6px}
-        .sc-act{width:6%;text-align:center}
+        .sc-act{width:10%;text-align:center;white-space:nowrap}
         .sc-act .bo-btn{padding:4px 8px;min-width:0}
       `}</style>
 

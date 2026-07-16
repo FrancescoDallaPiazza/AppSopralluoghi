@@ -621,6 +621,29 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Chiudere una scadenza formativa: collegamento, non editor**
+  (`Scadenzario.tsx` prop `onApriOrganigramma`). Una scadenza formativa non si
+  chiude dallo scadenzario: si chiude REGISTRANDO L'ATTESTATO, che e' un fatto e
+  vive nell'organigramma. Fatto quello, il requisito acquista `formazione_id`,
+  l'azione a chiave requisito diventa orfana e sparisce da se', sostituita dalla
+  scadenza del rinnovo. Il form esiste gia' (`EditorRequisito` in
+  OrganigrammaView: data, ore, ente, allegato, corsi a piu' livelli, esonero
+  alternativo): rifarlo nello scadenzario avrebbe creato due form da tenere
+  allineati sulle regole ASR. Scartato anche il riuso in linea di
+  `EditorRequisito`: serve il `riep` per mappare azione -> requisito, e nel tab
+  di back-office (tutti i clienti) non c'e' un cliente, quindi l'affordance
+  esisterebbe a intermittenza. Scelto il collegamento: pulsante sulla riga che
+  porta al riquadro Organigramma. NON fa deep-link sulla persona -- la card
+  persona (`fzr-inc-card`) vive dentro l'accordion della figura, e raggiungerla
+  vorrebbe dire far entrare uno stato di navigazione in OrganigrammaView; il
+  nome del discente e' gia' sulla riga. Prop opzionale: dove il riquadro
+  Organigramma non esiste il pulsante non compare -- meglio assente che finto.
+  **APERTO**: la tendina Stato offre ancora `conclusa` sulle righe formative, e
+  marcarla senza attestato fa sparire la riga dal filtro "Da fare" mentre
+  l'organigramma continua a dire che la persona non e' formata (il campo `stato`
+  non e' nel payload dell'upsert, quindi sopravvive al sync). E' una bugia
+  producibile con un click: da togliere, lasciando aperta/in corso.
+  `tsc -b` + `vite build` verdi, `git diff` riletto. Solo canale 1.
 - **Lo scadenzario si riallinea da solo: via la guardia "una volta per cliente"**
   (`Formazione.tsx`). `ricarica()` gira gia' a ogni modifica (il refreshToken la
   fa ripartire, il motore rivaluta, la vista si aggiorna), ma la sincronizzazione

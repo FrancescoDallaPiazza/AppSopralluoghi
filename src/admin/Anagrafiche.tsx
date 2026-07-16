@@ -595,7 +595,8 @@ function SchedaCliente({
       {persistito && sezioneAttiva === 'scadenzario' && (
         <div className="dash-panel acc-scadenzario">
           <div className="dash-panel-tit">Scadenzario</div>
-          <Scadenzario clienteId={cliente.id} />
+          <Scadenzario clienteId={cliente.id}
+            onApriOrganigramma={() => setSezioneAttiva('organigramma')} />
         </div>
       )}
 
