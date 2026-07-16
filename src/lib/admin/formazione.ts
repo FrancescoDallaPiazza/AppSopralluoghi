@@ -1183,15 +1183,25 @@ export function azioneScadenzaEsonero(
 // l'attestato piu' recente (vincente) e calcolato la scadenza corretta, applicando
 // esoneri/crediti/pregressa. Cosi' si evitano azioni "fantasma" da attestati superati
 // e ogni discrepanza tra la vista e lo scadenzario.
-// Idempotente: chiave azione = id dell'attestato/esonero vincente. Fa upsert delle
-// azioni attese (requisiti CON scadenza) e cancella gli orfani (azioni collegate a
-// formazioni/esoneri del cliente che non corrispondono piu' a un requisito con scadenza).
+// Idempotente. Chiave azione, in ordine di precedenza:
+//   - id dell'attestato vincente  (origine_formazione_id)
+//   - id del credito/esonero      (origine_esonero_id)
+//   - persona_id:corso_codice     (origine_requisito_key, migration 056) per i
+//     requisiti CON scadenza ma SENZA attestato ne' esonero: la prima formazione
+//     mai erogata, la cui scadenza viene dalla legge e non da un attestato.
+//     Senza questo terzo caso quelle scadenze non arrivavano MAI allo
+//     scadenzario: il backfill le saltava per mancanza di chiave e
+//     `proponiCoseDaFare` le saltava perche' avevano gia' una scadenza.
+// Fa upsert delle azioni attese (requisiti CON scadenza) e cancella gli orfani.
 export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoCliente): Promise<number> {
   if (!riep) return 0; // senza requisiti valutati non si sincronizza
   const areaId = await areaFormazioneId();
 
-  // Azioni attese: una per ogni requisito CON scadenza, chiave = attestato o esonero.
+  // Azioni attese, indicizzate per azione.id.
   const attese = new Map<string, Record<string, unknown>>();
+  // Requisiti senza attestato ne' esonero: l'id non e' noto a priori, si risolve
+  // dopo dalla chiave naturale (esistente -> stesso id, nuovo -> id nuovo).
+  const perChiave: { key: string; az: Record<string, unknown> }[] = [];
   for (const pv of riep.persone) {
     const nome = nomePersona(pv.persona);
     for (const r of pv.requisiti) {
@@ -1199,7 +1209,7 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
       const base = (extra: Record<string, unknown>): Record<string, unknown> => {
         const az: Record<string, unknown> = {
           tipo: 'azione_correttiva', origine_esito_id: null, sopralluogo_origine_id: null,
-          origine_formazione_id: null, origine_esonero_id: null,
+          origine_formazione_id: null, origine_esonero_id: null, origine_requisito_key: null,
           responsabile_cliente_id: clienteId, data_scadenza: r.scadenza, ...extra,
         };
         if (areaId) { az.responsabile_tipo = 'risorsa_interna'; az.responsabile_area_id = areaId; }
@@ -1216,7 +1226,35 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
           id: r.esonero_id, origine_esonero_id: r.esonero_id,
           descrizione: 'Rinnovo credito/esonero - ' + r.corso_nome + ' (' + nome + ')',
         }));
+      } else {
+        // Scadenza senza attestato ne' esonero: corso mai erogato, termine di
+        // legge. E' una scadenza formativa a tutti gli effetti (ha discente,
+        // corso, ore e data), solo senza una carta dietro.
+        const key = pv.persona.id + ':' + r.corso_codice;
+        perChiave.push({
+          key,
+          az: base({
+            origine_requisito_key: key,
+            descrizione: 'Prima formazione - ' + r.corso_nome + ' (' + nome + ')',
+          }),
+        });
       }
+    }
+  }
+
+  // Risolve chiave naturale -> azione.id, cosi' l'upsert resta sulla primary key
+  // (l'indice unique della 056 e' parziale: ON CONFLICT non lo aggancerebbe).
+  if (perChiave.length) {
+    const { data: gia } = await supabase
+      .from('azione').select('id, origine_requisito_key')
+      .in('origine_requisito_key', perChiave.map((x) => x.key));
+    const perKey = new Map(
+      ((gia ?? []) as { id: string; origine_requisito_key: string }[])
+        .map((a) => [a.origine_requisito_key, a.id]),
+    );
+    for (const { key, az } of perChiave) {
+      const id = perKey.get(key) ?? newId();
+      attese.set(id, { ...az, id });
     }
   }
 
@@ -1244,6 +1282,16 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
       if (daCancellare.length) await supabase.from('azione').delete().in('id', daCancellare);
     }
   }
+
+  // Orfani a chiave requisito: la scadenza e' sparita, oppure e' arrivato
+  // l'attestato e il requisito e' passato su origine_formazione_id.
+  const { data: reqEs } = await supabase
+    .from('azione').select('id')
+    .eq('responsabile_cliente_id', clienteId)
+    .not('origine_requisito_key', 'is', null);
+  const reqOrfani = ((reqEs ?? []) as { id: string }[])
+    .map((a) => a.id).filter((id) => !attese.has(id));
+  if (reqOrfani.length) await supabase.from('azione').delete().in('id', reqOrfani);
 
   return attese.size;
 }
@@ -1292,6 +1340,16 @@ export async function backfillAzioniNominaEvidenza(clienteId: string, riep?: Rie
       if (daCancellare.length) await supabase.from('azione').delete().in('id', daCancellare);
     }
   }
+
+  // Orfani a chiave requisito: la scadenza e' sparita, oppure e' arrivato
+  // l'attestato e il requisito e' passato su origine_formazione_id.
+  const { data: reqEs } = await supabase
+    .from('azione').select('id')
+    .eq('responsabile_cliente_id', clienteId)
+    .not('origine_requisito_key', 'is', null);
+  const reqOrfani = ((reqEs ?? []) as { id: string }[])
+    .map((a) => a.id).filter((id) => !attese.has(id));
+  if (reqOrfani.length) await supabase.from('azione').delete().in('id', reqOrfani);
 
   return attese.size;
 }

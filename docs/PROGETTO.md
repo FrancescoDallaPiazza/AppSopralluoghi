@@ -621,6 +621,32 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Scadenze formative senza attestato: la crepa fra i due flussi**
+  (`migration 056` + `backfillAzioniEsoneri`). Un requisito puo' avere una
+  SCADENZA senza avere attestato ne' esonero: e' la prima formazione mai
+  erogata, la cui scadenza viene dalla legge ("prima formazione entro il
+  19/05/2027") e non da una carta. Quella riga cadeva fra due sedie:
+  `backfillAzioniEsoneri` la saltava perche' la sua chiave di idempotenza e'
+  `azione.id = formazione_id | esonero_id` e li' non c'era nessuno dei due;
+  `proponiCoseDaFare` la saltava per via del guard `if (r.scadenza) continue;`,
+  il cui commento diceva "scadenza valorizzata = monitorata automaticamente
+  dalla 042" -- vero SOLO quando c'e' un attestato dietro. Ognuno dei due
+  assumeva che ci pensasse l'altro, e **ogni** scadenza "prima formazione entro
+  il ..." era invisibile nello scadenzario, per tutti i clienti.
+  Migrazione 056: colonna `azione.origine_requisito_key` = `persona_id:corso_codice`
+  (identita' stabile del requisito nel cliente), unique parziale. Il backfill
+  risolve chiave -> id con una select e poi fa upsert sulla primary key come per
+  tutte le altre: con un indice PARZIALE l'inferenza di ON CONFLICT non
+  aggancerebbe. Cancellazione orfani estesa (arriva l'attestato -> il requisito
+  passa su origine_formazione_id -> l'azione a chiave requisito sparisce).
+  Il guard di `proponiCoseDaFare` resta: ora e' vero, perche' il backfill copre
+  tutti i requisiti con scadenza.
+  **Discente/corso/ore** di queste righe non arrivano da nessun join (non c'e'
+  una riga di formazione dietro): si leggono dalla chiave naturale. E le ore
+  iniziali e di aggiornamento vanno tenute DISTINTE nella mappa di catalogo --
+  un rinnovo mostra `ore_aggiornamento`, una prima formazione `ore`. Intestazione
+  della colonna da "Corso aggiornamento" a "Corso": il blocco ora contiene
+  entrambi. `tsc -b` + `vite build` verdi. Canale 3 (056) poi canale 1.
 - **Scadenzario separato da "Cose da fare" + import da gestionale, Fase A**
   (`migration 055` + `lib/admin/scadenzario.ts`, `admin/Scadenzario.tsx`, split di
   `cosedafare`). Il feed unico si spacca in due oggetti distinti: lo **Scadenzario**
@@ -639,19 +665,25 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   senza toccare i dati esistenti. Gli adempimenti NON materializzano righe in
   `azione`: la riga ha gia' `data_scadenza`, lo scadenzario la legge diretta.
   `tsc -b` + `vite build` verdi. Canale 3 (055) poi canale 1 (push).
-  **Correzione post-rilascio**: il primo taglio filtrava le azioni formative
-  LATO SERVER con un `or` PostgREST su origine_formazione_id/origine_esonero_id/
-  origine_ramo, e il blocco Formazione restava vuoto. Due cause: (a) le azioni
-  di evidenza-nomina (`backfillAzioniNominaEvidenza`) hanno come UNICO marcatore
-  `origine_nomina_id`, non toccato dal filtro; (b) il filtro server-side era
-  complessita' nuova su una vista di scrivania che carica qualche centinaio di
-  righe, mentre il codice precedente classificava lato client e funzionava.
-  Rimediato con UN SOLO caricatore condiviso (`caricaAzioniAdmin` in
-  cosedafare.ts) + un solo predicato `ramoFormazione` su tutte e QUATTRO le
-  colonne d'origine: lo scadenzario ne prende la meta' 'formazione', le cose da
-  fare l'altra. Nessuna riga puo' finire in entrambe o in nessuna. Regola:
-  quando si spacca una vista, si spacca la LISTA gia' caricata, non si duplica
-  la query.
+  **Correzioni post-rilascio (due giri)**: il primo taglio (a) filtrava le azioni
+  formative LATO SERVER con un `or` PostgREST invece di classificarle lato client
+  come faceva il codice precedente, e (b) toglieva meta' contenuto alla scheda
+  cliente: il riquadro "Scadenzario" renderizzava `CoseDaFare` (tutti e 4 i
+  blocchi, correttive e sedute incluse), e sostituirlo con `Scadenzario` faceva
+  sparire dal cliente correttive, evidenze di nomina e sedute pianificate.
+  Rimediato con: UN SOLO caricatore condiviso (`caricaAzioniAdmin` in
+  cosedafare.ts) di cui lo scadenzario prende la meta' 'formazione' e le cose da
+  fare l'altra (nessuna riga in entrambe o in nessuna); e un riquadro "Cose da
+  fare" nella scheda cliente accanto allo Scadenzario.
+  **`origine_nomina_id` NON e' formazione**: l'evidenza di nomina e' un atto da
+  procurarsi, non un corso — niente discente, niente ore, niente scadenza. Va
+  nelle cose da fare, come faceva il codice originario. Il tentativo di
+  infilarla nel blocco Formazione produceva righe con tre colonne su quattro
+  vuote: quando una riga non riempie la tabella in cui la metti, e' la riga a
+  stare nel posto sbagliato.
+  Regole apprese: quando si spacca una vista, si spacca la LISTA gia' caricata,
+  non si duplica la query; e si verifica SEMPRE cosa renderizzava il componente
+  sostituito, non solo cosa dice il suo nome.
 - **Modulo formazione/organigramma con confine netto** (`src/formazione/`).
   Spostati nel modulo: `OrganigrammaView.tsx`, `Formazione.tsx`,
   `FormazioneRiepilogo.tsx`, `ateco.ts`, `organigramma-revisioni.ts`. Creato il

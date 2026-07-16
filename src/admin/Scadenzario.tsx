@@ -110,6 +110,7 @@ export default function Scadenzario({ clienteId }: { clienteId?: string }) {
     const corso = r.corso_nome ?? r.descrizione
       .replace(/^Rinnovo formazione - /, '')
       .replace(/^Rinnovo credito\/esonero - /, '')
+      .replace(/^Prima formazione - /, '')
       .replace(/\s*\([^)]*\)\s*$/, '')
       .trim();
     const statoCell = r.kind === 'azione' ? (
@@ -254,7 +255,7 @@ export default function Scadenzario({ clienteId }: { clienteId?: string }) {
                   {formativo ? (
                     <tr>
                       <th>Dati discente</th>
-                      <th>Corso aggiornamento</th>
+                      <th>Corso</th>
                       <th>Ore corso</th>
                       <th>Scadenza</th>
                       <th>Stato</th>

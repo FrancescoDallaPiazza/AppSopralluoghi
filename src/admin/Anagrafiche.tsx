@@ -19,6 +19,7 @@ import {
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
 import { allineaPersoneOrganigramma } from '../lib/admin/formazione';
 import Scadenzario from './Scadenzario';
+import CoseDaFare from './CoseDaFare';
 
 export default function Anagrafiche() {
   // null = elenco; { id } = scheda esistente; { nuovo:true } = scheda nuova
@@ -279,6 +280,7 @@ function SchedaCliente({
         .acc-organigramma{--acc:#805ad5;--acc-ink:#5f3dc4;--acc-bg:#f6f3fc}
         .acc-incarichi{--acc:#b7791f;--acc-ink:#8a5d10;--acc-bg:#fbf6ec}
         .acc-scadenzario{--acc:#c53030;--acc-ink:#9b2020;--acc-bg:#fcf2f2}
+        .acc-cosedafare{--acc:#4a5568;--acc-ink:#2d3748;--acc-bg:#f4f5f7}
         .dash-topbar{display:flex;align-items:center;gap:8px;margin-bottom:2px}
         .dash-title{text-align:center;margin:2px 0 20px}
         .dash-title h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.01em;color:#1c1e22;line-height:1.15}
@@ -316,7 +318,8 @@ function SchedaCliente({
             { key: 'risorse', titolo: 'Risorse Umane', tema: 'risorse', sommario: nPersone == null ? '' : nPersone === 0 ? 'nessuna persona' : `${nPersone} ${nPersone === 1 ? 'persona' : 'persone'}` },
             { key: 'organigramma', titolo: 'Organigramma sicurezza', tema: 'organigramma', sommario: 'figure, nomine e formazione' },
             { key: 'incarichi', titolo: 'Incarichi', tema: 'incarichi', sommario: `${incarichi.length} ${incarichi.length === 1 ? 'incarico' : 'incarichi'}` },
-            { key: 'scadenzario', titolo: 'Scadenzario', tema: 'scadenzario', sommario: 'formazione, documenti, scadenze' },
+            { key: 'scadenzario', titolo: 'Scadenzario', tema: 'scadenzario', sommario: 'formazione, documenti, autorizzazioni, visite' },
+            { key: 'cosedafare', titolo: 'Cose da fare', tema: 'cosedafare', sommario: 'correttive dal campo e sedute' },
           ] : []),
         ] as { key: string; titolo: string; tema: string; sommario: string }[]).map((sz) => (
           <button key={sz.key} type="button"
@@ -593,6 +596,14 @@ function SchedaCliente({
         <div className="dash-panel acc-scadenzario">
           <div className="dash-panel-tit">Scadenzario</div>
           <Scadenzario clienteId={cliente.id} />
+        </div>
+      )}
+
+      {/* --- cose da fare del cliente: correttive, evidenze da procurarsi, sedute --- */}
+      {persistito && sezioneAttiva === 'cosedafare' && (
+        <div className="dash-panel acc-cosedafare">
+          <div className="dash-panel-tit">Cose da fare</div>
+          <CoseDaFare clienteId={cliente.id} />
         </div>
       )}
 

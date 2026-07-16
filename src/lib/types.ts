@@ -233,6 +233,9 @@ export interface Azione {
   origine_esonero_id?: string | null;
   // Idem per un'evidenza di nomina mancante (migration 053): id azione = id nomina.
   origine_nomina_id?: string | null;
+  // Chiave naturale persona_id:corso_codice per le scadenze formative senza
+  // attestato ne esonero dietro (prima formazione da erogare, migration 056).
+  origine_requisito_key?: string | null;
   // Ramo che ha prodotto l'azione (migration 052), per i gap formativi che non
   // hanno una riga d'origine da cui dedurlo.
   origine_ramo?: string | null;

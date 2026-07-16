@@ -34,18 +34,25 @@ const COLONNE_AZIONE = [
   'responsabile_area_id',
   'data_scadenza', 'priorita', 'stato', 'sopralluogo_verifica_id',
   'data_verifica', 'periodicita_mesi', 'werp_attivita_id', 'notificata_il',
-  'origine_formazione_id', 'origine_esonero_id', 'origine_nomina_id', 'origine_ramo',
+  'origine_formazione_id', 'origine_esonero_id', 'origine_nomina_id',
+  'origine_requisito_key', 'origine_ramo',
 ] as const;
 
-// Un'azione appartiene al Ramo A se lo dice UNA QUALSIASI delle sue quattro
-// colonne d'origine. `origine_nomina_id` (evidenza di nomina da ottenere) e'
-// l'unico marcatore di quelle azioni: non hanno ne' origine_formazione_id ne'
-// origine_ramo, e dimenticarlo le fa sparire dallo scadenzario.
+// Un'azione e' una SCADENZA FORMATIVA se dietro c'e' UN CORSO: un attestato da
+// rinnovare (origine_formazione_id), un credito/esonero in scadenza
+// (origine_esonero_id), una prima formazione ancora da erogare
+// (origine_requisito_key, migration 056), o un gap (origine_ramo='formazione').
+// In tutti e quattro i casi la riga ha discente, corso, ore e scadenza: riempie
+// la tabella dello scadenzario.
+//
+// `origine_nomina_id` NON entra: l'evidenza di nomina e' un ATTO DA PROCURARSI,
+// non un corso. Niente discente, niente ore, niente scadenza — e' una cosa da
+// fare. Il criterio non e' "l'ha prodotta l'organigramma", e' "c'e' un corso".
 const ramoFormazione = (r: {
   origine_formazione_id?: string | null; origine_esonero_id?: string | null;
-  origine_nomina_id?: string | null; origine_ramo?: string | null;
+  origine_requisito_key?: string | null; origine_ramo?: string | null;
 }): boolean =>
-  !!(r.origine_formazione_id || r.origine_esonero_id || r.origine_nomina_id
+  !!(r.origine_formazione_id || r.origine_esonero_id || r.origine_requisito_key
      || r.origine_ramo === 'formazione');
 
 const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
@@ -127,10 +134,27 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
   // Ore di formazione risolte via mappa dal catalogo: corso_codice su formazione/esonero
   // e' testo libero (nessuna FK a corso_catalogo), quindi niente embed PostgREST.
   const { data: corsiData } = await supabase.from('corso_catalogo').select('codice, nome, ore, ore_aggiornamento');
-  const corsoInfo = new Map<string, { nome: string | null; ore: number | null }>(
+  // Ore iniziali e ore di aggiornamento restano DISTINTE: un rinnovo vuole le
+  // seconde, una prima formazione da erogare vuole le prime.
+  const corsoInfo = new Map<string, { nome: string | null; ore: number | null; ore_agg: number | null }>(
     ((corsiData ?? []) as { codice: string; nome: string | null; ore: number | null; ore_aggiornamento: number | null }[])
-      .map((c) => [c.codice, { nome: c.nome, ore: c.ore_aggiornamento ?? c.ore ?? null }]),
+      .map((c) => [c.codice, { nome: c.nome, ore: c.ore ?? null, ore_agg: c.ore_aggiornamento ?? null }]),
   );
+
+  // Scadenze senza attestato (origine_requisito_key = persona_id:corso_codice):
+  // discente e corso non arrivano da nessun join, perche' non c'e' una riga di
+  // formazione dietro. Si leggono dalla chiave.
+  const chiaviReq = ((data ?? []) as { origine_requisito_key?: string | null }[])
+    .map((r) => r.origine_requisito_key ?? null)
+    .filter((k): k is string => !!k);
+  const personeReq = new Map<string, { nome: string | null; cognome: string | null; cliente_id: string | null }>();
+  if (chiaviReq.length) {
+    const ids = [...new Set(chiaviReq.map((k) => k.slice(0, k.indexOf(':'))))];
+    const { data: pd } = await supabase.from('persona').select('id, nome, cognome, cliente_id').in('id', ids);
+    for (const p of (pd ?? []) as { id: string; nome: string | null; cognome: string | null; cliente_id: string | null }[]) {
+      personeReq.set(p.id, p);
+    }
+  }
 
   return (data ?? []).map((r: any): CosaDaFareAdmin => {
     const sopr = uno<any>(r.sopr);
@@ -142,12 +166,21 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     const cliResp = uno<any>(r.cli_resp);
     const fPers = uno<any>(uno<any>(r.f_orig)?.persona);
     const ePers = uno<any>(uno<any>(r.e_orig)?.persona);
+    // Prima formazione da erogare: nessun join, tutto dalla chiave naturale.
+    const reqKey: string | null = r.origine_requisito_key ?? null;
+    const reqPers = reqKey ? personeReq.get(reqKey.slice(0, reqKey.indexOf(':'))) : undefined;
+    const reqCorso = reqKey ? reqKey.slice(reqKey.indexOf(':') + 1) : null;
+
     // Ore + nome del corso (tipo corso) dal catalogo; nome persona (discente) dai join.
-    const corsoCodice: string | null = uno<any>(r.f_orig)?.corso_codice ?? uno<any>(r.e_orig)?.corso_codice ?? null;
+    const corsoCodice: string | null =
+      uno<any>(r.f_orig)?.corso_codice ?? uno<any>(r.e_orig)?.corso_codice ?? reqCorso ?? null;
     const ci = corsoCodice ? corsoInfo.get(corsoCodice) : undefined;
-    const ore: number | null = ci?.ore ?? null;
+    // Un rinnovo mostra le ore di aggiornamento; una prima formazione le iniziali.
+    const ore: number | null = reqKey
+      ? (ci?.ore ?? null)
+      : (ci?.ore_agg ?? ci?.ore ?? null);
     const corso_nome: string | null = ci?.nome ?? null;
-    const pAnag = fPers ?? ePers;
+    const pAnag = fPers ?? ePers ?? reqPers;
     const persona_nome: string | null = pAnag
       ? [pAnag.cognome, pAnag.nome].filter(Boolean).join(' ') || null
       : null;
@@ -156,7 +189,8 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     // (formazione verso cliente) -> persona della formazione/esonero (azioni
     // di formazione instradate a un'area, senza responsabile_cliente_id).
     const clienteId: string | null =
-      cliOrig?.id ?? r.responsabile_cliente_id ?? fPers?.cliente_id ?? ePers?.cliente_id ?? null;
+      cliOrig?.id ?? r.responsabile_cliente_id ?? fPers?.cliente_id ?? ePers?.cliente_id
+      ?? reqPers?.cliente_id ?? null;
     const clienteNome: string | null = cliOrig?.ragione_sociale ?? cliResp?.ragione_sociale ?? null;
 
     let dTipo: DestinatarioTipo;
