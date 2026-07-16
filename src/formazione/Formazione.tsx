@@ -149,7 +149,10 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
   const [genOpen, setGenOpen] = useState(false);
   const [storicoOpen, setStoricoOpen] = useState(false);
   const [schemaOpen, setSchemaOpen] = useState(false);
-  const [syncBusy, setSyncBusy] = useState(false);
+  // Non serve mostrare che la sincronizzazione gira (e' automatica e non blocca
+  // il render): serve sapere se e' FALLITA, perche' allora lo scadenzario mostra
+  // dati vecchi con l'aria di essere a posto.
+  const [syncErr, setSyncErr] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pregressaPersonaId, setPregressaPersonaId] = useState<string | null>(null);
 
@@ -191,8 +194,9 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
       // "Sincronizza" a mano: un automatismo che dipende dalla memoria di chi lo
       // usa non e' un automatismo.
       // Non rivaluta nulla (riep gia' in mano) e non blocca il render.
+      setSyncErr(null);
       sincronizzaScadenzarioCliente(clienteId, { riep: nuovoRiep, catalogo })
-        .catch((e) => console.error('sync scadenzario:', e));
+        .catch((e: any) => setSyncErr(e?.message ?? String(e)));
     } catch (e: any) {
       setErrore(e?.message ?? String(e));
     } finally {
@@ -262,6 +266,12 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
       <style>{CSS_FZ}</style>
 
       {errore && <div className="bo-err">{errore}</div>}
+      {syncErr && (
+        <div className="bo-err">
+          Organigramma aggiornato, ma lo scadenzario non si e' allineato: {syncErr}
+          <br />Le scadenze mostrate possono essere vecchie. Riapri la scheda per riprovare.
+        </div>
+      )}
       {caricando && !riep && <div className="bo-empty">Carico…</div>}
 
       {riep && cliente && (
@@ -269,12 +279,6 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
           <div className="bo-bar" style={{ marginTop: 0, marginBottom: 14, gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="bo-grp">Scadenzario</span>
             <button className="bo-btn ghost sm" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length} title="Proponi voci di scadenzario per i corsi mancanti o scaduti (gap formativi)">Genera dai gap</button>
-            <button className="bo-btn ghost sm" disabled={syncBusy} title="Riallinea lo scadenzario alle scadenze formative reali (attestati e rinnovi)" onClick={async () => {
-              setSyncBusy(true);
-              try { const n = await sincronizzaScadenzarioCliente(clienteId, { riep, catalogo: catalogo ?? undefined }); alert(n + ' voci allineate nello scadenzario.'); }
-              catch (e: any) { alert('Errore: ' + (e?.message ?? String(e))); }
-              finally { setSyncBusy(false); }
-            }}>{syncBusy ? 'Sincronizzo…' : 'Sincronizza'}</button>
             <span className="bo-sep" />
             <button className={'bo-btn ghost sm' + (schemaOpen ? ' on' : '')} title="Mostra/nascondi il diagramma gerarchico dell'organigramma" onClick={() => setSchemaOpen((v) => !v)}>{schemaOpen ? '\u2212 Schema' : '+ Schema'}</button>
             <span className="bo-sep" />

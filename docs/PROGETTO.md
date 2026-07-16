@@ -632,8 +632,20 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   rivalutazione, e costa solo l'upsert perche' `riep` e' gia' in mano (nessuna
   seconda passata del motore). Principio: la guardia proteggeva dal lavoro
   ridondante e in cambio garantiva il dato sbagliato; fra i due, si sceglie il
-  lavoro ridondante. `tsc -b` + `vite build` verdi, `git diff` riletto.
-  Solo canale 1.
+  lavoro ridondante.
+  Di conseguenza il tasto **"Sincronizza" e' stato RIMOSSO**: faceva esattamente
+  cio' che l'apertura del pannello ha gia' fatto (stesso riep, stesso catalogo).
+  Ma aveva un valore non progettato -- era l'unico punto in cui un errore di
+  sincronizzazione diventava visibile (`alert`), mentre l'auto-sync lo mandava in
+  `console.error`. Toglierlo e basta avrebbe scambiato un passo manuale con un
+  guasto silenzioso: lo scadenzario mostrerebbe dati vecchi con l'aria di essere
+  a posto. Quindi `syncBusy` (mostrava che il lavoro girava) e' diventato
+  `syncErr` (mostra se e' fallito), con banner dedicato: l'organigramma e'
+  valido, e' lo scadenzario a non essersi allineato -- due cose diverse, due
+  messaggi diversi. Regola: prima di cancellare un'affordance ridondante,
+  chiedersi cosa fa che nessun altro fa; se e' l'unica spia di un guasto, prima
+  si sposta la spia.
+  `tsc -b` + `vite build` verdi, `git diff` riletto. Solo canale 1.
 - **Il backfill che si mangiava le proprie righe + sincronizzazione unica**
   (`sincronizzaScadenzarioCliente`). Due difetti, uno introdotto e uno di
   struttura.
