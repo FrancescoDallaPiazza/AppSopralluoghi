@@ -1296,6 +1296,31 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
   return attese.size;
 }
 
+// Allinea lo scadenzario formativo di un cliente: valuta l'organigramma e
+// materializza le azioni (scadenze dei corsi + evidenze di nomina mancanti).
+//
+// Esiste perche' il backfill viveva SOLO dentro il pannello Organigramma: lo
+// Scadenzario leggeva `azione` e basta, quindi mostrava cio' che l'ultima
+// apertura dell'Organigramma aveva scritto. Una vista che dice il vero solo se
+// prima sei passato da un altro tab non e' una vista, e' una trappola.
+// Va chiamata da OGNI superficie che presenta lo scadenzario di un cliente.
+//
+// I due backfill sono volutamente SEQUENZIALI: entrambi cancellano i propri
+// orfani, e farli correre in parallelo rende l'esito dipendente dall'ordine di
+// arrivo delle delete.
+//
+// Idempotente (upsert su chiavi stabili) ma non gratuita: valuta l'organigramma.
+// Passa `riep` se ce l'hai gia', per non rivalutarlo.
+export async function sincronizzaScadenzarioCliente(
+  clienteId: string,
+  opt?: { catalogo?: Catalogo; riep?: RiepilogoCliente },
+): Promise<number> {
+  const riep = opt?.riep ?? await valutaCliente(clienteId, opt?.catalogo ?? await caricaCatalogo());
+  const scadenze = await backfillAzioniEsoneri(clienteId, riep);
+  const evidenze = await backfillAzioniNominaEvidenza(clienteId, riep);
+  return scadenze + evidenze;
+}
+
 // Sincronizza nello scadenzario ("Cose da fare") le EVIDENZE DI NOMINA DA OTTENERE:
 // una azione (correttiva, verso il cliente, senza scadenza) per ogni nomina
 // identificata ma priva di atto ufficiale (pv.figure[].evidenza_mancante).
@@ -1341,16 +1366,10 @@ export async function backfillAzioniNominaEvidenza(clienteId: string, riep?: Rie
     }
   }
 
-  // Orfani a chiave requisito: la scadenza e' sparita, oppure e' arrivato
-  // l'attestato e il requisito e' passato su origine_formazione_id.
-  const { data: reqEs } = await supabase
-    .from('azione').select('id')
-    .eq('responsabile_cliente_id', clienteId)
-    .not('origine_requisito_key', 'is', null);
-  const reqOrfani = ((reqEs ?? []) as { id: string }[])
-    .map((a) => a.id).filter((id) => !attese.has(id));
-  if (reqOrfani.length) await supabase.from('azione').delete().in('id', reqOrfani);
-
+  // NB: qui si cancellano SOLO gli orfani a chiave nomina. Le azioni a chiave
+  // requisito (prima formazione) appartengono a backfillAzioniEsoneri: toccarle
+  // da qui significa cancellare cio' che l'altro backfill ha appena scritto,
+  // visto che le `attese` di questa funzione contengono solo evidenze di nomina.
   return attese.size;
 }
 

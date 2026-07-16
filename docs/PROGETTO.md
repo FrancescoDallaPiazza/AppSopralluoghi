@@ -621,6 +621,33 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Il backfill che si mangiava le proprie righe + sincronizzazione unica**
+  (`sincronizzaScadenzarioCliente`). Due difetti, uno introdotto e uno di
+  struttura.
+  (1) **Auto-cancellazione**: la coda "cancella orfani" era testualmente
+  IDENTICA in `backfillAzioniEsoneri` e `backfillAzioniNominaEvidenza`, e una
+  sostituzione globale ci ha infilato in ENTRAMBI il delete degli orfani a
+  chiave requisito. Nel backfill delle nomine `attese` contiene solo evidenze di
+  nomina, quindi cancellava OGNI azione con `origine_requisito_key` del cliente:
+  i due giravano in parallelo e le "Prima formazione" venivano create e mangiate
+  a ogni sync. Regola: mai sostituzione globale su un'ancora non verificata
+  unica; e dopo ogni modifica, rileggere la funzione VICINA a quella toccata.
+  (2) **Vista dipendente da un altro tab**: `backfillAzioni*` viveva solo dentro
+  il pannello Organigramma. Lo Scadenzario leggeva `azione` e basta, quindi
+  mostrava cio' che l'ultima apertura dell'Organigramma aveva scritto -- e le
+  azioni a chiave requisito, essendo un ramo nuovo, non erano mai state scritte
+  per nessun cliente. Una vista che dice il vero solo se prima sei passato da
+  un'altra e' una trappola. Estratta `sincronizzaScadenzarioCliente(clienteId,
+  {catalogo?, riep?})`: unico punto d'ingresso, backfill SEQUENZIALI (in
+  parallelo l'esito dipende dall'ordine di arrivo delle delete), chiamata
+  dall'Organigramma (con riep gia' valutato) e dallo Scadenzario del cliente
+  (che si autosincronizza all'apertura, guardia useRef). Il tab di back-office
+  senza clienteId non sincronizza: vorrebbe dire valutare l'organigramma di ogni
+  cliente a ogni apertura.
+  (3) Risolta la chiamata morta `await backfillAzioniEsoneri(clienteId)` senza
+  `riep` dopo "Genera cose da fare": `if (!riep) return 0` la rendeva un no-op
+  silenzioso mentre il commento sopra prometteva di rigenerare le scadenze degli
+  esoneri. `tsc -b` + `vite build` verdi. Solo canale 1.
 - **Scadenze formative senza attestato: la crepa fra i due flussi**
   (`migration 056` + `backfillAzioniEsoneri`). Un requisito puo' avere una
   SCADENZA senza avere attestato ne' esonero: e' la prima formazione mai

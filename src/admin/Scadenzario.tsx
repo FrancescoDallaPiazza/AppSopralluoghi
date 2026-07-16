@@ -9,11 +9,12 @@
 // Riuso: con `clienteId` la stessa vista diventa lo scadenzario della scheda
 // cliente (tab Anagrafiche), filtrato sul cliente. Online-first.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   caricaScadenzario, type RigaScadenzario, type CategoriaScadenza,
 } from '../lib/admin/scadenzario';
 import { aggiornaStatoAzioneAdmin, LABEL_STATO_AZIONE } from '../lib/admin/cosedafare';
+import { sincronizzaScadenzarioCliente } from '../lib/admin/formazione';
 import type { AzioneStato } from '../lib/types';
 import { notificaAzione } from '../lib/notifiche';
 
@@ -48,9 +49,26 @@ export default function Scadenzario({ clienteId }: { clienteId?: string }) {
 
   const dentroScheda = clienteId != null;
 
+  const syncFattaPer = useRef<string | null>(null);
+
+  // Lo scadenzario di un cliente si allinea DA SE'. Prima dipendeva dall'aver
+  // aperto il pannello Organigramma (l'unico che chiamava il backfill), quindi
+  // mostrava lo stato dell'ultima visita a un altro tab. Ora la sincronizzazione
+  // e' idempotente e sta qui: si entra e si vede il vero.
+  // Senza clienteId (tab di back-office, tutti i clienti) non si sincronizza:
+  // vorrebbe dire valutare l'organigramma di ogni cliente a ogni apertura.
   function carica() {
     setStato('loading');
-    caricaScadenzario(clienteId).then((r) => { setRighe(r); setStato('ok'); }).catch(() => setStato('errore'));
+    const pronta = clienteId && syncFattaPer.current !== clienteId
+      ? (syncFattaPer.current = clienteId,
+         sincronizzaScadenzarioCliente(clienteId).catch((e) => {
+           console.error('sync scadenzario:', e);
+         }))
+      : Promise.resolve();
+    pronta
+      .then(() => caricaScadenzario(clienteId))
+      .then((r) => { setRighe(r); setStato('ok'); })
+      .catch(() => setStato('errore'));
   }
   useEffect(carica, [clienteId]);
 

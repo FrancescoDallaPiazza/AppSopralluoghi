@@ -18,7 +18,7 @@ import {
   salvaFormazione, eliminaFormazione, salvaEsonero, eliminaEsonero,
   salvaEsoneroAmmesso, eliminaEsoneroAmmesso,
   caricaEvidenzeNomina, salvaEvidenzaNomina, eliminaEvidenzaNomina,
-  proponiCoseDaFare, generaCoseDaFare, backfillAzioniEsoneri, backfillAzioniNominaEvidenza,
+  proponiCoseDaFare, generaCoseDaFare, sincronizzaScadenzarioCliente,
   nomePersona, MARCA_PREGRESSA, CATEGORIE_NO_PREGRESSA,
 } from '../lib/admin/formazione';
 import {
@@ -188,8 +188,8 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
       // cliente, non blocca il render.
       if (syncFattaPer.current !== clienteId) {
         syncFattaPer.current = clienteId;
-        backfillAzioniEsoneri(clienteId, nuovoRiep).catch((e) => console.error('sync scadenzario formazione:', e));
-        backfillAzioniNominaEvidenza(clienteId, nuovoRiep).catch((e) => console.error('sync evidenze nomina:', e));
+        sincronizzaScadenzarioCliente(clienteId, { riep: nuovoRiep, catalogo })
+          .catch((e) => console.error('sync scadenzario:', e));
       }
     } catch (e: any) {
       setErrore(e?.message ?? String(e));
@@ -269,7 +269,7 @@ export function OrganigrammaCliente({ clienteId, refreshToken }: { clienteId: st
             <button className="bo-btn ghost sm" onClick={() => setGenOpen((v) => !v)} disabled={!riep.persone.length} title="Proponi voci di scadenzario per i corsi mancanti o scaduti (gap formativi)">Genera dai gap</button>
             <button className="bo-btn ghost sm" disabled={syncBusy} title="Riallinea lo scadenzario alle scadenze formative reali (attestati e rinnovi)" onClick={async () => {
               setSyncBusy(true);
-              try { const n = await backfillAzioniEsoneri(clienteId, riep); const m = await backfillAzioniNominaEvidenza(clienteId, riep); alert((n + m) + ' voci allineate nello scadenzario.'); }
+              try { const n = await sincronizzaScadenzarioCliente(clienteId, { riep, catalogo: catalogo ?? undefined }); alert(n + ' voci allineate nello scadenzario.'); }
               catch (e: any) { alert('Errore: ' + (e?.message ?? String(e))); }
               finally { setSyncBusy(false); }
             }}>{syncBusy ? 'Sincronizzo…' : 'Sincronizza'}</button>
@@ -413,9 +413,10 @@ function PannelloGenerazione({
           setSalvando(true);
           try {
             const n = await generaCoseDaFare(proposte, { includiInScadenza, versoArea, areaId: versoArea ? areaId : null, clienteId });
-            // Rigenera anche le scadenze di rinnovo degli esoneri esistenti (regola A):
-            // gli esoneri senza scadenza propria su corsi periodici non le avevano.
-            await backfillAzioniEsoneri(clienteId);
+            // Riallinea lo scadenzario dopo la generazione. NB: chiamare qui
+            // backfillAzioniEsoneri(clienteId) senza riep era un no-op silenzioso
+            // (`if (!riep) return 0`): il commento prometteva un lavoro mai svolto.
+            await sincronizzaScadenzarioCliente(clienteId);
             onFatto(n);
           } catch (e: any) {
             alert('Errore: ' + (e?.message ?? String(e)));
