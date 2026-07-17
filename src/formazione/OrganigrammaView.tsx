@@ -583,7 +583,14 @@ function EditorRequisito({
   const [tab, setTab] = useState<'att' | 'eson'>('att');
   const [corsoScelto, setCorsoScelto] = useState('');
   const [dataAtt, setDataAtt] = useState('');
-  const [oreAtt, setOreAtt] = useState(req.ore != null ? String(req.ore) : '');
+  // Parte VUOTO anche quando le ore dovute sono note. Precompilarlo con req.ore
+  // faceva salvare le ore DOVUTE come se fossero quelle lette sull'attestato:
+  // il campo tornava indietro pieno e nessuno lo toccava. Cosi' `formazione.ore`
+  // non era un fatto ma una copia del requisito, e un attestato da 4h su 8
+  // dovute era indistinguibile da uno conforme. Le dovute restano a video come
+  // placeholder (un suggerimento, non un dato). Fra lavoro ridondante e dato
+  // sbagliato, si sceglie il lavoro ridondante.
+  const [oreAtt, setOreAtt] = useState('');
   const [enteAtt, setEnteAtt] = useState('');
   const [esonTipo, setEsonTipo] = useState<TipoEsonero>('titolo_studio');
   const [esonMot, setEsonMot] = useState('');
@@ -640,7 +647,13 @@ function EditorRequisito({
         corso_nome: scelto?.nome ?? req.corso_nome,
         categoria: req.categoria || null,
         data_completamento: dataAtt,
-        ore: oreAtt.trim() ? Number(oreAtt) : (req.ore ?? null),
+        // Campo vuoto -> null, NON le ore dovute dal requisito. Copiarle
+        // registrava come fatto ("l'attestato dice 8h") cio' che era solo un
+        // buco, e rendeva impossibile distinguere un attestato conforme da uno
+        // non compilato: gli altri due siti di scrittura (riga ~941 e
+        // Formazione.tsx) hanno sempre lasciato null. Le ore mostrate nei
+        // requisiti vengono dal catalogo, non da qui: nessun effetto sul motore.
+        ore: oreAtt.trim() ? Number(oreAtt) : null,
         ente_formatore: enteAtt.trim() || null,
         is_aggiornamento: false,
         scadenza: null,
@@ -714,7 +727,9 @@ function EditorRequisito({
           <div className="fzr-row2">
             <div className="fzr-field">
               <label>Ore</label>
-              <input type="number" inputMode="decimal" value={oreAtt} onChange={(e) => setOreAtt(e.target.value)} />
+              <input type="number" inputMode="decimal" value={oreAtt}
+                placeholder={req.ore != null ? `dovute: ${req.ore}` : 'ore'}
+                onChange={(e) => setOreAtt(e.target.value)} />
             </div>
             <div className="fzr-field">
               <label>Ente formatore</label>

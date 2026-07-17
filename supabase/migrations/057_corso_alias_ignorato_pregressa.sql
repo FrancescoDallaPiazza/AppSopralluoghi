@@ -17,8 +17,23 @@
 --               riga su 74: e' un alias marcato a mano, non una regola nel
 --               parser.
 --
+--   is_aggiornamento : l'alias e' l'AGGIORNAMENTO periodico del corso mappato,
+--               non la sua formazione iniziale. Il gestionale ha una riga per
+--               l'uno e una per l'altro; corso_catalogo no: l'aggiornamento
+--               non e' un corso a se', e' una coppia di colonne del corso base
+--               (aggiornamento_mesi, ore_aggiornamento). Percio' entrambe le
+--               righe del gestionale si mappano sullo STESSO corso_codice e
+--               questo flag e' l'unica cosa che le distingue. L'import di C1b
+--               lo copiera' su formazione.is_aggiornamento.
+--               NB: il motore non lo legge -- la scadenza esce comunque giusta
+--               perche' scegliFormazione prende l'attestato piu' recente per
+--               corso_codice e statoDaScadenza somma aggiornamento_mesi a
+--               data_completamento. Il flag serve a non spacciare un
+--               aggiornamento per un'iniziale nei dati.
+--
 -- Non e' una convenzione del gestionale ne' un campo derivabile dal file:
--- entrambe le colonne le decide l'operatore in fase di mappatura.
+-- le tre colonne le decide l'operatore in fase di mappatura.
 
-alter table corso_alias add column if not exists ignorato  boolean not null default false;
-alter table corso_alias add column if not exists pregressa boolean not null default false;
+alter table corso_alias add column if not exists ignorato         boolean not null default false;
+alter table corso_alias add column if not exists pregressa        boolean not null default false;
+alter table corso_alias add column if not exists is_aggiornamento boolean not null default false;

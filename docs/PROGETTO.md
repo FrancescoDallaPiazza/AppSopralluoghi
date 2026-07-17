@@ -286,7 +286,7 @@ All. III, prerequisito DL-RSPP + moduli di settore, anagrafica cliente estesa, m
 soccorso, `azione.origine_ramo`, deleghe + evidenze di nomina, **sede prima classe** ·
 055 `adempimento` + `corso_alias` + `import_key` su `formazione`/`persona` (unique parziale) ·
 056 `azione.origine_requisito_key` (scadenze formative senza attestato) ·
-057 `corso_alias.ignorato` + `corso_alias.pregressa` (mappatura del catalogo del gestionale) ·
+057 `corso_alias.ignorato` + `corso_alias.pregressa` + `corso_alias.is_aggiornamento` (mappatura del catalogo del gestionale; il nome del file cita solo le prime due) ·
 il dettaglio di ognuna sta nella **Cronologia** in fondo.
 **Prossima libera: 058.**
 
@@ -632,6 +632,33 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Le ore dell'attestato tornano a essere un fatto** (`OrganigrammaView.tsx`,
+  `EditorRequisito`). Il campo Ore dell'editor nasceva precompilato con le ore
+  DOVUTE (`useState(req.ore != null ? String(req.ore) : '')`) e al salvataggio
+  ripiegava di nuovo su `req.ore` se vuoto. Risultato: chi non toccava il campo
+  -- cioe' quasi sempre, visto che tornava indietro gia' pieno del numero
+  giusto -- registrava le ore del REQUISITO come se fossero quelle lette
+  sull'attestato. `formazione.ore` non era un dato raccolto ma una copia del
+  catalogo, e un attestato da 4h su 8 dovute risultava indistinguibile da uno
+  conforme. E' il "mai produrre dati inventati per riempire un vuoto" preso al
+  contrario: dopo sei mesi nessuno distingue piu' l'8 letto dall'8 copiato.
+  Ora il campo parte vuoto, le dovute restano come **placeholder** (un
+  suggerimento, non un valore) e vuoto salva `null` -- allineato agli altri due
+  siti di scrittura (`OrganigrammaView` riga ~941 e `Formazione.tsx`), che
+  hanno sempre lasciato null. Costa una digitazione in piu' per attestato: fra
+  lavoro ridondante e dato sbagliato si sceglie il lavoro ridondante. Nessun
+  effetto sul motore -- le ore mostrate nei requisiti vengono dal catalogo
+  (`corso.ore`, espanse per rischio su `LAV_SPEC` e per ATECO sui moduli di
+  settore), mai dall'attestato.
+  **Aperto, deciso a meta':** `f.ore` continua a non essere confrontata con le
+  ore dovute, quindi una formazione insufficiente resta verde. Il semaforo sulle
+  ore NON si puo' fare: le pregresse hanno legittimamente monte ore diverso, e
+  la specifica fatta in due tranche (4h+4h su 8 dovute) sparerebbe rosso su un
+  lavoratore a posto perche' `scegliFormazione` prende solo l'attestato piu'
+  recente e non somma. La strada scelta e' **segnalare in import** (C1b:
+  l'anteprima elenca le righe con ore inferiori alle dovute, l'operatore
+  guarda), e valutare una nota non bloccante nel requisito solo dopo, se i
+  numeri veri dicono che il caso e' frequente.
 - **C1a - catalogo del gestionale -> dizionario alias** (`migration 057` +
   `lib/admin/aliasCorsi.ts`, `admin/AliasCorsi.tsx`). L'export "Formazione" del
   gestionale (74 righe, verificate: riga 0 titolo, riga 1 header, dati dalla 2;
@@ -640,10 +667,50 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   degli alias: si carica una volta, non si scopre cliente per cliente.
   Migrazione 057: `corso_alias.ignorato` (via d'uscita per le ~15 righe non
   pertinenti -- ANSF, ECM, PRIVACY, AMBIENTE, SALDATURA -- senza cui l'import di
-  C1b resterebbe bloccato in eterno su corsi che nessuno mappera' mai) e
+  C1b resterebbe bloccato in eterno su corsi che nessuno mappera' mai),
   `corso_alias.pregressa` (l'alias copre un requisito ASR con un attestato di
   vecchio regime: nei dati veri e' UNA riga su 74, quindi e' un alias marcato a
-  mano e non una regola nel parser).
+  mano e non una regola nel parser) e `corso_alias.is_aggiornamento` (sotto).
+  Il nome del file cita solo le prime due: e' rimasto indietro per non
+  duplicare una migrazione gia' nel repo (uno ZIP sovrascrive, non cancella).
+
+  **Gli aggiornamenti non sono corsi: si sdoppia la VOCE, non il catalogo.**
+  Il gestionale ha una riga per l'iniziale e una per l'aggiornamento;
+  `corso_catalogo` ha un codice solo, perche' l'aggiornamento non e' un corso a
+  se' ma due colonne del corso base (`aggiornamento_mesi`, `ore_aggiornamento`).
+  La tendina di mappatura, che elencava `corso_catalogo` cosi' com'e', non
+  offriva quindi nulla su cui posare le righe "Aggiornamento ...": e' il buco
+  che ha aperto il giro. Aggiungerli a catalogo come codici separati sembra la
+  strada dritta e non lo e': `scegliFormazione` aggancia l'attestato al
+  requisito confrontando `corso_codice` (o la categoria, se `per_categoria`), e
+  un `LAV_SPEC_AGG` non aggancia -- il requisito resterebbe come se
+  l'aggiornamento non fosse stato fatto. Servirebbe insegnare al motore a
+  risolvere aggiornamento -> base ovunque confronti il codice, cioe' aggiungere
+  un campo per poi tornare al codice base a runtime; e nei percorsi multipli le
+  righe `_AGG` comparirebbero fra i livelli scegliibili (antincendio, primo
+  soccorso). Percio': **entrambe le righe del gestionale si mappano sullo stesso
+  `corso_codice`**, e le distingue `is_aggiornamento`. La tendina sdoppia la
+  voce (`CODICE` / `CODICE::agg`, suffisso che vive solo dentro il `<select>`:
+  si salvano due campi, mai la stringa composta) e lo fa **solo per i corsi con
+  `aggiornamento_mesi` valorizzato** -- 27 su 33 -- cosi' non offre un
+  aggiornamento che la norma non prevede. Da qui una conseguenza che vale la
+  pena scrivere: **`LAV_GEN` non si aggiorna** (la formazione generale non
+  scade), l'aggiornamento del lavoratore vive su **`LAV_SPEC`** (6h / 5 anni) ed
+  e' li' che va mappato. `onChange` scrive i due campi con **una sola** patch:
+  altrimenti la riga attraverserebbe uno stato in cui il codice e' il nuovo e il
+  flag e' ancora il vecchio.
+  Niente pre-spunta da regex sul nome: le 74 righe si scelgono comunque a mano
+  una per una, la tendina mostra gia' le due varianti, e una spunta messa da una
+  regex su testo libero sarebbe solo un modo per sbagliare in silenzio. (La
+  regex `/aggiornament|retraining/i` esiste in `catalogoImport.ts`, ma quello
+  legge l'xlsx ASR -- la legge -- non l'export del gestionale: e' un altro
+  parser, non una derivazione gia' disponibile.)
+  **Il motore non legge `is_aggiornamento`** (verificato: `f.ore` e il flag sono
+  solo persistiti). La scadenza esce comunque giusta perche' `scegliFormazione`
+  prende l'attestato piu' recente per codice e la scadenza e'
+  `data_completamento + aggiornamento_mesi`: iniziale 2019 -> scade 2024; arriva
+  l'aggiornamento 2024 sullo stesso codice -> diventa lui il piu' recente ->
+  2029. Il flag serve a non spacciare un aggiornamento per un'iniziale nei dati.
   **Normalizzazione: maiuscolo + spazi collassati + trim, nient'altro.**
   Verificato sul file vero: 74 righe -> 74 chiavi distinte. Togliere parole
   collasserebbe i quasi-duplicati con ore diverse, che NON sono errori

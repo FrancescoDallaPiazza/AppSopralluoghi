@@ -60,8 +60,15 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     carica l'export "Formazione" del gestionale (l'universo completo dei nomi),
     si conferma l'anteprima, e ogni riga si mappa su un codice, oppure si marca
     *ignorato* (non è un corso ASR) o *evidenza pregressa* (attestato di vecchio
-    regime che copre un requisito). Finché restano alias da mappare l'import
-    della formazione resta bloccato: valuterebbe su una storia incompleta.
+    regime che copre un requisito). Gli **aggiornamenti** non sono corsi a sé:
+    a catalogo l'aggiornamento è una proprietà del corso base
+    (`aggiornamento_mesi`, `ore_aggiornamento`), quindi la riga "Aggiornamento X"
+    del gestionale si mappa sullo **stesso codice** di X scegliendo in tendina la
+    voce *— AGGIORNAMENTO*, che compare solo per i corsi che davvero si
+    aggiornano. Da qui: la formazione generale (`LAV_GEN`) non si aggiorna,
+    l'aggiornamento del lavoratore va su `LAV_SPEC`. Finché restano alias da
+    mappare l'import della formazione resta bloccato: valuterebbe su una storia
+    incompleta.
 - **Sync offline** — coda outbox, drain in ordine, upload foto su Storage.
 - **Notifiche cose-da-fare** — quando una cosa-da-fare interna (tecnico o area)
   arriva sul database, un Database Webhook invoca la Edge Function `notifica-azione`

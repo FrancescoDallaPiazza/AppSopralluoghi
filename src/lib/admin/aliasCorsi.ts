@@ -49,6 +49,11 @@ export interface CorsoAlias {
   corso_codice: string | null;      // null e non ignorato = da mappare
   ignorato: boolean;
   pregressa: boolean;
+  // true = l'alias e' l'AGGIORNAMENTO periodico di corso_codice, non l'iniziale.
+  // Il gestionale ha due righe, corso_catalogo un codice solo: l'aggiornamento
+  // e' una coppia di colonne del corso base, non un corso a se'. Quindi le due
+  // righe si mappano sullo stesso codice e le distingue solo questo flag.
+  is_aggiornamento: boolean;
   note: string | null;
 }
 
@@ -105,7 +110,7 @@ export async function leggiCatalogoGestionale(file: File): Promise<RigaCatalogoG
 export async function caricaAlias(): Promise<CorsoAlias[]> {
   const { data, error } = await supabase
     .from('corso_alias')
-    .select('id, testo_gestionale, corso_codice, ignorato, pregressa, note')
+    .select('id, testo_gestionale, corso_codice, ignorato, pregressa, is_aggiornamento, note')
     .order('testo_gestionale');
   if (error) throw error;
   return (data ?? []) as CorsoAlias[];
@@ -115,7 +120,7 @@ export const daMappare = (a: CorsoAlias): boolean => !a.corso_codice && !a.ignor
 
 export async function aggiornaAlias(
   id: string,
-  patch: Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'note'>>,
+  patch: Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'is_aggiornamento' | 'note'>>,
 ): Promise<void> {
   const { error } = await supabase.from('corso_alias').update(patch).eq('id', id);
   if (error) throw error;

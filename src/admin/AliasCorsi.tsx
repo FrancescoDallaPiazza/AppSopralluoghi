@@ -20,6 +20,25 @@ import {
 } from '../lib/admin/aliasCorsi';
 import { caricaCatalogo, type CorsoCatalogo } from '../lib/admin/formazione';
 
+// Suffisso del valore di <option> per la variante AGGIORNAMENTO. Vive solo
+// dentro la tendina: quello che si salva sono due campi separati
+// (corso_codice + is_aggiornamento), mai la stringa composta.
+const SEP_AGG = '::agg';
+
+const num = (n: number): string => (Number.isInteger(n) ? String(n) : String(n).replace('.', ','));
+
+// "6h / 5 anni". Le ore mancano su qualche corso (PS_BLSD_SANITARIO): si omette
+// il pezzo invece di inventare un numero.
+function periodicitaLeggibile(c: CorsoCatalogo): string {
+  const mesi = c.aggiornamento_mesi ?? 0;
+  const ogni = mesi % 12 === 0 ? (mesi === 12 ? '1 anno' : `${mesi / 12} anni`) : `${mesi} mesi`;
+  return c.ore_aggiornamento != null ? `${num(c.ore_aggiornamento)}h / ${ogni}` : ogni;
+}
+
+// I due campi salvati <-> il valore della tendina.
+const valoreVoce = (a: CorsoAlias): string =>
+  a.corso_codice ? a.corso_codice + (a.is_aggiornamento ? SEP_AGG : '') : '';
+
 type Filtro = 'damappare' | 'mappati' | 'ignorati' | 'tutti';
 const FILTRI: { k: Filtro; label: string }[] = [
   { k: 'damappare', label: 'Da mappare' },
@@ -48,6 +67,34 @@ export default function AliasCorsi() {
     finally { setBusy(''); }
   }
   useEffect(() => { void ricarica(); }, []);
+
+  // VOCI DELLA TENDINA. Il gestionale ha una riga per l'iniziale e una per
+  // l'aggiornamento; corso_catalogo ha un codice solo, perche' l'aggiornamento
+  // non e' un corso a se' ma una coppia di colonne del corso base
+  // (aggiornamento_mesi, ore_aggiornamento). Mettere gli aggiornamenti a
+  // catalogo come corsi separati richiederebbe di insegnare al motore a
+  // risolvere aggiornamento -> base ovunque oggi confronti corso_codice
+  // (scegliFormazione), e li' farebbe comparire fra i livelli scegliibili dei
+  // percorsi multipli. Si sdoppia quindi la VOCE, non il corso: stesso codice,
+  // piu' il flag is_aggiornamento.
+  //
+  // Si sdoppiano SOLO i corsi con aggiornamento_mesi valorizzato: la tendina
+  // non offre un aggiornamento che la norma non prevede. Percio' LAV_GEN (la
+  // formazione generale non si aggiorna) resta voce singola e l'aggiornamento
+  // lavoratori si mappa su LAV_SPEC, che e' dove vive davvero (6h / 5 anni).
+  const voci = useMemo(() => {
+    const out: { valore: string; label: string }[] = [];
+    for (const c of corsi) {
+      out.push({ valore: c.codice, label: `${c.nome} (${c.codice})` });
+      if (c.aggiornamento_mesi) {
+        out.push({
+          valore: c.codice + SEP_AGG,
+          label: `${c.nome} \u2014 AGGIORNAMENTO (${periodicitaLeggibile(c)}) (${c.codice})`,
+        });
+      }
+    }
+    return out;
+  }, [corsi]);
 
   // Ore e tipologia del gestionale non stanno in `corso_alias`: servono a
   // decidere la mappatura (i quasi-duplicati si distinguono per le ore) e sono
@@ -82,7 +129,7 @@ export default function AliasCorsi() {
     finally { setBusy(''); }
   }
 
-  type Patch = Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa'>>;
+  type Patch = Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'is_aggiornamento'>>;
   async function patch(a: CorsoAlias, p: Patch) {
     const prima = alias;
     setAlias((l) => l.map((x) => (x.id === a.id ? { ...x, ...p } : x)));
@@ -188,12 +235,22 @@ export default function AliasCorsi() {
                 {f && f.tipologia && <span className="bo-pill archiviato">{tipologiaLeggibile(f.tipologia)}</span>}
               </div>
               <div className="bo-meta" style={{ gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
-                <select style={{ flex: 1, minWidth: 260 }} value={a.corso_codice ?? ''}
+                {/* Una sola patch per i due campi: passando da una variante
+                    all'altra la riga non attraversa mai uno stato in cui il
+                    codice e' il nuovo e il flag e' ancora il vecchio. */}
+                <select style={{ flex: 1, minWidth: 260 }} value={valoreVoce(a)}
                   disabled={a.ignorato}
-                  onChange={(e) => void patch(a, { corso_codice: e.target.value || null })}>
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const agg = v.endsWith(SEP_AGG);
+                    void patch(a, {
+                      corso_codice: agg ? v.slice(0, -SEP_AGG.length) : (v || null),
+                      is_aggiornamento: agg,
+                    });
+                  }}>
                   <option value="">&mdash; da mappare &mdash;</option>
-                  {corsi.map((c) => (
-                    <option key={c.codice} value={c.codice}>{c.nome} ({c.codice})</option>
+                  {voci.map((v) => (
+                    <option key={v.valore} value={v.valore}>{v.label}</option>
                   ))}
                 </select>
                 <label className="bo-meta" style={{ gap: 5 }}>
