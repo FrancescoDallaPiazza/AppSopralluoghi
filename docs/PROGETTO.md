@@ -638,11 +638,20 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   vorrebbe dire far entrare uno stato di navigazione in OrganigrammaView; il
   nome del discente e' gia' sulla riga. Prop opzionale: dove il riquadro
   Organigramma non esiste il pulsante non compare -- meglio assente che finto.
-  **APERTO**: la tendina Stato offre ancora `conclusa` sulle righe formative, e
-  marcarla senza attestato fa sparire la riga dal filtro "Da fare" mentre
-  l'organigramma continua a dire che la persona non e' formata (il campo `stato`
-  non e' nel payload dell'upsert, quindi sopravvive al sync). E' una bugia
-  producibile con un click: da togliere, lasciando aperta/in corso.
+  **CHIUSO**: `conclusa` RIMOSSA dalla tendina Stato delle righe formative
+  (restano aperta/in corso, che e' tracciamento legittimo: corso prenotato o in
+  erogazione). Marcarla senza attestato faceva sparire la riga dal filtro "Da
+  fare" mentre l'organigramma continuava a dire che la persona non e' formata --
+  e siccome `stato` non e' nel payload dell'upsert, la bugia sopravviveva a ogni
+  sincronizzazione. Le righe gia' concluse prima di questa regola mostrano ancora
+  l'opzione (altrimenti la select renderizza un valore assente fra le sue opzioni
+  e appare vuota): si possono solo riaprire, non se ne concludono di nuove.
+  `CoseDaFare` mantiene tutti e tre gli stati: una correttiva dal campo si
+  conclude davvero.
+  **APERTO**: il filtro Stato dello scadenzario (Da fare / Concluse / Tutte) e'
+  ormai quasi morto -- gli adempimenti hanno `conclusa: false` fisso e le righe
+  formative non si concludono piu'. Dopo la cancellazione dei clienti di prova
+  "Concluse" restera' vuoto per costruzione: da rimuovere allora.
   `tsc -b` + `vite build` verdi, `git diff` riletto. Solo canale 1.
 - **Lo scadenzario si riallinea da solo: via la guardia "una volta per cliente"**
   (`Formazione.tsx`). `ricarica()` gira gia' a ogni modifica (il refreshToken la

@@ -36,7 +36,14 @@ const CATEGORIE: { key: CategoriaScadenza; titolo: string; bg: string; bordo: st
   { key: 'sorveglianza', titolo: 'Sorveglianza sanitaria', bg: '#f4eaf3', bordo: '#e0c8dd', ink: '#7a3a70' },
 ];
 
-const STATI: AzioneStato[] = ['aperta', 'in_corso', 'conclusa'];
+// Niente 'conclusa'. Una scadenza formativa non si conclude a mano: o l'attestato
+// c'e' (e allora la registri nell'organigramma, il requisito acquista
+// formazione_id e la riga si aggiorna o sparisce da se'), o non c'e' (e allora
+// marcarla conclusa la nasconde dal filtro "Da fare" mentre l'organigramma
+// continua a dire che la persona non e' formata -- e il campo `stato` non e' nel
+// payload dell'upsert, quindi la bugia sopravvive a ogni sincronizzazione).
+// 'in_corso' resta: e' tracciamento legittimo (corso prenotato o in erogazione).
+const STATI: AzioneStato[] = ['aperta', 'in_corso'];
 
 // `onApriOrganigramma`: una scadenza formativa non si "chiude" da qui. Si chiude
 // registrando l'attestato, che e' un fatto e vive nell'organigramma; fatto quello,
@@ -138,10 +145,15 @@ export default function Scadenzario(
       .replace(/^Prima formazione - /, '')
       .replace(/\s*\([^)]*\)\s*$/, '')
       .trim();
+    // Righe gia' concluse da prima di questa regola: l'opzione va comunque
+    // mostrata, altrimenti la select renderizza un valore che non esiste fra le
+    // sue opzioni e appare vuota. Si puo' solo riaprirle, non concluderne di nuove.
+    const opzioni: AzioneStato[] = r.kind === 'azione' && r.azione.stato === 'conclusa'
+      ? [...STATI, 'conclusa'] : STATI;
     const statoCell = r.kind === 'azione' ? (
       <select value={r.azione.stato} disabled={busy === r.id}
         onChange={(e) => void cambiaStato(r.id, e.target.value as AzioneStato)}>
-        {STATI.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
+        {opzioni.map((s) => <option key={s} value={s}>{LABEL_STATO_AZIONE[s]}</option>)}
       </select>
     ) : <span className="bo-sub">—</span>;
     return (
