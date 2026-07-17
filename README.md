@@ -54,6 +54,14 @@ della rete la coda si svuota in ordine con upsert per uuid (niente conflitti).
     seduta suggerisce il tecnico per carico settimanale (`capienza_ore_settimana`)
     e vicinanza alla base (haversine sulle coordinate cliente), con
     "Assegna automaticamente" che riempie i tecnici mancanti senza sovraccarichi.
+  - **Regole app** — *Catalogo formazione* (corsi ASR, figure, requisiti, esoneri
+    ammessi), *Import catalogo* (anteprima dell'xlsx ASR grezzo) e **Alias corsi**:
+    il dizionario permanente *nome del gestionale → corso a catalogo ASR*. Si
+    carica l'export "Formazione" del gestionale (l'universo completo dei nomi),
+    si conferma l'anteprima, e ogni riga si mappa su un codice, oppure si marca
+    *ignorato* (non è un corso ASR) o *evidenza pregressa* (attestato di vecchio
+    regime che copre un requisito). Finché restano alias da mappare l'import
+    della formazione resta bloccato: valuterebbe su una storia incompleta.
 - **Sync offline** — coda outbox, drain in ordine, upload foto su Storage.
 - **Notifiche cose-da-fare** — quando una cosa-da-fare interna (tecnico o area)
   arriva sul database, un Database Webhook invoca la Edge Function `notifica-azione`

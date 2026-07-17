@@ -63,13 +63,17 @@ src/
     Scadenzario.tsx, CoseDaFare.tsx, TemplateList.tsx, TemplateEditor.tsx,
     Pianificazione.tsx,
     EditorIncarico.tsx,  # editor incarico (vive nel tab Incarichi/Pianificazione)
-    Disponibilita.tsx
+    Disponibilita.tsx,
+    ImportWerp.tsx,      # import dei 4 export Werp (contratti/documenti/attivita/anagrafiche)
+    ImportCatalogo.tsx,  # anteprima dell'xlsx ASR grezzo (catalogo per NOMI)
+    AliasCorsi.tsx       # catalogo corsi del GESTIONALE -> mappatura su codici ASR
   lib/
     types.ts, supabase.ts, db.ts (Dexie+outbox), sync.ts (coda, foto, drain),
     auth.ts, sopralluoghi.ts, azioni.ts, report.ts, prefetch.ts,
     compilazione.ts, onboarding.ts
     admin/ (anagrafiche, tecnici, aree, templates, assistita, scadenzario,
-            cosedafare, pianificazione, disponibilita, formazione)
+            cosedafare, pianificazione, disponibilita, formazione,
+            werpImport, catalogoImport, aliasCorsi)
                     # NB: lib/admin/formazione.ts e' il MOTORE puro (canonico):
                     # resta qui, usato dall'infrastruttura condivisa (sync.ts, db.ts)
 supabase/
@@ -277,7 +281,14 @@ con vincolo di dominio; guidano il corso degli addetti antincendio / primo socco
 backfill delle formazioni con scadenza nello scadenzario (azione collegata, id = id formazione) ·
 043 scadenza del credito/esonero: `esonero.scadenza` + `azione.origine_esonero_id` (FK cascade):
 un esonero da credito che corrisponde a un corso con scadenza viene monitorato come una formazione.
-**Prossima libera: 044.**
+045-054 catalogo ASR 2026 attrezzature, import organigramma, nomina del datore, guida esoneri
+All. III, prerequisito DL-RSPP + moduli di settore, anagrafica cliente estesa, motivazione primo
+soccorso, `azione.origine_ramo`, deleghe + evidenze di nomina, **sede prima classe** ·
+055 `adempimento` + `corso_alias` + `import_key` su `formazione`/`persona` (unique parziale) ·
+056 `azione.origine_requisito_key` (scadenze formative senza attestato) ·
+057 `corso_alias.ignorato` + `corso_alias.pregressa` (mappatura del catalogo del gestionale) ·
+il dettaglio di ognuna sta nella **Cronologia** in fondo.
+**Prossima libera: 058.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.
@@ -621,6 +632,39 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **C1a - catalogo del gestionale -> dizionario alias** (`migration 057` +
+  `lib/admin/aliasCorsi.ts`, `admin/AliasCorsi.tsx`). L'export "Formazione" del
+  gestionale (74 righe, verificate: riga 0 titolo, riga 1 header, dati dalla 2;
+  le ultime due righe non sono corsi -- url e "Dati aggiornati al ..." -- e si
+  riconoscono perche' hanno Durata e Tipologia vuote) e' l'universo COMPLETO
+  degli alias: si carica una volta, non si scopre cliente per cliente.
+  Migrazione 057: `corso_alias.ignorato` (via d'uscita per le ~15 righe non
+  pertinenti -- ANSF, ECM, PRIVACY, AMBIENTE, SALDATURA -- senza cui l'import di
+  C1b resterebbe bloccato in eterno su corsi che nessuno mappera' mai) e
+  `corso_alias.pregressa` (l'alias copre un requisito ASR con un attestato di
+  vecchio regime: nei dati veri e' UNA riga su 74, quindi e' un alias marcato a
+  mano e non una regola nel parser).
+  **Normalizzazione: maiuscolo + spazi collassati + trim, nient'altro.**
+  Verificato sul file vero: 74 righe -> 74 chiavi distinte. Togliere parole
+  collasserebbe i quasi-duplicati con ore diverse, che NON sono errori
+  ("Integrazione formazione specifica lavoratori - rischio alto" 8h vs
+  "...lavoratori-rischio alto" 4h).
+  `Tipologia` non e' un filtro affidabile (in "Formazione generica" stanno sia il
+  carroponte 81/08 sia il patentino fitosanitari): si presentano tutte le righe e
+  il flag `ignorato` fa il lavoro. Il `%20` e' uno spazio URL-encoded, ma
+  l'encoding e' parziale (gli apostrofi sono in chiaro): `decodeURIComponent`
+  romperebbe, si sostituisce solo `%20`, e solo per mostrarla.
+  Ore e tipologia NON si salvano su `corso_alias`: servono a decidere la
+  mappatura e sono sempre a un upload di distanza, quindi si mostrano quando il
+  file c'e'. Due colonne in meno da tenere allineate al gestionale.
+  Anteprima obbligatoria come per Werp: `riconciliaAlias` e' dry-run, `applicaAlias`
+  inserisce SOLO i nuovi con `corso_codice` null -- le righe gia' presenti non si
+  toccano, porterebbero via la mappatura fatta a mano; gli alias in app ma non
+  piu' nel file si contano e restano (un import futuro potrebbe rivederli).
+  `ignorato` e mappato sono stati alternativi: spuntare *Ignorato* azzera il
+  codice, altrimenti resterebbe in giro una mappatura che l'import non usa.
+  `tsc -b` + `vite build` verdi, parser provato sul file vero. Canale 3 (057)
+  poi canale 1.
 - **Chiudere una scadenza formativa: collegamento, non editor**
   (`Scadenzario.tsx` prop `onApriOrganigramma`). Una scadenza formativa non si
   chiude dallo scadenzario: si chiude REGISTRANDO L'ATTESTATO, che e' un fatto e

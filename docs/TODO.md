@@ -11,6 +11,26 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+Per attivare **C1a — alias corsi del gestionale**, nell'ordine:
+
+- [ ] Eseguire `supabase/migrations/057_corso_alias_ignorato_pregressa.sql`
+  nell'**SQL Editor** di Supabase (Canale 3): `corso_alias.ignorato` +
+  `corso_alias.pregressa`. Idempotente, ASCII-only, `pglast` OK.
+- [ ] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy).
+  Tocca: `lib/admin/aliasCorsi.ts` (nuovo), `admin/AliasCorsi.tsx` (nuovo),
+  `admin/BackOffice.tsx`, `lib/admin/catalogoImport.ts` (esporta `periodicitaMesi`).
+  `tsc -b` + `vite build` verdi.
+- [ ] Verifica in back-office → **Regole app → Alias corsi**: caricare l'export
+  "Formazione" del gestionale → l'anteprima deve dire **74 corsi nel file** e
+  altrettanti nuovi al primo giro → *Applica* → i 74 alias compaiono in
+  *Da mappare*. Ricaricando lo stesso file: 0 nuovi, 74 già nel dizionario
+  (idempotente).
+- [ ] Mappare gli alias: codice ASR dal menu, oppure *Ignorato* per le ~15 righe
+  fuori perimetro (ANSF, ECM, PRIVACY, AMBIENTE, SALDATURA), oppure *Evidenza
+  pregressa* sulla riga `Pre ASR_2015_ Addetto alla conduzione di carrelli
+  elevatori…` (mappata sul requisito ASR che copre). Il contatore in cima deve
+  arrivare a **0 da mappare**: è ciò che sblocca C1b (import formazione).
+
 Per attivare la **revisione scheda organigramma** (due macro-blocchi
 obbligatorie/eventuali, figura *Datore delegato ex art. 16* con estremi procura,
 *evidenze della nomina* con visura/atto-procura per il datore), nell'ordine:

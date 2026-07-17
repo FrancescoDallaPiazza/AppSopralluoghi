@@ -33,7 +33,9 @@ const oreDaDurata = (dur: string): number | null => {
   return m ? Number(m[0]) : null;
 };
 
-const periodicitaMesi = (per: string): number | null => {
+// Esportata: la stessa conversione serve al catalogo del gestionale (aliasCorsi),
+// che parla lo stesso vocabolario ("5 Anni", "24 mesi").
+export const periodicitaMesi = (per: string): number | null => {
   const m = per.match(/\d+/);
   if (!m) return null;
   const n = Number(m[0]);

@@ -4,7 +4,8 @@
 //   2. Pianificazione   - attivita' dei tecnici (incarichi, tecnici, aree,
 //                         template, capitoli, disponibilita, import Werp)
 //   3. Cose da fare     - output + scadenzario unico del cliente
-//   4. Regole app       - catalogo formazione + import catalogo
+//   4. Regole app       - catalogo formazione, import catalogo, alias corsi
+//                         del gestionale
 // Il primo livello sceglie il GRUPPO; il secondo (se il gruppo ha piu' voci)
 // la sezione. I gruppi mono-superficie non mostrano la riga di sotto-tab.
 
@@ -24,11 +25,12 @@ import CoseDaFare from './CoseDaFare';
 import Scadenzario from './Scadenzario';
 import ImportWerp from './ImportWerp';
 import ImportCatalogo from './ImportCatalogo';
+import AliasCorsi from './AliasCorsi';
 
 type Sezione =
   | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
   | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare'
-  | 'scadenzario' | 'importwerp' | 'importcatalogo';
+  | 'scadenzario' | 'importwerp' | 'importcatalogo' | 'aliascorsi';
 
 interface Gruppo {
   key: string;
@@ -66,6 +68,7 @@ const GRUPPI: Gruppo[] = [
     sezioni: [
       { k: 'formazione', label: 'Catalogo formazione' },
       { k: 'importcatalogo', label: 'Import catalogo' },
+      { k: 'aliascorsi', label: 'Alias corsi' },
     ],
   },
 ];
@@ -132,6 +135,7 @@ export default function BackOffice({
         {sezione === 'cosedafare' && <CoseDaFare />}
         {sezione === 'importwerp' && <ImportWerp />}
         {sezione === 'importcatalogo' && <ImportCatalogo />}
+        {sezione === 'aliascorsi' && <AliasCorsi />}
       </main>
     </div>
   );
