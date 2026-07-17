@@ -90,16 +90,19 @@ export default function AliasCorsi() {
     catch (e: any) { setAlias(prima); setErr(e?.message ?? 'Errore in salvataggio.'); }
   }
 
+  // I tre stati sono disgiunti: una riga ignorata non e' "mappata" nemmeno se
+  // conserva un codice sotto -- l'import la salta comunque.
+  const mappato = (a: CorsoAlias): boolean => !!a.corso_codice && !a.ignorato;
   const conta = {
     damappare: alias.filter(daMappare).length,
-    mappati: alias.filter((a) => !!a.corso_codice).length,
+    mappati: alias.filter(mappato).length,
     ignorati: alias.filter((a) => a.ignorato).length,
     tutti: alias.length,
   };
 
   const lista = alias.filter((a) =>
     filtro === 'damappare' ? daMappare(a)
-      : filtro === 'mappati' ? !!a.corso_codice
+      : filtro === 'mappati' ? mappato(a)
         : filtro === 'ignorati' ? a.ignorato
           : true);
 
@@ -194,20 +197,22 @@ export default function AliasCorsi() {
                   ))}
                 </select>
                 <label className="bo-meta" style={{ gap: 5 }}>
+                  {/* Ignorato non azzera il codice: all'import basta il flag per
+                      saltare la riga, e un misclick che cancella la mappatura
+                      fatta a mano costa piu' dell'ordine che metterebbe. Il menu
+                      resta disabilitato: la riga e' parcheggiata, non svuotata. */}
                   <input type="checkbox" checked={a.ignorato}
-                    onChange={(e) => void patch(a, {
-                      ignorato: e.target.checked,
-                      // ignorato e mappato sono stati alternativi: tenere un
-                      // codice su una riga ignorata lascerebbe in giro una
-                      // mappatura che l'import non usera' mai.
-                      ...(e.target.checked ? { corso_codice: null, pregressa: false } : {}),
-                    })} />
+                    onChange={(e) => void patch(a, { ignorato: e.target.checked })} />
                   <span>Ignorato</span>
                 </label>
                 <label className="bo-meta" style={{ gap: 5 }}>
                   <input type="checkbox" checked={a.pregressa} disabled={a.ignorato || !a.corso_codice}
                     onChange={(e) => void patch(a, { pregressa: e.target.checked })} />
                   <span>Evidenza pregressa</span>
+                  {/* Una spunta grigia e muta fa perdere tempo: dice cosa manca. */}
+                  {!a.ignorato && !a.corso_codice && (
+                    <i style={{ color: 'var(--faint)' }}>prima scegli il corso</i>
+                  )}
                 </label>
               </div>
               {a.pregressa && (

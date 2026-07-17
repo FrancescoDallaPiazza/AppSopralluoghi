@@ -661,8 +661,18 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   inserisce SOLO i nuovi con `corso_codice` null -- le righe gia' presenti non si
   toccano, porterebbero via la mappatura fatta a mano; gli alias in app ma non
   piu' nel file si contano e restano (un import futuro potrebbe rivederli).
-  `ignorato` e mappato sono stati alternativi: spuntare *Ignorato* azzera il
-  codice, altrimenti resterebbe in giro una mappatura che l'import non usa.
+  **Ignorato e' un parcheggio, non una gomma** (corretto in corsa, appena visto
+  sul campo): la prima versione azzerava `corso_codice` alla spunta, con l'idea
+  che ignorato e mappato fossero stati alternativi. Un misclick cancellava cosi'
+  una mappatura fatta a mano, senza dire niente e senza modo di tornare indietro
+  -- e all'import il flag basta da solo per saltare la riga. Ora la spunta scrive
+  solo se' stessa; il menu resta disabilitato (la riga e' parcheggiata, si vede
+  che e' fuori gioco) e togliendo la spunta si ritrova tutto. I tre filtri
+  restano disgiunti perche' "mappati" esclude gli ignorati: una riga ignorata non
+  e' mappata nemmeno se conserva un codice sotto. Nella stessa passata: la spunta
+  *Evidenza pregressa* e' disabilitata finche' non c'e' un codice (senza il
+  requisito coperto non afferma nulla) e ora **dice perche'** invece di restare
+  grigia e muta.
   `tsc -b` + `vite build` verdi, parser provato sul file vero. Canale 3 (057)
   poi canale 1.
 - **Chiudere una scadenza formativa: collegamento, non editor**
