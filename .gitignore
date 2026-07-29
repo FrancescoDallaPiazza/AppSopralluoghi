@@ -10,3 +10,7 @@ dist-ssr
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+
+# Claude Code — impostazioni e hook personali (non condivisi)
+.claude/settings.local.json
+.claude/hooks/

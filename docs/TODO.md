@@ -35,11 +35,11 @@ Per attivare la **revisione scheda organigramma** (due macro-blocchi
 obbligatorie/eventuali, figura *Datore delegato ex art. 16* con estremi procura,
 *evidenze della nomina* con visura/atto-procura per il datore), nell'ordine:
 
-- [ ] Eseguire `supabase/migrations/053_organigramma_deleghe_evidenze_nomina.sql`
+- [x] Eseguire `supabase/migrations/053_organigramma_deleghe_evidenze_nomina.sql`
   nell'**SQL Editor** di Supabase (Canale 3): colonne `figura_sicurezza.macro`,
   `nomina.estremi_procura` e `azione.origine_nomina_id`, figura
   `datore_lavoro_art16`, tabella `nomina_evidenza` + RLS. Idempotente, ASCII-only,
-  `pglast` OK.
+  `pglast` OK. **Eseguita** (verificato 2026-07-29: DB è alla 057; oggetti presenti).
 - [ ] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy) + refresh PWA.
   Tocca: `OrganigrammaView.tsx`, `Formazione.tsx`, `lib/admin/formazione.ts`.
   `tsc -b` + `vite build` verdi.
@@ -301,8 +301,11 @@ sedi li accende; gli attributi si leggono dal cliente).
     FARE sempre proposti e disattivabili. `assicuraComposizione` non auto-inietta
     piu' i fissi (vengono dalla composizione). Chiude le lacune "comporre i veri
     capitoli" e "editor back-office della composizione".
-    - [ ] **DEPLOY**: eseguire `supabase/migrations/035_box_seed_capitoli.sql`
+    - [x] **DEPLOY**: eseguire `supabase/migrations/035_box_seed_capitoli.sql`
       nell'**SQL Editor** (Canale 3), poi push del codice su `main` + refresh PWA.
+      **Fatto** (verificato 2026-07-29: DB alla 057; 11 capitoli CAP0..CAP10 +
+      RILIEVI_LIBERI presenti, box prototipo IMPIANTI disattivato; compositore
+      `composizione.ts`/`ComponiTemplate.tsx` committati e clean).
 - [ ] Avviso se la checklist scelta ha `tipo_attivita` ≠ quello dell'incarico
   (oggi è ammesso senza segnalazioni).
 - [ ] Consentire il cambio di checklist su un sopralluogo già avviato ma senza
