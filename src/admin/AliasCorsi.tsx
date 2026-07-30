@@ -96,9 +96,11 @@ export default function AliasCorsi() {
     return out;
   }, [corsi]);
 
-  // Ore e tipologia del gestionale non stanno in `corso_alias`: servono a
-  // decidere la mappatura (i quasi-duplicati si distinguono per le ore) e sono
-  // sempre a un upload di distanza, quindi si mostrano quando il file c'e'.
+  // Ore, tipologia e categoria del gestionale non stanno in `corso_alias`:
+  // servono a decidere la mappatura (i quasi-duplicati si distinguono per le
+  // ore; la categoria dice se una riga viene dal catalogo ufficiale ASR 2025 o
+  // dal bucket legacy "Generica") e sono sempre a un upload di distanza,
+  // quindi si mostrano quando il file c'e'.
   const dalFile = useMemo(() => {
     const m = new Map<string, RigaCatalogoGestionale>();
     for (const r of righe ?? []) m.set(r.testo, r);
@@ -195,6 +197,7 @@ export default function AliasCorsi() {
                   <div key={r.testo} className="bo-meta"
                     style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--line)', padding: '5px 0' }}>
                     <span style={{ flex: 1 }}>{r.originale}</span>
+                    {r.categoria && <span className="bo-pill usato">{r.categoria}</span>}
                     <span>{r.ore != null ? `${r.ore}h` : '\u2014'}</span>
                     <span>{r.periodicita_mesi != null ? `${r.periodicita_mesi} mesi` : '\u2014'}</span>
                   </div>
@@ -232,6 +235,10 @@ export default function AliasCorsi() {
               <div className="bo-meta" style={{ justifyContent: 'space-between' }}>
                 <b style={{ flex: 1 }}>{a.testo_gestionale}</b>
                 {f && <span>{f.ore != null ? `${f.ore}h` : '\u2014'}</span>}
+                {/* Categoria prima di Tipologia: e' la piu' informativa per
+                    scegliere il codice, la Tipologia serve solo a riconoscere
+                    le righe fuori perimetro (ANSF, PRIVACY, AMBIENTE...). */}
+                {f && f.categoria && <span className="bo-pill usato">{f.categoria}</span>}
                 {f && f.tipologia && <span className="bo-pill archiviato">{tipologiaLeggibile(f.tipologia)}</span>}
               </div>
               <div className="bo-meta" style={{ gap: 12, marginTop: 6, flexWrap: 'wrap' }}>

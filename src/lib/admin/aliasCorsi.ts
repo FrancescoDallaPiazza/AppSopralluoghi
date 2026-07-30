@@ -8,25 +8,38 @@
 // Perche' un dizionario permanente e non un passaggio dell'import: una volta
 // mappato un testo, ogni import successivo lo risolve da solo. Il lavoro e'
 // decrescente e a regime si mappa solo quando il gestionale inventa un nome
-// nuovo. L'export e' l'universo COMPLETO (74 righe): non si scopre cliente per
-// cliente, si carica una volta.
+// nuovo. L'export e' l'universo COMPLETO: non si scopre cliente per cliente,
+// si carica una volta.
 //
-// FATTI VERIFICATI SUL FILE (ExportExcel, foglio unico):
-//  * riga 0 = titolo ("Formazione"), riga 1 = header, dati dalla riga 2;
-//  * colonne: Corso | Durata (h) | Periodicita' | Tipologia;
+// QUALE export. Il gestionale ne offre due che si somigliano e NON sono la
+// stessa cosa. Quello giusto e' **elencoAnagraficaFormazioni** (foglio
+// "Anagrafica Formazione", 268 corsi): e' l'intero catalogo. "ExportExcel"
+// (74 righe) e' la sola categoria "Generica" - verificato: le sue 74 righe
+// sono esattamente le 74 righe con Categoria='Generica' del file completo -
+// e caricandolo si mappa il 28% del catalogo credendo di averlo finito.
+//
+// FATTI VERIFICATI SUL FILE (foglio unico):
+//  * riga 0 = titolo, riga 1 = header, dati dalla riga 2;
+//  * colonne: Corso | Durata (h) | Periodicita' | Tipologia | Categoria;
 //  * le ultime due righe NON sono corsi ('https://overall.sgslweb.com/' e
 //    'Dati aggiornati al ...'): hanno Durata e Tipologia vuote -> si saltano;
 //  * `Tipologia` NON e' un filtro affidabile (in "Formazione generica" stanno
 //    sia il carroponte 81/08 sia il patentino fitosanitari): si presentano
 //    tutte le righe, il flag `ignorato` fa il lavoro;
+//  * `Categoria` invece e' il segnale utile per MAPPARE (non per filtrare):
+//    separa il catalogo ufficiale - "Accordo Stato Regioni 2025",
+//    "Attrezzature", "Aggiornamenti", "Lavoratore", "RSPP 2016" - dal bucket
+//    legacy "Generica", ed e' cio' che distingue un modulo B del 2016 dal suo
+//    omonimo ASR 2025. Non si salva in `corso_alias`: come le ore, serve a
+//    decidere ed e' sempre a un upload di distanza;
 //  * `%20` nella Tipologia e' uno spazio URL-encoded (l'export e' grezzo):
 //    si ripulisce solo per mostrarla, non e' un dato che salviamo.
 //
 // NORMALIZZAZIONE: maiuscolo + spazi collassati + trim, nient'altro. Niente
 // rimozione di parole: il catalogo ha quasi-duplicati con ore diverse che NON
 // sono errori ("Integrazione formazione specifica lavoratori - rischio alto" 8h
-// vs "...lavoratori-rischio alto" 4h). Verificato: le 74 righe danno 74 chiavi
-// distinte.
+// vs "...lavoratori-rischio alto" 4h). Verificato: le 268 righe danno 268
+// chiavi distinte, nessuna collisione.
 
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabase';
@@ -41,6 +54,7 @@ export interface RigaCatalogoGestionale {
   ore: number | null;
   periodicita_mesi: number | null;
   tipologia: string;
+  categoria: string;                // '' sui vecchi export senza colonna E
 }
 
 export interface CorsoAlias {
@@ -100,6 +114,7 @@ export async function leggiCatalogoGestionale(file: File): Promise<RigaCatalogoG
       ore: ore ? Number(ore[0]) : null,
       periodicita_mesi: periodicitaMesi(S(r[2])),
       tipologia,
+      categoria: S(r[4]),           // manca sui vecchi export: S() la rende ''
     });
   }
   return out;
