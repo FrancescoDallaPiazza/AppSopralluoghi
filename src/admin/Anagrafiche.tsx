@@ -272,6 +272,16 @@ function SchedaCliente({
     );
   }
 
+  // Luogo che identifica la scheda: la sede OPERATIVA se c'e', altrimenti la
+  // legale. Due stabilimenti della stessa azienda sono due anagrafiche con la
+  // STESSA ragione sociale: col solo nome in testata le due schede sono identiche
+  // e non si capisce su quale si sta lavorando. Il luogo di lavoro le separa -
+  // ed e' anche il dato con cui l'import del gestionale le abbina.
+  const operativa = sedi.find((s) => !s.principale && s.attivo) ?? null;
+  const cittaScheda = (operativa ? (operativa.localita || operativa.nome) : cliente.localita) ?? '';
+  const provScheda = (operativa ? operativa.provincia : cliente.provincia) ?? '';
+  const luogoScheda = cittaScheda ? cittaScheda + (provScheda ? ` (${provScheda})` : '') : '';
+
   return (
     <div>
       <style>{`
@@ -284,6 +294,8 @@ function SchedaCliente({
         .dash-topbar{display:flex;align-items:center;gap:8px;margin-bottom:2px}
         .dash-title{text-align:center;margin:2px 0 20px}
         .dash-title h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.01em;color:#1c1e22;line-height:1.15}
+        .dash-title h1 .luogo{font-weight:700;color:#6b7078}
+        .dash-title .qual{margin-top:2px;font-size:12px;color:#8a8f98;text-transform:uppercase;letter-spacing:.04em}
         .dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:18px}
         .dash-tile{text-align:left;cursor:pointer;background:#fff;border:1px solid rgba(0,0,0,.08);border-left:5px solid var(--acc,#c9c2b4);border-radius:12px;padding:14px 16px;min-height:74px;display:flex;flex-direction:column;gap:4px;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:transform .05s ease,box-shadow .1s ease;font-family:inherit}
         .dash-tile:hover{box-shadow:0 3px 10px rgba(0,0,0,.10);transform:translateY(-1px)}
@@ -306,7 +318,15 @@ function SchedaCliente({
         )}
       </div>
       <div className="dash-title">
-        <h1>{nuovo && !persistito ? 'Nuovo cliente' : cliente.ragione_sociale || 'Cliente'}</h1>
+        <h1>
+          {nuovo && !persistito ? 'Nuovo cliente' : cliente.ragione_sociale || 'Cliente'}
+          {!(nuovo && !persistito) && luogoScheda && <span className="luogo"> · {luogoScheda}</span>}
+        </h1>
+        {/* Quale delle due sedi si sta leggendo: senza, un cliente a sede unica e
+            uno il cui stabilimento e' altrove mostrano la stessa riga. */}
+        {!(nuovo && !persistito) && luogoScheda && (
+          <div className="qual">{operativa ? 'sede operativa' : 'sede legale'}</div>
+        )}
       </div>
 
       {msg && <div className="bo-note">{msg}</div>}
