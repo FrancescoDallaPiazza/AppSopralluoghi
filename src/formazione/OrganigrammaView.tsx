@@ -1149,6 +1149,23 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   // e' a organigramma come semplice lavoratore c'e' comunque.
   const corsiSvoltiPer = new Map<string, string[]>(
     riep.persone.map((pv) => [pv.persona.id, pv.corsiSvolti ?? []] as [string, string[]]));
+
+  // Chi ha GIA' il corso che una figura scoperta richiede. Dirlo cambia
+  // l'istruzione: "Corso da erogare" manda a comprare un corso che in azienda e'
+  // gia' stato fatto, quando quello che manca e' la designazione. L'attestato si
+  // aggancia da se' nel momento in cui la persona viene assegnata (il motore
+  // cerca gli attestati per codice corso, non per nomina), quindi qui non c'e'
+  // niente da collegare a mano: c'e' da nominare.
+  const giaFormatiPer = (codice: string): typeof riep.persone => {
+    const cors = new Set(corsiDellaFigura(codice));
+    if (!cors.size) return [];
+    return riep.persone.filter((pv) => (pv.corsiSvolti ?? []).some((c) => cors.has(c)));
+  };
+  const testoGiaFormati = (l: typeof riep.persone): string => {
+    const nomi = l.slice(0, 3).map((pv) => nomePersona(pv.persona)).join(', ');
+    return (l.length === 1 ? '1 persona ha gia’ il corso richiesto' : l.length + ' persone hanno gia’ il corso richiesto')
+      + ' (' + nomi + (l.length > 3 ? ', …' : '') + '): manca la designazione, non la formazione.';
+  };
   type RigaCop = { figura: FiguraSicurezza; assegnate: typeof riep.persone };
   const gruppiCopertura: { nome: string; macro: string; righe: RigaCop[] }[] = [];
   for (const f of figureAttese) {
@@ -1275,6 +1292,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     const aperto = assegnaFigura === figura.codice;
     const guidaRighe = (figura.guida ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
     const emerg = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+    // Solo quando la figura e' senza incaricati: a ruolo coperto la domanda
+    // non si pone piu'.
+    const giaFormati = assegnate.length === 0 ? giaFormatiPer(figura.codice) : [];
     const titolari = assegnate.map((pv) => ({
       personaId: pv.persona.id,
       nominaId: pv.figure.find((x) => x.codice === figura.codice)?.nomina_id ?? null,
@@ -1339,6 +1359,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   ? 'Corso da erogare: ' + emerg.testo
                   : emerg.testo.charAt(0).toUpperCase() + emerg.testo.slice(1) + ' (anagrafica cliente).'}
               </div>
+            )}
+            {giaFormati.length > 0 && (
+              <div className="fzr-emerg" style={{ marginTop: 6 }}>{testoGiaFormati(giaFormati)}</div>
             )}
           </>
         ) : (
@@ -1501,6 +1524,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     const stato = statoFigura(figura, assegnate);
     const scoperta = scoperteSet.has(figura.codice);
     const emerg = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+    // Solo quando la figura e' senza incaricati: a ruolo coperto la domanda
+    // non si pone piu'.
+    const giaFormati = assegnate.length === 0 ? giaFormatiPer(figura.codice) : [];
     // "Modifica": l'editor completo della SOLA figura scelta, qui dentro.
     if (focusEdit) {
       return (
@@ -1532,6 +1558,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   ? 'Corso da erogare: ' + emerg.testo
                   : emerg.testo.charAt(0).toUpperCase() + emerg.testo.slice(1) + ' (anagrafica cliente).'}
               </div>
+            )}
+            {giaFormati.length > 0 && (
+              <div className="fzr-emerg" style={{ margin: '6px 0 0' }}>{testoGiaFormati(giaFormati)}</div>
             )}
           </div>
         ) : (
