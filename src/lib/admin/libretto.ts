@@ -88,6 +88,27 @@ export interface Libretto {
 // un'affermazione sbagliata su una persona. Lo stato si guarda in organigramma,
 // dove e' vivo.
 
+// Corsi che a catalogo sono righe distinte ma sul libretto sono UN pacchetto.
+// La formazione del lavoratore e' il caso: generale (4h, non scade di per se') e
+// specifica (4/8/12h secondo il rischio) sono le due meta' di un unico obbligo -
+// l'art. 37 le prevede insieme e l'aggiornamento quinquennale le rinnova
+// entrambe. Tenerle separate mostrerebbe una tipologia "generale" senza scadenza
+// accanto a una "specifica" che scade, come se fossero due percorsi indipendenti
+// che si possono avere uno senza l'altro.
+// Vale solo per la LETTURA: il motore continua a valutarli come requisiti
+// distinti, perche' distinti sono (la generale e' prerequisito della specifica).
+const PACCHETTI: { chiave: string; titolo: string; codici: string[] }[] = [
+  {
+    chiave: 'pkg:LAVORATORE',
+    titolo: 'Formazione dei lavoratori (generale + specifica)',
+    codici: ['LAV_GEN', 'LAV_SPEC'],
+  },
+];
+const PACCHETTO_DI = new Map<string, { chiave: string; titolo: string }>(
+  PACCHETTI.flatMap((p) => p.codici.map(
+    (c) => [c, { chiave: p.chiave, titolo: p.titolo }] as [string, { chiave: string; titolo: string }])),
+);
+
 function scadenzaVoce(f: Formazione, corso: CorsoCatalogo | undefined): string | null {
   if (f.scadenza) return f.scadenza;
   if (!f.data_completamento) return null;
@@ -140,13 +161,16 @@ export async function componiLibretto(
   const gruppi: GruppoLibretto[] = [];
   const perChiave = new Map<string, GruppoLibretto>();
   for (const v of voci) {
-    const chiave = v.corso_codice ?? 'nome:' + v.corso_nome.trim().toUpperCase().replace(/\s+/g, ' ');
+    const pkg = v.corso_codice ? PACCHETTO_DI.get(v.corso_codice) : undefined;
+    const chiave = pkg?.chiave
+      ?? v.corso_codice
+      ?? 'nome:' + v.corso_nome.trim().toUpperCase().replace(/\s+/g, ' ');
     let g = perChiave.get(chiave);
     if (!g) {
       const corso = v.corso_codice ? byCodice.get(v.corso_codice) : undefined;
       g = {
         chiave,
-        titolo: corso?.nome ?? v.corso_nome,
+        titolo: pkg?.titolo ?? corso?.nome ?? v.corso_nome,
         categoria: corso?.categoria ?? v.categoria,
         voci: [], ore_totali: null, scadenza: null,
       };
@@ -158,8 +182,17 @@ export async function componiLibretto(
   for (const g of gruppi) {
     const conOre = g.voci.filter((v) => v.ore != null);
     g.ore_totali = conOre.length ? conOre.reduce((s, v) => s + (v.ore ?? 0), 0) : null;
-    const interi = g.voci.filter((v) => !v.parziale && v.data_completamento);
-    g.scadenza = interi.length ? interi[interi.length - 1]!.scadenza : null;
+    // Scadenza del gruppo: la PIU' LONTANA fra gli attestati interi, non quella
+    // dell'ultimo in ordine di data. In un pacchetto l'attestato piu' recente
+    // puo' essere quello che non scade (la generale), e prendere la sua direbbe
+    // che la formazione del lavoratore non ha scadenza. La piu' lontana e' la
+    // data fino a cui l'obbligo risulta coperto, che e' quello che si cerca.
+    // Gli spezzoni restano esclusi: da soli non rinnovano niente.
+    g.scadenza = g.voci
+      .filter((v) => !v.parziale && v.scadenza)
+      .map((v) => v.scadenza!)
+      .sort()
+      .pop() ?? null;
   }
   // Gruppi in ordine alfabetico di titolo: su un documento da consultare conta
   // ritrovare la tipologia, non sapere quale e' stata aggiornata per ultima.
