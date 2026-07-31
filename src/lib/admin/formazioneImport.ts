@@ -570,7 +570,8 @@ export async function applicaUnita(
     // Solo per le persone appena create: chi era gia' in organigramma ha i suoi
     // ruoli, decisi da qualcuno, e non si tocca.
     if (opz.assegnaLavoratore && idPerCf.size > 0) {
-      const dataPerCf = new Map(esito.personeMancanti.map((m) => [m.cf, m.data_assunzione]));
+      const dataPerCf = new Map<string, string | null>(
+        esito.personeMancanti.map((m) => [m.cf, m.data_assunzione] as [string, string | null]));
       const nomine = [...idPerCf.entries()].map(([cf, personaId]) => ({
         id: newId(),
         persona_id: personaId,

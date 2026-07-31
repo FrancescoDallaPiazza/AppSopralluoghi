@@ -176,6 +176,12 @@ export interface RequisitoValutato {
   obbligatorio: boolean;
   stato: StatoRequisito;
   scadenza: string | null;      // calcolata o esplicita
+  // Data dell'attestato da cui la scadenza e' stata calcolata. Senza, la UI puo'
+  // mostrare solo il "quando scade" e non il "quando e' stato fatto": chi
+  // controlla un attestato ha bisogno del secondo per ritrovarlo, e una scadenza
+  // senza data di svolgimento non e' verificabile. Null se il requisito e'
+  // scoperto o coperto da un esonero senza attestato.
+  data_completamento: string | null;
   dettaglio: string;            // testo breve di spiegazione
   formazione_id: string | null;
   esonero_id: string | null;
@@ -205,6 +211,12 @@ export interface PersonaValutata {
   persona: Persona;
   figure: { codice: string; nome: string; nomina_id: string | null; data_nomina: string | null; estremi_procura: string | null; evidenza_mancante: boolean }[];
   requisiti: RequisitoValutato[];
+  // Codici dei corsi di cui la persona ha un attestato registrato, QUALUNQUE sia
+  // il suo ruolo. I requisiti raccontano solo le figure che la persona ha gia':
+  // chi ha il corso antincendio ma e' a organigramma come semplice lavoratore
+  // li' non compare, ed e' proprio la persona che si cerca quando si deve
+  // designare un addetto. Serve a proporre i candidati giusti, non a valutare.
+  corsiSvolti: string[];
   stato: StatoRequisito;        // peggiore tra i requisiti (esonerato non peggiora)
   moduli: ModuloValutato[];     // moduli condizionati (cantieri, ...), valutati a parte
   promemoria_figura: EsoneroAmmesso[]; // ammessi legati alla figura (senza corso)
@@ -577,7 +589,7 @@ function valutaModuli(
 // va gestito come una scadenza normale. Base di calcolo: attestato di aggiornamento
 // registrato, altrimenti la data di partenza fornita (riconoscimento esonero o nomina).
 // Ritorna null se il corso NON e' periodico (in quel caso l'esonero/credito copre tutto).
-export interface EsitoAggiornamento { stato: StatoRequisito; scadenza: string | null; dettaglio: string; formazione_id: string | null; allegato_url: string | null; ore: number | null; }
+export interface EsitoAggiornamento { stato: StatoRequisito; scadenza: string | null; data_completamento: string | null; dettaglio: string; formazione_id: string | null; allegato_url: string | null; ore: number | null; }
 export function statoAggiornamentoDopoEsonero(
   corso: CorsoCatalogo | undefined,
   req: { corso_codice: string; per_categoria: boolean; categoria: string },
@@ -594,15 +606,15 @@ export function statoAggiornamentoDopoEsonero(
     const { stato, dettaglio } = statoDaScadenza(scad, fAgg.data_completamento);
     // Iniziale coperto dall'esonero: finche' il rinnovo e' lontano (conforme) la riga
     // resta ESONERATO; si accende (in scadenza/critico) solo quando serve agire.
-    return { stato: stato === 'conforme' ? 'esonerato' : stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: fAgg.id, allegato_url: fAgg.allegato_url, ore };
+    return { stato: stato === 'conforme' ? 'esonerato' : stato, scadenza: scad, data_completamento: fAgg.data_completamento, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: fAgg.id, allegato_url: fAgg.allegato_url, ore };
   }
   if (dataPartenza) {
     const scad = addMesi(dataPartenza, aggMesi);
     const { stato, dettaglio } = statoDaScadenza(scad, dataPartenza);
-    return { stato: stato === 'conforme' ? 'esonerato' : stato, scadenza: scad, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: null, allegato_url: null, ore };
+    return { stato: stato === 'conforme' ? 'esonerato' : stato, scadenza: scad, data_completamento: null, dettaglio: 'aggiornamento periodico: ' + dettaglio, formazione_id: null, allegato_url: null, ore };
   }
   // nessuna data di partenza: dovuto, scadenza da determinare
-  return { stato: 'da_verificare', scadenza: null, dettaglio: 'aggiornamento periodico dovuto: registrare l\u2019ultimo attestato di aggiornamento', formazione_id: null, allegato_url: null, ore };
+  return { stato: 'da_verificare', scadenza: null, data_completamento: null, dettaglio: 'aggiornamento periodico dovuto: registrare l\u2019ultimo attestato di aggiornamento', formazione_id: null, allegato_url: null, ore };
 }
 
 export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null, atecoCliente: string | null = null, nomineConEvidenza?: Set<string>): PersonaValutata {
@@ -722,6 +734,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
           categoria, ore, obbligatorio: r.obbligatorio,
           stato: st === 'conforme' ? 'esonerato' : st, scadenza: eson.scadenza,
+          data_completamento: null,
           dettaglio: base + ' \u00b7 ' + dt,
           formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
         });
@@ -738,7 +751,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           requisiti.push({
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore: agg.ore, obbligatorio: r.obbligatorio,
-            stato: agg.stato, scadenza: agg.scadenza,
+            stato: agg.stato, scadenza: agg.scadenza, data_completamento: agg.data_completamento,
             dettaglio: base + ' (iniziale) \u00b7 ' + agg.dettaglio,
             formazione_id: agg.formazione_id, esonero_id: eson.id, allegato_url: agg.allegato_url, promemoria,
           });
@@ -747,6 +760,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           requisiti.push({
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
+            data_completamento: null,
             dettaglio: base,
             formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
           });
@@ -802,6 +816,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       requisiti.push({
         figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNomeNeutro,
         categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza,
+        data_completamento: f?.data_completamento ?? null,
         dettaglio, formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
       });
       continue;
@@ -828,6 +843,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     requisiti.push({
       figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: nomeMostrato,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,
+      data_completamento: f.data_completamento,
       dettaglio: dettaglioMostrato, formazione_id: f.id, esonero_id: null, allegato_url: f.allegato_url, promemoria,
     });
   }
@@ -856,7 +872,16 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
 
   const moduli = valutaModuli(figureSet, d.formazioni, esoneriAttivi, byCodice, cat);
 
-  return { persona: d.persona, figure, requisiti, stato: statoPersona, moduli, promemoria_figura: promemoriaFigura };
+  // Corsi con attestato registrato, indipendentemente dai ruoli. Gli spezzoni
+  // sono esclusi: mezzo corso non e' il corso, e chi cerca un candidato gia'
+  // formato verrebbe mandato su una persona che non lo e'.
+  const corsiSvolti = [...new Set(
+    d.formazioni
+      .filter((f) => f.corso_codice && f.data_completamento && !f.parziale)
+      .map((f) => f.corso_codice as string),
+  )];
+
+  return { persona: d.persona, figure, requisiti, corsiSvolti, stato: statoPersona, moduli, promemoria_figura: promemoriaFigura };
 }
 
 // ============================ CARICAMENTO DATI ============================

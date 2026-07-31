@@ -214,6 +214,21 @@ Nel pannello di assegnazione di un ruolo (`OrganigrammaView`) ci sono ora
 volta non è un lavoro, è un ostacolo. Serve anche per le persone già importate
 prima di questa modifica, che nomine non ne hanno.
 
+Emerso dal primo import vero (2026-07-31), corretto:
+  - Il requisito mostrava **solo la scadenza**, non la data dell'attestato da cui
+    è calcolata: `RequisitoValutato.data_completamento` (nuovo campo, popolato in
+    `valutaPersona` e in `statoAggiornamentoDopoEsonero`) e "svolto il gg/mm/aaaa"
+    nelle tre viste dei requisiti. Una scadenza senza data di svolgimento non è
+    verificabile su un attestato.
+  - Nel pannello di assegnazione di un ruolo si sceglieva da **tutta** l'azienda
+    in ordine alfabetico. Ora `PersonaValutata.corsiSvolti` (attestati registrati,
+    a prescindere dai ruoli — i requisiti raccontano solo le figure che la persona
+    ha già) alimenta il filtro *"solo chi ha già il corso attinente"*, con il corso
+    dovuto preso da `corsoEmergenzaRichiesto` per antincendio/primo soccorso (là
+    dipende dai livelli aziendali, non dal catalogo della figura). Acceso di
+    default **solo** per gli addetti alle emergenze: sui Lavoratori nasconderebbe
+    proprio chi va assegnato. Chi è già selezionato resta sempre visibile.
+
 Decisioni prese scrivendolo:
   - **Un'unità = (P.IVA, Sede)**, e ogni unità va su un cliente distinto.
     Ecodent ha due sedi operative con la **stessa P.IVA** e squadre di emergenza

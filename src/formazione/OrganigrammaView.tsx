@@ -19,7 +19,7 @@ import {
   type TipoEsonero, type Formazione, type Esonero,
   type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
   type CorsoCatalogo, type Catalogo, type NominaEvidenza,
-  nomePersona, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
+  nomePersona, dataIT, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 
@@ -409,21 +409,52 @@ function PersonaForm({
 // un ruolo con formazione soggetta al regime ASR 2025 si chiede (scelta esplicita
 // SI/NO) se ha formazione pregressa. Scritture via adapter.
 function AssegnaFiguraPanel({
-  figura, persone, titolari, clienteId, chiediPregressa, onSaved, onClose, onEvidenzePregresse,
+  figura, persone, titolari, clienteId, chiediPregressa, corsiAttinenti, corsiSvoltiPer,
+  filtraDiDefault, onSaved, onClose, onEvidenzePregresse,
 }: {
   figura: FiguraSicurezza;
   persone: Persona[];
   titolari: { personaId: string; nominaId: string | null }[];
   clienteId: string;
   chiediPregressa: boolean;
+  // Corsi che questa figura richiede, e corsi che ciascuna persona ha davvero
+  // svolto. Servono a proporre i candidati sensati per gli addetti alle
+  // emergenze: chi ha gia' il corso antincendio non e' scritto da nessuna parte
+  // nell'organigramma finche' non lo si nomina, quindi senza questi due dati la
+  // tendina e' un elenco alfabetico di tutta l'azienda e la persona giusta la
+  // si deve ricordare a memoria.
+  corsiAttinenti: string[];
+  corsiSvoltiPer: Map<string, string[]>;
+  // Il filtro parte acceso solo dove la domanda e' "chi ha gia' il corso?":
+  // gli addetti alle emergenze si scelgono cosi'. Sui ruoli che riguardano
+  // tutti - i Lavoratori - partirebbe nascondendo proprio le persone da
+  // assegnare, che il corso ancora non ce l'hanno.
+  filtraDiDefault: boolean;
   onSaved: () => Promise<void>;
   onClose: () => void;
   onEvidenzePregresse?: (p: Persona) => void;
 }) {
   const adapter = useAdapter();
   const titolariIds = useMemo(() => titolari.map((t) => t.personaId), [titolari]);
+  const attinenti = useMemo(() => new Set(corsiAttinenti), [corsiAttinenti]);
+  const haCorso = useCallback((id: string): boolean =>
+    (corsiSvoltiPer.get(id) ?? []).some((c) => attinenti.has(c)), [corsiSvoltiPer, attinenti]);
+  const formati = useMemo(() => persone.filter((p) => haCorso(p.id)), [persone, haCorso]);
+  // Filtro acceso di default quando ha senso: la figura ha corsi propri e almeno
+  // una persona li ha. Resta togliibile - il corso non e' un requisito per essere
+  // designati (si puo' nominare e formare dopo), quindi non si nasconde nessuno
+  // d'autorita'.
+  const [soloFormati, setSoloFormati] = useState(
+    () => filtraDiDefault && attinenti.size > 0 && formati.length > 0);
   const [sel, setSel] = useState<Set<string>>(() => new Set(titolariIds));
   const [busy, setBusy] = useState(false);
+  // Chi si puo' proporre: filtrati se il filtro e' acceso, ma chi e' gia'
+  // selezionato o titolare resta sempre visibile - un filtro che fa sparire una
+  // persona gia' assegnata la farebbe togliere per sbaglio al Salva successivo.
+  const candidati = useMemo(
+    () => (soloFormati ? persone.filter((p) => haCorso(p.id) || sel.has(p.id)) : persone),
+    [soloFormati, persone, haCorso, sel]);
+  const daScegliere = useMemo(() => candidati.filter((p) => !sel.has(p.id)), [candidati, sel]);
   // passo 2: per chi e' appena stato assegnato si chiede la formazione pregressa
   const [step, setStep] = useState<'assegna' | 'pregressa'>('assegna');
   const [nuove, setNuove] = useState<Persona[]>([]);
@@ -559,9 +590,9 @@ function AssegnaFiguraPanel({
           Salva come per una scelta singola. */}
       {persone.length > 1 && (
         <div className="fzr-actions" style={{ marginTop: 8, marginBottom: 0 }}>
-          <button type="button" className="fzr-mini" disabled={busy || persone.every((p) => sel.has(p.id))}
-            onClick={() => setSel(new Set(persone.map((p) => p.id)))}>
-            Seleziona tutte ({persone.length})
+          <button type="button" className="fzr-mini" disabled={busy || candidati.every((p) => sel.has(p.id))}
+            onClick={() => setSel(new Set([...sel, ...candidati.map((p) => p.id)]))}>
+            Seleziona tutte ({candidati.length})
           </button>
           <button type="button" className="fzr-mini" disabled={busy || sel.size === 0}
             onClick={() => setSel(new Set())}>
@@ -570,15 +601,36 @@ function AssegnaFiguraPanel({
         </div>
       )}
 
+      {/* Candidati con il corso attinente gia' svolto. Per gli addetti alle
+          emergenze e' la domanda vera - "chi ha fatto l'antincendio?" - e la
+          risposta e' nei dati, non nella memoria di chi compila. Il filtro non
+          e' un vincolo: si puo' designare chi il corso non ce l'ha e formarlo
+          dopo, ed e' per questo che si toglie con un click. */}
+      {attinenti.size > 0 && persone.length > 0 && (
+        <label className="fzr-d" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+          <input type="checkbox" checked={soloFormati} disabled={busy}
+            onChange={(e) => setSoloFormati(e.target.checked)} />
+          <span>
+            Mostra solo chi ha gia&rsquo; il corso attinente
+            {' '}({formati.length} su {persone.length})
+            {formati.length === 0 && ' — nessuno, il filtro nasconderebbe tutti'}
+          </span>
+        </label>
+      )}
+
       <div className="fzr-field" style={{ marginTop: 8 }}>
         <label>Aggiungi assegnatario (dalle risorse umane)</label>
-        <select value="" disabled={busy || persone.filter((p) => !sel.has(p.id)).length === 0}
+        <select value="" disabled={busy || daScegliere.length === 0}
           onChange={(e) => { const id = e.target.value; if (id) toggle(id); }}>
           <option value="">
-            {persone.filter((p) => !sel.has(p.id)).length ? '+ scegli una risorsa\u2026' : 'tutte le risorse sono gi\u00e0 assegnate'}
+            {daScegliere.length
+              ? '+ scegli una risorsa\u2026'
+              : (soloFormati ? 'nessun altro con il corso attinente' : 'tutte le risorse sono gi\u00e0 assegnate')}
           </option>
-          {persone.filter((p) => !sel.has(p.id)).map((p) => (
-            <option key={p.id} value={p.id}>{nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}</option>
+          {daScegliere.map((p) => (
+            <option key={p.id} value={p.id}>
+              {nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}{haCorso(p.id) ? ' \u00b7 corso svolto' : ''}
+            </option>
           ))}
         </select>
       </div>
@@ -741,7 +793,11 @@ function EditorRequisito({
         <>
           {req.formazione_id && (
             <div className="fzr-eson-cur" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-              <span>Attestato registrato{req.scadenza ? ' \u2014 scadenza ' + req.scadenza : ''}.</span>
+              {/* Data di svolgimento accanto alla scadenza: la scadenza dice quando
+                  agire, la data di svolgimento e' cio' che si legge sull'attestato
+                  e che permette di ritrovarlo. Da sola la scadenza non e'
+                  verificabile. */}
+              <span>Attestato registrato{req.data_completamento ? ' \u2014 svolto il ' + dataIT(req.data_completamento) : ''}{req.scadenza ? ' \u00b7 scadenza ' + dataIT(req.scadenza) : ''}.</span>
               <span style={{ display: 'flex', gap: 8 }}>
                 {req.allegato_url && <button type="button" className="fzr-mini" disabled={busy} onClick={() => void adapter.apriAllegato(req.allegato_url as string)}>vedi allegato</button>}
                 <button type="button" className="fzr-mini" disabled={busy} onClick={() => void rimuoviAttestato()}>rimuovi attestato</button>
@@ -1074,6 +1130,25 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   for (const f of figureAttese) {
     if (figuraChiedePregressa(f.codice, catalogo.requisiti, catalogo.corsi)) figureChePregressa.add(f.codice);
   }
+
+  // Corsi che una figura richiede davvero, per proporre i candidati sensati nel
+  // pannello di assegnazione. Per gli addetti alle emergenze il corso NON e' a
+  // catalogo sulla figura ma dipende dai livelli aziendali (rischio incendio,
+  // gruppo di primo soccorso): li' la fonte e' `corsoEmergenzaRichiesto`, la
+  // stessa che governa il requisito, altrimenti si filtrerebbe su un corso che
+  // per questa azienda non e' quello dovuto.
+  const corsiDellaFigura = (codice: string): string[] => {
+    const emerg = corsoEmergenzaRichiesto(codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+    if (emerg) return emerg.codice ? [emerg.codice] : [];
+    return catalogo.requisiti
+      .filter((r) => r.figura_codice === codice && r.obbligatorio)
+      .map((r) => r.corso_codice);
+  };
+  // Corsi svolti per persona: viene dal motore (`corsiSvolti`), che li legge
+  // dagli attestati registrati e non dai ruoli - chi ha il corso antincendio ma
+  // e' a organigramma come semplice lavoratore c'e' comunque.
+  const corsiSvoltiPer = new Map<string, string[]>(
+    riep.persone.map((pv) => [pv.persona.id, pv.corsiSvolti ?? []] as [string, string[]]));
   type RigaCop = { figura: FiguraSicurezza; assegnate: typeof riep.persone };
   const gruppiCopertura: { nome: string; macro: string; righe: RigaCop[] }[] = [];
   for (const f of figureAttese) {
@@ -1242,6 +1317,9 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
             titolari={titolari}
             clienteId={clienteId}
             chiediPregressa={figureChePregressa.has(figura.codice)}
+            corsiAttinenti={corsiDellaFigura(figura.codice)}
+            corsiSvoltiPer={corsiSvoltiPer}
+            filtraDiDefault={!!emerg}
             onSaved={ricarica}
             onClose={() => setAssegnaFigura(null)}
             onEvidenzePregresse={onEvidenzePregresse}
@@ -1482,7 +1560,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                       {reqs.map((r) => (
                         <div key={r.corso_codice} className="fzr-pop-ev">
                           <span className={'fzr-dot ' + r.stato} title={TXT[r.stato]} />
-                          <span className="fzr-pop-corso">{r.corso_nome}{r.ore != null ? ' \u00b7 ' + r.ore + 'h' : ''}{r.scadenza ? ' \u00b7 scad. ' + r.scadenza : ''}{r.esonero_id ? ' \u00b7 esonero' : ''}</span>
+                          <span className="fzr-pop-corso">{r.corso_nome}{r.ore != null ? ' \u00b7 ' + r.ore + 'h' : ''}{r.data_completamento ? ' \u00b7 ' + dataIT(r.data_completamento) : ''}{r.scadenza ? ' \u00b7 scad. ' + dataIT(r.scadenza) : ''}{r.esonero_id ? ' \u00b7 esonero' : ''}</span>
                           <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
                         </div>
                       ))}
@@ -1538,7 +1616,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                     {reqs.length === 0 && mods.length === 0 && <span className="none">nessuna evidenza</span>}
                     {reqs.map((r) => (
                       <div key={r.corso_codice} className="ev">
-                        <span className="corso">{r.corso_nome}{r.dettaglio ? ' \u2014 ' + r.dettaglio : ''}{r.scadenza ? ' ' : ''}<span className="scad">{r.scadenza ? '(scad. ' + r.scadenza + ')' : ''}</span></span>
+                        <span className="corso">{r.corso_nome}{r.dettaglio ? ' \u2014 ' + r.dettaglio : ''}{r.data_completamento ? ' \u00b7 svolto il ' + dataIT(r.data_completamento) : ''}{r.scadenza ? ' ' : ''}<span className="scad">{r.scadenza ? '(scad. ' + dataIT(r.scadenza) + ')' : ''}</span></span>
                         <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
                       </div>
                     ))}
