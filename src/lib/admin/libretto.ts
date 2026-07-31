@@ -15,6 +15,7 @@
 // svolta dalle righe grezze di `formazione`.
 
 import { supabase } from '../supabase';
+import { newId } from '../types';
 import {
   valutaCliente, caricaCatalogo, addMesi, nomePersona,
   type Formazione, type CorsoCatalogo,
@@ -222,6 +223,51 @@ export async function componiLibretto(
     })),
     gruppi,
   };
+}
+
+// Registra la PARTE MANCANTE di un attestato con evidenza incompleta: nasce una
+// riga `formazione` per il pezzo ritrovato (stesso corso, la sua data e le sue
+// ore) e sull'attestato originale si spegne il flag - il buco e' chiuso, quindi
+// l'avviso e la voce in Cose da fare devono sparire.
+//
+// Il pezzo ritrovato NON e' uno spezzone: il corso e' concluso, sono due
+// documenti dello stesso percorso. Marcarlo `parziale` farebbe partire la somma
+// delle ore e riaprirebbe un requisito assolto.
+export async function registraParteMancante(
+  voce: VoceLibretto,
+  personaId: string,
+  dati: { corso_nome: string; data: string; ore: number | null; ente: string | null },
+): Promise<void> {
+  const nuova = {
+    id: newId(),
+    persona_id: personaId,
+    corso_codice: voce.corso_codice,
+    corso_nome: dati.corso_nome.trim() || voce.corso_nome,
+    categoria: voce.categoria,
+    data_completamento: dati.data,
+    ore: dati.ore,
+    ente_formatore: dati.ente,
+    is_aggiornamento: voce.is_aggiornamento,
+    parziale: false,
+    evidenza_incompleta: false,
+    // La scadenza la calcola il motore dalla periodicita' del corso, come per
+    // ogni altro attestato: scriverla qui la congelerebbe.
+    scadenza: null,
+    allegato_url: null,
+    note: 'Parte mancante registrata a completamento di: ' + voce.corso_nome,
+    import_key: null,
+  };
+  const ins = await supabase.from('formazione').insert(nuova);
+  if (ins.error) throw ins.error;
+
+  const upd = await supabase.from('formazione')
+    .update({
+      evidenza_incompleta: false,
+      note: (voce.note ? voce.note + ' ' : '')
+        + '[completata il ' + new Date().toISOString().slice(0, 10) + ']',
+    })
+    .eq('id', voce.id);
+  if (upd.error) throw upd.error;
 }
 
 // PDF via Edge Function `libretto-pdf` (stessa pipeline PDFBolt di

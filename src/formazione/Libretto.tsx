@@ -12,7 +12,10 @@
 // invisibili per costruzione.
 
 import { useEffect, useState } from 'react';
-import { componiLibretto, esportaPdfLibretto, type Libretto } from '../lib/admin/libretto';
+import {
+  componiLibretto, esportaPdfLibretto, registraParteMancante,
+  type Libretto, type VoceLibretto,
+} from '../lib/admin/libretto';
 import { dataIT } from '../lib/admin/formazione';
 
 export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }: {
@@ -26,6 +29,9 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [giro, setGiro] = useState(0);
+  const ricarica = async () => { setGiro((n) => n + 1); };
+
   useEffect(() => {
     let vivo = true;
     setFase('carico');
@@ -33,7 +39,7 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
       .then((l) => { if (vivo) { setLib(l); setFase('pronto'); } })
       .catch((e) => { if (vivo) { setMsg((e as Error)?.message ?? 'Caricamento non riuscito.'); setFase('errore'); } });
     return () => { vivo = false; };
-  }, [clienteId, personaId, clienteNome]);
+  }, [clienteId, personaId, clienteNome, giro]);
 
   async function esporta() {
     if (!lib) return;
@@ -147,9 +153,11 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
                         per cui qualcuno lo sta leggendo. */}
                     {v.evidenza_incompleta && (
                       <span className="bo-sub" style={{ display: 'block', color: 'var(--warn, #b7791f)' }}>
-                        Documentazione incompleta{v.note ? ` — ${v.note}` : ''}. La parte mancante va
-                        recuperata e registrata (vedi <i>Cose da fare</i>).
+                        {v.note?.trim() || 'Documentazione incompleta: manca una parte del percorso.'}
                       </span>
+                    )}
+                    {v.evidenza_incompleta && (
+                      <ParteMancante voce={v} personaId={personaId} onFatto={ricarica} />
                     )}
                   </span>
                   {v.is_aggiornamento && <span className="bo-pill usato">aggiornamento</span>}
@@ -169,6 +177,79 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
         Non è il libretto formativo del cittadino (D.Lgs. 276/2003), che comprende anche titoli
         di studio ed esperienze lavorative.
       </p>
+    </div>
+  );
+}
+
+// Registrazione del pezzo mancante di un attestato con evidenza incompleta.
+// Sta QUI, sotto la riga che segnala il buco, e non in un'altra schermata: chi
+// legge il libretto e trova "mancano 5h in e-learning" ha in quel momento il
+// documento in mano o il formatore al telefono. Mandarlo altrove significa che
+// non lo fara'.
+function ParteMancante({ voce, personaId, onFatto }: {
+  voce: VoceLibretto; personaId: string; onFatto: () => Promise<void>;
+}) {
+  const [apri, setApri] = useState(false);
+  const [nome, setNome] = useState(voce.corso_nome + ' - parte in e-learning');
+  const [data, setData] = useState('');
+  const [ore, setOre] = useState('');
+  const [ente, setEnte] = useState(voce.ente_formatore ?? '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function salva() {
+    if (!data) { setErr('Indica la data di chiusura della parte mancante.'); return; }
+    setBusy(true); setErr(null);
+    try {
+      await registraParteMancante(voce, personaId, {
+        corso_nome: nome,
+        data,
+        ore: ore.trim() === '' ? null : Number(ore),
+        ente: ente.trim() || null,
+      });
+      await onFatto();
+    } catch (e) { setErr((e as Error)?.message ?? 'Registrazione non riuscita.'); setBusy(false); }
+  }
+
+  if (!apri) {
+    return (
+      <button className="bo-btn ghost sm" style={{ marginTop: 4 }} onClick={() => setApri(true)}>
+        Registra la parte mancante
+      </button>
+    );
+  }
+  return (
+    <div className="bo-card flat" style={{ marginTop: 6 }}>
+      {err && <div className="bo-err">{err}</div>}
+      <div className="bo-grid">
+        <label className="bo-field">
+          <span>Descrizione</span>
+          <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} />
+        </label>
+        <label className="bo-field">
+          <span>Data di chiusura *</span>
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+        </label>
+        <label className="bo-field">
+          <span>Ore</span>
+          <input type="text" inputMode="numeric" value={ore} onChange={(e) => setOre(e.target.value)} />
+        </label>
+        <label className="bo-field">
+          <span>Ente formatore</span>
+          <input type="text" value={ente} onChange={(e) => setEnte(e.target.value)} />
+        </label>
+      </div>
+      <p className="bo-sub" style={{ margin: '0 0 8px' }}>
+        Nasce un attestato per il pezzo ritrovato, sullo stesso corso, e l&rsquo;avviso di
+        documentazione incompleta si chiude. Non e&rsquo; uno spezzone: il corso e&rsquo; concluso, sono
+        due documenti dello stesso percorso.
+      </p>
+      <div className="bo-bar">
+        <button className="bo-btn sm" disabled={busy} onClick={() => void salva()}>
+          {busy ? 'Registro…' : 'Registra'}
+        </button>
+        <button className="bo-btn ghost sm" disabled={busy} onClick={() => setApri(false)}>Annulla</button>
+      </div>
     </div>
   );
 }

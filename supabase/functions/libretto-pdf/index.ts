@@ -150,15 +150,20 @@ function render(l: Libretto): string {
       ].join('');
       // Cosa manca, per esteso: senza, il documento stampa "3h" e tace sulle
       // altre 5, che e' proprio il buco che deve far vedere.
+      // La nota dice gia' cosa manca e cosa fare: ripeterlo sotto raddoppiava il
+      // testo (e i punti fermi). Si stampa la nota, in ambra, o un fallback.
       const manca = v.evidenza_incompleta
-        ? `<div class="sub warn">Documentazione incompleta: la parte mancante va recuperata e registrata.</div>`
+        ? `<div class="sub warn">${esc(v.note?.trim() || 'Documentazione incompleta: manca una parte del percorso.')}</div>`
         : '';
       // Il nome della voce si stampa solo se diverso dal titolo del gruppo: sulle
       // evidenze pregresse e' la dicitura originale dell'attestato, quella che si
       // ritrova sul cartaceo.
       const nome = v.corso_nome === g.titolo ? '' : `<div class="sub">${esc(v.corso_nome)}</div>`;
+      // La nota generica si stampa solo se NON e' gia' quella dell'evidenza
+      // incompleta, che esce in ambra poco sotto.
+      const nota = v.note && !v.evidenza_incompleta ? `<div class="sub">${esc(v.note)}</div>` : '';
       return `<tr>
-        <td class="ind">${v.data_completamento ? dataBreve(v.data_completamento) : '<span class="vuoto">data n.d.</span>'}${tag}${nome}${v.note ? `<div class="sub">${esc(v.note)}</div>` : ''}${manca}</td>
+        <td class="ind">${v.data_completamento ? dataBreve(v.data_completamento) : '<span class="vuoto">data n.d.</span>'}${tag}${nome}${nota}${manca}</td>
         <td>${esc(v.ente_formatore ?? '')}</td>
         <td></td>
         <td class="num">${v.ore != null ? esc(v.ore) + 'h' : ''}</td>

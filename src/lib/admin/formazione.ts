@@ -187,11 +187,6 @@ export interface RequisitoValutato {
   // non chiuso": sono due lavori diversi, il primo e' erogare un corso, il
   // secondo e' recuperare la data del pezzo mancante.
   frazionata: { ore: number; soglia: number; aggiornamento: boolean }[];
-  // L'attestato che copre questo requisito documenta solo una parte del percorso
-  // (migration 060). Il requisito e' assolto lo stesso: e' una pendenza
-  // documentale, non di conformita'. `nota_evidenza` dice cosa manca.
-  evidenza_incompleta: boolean;
-  nota_evidenza: string | null;
   // Data dell'attestato da cui la scadenza e' stata calcolata. Senza, la UI puo'
   // mostrare solo il "quando scade" e non il "quando e' stato fatto": chi
   // controlla un attestato ha bisogno del secondo per ritrovarlo, e una scadenza
@@ -233,6 +228,18 @@ export interface PersonaValutata {
   // li' non compare, ed e' proprio la persona che si cerca quando si deve
   // designare un addetto. Serve a proporre i candidati giusti, non a valutare.
   corsiSvolti: string[];
+  // Attestati che documentano solo una PARTE del percorso (migration 060).
+  // Stanno qui e non sui requisiti perche' la pendenza e' dell'ATTESTATO: quello
+  // dell'integrazione preposti e' del 2022, mentre il requisito da preposto e'
+  // coperto dall'aggiornamento del 2026 - leggendola dal requisito, il buco
+  // documentale del 2022 spariva proprio perche' la persona si e' aggiornata.
+  // Cosi' si vedono anche quelli fuori da ogni requisito dei suoi ruoli.
+  evidenzeIncomplete: {
+    formazione_id: string;
+    corso_nome: string;
+    data_completamento: string | null;
+    note: string | null;
+  }[];
   stato: StatoRequisito;        // peggiore tra i requisiti (esonerato non peggiora)
   moduli: ModuloValutato[];     // moduli condizionati (cantieri, ...), valutati a parte
   promemoria_figura: EsoneroAmmesso[]; // ammessi legati alla figura (senza corso)
@@ -753,7 +760,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
           categoria, ore, obbligatorio: r.obbligatorio,
           stato: st === 'conforme' ? 'esonerato' : st, scadenza: eson.scadenza,
-          data_completamento: null, frazionata: [], evidenza_incompleta: false, nota_evidenza: null,
+          data_completamento: null, frazionata: [],
           dettaglio: base + ' \u00b7 ' + dt,
           formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
         });
@@ -771,7 +778,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore: agg.ore, obbligatorio: r.obbligatorio,
             stato: agg.stato, scadenza: agg.scadenza, data_completamento: agg.data_completamento,
-            frazionata: [], evidenza_incompleta: false, nota_evidenza: null,
+            frazionata: [],
             dettaglio: base + ' (iniziale) \u00b7 ' + agg.dettaglio,
             formazione_id: agg.formazione_id, esonero_id: eson.id, allegato_url: agg.allegato_url, promemoria,
           });
@@ -780,7 +787,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           requisiti.push({
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
-            data_completamento: null, frazionata: [], evidenza_incompleta: false, nota_evidenza: null,
+            data_completamento: null, frazionata: [],
             dettaglio: base,
             formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
           });
@@ -837,7 +844,6 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNomeNeutro,
         categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza,
         data_completamento: f?.data_completamento ?? null, frazionata: spezzoni.progresso,
-        evidenza_incompleta: !!f?.evidenza_incompleta, nota_evidenza: f?.note ?? null,
         dettaglio, formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
       });
       continue;
@@ -865,7 +871,6 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: nomeMostrato,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,
       data_completamento: f.data_completamento, frazionata: spezzoni.progresso,
-      evidenza_incompleta: f.evidenza_incompleta, nota_evidenza: f.note,
       dettaglio: dettaglioMostrato, formazione_id: f.id, esonero_id: null, allegato_url: f.allegato_url, promemoria,
     });
   }
@@ -903,7 +908,15 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       .map((f) => f.corso_codice as string),
   )];
 
-  return { persona: d.persona, figure, requisiti, corsiSvolti, stato: statoPersona, moduli, promemoria_figura: promemoriaFigura };
+  const evidenzeIncomplete = d.formazioni
+    .filter((f) => f.evidenza_incompleta)
+    .map((f) => ({
+      formazione_id: f.id, corso_nome: f.corso_nome,
+      data_completamento: f.data_completamento, note: f.note,
+    }))
+    .sort((a, b) => (a.data_completamento ?? '').localeCompare(b.data_completamento ?? ''));
+
+  return { persona: d.persona, figure, requisiti, corsiSvolti, evidenzeIncomplete, stato: statoPersona, moduli, promemoria_figura: promemoriaFigura };
 }
 
 // ============================ CARICAMENTO DATI ============================
@@ -1707,23 +1720,6 @@ export function proponiCoseDaFare(riep: RiepilogoCliente, includiInScadenza: boo
         });
         continue;
       }
-      // Pendenza DOCUMENTALE: il requisito e' assolto ma agli atti manca un
-      // pezzo del percorso (es. il modulo e-learning che precede l'aula). Non e'
-      // una non conformita' e non tocca i semafori, ma e' lavoro da fare - e da
-      // fare presto, perche' a distanza di anni la data di quel modulo non la
-      // ricostruisce piu' nessuno. Stessa impostazione delle evidenze di nomina.
-      if (r.evidenza_incompleta) {
-        out.push({
-          persona_id: pv.persona.id,
-          persona_nome: nomePersona(pv.persona),
-          descrizione: 'Evidenza formativa incompleta - ' + nomePersona(pv.persona) + ': '
-            + r.corso_nome + ' - agli atti c’e’ solo una parte del percorso'
-            + (r.nota_evidenza ? ' (' + r.nota_evidenza + ')' : '')
-            + '. Recuperare l’attestato mancante con la sua data e registrarlo.',
-          scadenza: null,
-          priorita: 'media',
-        });
-      }
       const gap = r.stato === 'critico' || (includiInScadenza && r.stato === 'in_scadenza');
       if (!gap) continue;
       // Le scadenze di formazioni gia' registrate (r.scadenza valorizzata) sono
@@ -1739,6 +1735,28 @@ export function proponiCoseDaFare(riep: RiepilogoCliente, includiInScadenza: boo
       });
     }
   }
+  // Pendenze DOCUMENTALI: l'attestato c'e' e il requisito e' assolto, ma agli
+  // atti manca un pezzo del percorso (es. il modulo e-learning che precede
+  // l'aula). Non e' una non conformita' e non tocca i semafori - e' lavoro da
+  // fare, presto: a distanza di anni la data di quel modulo non la ricostruisce
+  // piu' nessuno. Si scorrono per PERSONA e non per requisito, perche' e'
+  // dell'attestato che si parla. Stessa impostazione delle evidenze di nomina.
+  for (const pv of riep.persone) {
+    for (const ev of pv.evidenzeIncomplete ?? []) {
+      out.push({
+        persona_id: pv.persona.id,
+        persona_nome: nomePersona(pv.persona),
+        descrizione: 'Evidenza formativa incompleta - ' + nomePersona(pv.persona) + ': '
+          + ev.corso_nome + (ev.data_completamento ? ' del ' + dataIT(ev.data_completamento) : '')
+          + ' documenta solo una parte del percorso'
+          + (ev.note ? ' (' + ev.note + ')' : '')
+          + '. Recuperare l’attestato mancante con la sua data e registrarlo.',
+        scadenza: null,
+        priorita: 'media',
+      });
+    }
+  }
+
   // Addetti emergenza scoperti (nessun nominativo): il report indica il corso
   // da erogare, derivato dal livello/gruppo definito sul cliente. Se il
   // livello/gruppo non e' stato definito, l'azione invita a definirlo prima.
