@@ -25,10 +25,12 @@
 --   * il motore mostra la dicitura originale dell'attestato al posto del nome a
 --     catalogo (marcatore "Evidenza pregressa"), cosi' chi legge ritrova sul
 --     cartaceo esattamente quel titolo;
---   * l'anteprima dell'import continuera' a segnalarla fra le "ore inferiori a
---     quelle dovute" (3h su 12h). E' giusto che lo faccia: e' una segnalazione da
---     leggere, non un blocco, e le pregresse hanno legittimamente monte ore
---     diverso.
+--   * il libretto formativo e l'anteprima dell'import la mostrano come
+--     "evidenza incompleta", con scritto cosa manca, e in "Cose da fare" compare
+--     la voce per recuperare l'attestato delle 5h. Il requisito resta assolto:
+--     e' una pendenza documentale, non di conformita'.
+-- RICHIEDE la migration 060 (`evidenza_incompleta` su corso_alias e formazione),
+-- da eseguire prima di questo script.
 --
 -- NON e' ASCII-only e non puo' esserlo: il testo deve combaciare carattere per
 -- carattere con quello caricato dal parser.
@@ -41,7 +43,12 @@ begin;
 update corso_alias
    set pregressa = true,
        parziale = false,
-       note = 'Parte in aula (3h) del corso preposti 8h ante ASR 2025, prime 5h in e-learning. Corso concluso: requisito assolto, resta dovuto l''aggiornamento biennale.'
+       -- Il requisito e' assolto, ma agli atti manca l'attestato delle 5h in
+       -- e-learning: `evidenza_incompleta` (migration 060) apre la pendenza
+       -- DOCUMENTALE senza toccare la conformita'. Senza questo flag il buco
+       -- resterebbe scritto solo in una nota che nessuno trasforma in lavoro.
+       evidenza_incompleta = true,
+       note = 'Prime 5h in e-learning non agli atti: recuperare l''attestato e la data di chiusura del modulo a distanza.'
  where testo_gestionale in (
    'INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI'
  )
@@ -49,22 +56,21 @@ update corso_alias
    and not ignorato;
 
 -- Allinea le righe GIA' importate: `formazione.pregressa` non esiste come
--- colonna - il marcatore e' la nota, la stessa che scrive l'import - e
--- `formazione.parziale` va tolto se una passata precedente lo aveva acceso.
--- L'aggancio e' sul NOME originale conservato in `formazione.corso_nome`: e' il
--- testo del gestionale, l'import lo scrive apposta.
+-- colonna - il marcatore e' la nota, la stessa che scrive l'import - mentre
+-- `parziale` va tolto se una passata precedente lo aveva acceso e
+-- `evidenza_incompleta` va acceso. L'aggancio e' sul NOME originale conservato
+-- in `formazione.corso_nome`: e' il testo del gestionale, l'import lo scrive
+-- apposta.
 update formazione f
    set parziale = false,
-       note = case
-                when f.note is null or f.note = '' then 'Evidenza pregressa (import gestionale)'
-                else f.note
-              end
+       evidenza_incompleta = true,
+       note = 'Evidenza pregressa (import gestionale) - prime 5h in e-learning non agli atti: recuperare l''attestato e la data di chiusura del modulo a distanza.'
  where f.import_key like 'gest:%'
    and upper(regexp_replace(f.corso_nome, '\s+', ' ', 'g'))
        = 'INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI';
 
 -- Controllo: la riga deve risultare pregressa e NON parziale.
-select testo_gestionale, corso_codice, is_aggiornamento, pregressa, parziale
+select testo_gestionale, corso_codice, is_aggiornamento, pregressa, parziale, evidenza_incompleta
   from corso_alias
  where testo_gestionale like 'INTEGRAZIONE%'
  order by testo_gestionale;

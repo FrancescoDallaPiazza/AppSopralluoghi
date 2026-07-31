@@ -142,8 +142,18 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
                     {v.corso_nome !== g.titolo && (
                       <span className="bo-sub" style={{ display: 'block' }}>{v.corso_nome}</span>
                     )}
+                    {/* Cosa manca, per esteso: senza questa riga il libretto
+                        mostra 3h e tace sulle altre 5, che e' l'informazione
+                        per cui qualcuno lo sta leggendo. */}
+                    {v.evidenza_incompleta && (
+                      <span className="bo-sub" style={{ display: 'block', color: 'var(--warn, #b7791f)' }}>
+                        Documentazione incompleta{v.note ? ` — ${v.note}` : ''}. La parte mancante va
+                        recuperata e registrata (vedi <i>Cose da fare</i>).
+                      </span>
+                    )}
                   </span>
                   {v.is_aggiornamento && <span className="bo-pill usato">aggiornamento</span>}
+                  {v.evidenza_incompleta && <span className="bo-pill warn">evidenza incompleta</span>}
                   {/* Lo spezzone va detto: sono ore erogate davvero, ma da solo
                       non assolve nulla e senza etichetta si legge come un corso. */}
                   {v.parziale && <span className="bo-pill warn">spezzone</span>}

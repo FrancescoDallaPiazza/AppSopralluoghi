@@ -93,6 +93,10 @@ export interface VoceImport {
   is_aggiornamento: boolean;
   pregressa: boolean;
   parziale: boolean;
+  // L'attestato documenta solo una parte del percorso (mig. 060): il requisito
+  // resta assolto, ma resta da recuperare il pezzo mancante. `nota` dice quale.
+  evidenza_incompleta: boolean;
+  nota: string | null;
   import_key: string;
   ore_dovute: number | null;    // per la segnalazione "ore insufficienti"
 }
@@ -113,6 +117,10 @@ export interface EsitoUnita {
   // chiede subito (caso vero: integrazione preposti 3h in aula, coda di un
   // corso le cui prime 5h erano a distanza).
   spezzoni: VoceImport[];
+  // Attestati che documentano solo una parte del percorso: il requisito e'
+  // assolto, ma agli atti manca un pezzo e va recuperato finche' qualcuno se ne
+  // ricorda. Dopo l'import diventano voci in "Cose da fare".
+  incomplete: VoceImport[];
 }
 
 export interface EsitoImport {
@@ -461,7 +469,7 @@ export function riconciliaUnita(
   const out: EsitoUnita = {
     unita, cliente_id: clienteId, nuove: [], gia_presenti: 0, ignorate: 0,
     senza_alias: [], senza_codice: [], personeMancanti: [], oreInsufficienti: [],
-    spezzoni: [],
+    spezzoni: [], incomplete: [],
   };
   const mancanti = new Map<string, PersonaMancante>();
   const sa = new Set<string>();
@@ -501,10 +509,13 @@ export function riconciliaUnita(
       is_aggiornamento: a.is_aggiornamento,
       pregressa: a.pregressa,
       parziale: a.parziale,
+      evidenza_incompleta: a.evidenza_incompleta,
+      nota: a.note,
       import_key: key,
       ore_dovute: dovute,
     };
     out.nuove.push(v);
+    if (v.evidenza_incompleta) out.incomplete.push(v);
     if (v.parziale) out.spezzoni.push(v);
     // Uno spezzone ha per definizione meno ore di quelle dovute: segnalarlo due
     // volte direbbe due problemi dove ce n'e' uno, e quello vero e' l'altro.
@@ -617,11 +628,18 @@ export async function applicaUnita(
       ente_formatore: null,
       is_aggiornamento: v.is_aggiornamento,
       parziale: v.parziale,
+      evidenza_incompleta: v.evidenza_incompleta,
       // Scadenza calcolata dal motore su data + aggiornamento_mesi: scriverla
       // qui la congelerebbe, e un cambio di catalogo non la aggiornerebbe piu'.
       scadenza: null,
       allegato_url: null,
-      note: v.pregressa ? MARCA_PREGRESSA + ' (import gestionale)' : null,
+      // La nota del dizionario viaggia con l'attestato: e' li' che spiega cosa
+      // manca ("prime 5h in e-learning"), e senza copiarla l'avviso in libretto e
+      // la voce in Cose da fare direbbero solo "manca qualcosa".
+      note: [
+        v.pregressa ? MARCA_PREGRESSA + ' (import gestionale)' : null,
+        v.nota,
+      ].filter(Boolean).join(' · ') || null,
       import_key: v.import_key,
     });
   }

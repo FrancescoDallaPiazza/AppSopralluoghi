@@ -74,6 +74,13 @@ export interface CorsoAlias {
   // alto). L'import di C1b lo copia su `formazione.parziale`, ed e' li' che il
   // motore lo legge: senza, uno spezzone da 2h risulterebbe un corso assolto.
   parziale: boolean;
+  // true = l'attestato di questo corso documenta solo UNA PARTE del percorso
+  // svolto (migration 060). Non tocca la conformita': il requisito resta
+  // assolto, ma resta aperta una pendenza DOCUMENTALE - il pezzo mancante va
+  // recuperato e registrato. Caso reale: l'integrazione preposti di 3h in aula,
+  // coda di un corso le cui prime 5h erano in e-learning e che il gestionale
+  // non esporta. Cosa manchi si scrive in `note`.
+  evidenza_incompleta: boolean;
   note: string | null;
 }
 
@@ -131,7 +138,7 @@ export async function leggiCatalogoGestionale(file: File): Promise<RigaCatalogoG
 export async function caricaAlias(): Promise<CorsoAlias[]> {
   const { data, error } = await supabase
     .from('corso_alias')
-    .select('id, testo_gestionale, corso_codice, ignorato, pregressa, parziale, is_aggiornamento, note')
+    .select('id, testo_gestionale, corso_codice, ignorato, pregressa, parziale, evidenza_incompleta, is_aggiornamento, note')
     .order('testo_gestionale');
   if (error) throw error;
   return (data ?? []) as CorsoAlias[];
@@ -141,7 +148,7 @@ export const daMappare = (a: CorsoAlias): boolean => !a.corso_codice && !a.ignor
 
 export async function aggiornaAlias(
   id: string,
-  patch: Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'parziale' | 'is_aggiornamento' | 'note'>>,
+  patch: Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'parziale' | 'evidenza_incompleta' | 'is_aggiornamento' | 'note'>>,
 ): Promise<void> {
   const { error } = await supabase.from('corso_alias').update(patch).eq('id', id);
   if (error) throw error;

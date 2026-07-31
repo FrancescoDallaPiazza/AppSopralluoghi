@@ -30,6 +30,11 @@ export interface VoceLibretto {
   ente_formatore: string | null;
   is_aggiornamento: boolean;
   parziale: boolean;
+  // L'attestato copre solo una parte del percorso svolto (mig. 060): il resto
+  // esiste ma non e' agli atti. Sul libretto va detto - senza, si legge "3h" e
+  // non si sa che ne mancano 5, che e' il buco che questo documento dovrebbe
+  // far vedere. Cosa manca sta in `note`.
+  evidenza_incompleta: boolean;
   // Scadenza dell'attestato: quella scritta se c'e', altrimenti calcolata dalla
   // periodicita' del corso a catalogo. Si calcola qui e non si lascia vuota
   // perche' su un libretto la riga senza scadenza si legge come "non scade".
@@ -143,6 +148,7 @@ export async function componiLibretto(
       ente_formatore: f.ente_formatore,
       is_aggiornamento: f.is_aggiornamento,
       parziale: f.parziale,
+      evidenza_incompleta: f.evidenza_incompleta,
       scadenza: scadenzaVoce(f, f.corso_codice ? byCodice.get(f.corso_codice) : undefined),
       allegato_url: f.allegato_url,
       note: f.note,

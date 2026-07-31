@@ -40,7 +40,8 @@ function json(body: unknown, status = 200): Response {
 interface Voce {
   corso_nome: string; corso_codice: string | null; categoria: string | null;
   data_completamento: string | null; ore: number | null; ente_formatore: string | null;
-  is_aggiornamento: boolean; parziale: boolean; scadenza: string | null; note: string | null;
+  is_aggiornamento: boolean; parziale: boolean; evidenza_incompleta?: boolean;
+  scadenza: string | null; note: string | null;
 }
 interface Gruppo {
   chiave: string; titolo: string; categoria: string | null;
@@ -145,13 +146,19 @@ function render(l: Libretto): string {
       const tag = [
         v.is_aggiornamento ? '<span class="tag">aggiornamento</span>' : '',
         v.parziale ? '<span class="tag warn">spezzone</span>' : '',
+        v.evidenza_incompleta ? '<span class="tag warn">evidenza incompleta</span>' : '',
       ].join('');
+      // Cosa manca, per esteso: senza, il documento stampa "3h" e tace sulle
+      // altre 5, che e' proprio il buco che deve far vedere.
+      const manca = v.evidenza_incompleta
+        ? `<div class="sub warn">Documentazione incompleta: la parte mancante va recuperata e registrata.</div>`
+        : '';
       // Il nome della voce si stampa solo se diverso dal titolo del gruppo: sulle
       // evidenze pregresse e' la dicitura originale dell'attestato, quella che si
       // ritrova sul cartaceo.
       const nome = v.corso_nome === g.titolo ? '' : `<div class="sub">${esc(v.corso_nome)}</div>`;
       return `<tr>
-        <td class="ind">${v.data_completamento ? dataBreve(v.data_completamento) : '<span class="vuoto">data n.d.</span>'}${tag}${nome}${v.note ? `<div class="sub">${esc(v.note)}</div>` : ''}</td>
+        <td class="ind">${v.data_completamento ? dataBreve(v.data_completamento) : '<span class="vuoto">data n.d.</span>'}${tag}${nome}${v.note ? `<div class="sub">${esc(v.note)}</div>` : ''}${manca}</td>
         <td>${esc(v.ente_formatore ?? '')}</td>
         <td></td>
         <td class="num">${v.ore != null ? esc(v.ore) + 'h' : ''}</td>
@@ -182,6 +189,7 @@ function render(l: Libretto): string {
     tr.grp:first-child td{border-top:none}
     td.ind{padding-left:16px}
     .sub{color:#6b7078;font-size:10px;margin-top:1px}
+    .sub.warn{color:#9a6206}
     .vuoto{color:#9a958c}
     .warn{color:#9a6206}
     .tag{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:9px;background:#eef1f4;

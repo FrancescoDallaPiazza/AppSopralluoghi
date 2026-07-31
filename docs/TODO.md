@@ -11,6 +11,14 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+- [ ] Eseguire `supabase/migrations/060_evidenza_incompleta.sql` nell'**SQL
+  Editor** (Canale 3): `corso_alias.evidenza_incompleta` +
+  `formazione.evidenza_incompleta`. Marca gli attestati che documentano solo una
+  PARTE del percorso svolto (la sola aula di un corso iniziato in e-learning).
+  Non tocca la conformità — il requisito resta assolto — ma apre una pendenza
+  **documentale**: avviso nel libretto e voce in *Cose da fare*, come già per le
+  evidenze di nomina. Serve un flag e non la nota libera: un buco che non genera
+  lavoro non viene chiuso. Idempotente, ASCII-only, `pglast` OK.
 - [ ] Eseguire `supabase/scripts/integrazione_preposti_pregressa.sql`
   nell'**SQL Editor** (non è una migration: agisce sul dizionario `corso_alias`,
   popolato dai dati). `INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI`

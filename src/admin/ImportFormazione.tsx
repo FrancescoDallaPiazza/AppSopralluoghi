@@ -321,6 +321,31 @@ export default function ImportFormazione() {
                   </div>
                 )}
 
+                {e.incomplete.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <p className="bo-sub" style={{ margin: 0, color: 'var(--warn, #b7791f)' }}>
+                      <b>{e.incomplete.length} attestati documentano solo una parte del percorso.</b>{' '}
+                      Il requisito risulta assolto — il corso è stato fatto — ma agli atti manca un
+                      pezzo (tipicamente il modulo <b>e-learning</b> che precede l’aula, che il
+                      gestionale non esporta). Va recuperato con la sua data finché qualcuno se ne
+                      ricorda: dopo l’import lo trovi in <i>Cose da fare</i>.
+                    </p>
+                    <div style={{ maxHeight: 150, overflow: 'auto', marginTop: 6 }}>
+                      {e.incomplete.map((v) => (
+                        <div key={v.import_key} className="bo-meta"
+                          style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--line)', padding: '4px 0' }}>
+                          <span style={{ flex: 1 }}>
+                            {v.riga.cognome} {v.riga.nome} · {v.riga.corso}
+                            {v.nota && <span className="bo-sub" style={{ display: 'block' }}>{v.nota}</span>}
+                          </span>
+                          <span>{dataIT(v.riga.data)}</span>
+                          <span className="bo-pill warn">{v.riga.ore}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Gli spezzoni si dicono PRIMA delle ore insufficienti: sono la
                     segnalazione che porta un lavoro da fare (recuperare la data
                     del pezzo mancante), non una nota da leggere. */}

@@ -131,7 +131,7 @@ export default function AliasCorsi() {
     finally { setBusy(''); }
   }
 
-  type Patch = Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'parziale' | 'is_aggiornamento'>>;
+  type Patch = Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'parziale' | 'evidenza_incompleta' | 'is_aggiornamento'>>;
   async function patch(a: CorsoAlias, p: Patch) {
     const prima = alias;
     setAlias((l) => l.map((x) => (x.id === a.id ? { ...x, ...p } : x)));
@@ -286,10 +286,26 @@ export default function AliasCorsi() {
                     onChange={(e) => void patch(a, { parziale: e.target.checked })} />
                   <span>Spezzone</span>
                 </label>
+                {/* Diverso dallo spezzone, e la differenza conta: lo spezzone NON
+                    assolve (mezzo corso), questo assolve ma lascia un buco negli
+                    atti - il pezzo di percorso che il gestionale non esporta. */}
+                <label className="bo-meta" style={{ gap: 5 }}>
+                  <input type="checkbox" checked={a.evidenza_incompleta} disabled={a.ignorato || !a.corso_codice}
+                    onChange={(e) => void patch(a, { evidenza_incompleta: e.target.checked })} />
+                  <span>Evidenza incompleta</span>
+                </label>
               </div>
               {a.pregressa && (
                 <p className="bo-sub" style={{ margin: '4px 0 0' }}>
                   Attestato di vecchio regime: copre il requisito mappato, l&rsquo;import conserva il nome originale.
+                </p>
+              )}
+              {a.evidenza_incompleta && (
+                <p className="bo-sub" style={{ margin: '4px 0 0' }}>
+                  L&rsquo;attestato documenta solo una parte del percorso: il requisito resta assolto, ma in
+                  <i> Cose da fare</i> compare la voce per recuperare il pezzo mancante. Scrivi in
+                  <b> note</b> che cosa manca (es. &laquo;prime 5h in e-learning&raquo;): quel testo viene
+                  copiato sull&rsquo;attestato e mostrato nel libretto formativo.
                 </p>
               )}
               {a.parziale && (
