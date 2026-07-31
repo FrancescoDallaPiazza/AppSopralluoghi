@@ -46,6 +46,18 @@ export interface RuoloLibretto {
   evidenza_mancante: boolean;
 }
 
+export interface GruppoLibretto {
+  chiave: string;
+  titolo: string;               // nome a catalogo se il corso e' mappato
+  categoria: string | null;
+  voci: VoceLibretto[];         // dal piu' VECCHIO al piu' recente
+  ore_totali: number | null;    // somma delle ore note (null se nessuna lo e')
+  // Scadenza corrente della tipologia: quella dell'ultimo attestato INTERO.
+  // Gli spezzoni non la spostano - da soli non assolvono niente, e prenderne uno
+  // come base direbbe che l'obbligo e' stato rinnovato quando non lo e'.
+  scadenza: string | null;
+}
+
 export interface Libretto {
   generato_il: string;
   cliente_nome: string;
@@ -59,10 +71,14 @@ export interface Libretto {
     attivo: boolean;
   };
   ruoli: RuoloLibretto[];
-  // Tutto lo storico, dal piu' recente. Include gli spezzoni: su un libretto
-  // vanno detti (sono ore erogate davvero), marcati per non farli leggere come
-  // corsi interi.
-  svolti: VoceLibretto[];
+  // Lo storico raggruppato per TIPOLOGIA di corso: il corso base e i suoi
+  // aggiornamenti stanno insieme, in ordine dal piu' vecchio al piu' recente.
+  // E' come si legge un libretto - "questa formazione da quando ce l'ha e a che
+  // punto e'" - mentre un elenco unico in ordine di data mescola percorsi
+  // diversi e costringe a ricostruire a mente quale aggiornamento rinnova cosa.
+  // Include gli spezzoni: sono ore erogate davvero, marcati per non farli
+  // leggere come corsi interi.
+  gruppi: GruppoLibretto[];
   // Situazione dai ruoli ricoperti: e' la stessa valutazione dell'organigramma.
   requisiti: {
     corso_nome: string;
@@ -102,7 +118,7 @@ export async function componiLibretto(
   if (!pv) throw new Error('Persona non trovata fra quelle valutate del cliente.');
   const byCodice = new Map(cat.corsi.map((c) => [c.codice, c]));
 
-  const svolti: VoceLibretto[] = righe
+  const voci: VoceLibretto[] = righe
     .map((f) => ({
       id: f.id,
       corso_nome: f.corso_nome,
@@ -117,9 +133,44 @@ export async function componiLibretto(
       allegato_url: f.allegato_url,
       note: f.note,
     }))
-    // Piu' recente in cima; le righe senza data in fondo (esistono: attestati
-    // registrati a mano di cui non si conosce il giorno).
-    .sort((a, b) => (b.data_completamento ?? '').localeCompare(a.data_completamento ?? ''));
+    // Dal piu' vecchio al piu' recente: dentro una tipologia si legge la storia
+    // del corso (base, poi gli aggiornamenti). Le righe senza data restano in
+    // testa - esistono, sono attestati registrati a mano di cui non si conosce
+    // il giorno, e nasconderle in fondo le farebbe sembrare le piu' recenti.
+    .sort((a, b) => (a.data_completamento ?? '').localeCompare(b.data_completamento ?? ''));
+
+  // Raggruppamento per tipologia. La chiave e' il CODICE del corso quando c'e':
+  // cosi' il modulo ASR 2025 e l'evidenza pregressa che copre lo stesso
+  // requisito finiscono nello stesso gruppo, che e' il punto - sono la storia di
+  // un unico obbligo. Senza codice (alias non mappato) si ripiega sul nome
+  // normalizzato: meglio un gruppo per nome che una riga sciolta per attestato.
+  const gruppi: GruppoLibretto[] = [];
+  const perChiave = new Map<string, GruppoLibretto>();
+  for (const v of voci) {
+    const chiave = v.corso_codice ?? 'nome:' + v.corso_nome.trim().toUpperCase().replace(/\s+/g, ' ');
+    let g = perChiave.get(chiave);
+    if (!g) {
+      const corso = v.corso_codice ? byCodice.get(v.corso_codice) : undefined;
+      g = {
+        chiave,
+        titolo: corso?.nome ?? v.corso_nome,
+        categoria: corso?.categoria ?? v.categoria,
+        voci: [], ore_totali: null, scadenza: null,
+      };
+      perChiave.set(chiave, g);
+      gruppi.push(g);
+    }
+    g.voci.push(v);
+  }
+  for (const g of gruppi) {
+    const conOre = g.voci.filter((v) => v.ore != null);
+    g.ore_totali = conOre.length ? conOre.reduce((s, v) => s + (v.ore ?? 0), 0) : null;
+    const interi = g.voci.filter((v) => !v.parziale && v.data_completamento);
+    g.scadenza = interi.length ? interi[interi.length - 1]!.scadenza : null;
+  }
+  // Gruppi in ordine alfabetico di titolo: su un documento da consultare conta
+  // ritrovare la tipologia, non sapere quale e' stata aggiornata per ultima.
+  gruppi.sort((a, b) => a.titolo.localeCompare(b.titolo));
 
   const conteggi = CONTEGGI_VUOTI();
   for (const r of pv.requisiti) conteggi[r.stato]++;
@@ -140,7 +191,7 @@ export async function componiLibretto(
       codice: f.codice, nome: f.nome, data_nomina: f.data_nomina,
       evidenza_mancante: f.evidenza_mancante,
     })),
-    svolti,
+    gruppi,
     requisiti: pv.requisiti.map((r: RequisitoValutato) => ({
       corso_nome: r.corso_nome, stato: r.stato, dettaglio: r.dettaglio,
       ore: r.ore, data_completamento: r.data_completamento, scadenza: r.scadenza,

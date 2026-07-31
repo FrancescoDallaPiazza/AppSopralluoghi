@@ -105,32 +105,52 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
         </div>
       )}
 
-      {/* ---- formazione svolta: i FATTI ---- */}
-      <div className="bo-subsez-tit">Formazione svolta ({lib.svolti.length})</div>
-      {lib.svolti.length === 0 ? (
+      {/* ---- formazione svolta: i FATTI, per tipologia ---- */}
+      <div className="bo-subsez-tit">
+        Formazione svolta ({lib.gruppi.reduce((n, g) => n + g.voci.length, 0)} attestati
+        {lib.gruppi.length ? ` · ${lib.gruppi.length} tipologie` : ''})
+      </div>
+      {lib.gruppi.length === 0 ? (
         <div className="bo-empty" style={{ marginBottom: 10 }}>Nessun attestato registrato.</div>
       ) : (
         <div style={{ marginBottom: 10 }}>
-          {lib.svolti.map((v) => (
-            <div key={v.id} style={{ borderBottom: '1px solid var(--line)', padding: '5px 0' }}>
+          {lib.gruppi.map((g) => (
+            <div key={g.chiave} style={{ marginBottom: 10 }}>
               <div className="bo-meta" style={{ justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ flex: 1 }}>
-                  <b>{v.corso_nome}</b>
-                  {v.is_aggiornamento && <span className="bo-pill usato" style={{ marginLeft: 6 }}>aggiornamento</span>}
+                <b style={{ flex: 1 }}>
+                  {g.titolo}
+                  {g.categoria && <span className="bo-pill archiviato" style={{ marginLeft: 6 }}>{g.categoria}</span>}
+                </b>
+                <span className="bo-sub">
+                  {g.ore_totali != null && `${g.ore_totali}h totali`}
+                  {g.scadenza && ` · scadenza ${dataIT(g.scadenza)}`}
+                </span>
+              </div>
+              {/* Dal piu' vecchio al piu' recente: e' la storia di quell'obbligo,
+                  base e aggiornamenti in fila. */}
+              {g.voci.map((v) => (
+                <div key={v.id} className="bo-meta"
+                  style={{ justifyContent: 'space-between', gap: 8, padding: '3px 0 3px 12px',
+                    borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ flex: 1 }}>
+                    <span className="bo-sub">
+                      {v.data_completamento ? dataIT(v.data_completamento) : 'data n.d.'}
+                      {v.ore != null && ` · ${v.ore}h`}
+                      {v.ente_formatore && ` · ${v.ente_formatore}`}
+                    </span>
+                    {/* Il nome della riga si mostra solo se diverso dal titolo del
+                        gruppo: sulle evidenze pregresse e' la dicitura originale
+                        dell'attestato, ed e' quella che si ritrova sul cartaceo. */}
+                    {v.corso_nome !== g.titolo && (
+                      <span className="bo-sub" style={{ display: 'block' }}>{v.corso_nome}</span>
+                    )}
+                  </span>
+                  {v.is_aggiornamento && <span className="bo-pill usato">aggiornamento</span>}
                   {/* Lo spezzone va detto: sono ore erogate davvero, ma da solo
                       non assolve nulla e senza etichetta si legge come un corso. */}
-                  {v.parziale && <span className="bo-pill warn" style={{ marginLeft: 6 }}>spezzone</span>}
-                </span>
-                <span className="bo-sub">
-                  {v.data_completamento ? dataIT(v.data_completamento) : 'data n.d.'}
-                  {v.ore != null && ` · ${v.ore}h`}
-                </span>
-              </div>
-              <div className="bo-sub">
-                {v.ente_formatore ?? 'ente non indicato'}
-                {v.scadenza && ` · scade il ${dataIT(v.scadenza)}`}
-                {v.note && ` · ${v.note}`}
-              </div>
+                  {v.parziale && <span className="bo-pill warn">spezzone</span>}
+                </div>
+              ))}
             </div>
           ))}
         </div>

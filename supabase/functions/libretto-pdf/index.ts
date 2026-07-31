@@ -39,6 +39,11 @@ interface Voce {
   data_completamento: string | null; ore: number | null; ente_formatore: string | null;
   is_aggiornamento: boolean; parziale: boolean; scadenza: string | null; note: string | null;
 }
+interface Gruppo {
+  chiave: string; titolo: string; categoria: string | null;
+  voci: Voce[];                 // dal piu' VECCHIO al piu' recente
+  ore_totali: number | null; scadenza: string | null;
+}
 interface Ruolo { codice: string; nome: string; data_nomina: string | null; evidenza_mancante: boolean }
 interface Req {
   corso_nome: string; stato: string; dettaglio: string; ore: number | null;
@@ -50,7 +55,7 @@ interface Libretto {
     nome: string; codice_fiscale: string | null; mansione: string | null; reparto: string | null;
     data_assunzione: string | null; livello_rischio: string | null; attivo: boolean;
   };
-  ruoli: Ruolo[]; svolti: Voce[]; requisiti: Req[];
+  ruoli: Ruolo[]; gruppi: Gruppo[]; requisiti: Req[];
   conteggi: Record<string, number>;
 }
 
@@ -145,18 +150,35 @@ function render(l: Libretto): string {
       <td>${r.evidenza_mancante ? '<span class="warn">evidenza di nomina da ottenere</span>' : ''}</td>
     </tr>`).join('');
 
-  const svolti = l.svolti.map((v) => {
-    const tag = [
-      v.is_aggiornamento ? '<span class="tag">aggiornamento</span>' : '',
-      v.parziale ? '<span class="tag warn">spezzone</span>' : '',
-    ].join('');
-    return `<tr>
-      <td>${esc(v.corso_nome)}${tag}${v.note ? `<div class="sub">${esc(v.note)}</div>` : ''}</td>
-      <td class="num">${v.ore != null ? esc(v.ore) + 'h' : ''}</td>
-      <td>${v.data_completamento ? dataBreve(v.data_completamento) : '<span class="vuoto">n.d.</span>'}</td>
-      <td>${v.scadenza ? dataBreve(v.scadenza) : ''}</td>
-      <td>${esc(v.ente_formatore ?? '')}</td>
+  // Una riga di intestazione per TIPOLOGIA, poi le sue voci dalla piu' vecchia
+  // alla piu' recente: base e aggiornamenti in fila, che e' come si legge la
+  // storia di un obbligo. L'ordine dentro il gruppo arriva gia' composto dal
+  // client (lib/admin/libretto.ts): qui non si riordina niente, altrimenti PDF e
+  // schermata potrebbero raccontare due storie diverse.
+  const gruppi = (l.gruppi ?? []).map((g) => {
+    const testa = `<tr class="grp">
+      <td colspan="3"><b>${esc(g.titolo)}</b>${g.categoria ? ` <span class="tag">${esc(g.categoria)}</span>` : ''}</td>
+      <td class="num">${g.ore_totali != null ? esc(g.ore_totali) + 'h' : ''}</td>
+      <td>${g.scadenza ? 'scad. ' + dataBreve(g.scadenza) : ''}</td>
     </tr>`;
+    const righe = g.voci.map((v) => {
+      const tag = [
+        v.is_aggiornamento ? '<span class="tag">aggiornamento</span>' : '',
+        v.parziale ? '<span class="tag warn">spezzone</span>' : '',
+      ].join('');
+      // Il nome della voce si stampa solo se diverso dal titolo del gruppo: sulle
+      // evidenze pregresse e' la dicitura originale dell'attestato, quella che si
+      // ritrova sul cartaceo.
+      const nome = v.corso_nome === g.titolo ? '' : `<div class="sub">${esc(v.corso_nome)}</div>`;
+      return `<tr>
+        <td class="ind">${v.data_completamento ? dataBreve(v.data_completamento) : '<span class="vuoto">data n.d.</span>'}${tag}${nome}${v.note ? `<div class="sub">${esc(v.note)}</div>` : ''}</td>
+        <td>${esc(v.ente_formatore ?? '')}</td>
+        <td></td>
+        <td class="num">${v.ore != null ? esc(v.ore) + 'h' : ''}</td>
+        <td>${v.scadenza ? dataBreve(v.scadenza) : ''}</td>
+      </tr>`;
+    }).join('');
+    return testa + righe;
   }).join('');
 
   const reqs = l.requisiti.map((r) => `<tr>
@@ -185,6 +207,8 @@ function render(l: Libretto): string {
        border-bottom:1px solid #d9d5cd;padding:4px 6px}
     td{padding:5px 6px;border-bottom:1px solid #ece8e1;vertical-align:top}
     td.num{text-align:right;white-space:nowrap}
+    tr.grp td{background:#f6f4f0;border-bottom:1px solid #d9d5cd}
+    td.ind{padding-left:16px}
     .sub{color:#6b7078;font-size:10px;margin-top:1px}
     .vuoto{color:#9a958c}
     .warn{color:#9a6206}
@@ -214,10 +238,10 @@ function render(l: Libretto): string {
       <tbody>${ruoli || '<tr><td class="vuoto" colspan="3">Nessun ruolo assegnato.</td></tr>'}</tbody>
     </table>
 
-    <h2>Formazione svolta</h2>
+    <h2>Formazione svolta, per tipologia</h2>
     <table>
-      <thead><tr><th>Corso</th><th class="num">Ore</th><th>Svolto il</th><th>Scade il</th><th>Ente</th></tr></thead>
-      <tbody>${svolti || '<tr><td class="vuoto" colspan="5">Nessun attestato registrato.</td></tr>'}</tbody>
+      <thead><tr><th>Corso / svolgimento</th><th>Ente</th><th></th><th class="num">Ore</th><th>Scade il</th></tr></thead>
+      <tbody>${gruppi || '<tr><td class="vuoto" colspan="5">Nessun attestato registrato.</td></tr>'}</tbody>
     </table>
 
     <h2>Situazione rispetto ai ruoli ricoperti</h2>
