@@ -10,15 +10,14 @@
 // nessun requisito dei suoi ruoli - il corso antincendio di chi in organigramma
 // e' solo lavoratore - che nell'organigramma sono invisibili per costruzione.
 //
-// Composizione: la parte "situazione" viene dal motore (stessa valutazione
-// dell'organigramma, quindi non puo' divergere), la parte "cosa ha svolto" dalle
-// righe grezze di `formazione`.
+// Composizione: i ruoli con le date di nomina vengono dal motore (stessa
+// sorgente dell'organigramma, quindi non possono divergere), la formazione
+// svolta dalle righe grezze di `formazione`.
 
 import { supabase } from '../supabase';
 import {
   valutaCliente, caricaCatalogo, addMesi, nomePersona,
-  type Formazione, type CorsoCatalogo, type RequisitoValutato,
-  type StatoRequisito,
+  type Formazione, type CorsoCatalogo,
 } from './formazione';
 
 export interface VoceLibretto {
@@ -79,21 +78,15 @@ export interface Libretto {
   // Include gli spezzoni: sono ore erogate davvero, marcati per non farli
   // leggere come corsi interi.
   gruppi: GruppoLibretto[];
-  // Situazione dai ruoli ricoperti: e' la stessa valutazione dell'organigramma.
-  requisiti: {
-    corso_nome: string;
-    stato: StatoRequisito;
-    dettaglio: string;
-    ore: number | null;
-    data_completamento: string | null;
-    scadenza: string | null;
-  }[];
-  conteggi: Record<StatoRequisito, number>;
 }
 
-const CONTEGGI_VUOTI = (): Record<StatoRequisito, number> => ({
-  conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0, da_verificare: 0, facoltativo: 0,
-});
+// NB: il libretto NON riporta la valutazione dei requisiti (conforme/critico/...).
+// E' un registro di FATTI - chi e', che ruoli ricopre, quali corsi ha svolto e
+// quando scadono - e i fatti restano veri anche fuori dal contesto in cui il
+// documento e' stato generato. Il giudizio "critico" no: dipende dai ruoli di
+// oggi e dal catalogo di oggi, e su un foglio consegnato mesi prima diventa
+// un'affermazione sbagliata su una persona. Lo stato si guarda in organigramma,
+// dove e' vivo.
 
 function scadenzaVoce(f: Formazione, corso: CorsoCatalogo | undefined): string | null {
   if (f.scadenza) return f.scadenza;
@@ -172,9 +165,6 @@ export async function componiLibretto(
   // ritrovare la tipologia, non sapere quale e' stata aggiornata per ultima.
   gruppi.sort((a, b) => a.titolo.localeCompare(b.titolo));
 
-  const conteggi = CONTEGGI_VUOTI();
-  for (const r of pv.requisiti) conteggi[r.stato]++;
-
   return {
     generato_il: new Date().toISOString().slice(0, 10),
     cliente_nome: clienteNome,
@@ -192,11 +182,6 @@ export async function componiLibretto(
       evidenza_mancante: f.evidenza_mancante,
     })),
     gruppi,
-    requisiti: pv.requisiti.map((r: RequisitoValutato) => ({
-      corso_nome: r.corso_nome, stato: r.stato, dettaglio: r.dettaglio,
-      ore: r.ore, data_completamento: r.data_completamento, scadenza: r.scadenza,
-    })),
-    conteggi,
   };
 }
 

@@ -2,26 +2,18 @@
 // riga in "Risorse Umane". Taglio per PERSONA, complementare all'organigramma
 // che taglia per figura.
 //
-// Due blocchi, e l'ordine e' voluto: prima COSA HA SVOLTO (i fatti: corso, data,
-// ore, ente, scadenza), poi COME STA messo rispetto ai ruoli che ricopre (la
-// valutazione del motore). Il primo blocco e' l'unico posto dell'app dove
-// compaiono anche gli attestati che non servono a nessun requisito dei suoi
-// ruoli - il corso antincendio di chi in organigramma e' solo lavoratore -
-// altrove invisibili per costruzione.
+// Solo FATTI: chi e', che ruoli ricopre, quali corsi ha svolto e quando scadono.
+// Niente valutazione dei requisiti (conforme/critico/...) - quella dipende dai
+// ruoli e dal catalogo di oggi, e su un documento che si consegna e si ritrova
+// mesi dopo diventa un'affermazione sbagliata su una persona; si guarda in
+// organigramma, dove e' viva. E' invece l'unico posto dell'app dove compaiono
+// anche gli attestati che non servono a nessun requisito dei suoi ruoli - il
+// corso antincendio di chi in organigramma e' solo lavoratore - altrove
+// invisibili per costruzione.
 
 import { useEffect, useState } from 'react';
 import { componiLibretto, esportaPdfLibretto, type Libretto } from '../lib/admin/libretto';
-import { dataIT, type StatoRequisito } from '../lib/admin/formazione';
-
-const TXT: Record<StatoRequisito, string> = {
-  conforme: 'Conforme', in_scadenza: 'In scadenza', critico: 'Critico',
-  esonerato: 'Esonerato', facoltativo: 'Facoltativo', da_verificare: 'Da verificare',
-};
-
-const COLORE: Record<StatoRequisito, string> = {
-  conforme: '#2f855a', in_scadenza: '#b7791f', critico: '#c53030',
-  esonerato: '#4a5568', facoltativo: '#8a8f98', da_verificare: '#b7791f',
-};
+import { dataIT } from '../lib/admin/formazione';
 
 export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }: {
   clienteId: string;
@@ -115,7 +107,13 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
       ) : (
         <div style={{ marginBottom: 10 }}>
           {lib.gruppi.map((g) => (
-            <div key={g.chiave} style={{ marginBottom: 10 }}>
+            /* Bordo spesso in testa a ogni tipologia: dentro un blocco le righe
+               sono divise da filetti sottili, quindi senza uno stacco netto la
+               fine di un corso e l'inizio del successivo si somigliano e la
+               storia di due obblighi si legge come una sola. */
+            <div key={g.chiave} style={{
+              marginTop: 12, paddingTop: 8, borderTop: '2px solid var(--ink-soft, #8a8f98)',
+            }}>
               <div className="bo-meta" style={{ justifyContent: 'space-between', gap: 8 }}>
                 <b style={{ flex: 1 }}>
                   {g.titolo}
@@ -151,29 +149,6 @@ export function LibrettoPersona({ clienteId, personaId, clienteNome, onChiudi }:
                   {v.parziale && <span className="bo-pill warn">spezzone</span>}
                 </div>
               ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ---- situazione: la VALUTAZIONE ---- */}
-      <div className="bo-subsez-tit">Situazione rispetto ai ruoli</div>
-      {lib.requisiti.length === 0 ? (
-        <div className="bo-empty">Nessun requisito: dipende dai ruoli ricoperti.</div>
-      ) : (
-        <div>
-          {lib.requisiti.map((r, i) => (
-            <div key={i} className="bo-meta"
-              style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--line)', padding: '4px 0', gap: 8 }}>
-              <span style={{ flex: 1 }}>
-                {r.corso_nome}{r.ore != null && ` · ${r.ore}h`}
-                <span className="bo-sub" style={{ display: 'block' }}>
-                  {r.dettaglio}
-                  {r.data_completamento && ` · svolto il ${dataIT(r.data_completamento)}`}
-                  {r.scadenza && ` · scadenza ${dataIT(r.scadenza)}`}
-                </span>
-              </span>
-              <span style={{ color: COLORE[r.stato], fontWeight: 700, fontSize: 12 }}>{TXT[r.stato]}</span>
             </div>
           ))}
         </div>
