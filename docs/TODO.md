@@ -145,6 +145,64 @@ di settore, `corso.ore` / `corso.ore_aggiornamento` altrove);
 `formazione.is_aggiornamento` distingue già gli spezzoni dell'iniziale da
 quelli del rinnovo.
 
+### C1b — import della formazione dal gestionale (scritto 2026-07-31)
+
+Nuovi: `lib/admin/formazioneImport.ts` + `admin/ImportFormazione.tsx`, agganciato
+in `BackOffice.tsx` sotto **Anagrafiche → Import formazione** (sta lì e non fra
+le Regole app: scrive dati dei clienti, non regole).
+
+**Sorgente**: l'export **"Ricerca Visite/Formazioni"** del gestionale
+(`ExportExcel.xlsx`), che è il registro dei fatti — una riga per attestato con
+persona, corso, data e ore. **Non** `scadenzarioSedi.xlsx`, che è un derivato:
+elenca le scadenze già calcolate, senza data del corso né ore, e importarlo
+significherebbe dedurre gli attestati invece di leggerli.
+
+Verificato sul file vero (Ecodent, 127 righe): header a **riga 3** (riga 1
+titolo, riga 2 vuota — diverso dagli altri due export del gestionale, che hanno
+l'header a riga 1, per questo lo si cerca invece di darlo per scontato); 127
+righe con data, ore e codice fiscale su tutte; **28 testi-corso distinti, 28 su
+28 risolti dal dizionario alias**; 127 chiavi di import distinte su 127 righe.
+
+- [ ] **Verifica in back-office → Anagrafiche → Import formazione** con
+  `ExportExcel.xlsx`. Atteso: 2 unità — `VILLAFRANCA DI VERONA` (60 righe, 11
+  persone) e `TREVENZUOLO` (67 righe, 9 persone) — ognuna da abbinare al suo
+  cliente. Poi *Importa*; rilanciando lo stesso file: 0 nuove, tutte "già
+  importate".
+- [ ] **`tsc -b` + `vite build` DA VERIFICARE** (node assente sulla macchina).
+
+Decisioni prese scrivendolo:
+  - **Un'unità = (P.IVA, Sede)**, e ogni unità va su un cliente distinto.
+    Ecodent ha due sedi operative con la **stessa P.IVA** e squadre di emergenza
+    separate (Trevenzuolo 6 antincendio + 5 primo soccorso, Villafranca 4 + 3):
+    fonderle in un organigramma unico farebbe contare 10 addetti e dire
+    "coperto" senza accorgersi che una sede può restare scoperta. Gli addetti si
+    designano per **luogo di lavoro**. Nessun vincolo di unicità su
+    `cliente.partita_iva`, quindi due clienti possono condividerla.
+  - Conseguenza: **la P.IVA non identifica il cliente**. L'abbinamento
+    unità → cliente lo conferma l'operatore; `proponiCliente` propone solo
+    quando è certo (P.IVA unica, o P.IVA + località/CAP), altrimenti tace.
+  - **L'import non crea i clienti.** Un cliente nato dal file sarebbe privo di
+    ATECO, livello di rischio e livelli di emergenza — che il file non ha e che
+    guidano il motore: con `livello_rischio` nullo non si sa nemmeno quante ore
+    di specifica siano dovute. L'anteprima segnala l'unità orfana e mostra i
+    dati per crearlo a mano, completo.
+  - **Le persone sì, ma dopo conferma** (spunta nell'anteprima), agganciate per
+    **codice fiscale** e non per nome.
+  - Le righe `Genere = Visita` si scartano: sono sorveglianza sanitaria, il loro
+    posto è `adempimento`, non `formazione`.
+  - `import_key = gest:CF:corso-normalizzato:data`. Identifica la **riga di
+    origine**, non il record che ne nasce: se un alias viene rimappato su un
+    altro codice, lo stesso attestato reale resta una riga sola.
+  - `insert` e non `upsert`: l'indice di idempotenza della 055 è **parziale**
+    (`where import_key is not null`) e `ON CONFLICT` non aggancia gli indici
+    parziali — PostgREST non permette di passarne il predicato. L'idempotenza la
+    dà il filtro a monte su `chiaviGiaImportate`.
+  - `scadenza` lasciata **null**: la calcola il motore da data +
+    `aggiornamento_mesi`. Scriverla la congelerebbe.
+  - Le ore inferiori alle dovute si **segnalano** e non bloccano (come previsto
+    da `PROGETTO.md`): le pregresse hanno legittimamente monte ore diverso e gli
+    spezzoni si sommano.
+
 Per attivare la **revisione scheda organigramma** (due macro-blocchi
 obbligatorie/eventuali, figura *Datore delegato ex art. 16* con estremi procura,
 *evidenze della nomina* con visura/atto-procura per il datore), nell'ordine:

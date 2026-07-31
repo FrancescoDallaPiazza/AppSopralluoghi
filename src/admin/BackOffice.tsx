@@ -26,11 +26,13 @@ import Scadenzario from './Scadenzario';
 import ImportWerp from './ImportWerp';
 import ImportCatalogo from './ImportCatalogo';
 import AliasCorsi from './AliasCorsi';
+import ImportFormazione from './ImportFormazione';
 
 type Sezione =
   | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
   | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare'
-  | 'scadenzario' | 'importwerp' | 'importcatalogo' | 'aliascorsi';
+  | 'scadenzario' | 'importwerp' | 'importcatalogo' | 'aliascorsi'
+  | 'importformazione';
 
 interface Gruppo {
   key: string;
@@ -41,7 +43,13 @@ interface Gruppo {
 const GRUPPI: Gruppo[] = [
   {
     key: 'anagrafiche', label: 'Anagrafiche',
-    sezioni: [{ k: 'anagrafiche', label: 'Anagrafiche' }],
+    sezioni: [
+      { k: 'anagrafiche', label: 'Anagrafiche' },
+      // Sta qui e non fra le "Regole app": scrive dati dei clienti (persone e
+      // attestati), non regole. Il dizionario alias che usa sta invece la',
+      // perche' quello e' una regola valida per tutti.
+      { k: 'importformazione', label: 'Import formazione' },
+    ],
   },
   {
     key: 'pianificazione', label: 'Pianificazione',
@@ -136,6 +144,7 @@ export default function BackOffice({
         {sezione === 'importwerp' && <ImportWerp />}
         {sezione === 'importcatalogo' && <ImportCatalogo />}
         {sezione === 'aliascorsi' && <AliasCorsi />}
+        {sezione === 'importformazione' && <ImportFormazione />}
       </main>
     </div>
   );
