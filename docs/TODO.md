@@ -308,6 +308,14 @@ RLS) sono aziendali e si leggono dal CLIENTE. Stato:
   aggiornato (commercialista); `allineaPersoneOrganigramma` sposta le persone sulla
   sede-organigramma quando si aggiunge/archivia l'operativa. Selettore multi-sede e
   copia tra sedi RIMOSSI (non servono con un solo organigramma).
+- [x] La sede operativa si **chiede**, non si deduce (2026-07-31). Nello spazio
+  *Sedi* dell'anagrafica: "La sede legale corrisponde con la sede operativa?" —
+  **Sì** crea la sede operativa copiando i dati della legale, **No** apre il box
+  di inserimento. Prima "nessuna sede operativa" voleva dire due cose diverse
+  (coincidono / non ci ha pensato nessuno) e niente le distingueva: è il motivo
+  per cui due clienti della stessa azienda risultavano identici all'import del
+  gestionale. Rispondendo, il luogo di lavoro è sempre scritto.
+  **`tsc -b` + `vite build` DA VERIFICARE** (node assente sulla macchina).
 - [ ] Fase 4 - scadenzario: opzionale etichetta della sede sulle voci (roll-up
   multi-sede non serve piu': una sola sede-organigramma per cliente).
 - [ ] Fase 5 - offline: il riepilogo in campo segue la sede-organigramma del cliente

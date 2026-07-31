@@ -532,7 +532,7 @@ function SchedaCliente({
         {persistito && (
           <div className="bo-subsez">
             <div className="bo-subsez-tit">Sedi{(() => { const n = sedi.filter((s) => !s.principale).length; return n ? ` · ${n} operativ${n === 1 ? 'a' : 'e'}` : ''; })()}</div>
-            <SediCliente clienteId={cliente.id} sedi={sedi} onCambia={ricaricaSedi} />
+            <SediCliente cliente={cliente} sedi={sedi} onCambia={ricaricaSedi} />
           </div>
         )}
       </div>
@@ -719,36 +719,92 @@ function RigaSede({ sede, onCambia }: { sede: Sede; onCambia: () => void }) {
   );
 }
 
-function SediCliente({ clienteId, sedi, onCambia }: {
-  clienteId: string; sedi: Sede[]; onCambia: () => void;
+function SediCliente({ cliente, sedi, onCambia }: {
+  cliente: Cliente; sedi: Sede[]; onCambia: () => void;
 }) {
-  const [agg, setAgg] = useState(false);
-  // Al massimo UNA sede operativa per cliente, aggiunta solo quando la legale non e'
-  // nella disponibilita' dell'azienda. La legale si gestisce dall'anagrafica.
+  // Si CHIEDE invece di far dedurre. Prima la sede operativa si aggiungeva solo
+  // quando la legale non era il luogo di lavoro, quindi "nessuna sede operativa"
+  // voleva dire due cose diverse - coincidono, oppure non ci ha ancora pensato
+  // nessuno - e nessuno le distingueva. Rispondendo, il luogo di lavoro e'
+  // scritto sempre: e' quello su cui vive l'organigramma ed e' quello con cui
+  // l'import del gestionale abbina le unita' del file (vedi formazioneImport).
+  const [risposta, setRisposta] = useState<'' | 'no'>('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
   const operative = sedi.filter((s) => !s.principale);
   const haOperativaAttiva = operative.some((s) => s.attivo);
+
+  // "Si" non e' una risposta a vuoto: crea davvero la sede operativa, copiando i
+  // dati della legale. Duplicare l'indirizzo e' voluto - la sede operativa e' un
+  // record a se' perche' domani l'azienda puo' spostarsi senza cambiare la sede
+  // legale, e perche' e' li' che l'organigramma vive.
+  async function copiaDallaLegale() {
+    if (!cliente.localita && !cliente.indirizzo) {
+      setMsg('Compila prima la sede legale qui sopra: non c’è niente da copiare.');
+      return;
+    }
+    setBusy(true); setMsg(null);
+    try {
+      await salvaSede({
+        ...sedeVuota(cliente.id),
+        nome: (cliente.localita || 'SEDE OPERATIVA').toUpperCase(),
+        indirizzo: cliente.indirizzo,
+        localita: cliente.localita,
+        cap: cliente.cap,
+        provincia: cliente.provincia,
+      });
+      await allineaPersoneOrganigramma(cliente.id);
+      onCambia(); setRisposta('');
+    }
+    catch (e) { setMsg((e as Error)?.message ?? 'Creazione non riuscita.'); }
+    finally { setBusy(false); }
+  }
+
   return (
     <>
-      <div className="bo-row" style={{ margin: '0 0 6px' }}>
-        <span className="grow" />
-        {!agg && !haOperativaAttiva && <button className="bo-btn sm" onClick={() => setAgg(true)}>+ Aggiungi sede operativa</button>}
-      </div>
-      <p className="bo-sub" style={{ margin: '0 0 10px' }}>
-        Aggiungi una sede operativa solo se la sede legale non e' nella disponibilita' dell'azienda (es. sede del commercialista). L'organigramma del cliente e' uno solo e vive su questa sede.
-      </p>
+      {msg && <div className="bo-err">{msg}</div>}
+
+      {!haOperativaAttiva && (
+        <div className="bo-card" style={{ marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            La sede legale corrisponde con la sede operativa?
+          </div>
+          <p className="bo-sub" style={{ margin: '0 0 8px' }}>
+            La sede operativa è il luogo dove si lavora: è lì che vive l&rsquo;organigramma, che si
+            designano gli addetti alle emergenze e che l&rsquo;import della formazione riconosce lo
+            stabilimento. Rispondi <b>No</b> se la sede legale non è nella disponibilità
+            dell&rsquo;azienda (es. sede del commercialista) o se si lavora altrove.
+          </p>
+          <div className="bo-bar">
+            <button className="bo-btn sm" disabled={busy} onClick={() => void copiaDallaLegale()}>
+              {busy ? 'Creo…' : 'Sì — usa i dati della sede legale'}
+            </button>
+            <button className="bo-btn ghost sm" disabled={busy} onClick={() => { setMsg(null); setRisposta('no'); }}>
+              No — inserisco la sede operativa
+            </button>
+          </div>
+          {risposta === 'no' && (
+            <p className="bo-sub" style={{ margin: '10px 0 0' }}>
+              Dati della sede operativa:
+            </p>
+          )}
+        </div>
+      )}
+
+      {risposta === 'no' && !haOperativaAttiva && (
+        <RigaSede sede={sedeVuota(cliente.id)}
+          onCambia={() => { onCambia(); setRisposta(''); }} />
+      )}
+
       {haOperativaAttiva && (
-        <p className="bo-sub" style={{ margin: '-4px 0 10px', color: 'var(--ink-soft,#8a8f98)' }}>
-          Serve un'altra sede operativa? Crea una nuova anagrafica (bottone <strong>Copia</strong> nella lista clienti): ogni sede operativa in piu' e' un'anagrafica a se'.
+        <p className="bo-sub" style={{ margin: '0 0 10px', color: 'var(--ink-soft,#8a8f98)' }}>
+          Serve un&rsquo;altra sede operativa? Crea una nuova anagrafica (bottone <strong>Copia</strong>{' '}
+          nella lista clienti): ogni sede operativa in più è un&rsquo;anagrafica a sé, perché
+          l&rsquo;organigramma del cliente è uno solo e gli addetti alle emergenze si designano per
+          luogo di lavoro.
         </p>
       )}
 
-      {agg && (
-        <RigaSede sede={sedeVuota(clienteId)}
-          onCambia={() => { onCambia(); setAgg(false); }} />
-      )}
-      {operative.length === 0 && !agg && (
-        <div className="bo-empty">Nessuna sede operativa: la sede legale coincide con l'operativa.</div>
-      )}
       {operative.map((s) => <RigaSede key={s.id} sede={s} onCambia={onCambia} />)}
     </>
   );
