@@ -107,6 +107,12 @@ export interface EsitoUnita {
   senza_codice: string[];       // alias presente ma non ancora mappato
   personeMancanti: PersonaMancante[];
   oreInsufficienti: VoceImport[];
+  // Righe che il dizionario marca come SPEZZONE: da sole non assolvono il
+  // requisito. Vanno dette qui e non scoperte mesi dopo - il pezzo che manca
+  // spesso e' un modulo e-learning di cui nessuno ha piu' la data se non lo si
+  // chiede subito (caso vero: integrazione preposti 3h in aula, coda di un
+  // corso le cui prime 5h erano a distanza).
+  spezzoni: VoceImport[];
 }
 
 export interface EsitoImport {
@@ -455,6 +461,7 @@ export function riconciliaUnita(
   const out: EsitoUnita = {
     unita, cliente_id: clienteId, nuove: [], gia_presenti: 0, ignorate: 0,
     senza_alias: [], senza_codice: [], personeMancanti: [], oreInsufficienti: [],
+    spezzoni: [],
   };
   const mancanti = new Map<string, PersonaMancante>();
   const sa = new Set<string>();
@@ -498,7 +505,10 @@ export function riconciliaUnita(
       ore_dovute: dovute,
     };
     out.nuove.push(v);
-    if (dovute != null && r.ore != null && r.ore < dovute) out.oreInsufficienti.push(v);
+    if (v.parziale) out.spezzoni.push(v);
+    // Uno spezzone ha per definizione meno ore di quelle dovute: segnalarlo due
+    // volte direbbe due problemi dove ce n'e' uno, e quello vero e' l'altro.
+    else if (dovute != null && r.ore != null && r.ore < dovute) out.oreInsufficienti.push(v);
   }
 
   out.senza_alias = [...sa].sort();

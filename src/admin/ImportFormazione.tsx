@@ -321,6 +321,32 @@ export default function ImportFormazione() {
                   </div>
                 )}
 
+                {/* Gli spezzoni si dicono PRIMA delle ore insufficienti: sono la
+                    segnalazione che porta un lavoro da fare (recuperare la data
+                    del pezzo mancante), non una nota da leggere. */}
+                {e.spezzoni.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <p className="bo-sub" style={{ margin: 0, color: 'var(--warn, #b7791f)' }}>
+                      <b>{e.spezzoni.length} attestati sono spezzoni di un corso più lungo.</b> Da soli
+                      non assolvono il requisito: il motore somma le ore e chiude l’obbligo solo al
+                      raggiungimento di quelle dovute. Tipicamente manca la parte svolta in
+                      <b> e-learning</b>, che il gestionale non esporta — va recuperata la sua
+                      <b> data di chiusura</b> e registrata come attestato, altrimenti fra qualche anno
+                      non la ricostruisce più nessuno. Dopo l’import la trovi in <i>Cose da fare</i>.
+                    </p>
+                    <div style={{ maxHeight: 150, overflow: 'auto', marginTop: 6 }}>
+                      {e.spezzoni.map((v) => (
+                        <div key={v.import_key} className="bo-meta"
+                          style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--line)', padding: '4px 0' }}>
+                          <span style={{ flex: 1 }}>{v.riga.cognome} {v.riga.nome} · {v.riga.corso}</span>
+                          <span>{dataIT(v.riga.data)}</span>
+                          <span className="bo-pill warn">{v.riga.ore}h{v.ore_dovute != null && ` su ${v.ore_dovute}h`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {e.oreInsufficienti.length > 0 && (
                   <details style={{ marginBottom: 10 }}>
                     <summary className="bo-sub" style={{ cursor: 'pointer', color: 'var(--warn, #b7791f)' }}>

@@ -176,6 +176,12 @@ export interface RequisitoValutato {
   obbligatorio: boolean;
   stato: StatoRequisito;
   scadenza: string | null;      // calcolata o esplicita
+  // Formazione frazionata ancora SOTTO soglia per questo requisito: ore
+  // accumulate e ore dovute. Vuoto quando non ci sono spezzoni aperti. Serve a
+  // chi legge - e alle cose da fare - per distinguere "mai fatto" da "iniziato e
+  // non chiuso": sono due lavori diversi, il primo e' erogare un corso, il
+  // secondo e' recuperare la data del pezzo mancante.
+  frazionata: { ore: number; soglia: number; aggiornamento: boolean }[];
   // Data dell'attestato da cui la scadenza e' stata calcolata. Senza, la UI puo'
   // mostrare solo il "quando scade" e non il "quando e' stato fatto": chi
   // controlla un attestato ha bisogno del secondo per ritrovarlo, e una scadenza
@@ -737,7 +743,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
           categoria, ore, obbligatorio: r.obbligatorio,
           stato: st === 'conforme' ? 'esonerato' : st, scadenza: eson.scadenza,
-          data_completamento: null,
+          data_completamento: null, frazionata: [],
           dettaglio: base + ' \u00b7 ' + dt,
           formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
         });
@@ -755,6 +761,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore: agg.ore, obbligatorio: r.obbligatorio,
             stato: agg.stato, scadenza: agg.scadenza, data_completamento: agg.data_completamento,
+            frazionata: [],
             dettaglio: base + ' (iniziale) \u00b7 ' + agg.dettaglio,
             formazione_id: agg.formazione_id, esonero_id: eson.id, allegato_url: agg.allegato_url, promemoria,
           });
@@ -763,7 +770,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
           requisiti.push({
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
-            data_completamento: null,
+            data_completamento: null, frazionata: [],
             dettaglio: base,
             formazione_id: null, esonero_id: eson.id, allegato_url: null, promemoria,
           });
@@ -819,7 +826,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       requisiti.push({
         figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNomeNeutro,
         categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza,
-        data_completamento: f?.data_completamento ?? null,
+        data_completamento: f?.data_completamento ?? null, frazionata: spezzoni.progresso,
         dettaglio, formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
       });
       continue;
@@ -846,7 +853,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     requisiti.push({
       figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: nomeMostrato,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,
-      data_completamento: f.data_completamento,
+      data_completamento: f.data_completamento, frazionata: spezzoni.progresso,
       dettaglio: dettaglioMostrato, formazione_id: f.id, esonero_id: null, allegato_url: f.allegato_url, promemoria,
     });
   }
@@ -1665,6 +1672,29 @@ export function proponiCoseDaFare(riep: RiepilogoCliente, includiInScadenza: boo
   const out: CosaDaFareProposta[] = [];
   for (const pv of riep.persone) {
     for (const r of pv.requisiti) {
+      // Formazione frazionata aperta: e' un caso a se' e va PRIMA della regola
+      // generica, altrimenti finisce fra i "mai svolto" e manda a comprare un
+      // corso che in parte e' gia' stato erogato e pagato. Il caso vero:
+      // l'integrazione preposti di 3h in aula, coda di un corso le cui prime 5h
+      // erano in e-learning - il gestionale esporta solo l'aula, e cio' che
+      // manca non e' formazione ma la DATA di chiusura della parte a distanza.
+      // Si propone anche quando il requisito non e' critico: le ore erogate
+      // scadono comunque, e ricostruire la data dopo anni non e' piu' possibile.
+      if (r.frazionata.length > 0) {
+        const dett = r.frazionata
+          .map((x) => `${x.ore}h su ${x.soglia}h${x.aggiornamento ? ' (aggiornamento)' : ''}`)
+          .join(', ');
+        out.push({
+          persona_id: pv.persona.id,
+          persona_nome: nomePersona(pv.persona),
+          descrizione: 'Formazione frazionata - ' + nomePersona(pv.persona) + ': ' + r.corso_nome
+            + ' fermo a ' + dett + '. Recuperare e registrare la parte mancante con la sua data'
+            + ' (se svolta in e-learning, la data di chiusura del modulo a distanza).',
+          scadenza: null,
+          priorita: 'alta',
+        });
+        continue;
+      }
       const gap = r.stato === 'critico' || (includiInScadenza && r.stato === 'in_scadenza');
       if (!gap) continue;
       // Le scadenze di formazioni gia' registrate (r.scadenza valorizzata) sono
