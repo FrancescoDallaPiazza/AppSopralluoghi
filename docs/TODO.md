@@ -11,21 +11,20 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
-- [ ] Eseguire `supabase/scripts/spezzoni_elearning.sql` nell'**SQL Editor**
-  (non è una migration: agisce sul dizionario `corso_alias`, popolato dai dati).
-  Marca `INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI` (3h) come
-  **spezzone**: è la coda in aula di un corso le cui prime ore erano in
-  e-learning, e il gestionale esporta solo l'aula. Senza il flag, 3 ore
-  chiudevano il requisito preposto. In coda allo script c'è l'update per
-  allineare le righe **già importate** (il flag si copia al momento
-  dell'import) e l'elenco delle altre righe `INTEGRAZIONE ...` che **non** sono
-  lo stesso caso e non vanno toccate. Verificato sui dati Ecodent: 1 riga
-  (DEROSSI, 08/07/2022). `pglast` OK.
-  **Da decidere**: le ore dovute per `PREPOSTO` a catalogo sono 12 (ASR 2025),
-  mentre il corso di cui questa è la coda ne prevedeva 8 (art. 37 c.7, vecchio
-  regime). Con soglia 12 la somma 3+5 non chiuderà mai il requisito. Va deciso
-  se il pregresso a 8h vada trattato come assolto (flag `pregressa`) o se ASR
-  2025 imponga il percorso nuovo — è una scelta di merito, non un bug.
+- [ ] Eseguire `supabase/scripts/integrazione_preposti_pregressa.sql`
+  nell'**SQL Editor** (non è una migration: agisce sul dizionario `corso_alias`,
+  popolato dai dati). `INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI`
+  (3h) è la parte in aula di un corso preposti 8h ante ASR 2025 (prime 5h in
+  e-learning, che il gestionale non esporta). **Deciso 2026-07-31: il corso è
+  concluso prima dell'ASR 17/04/2025, quindi il requisito è assolto** → la riga
+  si marca `pregressa`, non spezzone. Trattarla da spezzone l'avrebbe lasciata
+  aperta per sempre: le ore dovute a catalogo sono 12 (ASR 2025) e 3+5 non ci
+  arrivano — il percorso vecchio non si giudica col monte ore del nuovo. La
+  scadenza è corretta senza recuperare nulla: l'aula è l'ultima parte, quindi
+  l'08/07/2022 è la conclusione. Resta dovuto l'aggiornamento biennale. Lo
+  script allinea anche le righe già importate. `pglast` OK, ASCII-only.
+  In coda l'elenco delle altre `INTEGRAZIONE ...` che **non** sono lo stesso
+  caso e non vanno toccate.
 
 Per attivare il **libretto formativo per persona** (scritto 2026-07-31):
 
