@@ -1,0 +1,2414 @@
+[
+ {
+  "r": 3,
+  "k": "ADDETTO A LAVORI IN SPAZI CONFINATI E SOSPETTI DI INQUINAMENTO",
+  "originale": "Addetto a lavori in spazi confinati e sospetti di inquinamento",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 4,
+  "k": "ADDETTO AI LAVORI IN SPAZI CONFINATI E SOSPETTI DI INQUINAMENTO",
+  "originale": "ADDETTO AI LAVORI IN SPAZI CONFINATI E SOSPETTI DI INQUINAMENTO",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 5,
+  "k": "ADDETTO AL MONTAGGIO, SMONTAGGIO, TRASFORMAZIONE DI PONTEGGI O PER PREPOSTI ALLA SORVEGLIANZA",
+  "originale": "ADDETTO AL MONTAGGIO, SMONTAGGIO, TRASFORMAZIONE DI PONTEGGI O PER PREPOSTI ALLA SORVEGLIANZA",
+  "durata": "28",
+  "per": "4 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 6,
+  "k": "ADDETTO ALLA CONDUZIONE DI AUTORIBALTABILI A CINGOLI",
+  "originale": "Addetto alla conduzione di autoribaltabili a cingoli",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 7,
+  "k": "ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI)",
+  "originale": "Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli industriali semoventi)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 8,
+  "k": "ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI, CARRELLI SEMOVENTI A BRACCIO TELESCOPICO, CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli industriali semoventi, carrelli semoventi a braccio telescopico, carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 9,
+  "k": "ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI SEMOVENTI A BRACCIO TELESCOPICO)",
+  "originale": "Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli semoventi a braccio telescopico)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 10,
+  "k": "ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 11,
+  "k": "ADDETTO ALLA CONDUZIONE DI CARROPONTE E GRU A BANDIERA",
+  "originale": "ADDETTO ALLA CONDUZIONE DI CARROPONTE E GRU A BANDIERA",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione generica",
+  "cat": "Generica"
+ },
+ {
+  "r": 12,
+  "k": "ADDETTO ALLA CONDUZIONE DI ESCAVATORI A FUNE",
+  "originale": "Addetto alla conduzione di escavatori a fune",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 13,
+  "k": "ADDETTO ALLA CONDUZIONE DI ESCAVATORI IDRAULICI",
+  "originale": "Addetto alla conduzione di escavatori idraulici",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 14,
+  "k": "ADDETTO ALLA CONDUZIONE DI ESCAVATORI IDRAULICI, CARICATORI FRONTALI E TERNE",
+  "originale": "Addetto alla conduzione di escavatori idraulici, caricatori frontali e terne",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 15,
+  "k": "ADDETTO ALLA CONDUZIONE DI GRU A TORRE (GRU A ROTAZIONE IN ALTO)",
+  "originale": "Addetto alla conduzione di gru a torre (Gru a rotazione in alto)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 16,
+  "k": "ADDETTO ALLA CONDUZIONE DI GRU A TORRE (GRU A ROTAZIONE IN BASSO E GRU A ROTAZIONE IN ALTO)",
+  "originale": "Addetto alla conduzione di gru a torre (Gru a rotazione in basso e gru a rotazione in alto)",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 17,
+  "k": "ADDETTO ALLA CONDUZIONE DI GRU A TORRE (GRU A ROTAZIONE IN BASSO)",
+  "originale": "Addetto alla conduzione di gru a torre (Gru a rotazione in basso)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 18,
+  "k": "ADDETTO ALLA CONDUZIONE DI GRU MOBILI - CORSO BASE (PER GRU MOBILI AUTOCARRATE E SEMOVENTI SU RUOTE CON BRACCIO TELESCOPICO O TRALICCIATO ED EVENTUALE FALCONE FISSO)",
+  "originale": "Addetto alla conduzione di gru mobili - CORSO BASE (per gru mobili autocarrate e semoventi su ruote con braccio telescopico o tralicciato ed eventuale falcone fisso)",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 19,
+  "k": "ADDETTO ALLA CONDUZIONE DI GRU MOBILI - CORSO BASE E MODULO AGGIUNTIVO (PER GRU MOBILI SU RUOTE CON FALCONE TELESCOPICO O BRANDEGGIABILE)",
+  "originale": "Addetto alla conduzione di gru mobili - CORSO BASE e MODULO AGGIUNTIVO (per gru mobili su ruote con falcone telescopico o brandeggiabile)",
+  "durata": "22",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 20,
+  "k": "ADDETTO ALLA CONDUZIONE DI GRU PER AUTOCARRO",
+  "originale": "Addetto alla conduzione di gru per autocarro",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 21,
+  "k": "ADDETTO ALLA CONDUZIONE DI PALE CARICATRICI FRONTALI",
+  "originale": "Addetto alla conduzione di pale caricatrici frontali",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 22,
+  "k": "ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE CON E SENZA STABILIZZATORI)",
+  "originale": "Addetto alla conduzione di Piattaforme di Lavoro mobili Elevabili (PLE con e senza stabilizzatori)",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 23,
+  "k": "ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE CON STABILIZZATORI)",
+  "originale": "Addetto alla conduzione di Piattaforme di Lavoro mobili Elevabili (PLE con stabilizzatori)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 24,
+  "k": "ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE SENZA STABILIZZATORI)",
+  "originale": "Addetto alla conduzione di Piattaforme di Lavoro mobili Elevabili (PLE senza stabilizzatori)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 25,
+  "k": "ADDETTO ALLA CONDUZIONE DI POMPE PER CALCESTRUZZO",
+  "originale": "Addetto alla conduzione di pompe per calcestruzzo",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 26,
+  "k": "ADDETTO ALLA CONDUZIONE DI TERNE",
+  "originale": "Addetto alla conduzione di terne",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 27,
+  "k": "ADDETTO ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI (PER TRATTORI A CINGOLI E RUOTE)",
+  "originale": "Addetto alla conduzione di trattori agricoli o forestali (Per trattori a cingoli e ruote)",
+  "durata": "13",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 28,
+  "k": "ADDETTO ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI (PER TRATTORI A CINGOLI)",
+  "originale": "Addetto alla conduzione di trattori agricoli o forestali (Per trattori a cingoli)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 29,
+  "k": "ADDETTO ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI (PER TRATTORI A RUOTE)",
+  "originale": "Addetto alla conduzione di trattori agricoli o forestali (Per trattori a ruote)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Attrezzature"
+ },
+ {
+  "r": 30,
+  "k": "ADDETTO GESTIONE DELLA QUALITA'",
+  "originale": "ADDETTO GESTIONE DELLA QUALITA'",
+  "durata": "60",
+  "per": "",
+  "tip": "Formazione generica",
+  "cat": "Generica"
+ },
+ {
+  "r": 31,
+  "k": "ADDETTO LAVORI IN AMBIENTI SOSPETTI DI PRESENZA AMIANTO",
+  "originale": "Addetto Lavori in Ambienti Sospetti di Presenza Amianto",
+  "durata": "8",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 32,
+  "k": "ADDETTO PREPOSTO UTILIZZO DELLA SEGNALETICA STRADALE",
+  "originale": "Addetto Preposto Utilizzo della Segnaletica Stradale",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 33,
+  "k": "ADDETTO PREVENZIONE INCENDIO, LOTTA ANTINCENDIO E GESTIONE DELL’EMERGENZA IN ATTIVITÀ A RISCHIO D’INCENDIO BASSO",
+  "originale": "Addetto prevenzione incendio, lotta antincendio e gestione dell’emergenza in attività a rischio d’incendio basso",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 34,
+  "k": "ADDETTO PREVENZIONE INCENDIO, LOTTA ANTINCENDIO E GESTIONE DELL’EMERGENZA IN ATTIVITÀ A RISCHIO D’INCENDIO MEDIO",
+  "originale": "Addetto prevenzione incendio, lotta antincendio e gestione dell’emergenza in attività a rischio d’incendio medio",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 35,
+  "k": "ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO A",
+  "originale": "ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO A",
+  "durata": "16",
+  "per": "3 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 36,
+  "k": "ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO B-C",
+  "originale": "ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO B-C",
+  "durata": "12",
+  "per": "3 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 37,
+  "k": "ADDETTO UTILIZZO DELLA SEGNALETICA STRADALE",
+  "originale": "Addetto Utilizzo della Segnaletica Stradale",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 38,
+  "k": "AGG. FORMAZIONE PER L'USO DEI DIISOCIANATI - LIVELLO GENERALE, INTERMEDIO E AVANZATO",
+  "originale": "Agg. Formazione per l'uso dei diisocianati - Livello generale, intermedio e avanzato",
+  "durata": "2",
+  "per": "5 Anni",
+  "tip": "Formazione per l'uso dei diisocianati - Livello generale, intermedio e avanzato",
+  "cat": "Generica"
+ },
+ {
+  "r": 39,
+  "k": "AGGIORNAMENTO A.S.P.P. A.S.R. 2016",
+  "originale": "Aggiornamento A.S.P.P. A.S.R. 2016",
+  "durata": "20",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 40,
+  "k": "AGGIORNAMENTO ADDETTI ALLA CONDUZIONE CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI, SEMOVENTI A BRACCIO TELESCOPICO, CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI SOLLEVAMENTO CARICHI SOSPESI/PERSONE)",
+  "originale": "Aggiornamento addetti alla conduzione carrelli elevatori semoventi con conducente a bordo (carrelli industriali semoventi, semoventi a braccio telescopico, carrelli/sollevatori/elevatori semoventi telescopici rotativi sollevamento carichi sospesi/persone)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 41,
+  "k": "AGGIORNAMENTO ADDETTO AL MONTAGGIO, SMONTAGGIO, TRASFORMAZIONE DI PONTEGGI O PER PREPOSTI ALLA SORVEGLIANZA",
+  "originale": "AGGIORNAMENTO ADDETTO AL MONTAGGIO, SMONTAGGIO, TRASFORMAZIONE DI PONTEGGI O PER PREPOSTI ALLA SORVEGLIANZA",
+  "durata": "4",
+  "per": "4 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 42,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI AUTORIBALTABILI A CINGOLI",
+  "originale": "Aggiornamento Addetto alla conduzione di autoribaltabili a cingoli",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 43,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI)",
+  "originale": "Aggiornamento Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli industriali semoventi)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 44,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI, CARRELLI SEMOVENTI A BRACCIO TELESCOPICO, CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Aggiornamento Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli industriali semoventi, carrelli semoventi a braccio telescopico, carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 45,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI SEMOVENTI A BRACCIO TELESCOPICO)",
+  "originale": "Aggiornamento Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli semoventi a braccio telescopico)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 46,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Aggiornamento Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 47,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI CARROPONTE (GRU A PONTE)",
+  "originale": "Aggiornamento addetto alla conduzione di Carroponte (Gru a Ponte)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 48,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI CARROPONTE E GRU A BANDIERA",
+  "originale": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI CARROPONTE E GRU A BANDIERA",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione generica",
+  "cat": "Generica"
+ },
+ {
+  "r": 49,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI ESCAVATORI A FUNE",
+  "originale": "Aggiornamento Addetto alla conduzione di escavatori a fune",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 50,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI ESCAVATORI IDRAULICI",
+  "originale": "Aggiornamento Addetto alla conduzione di escavatori idraulici",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 51,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI ESCAVATORI IDRAULICI, CARICATORI FRONTALI E TERNE",
+  "originale": "Aggiornamento Addetto alla conduzione di escavatori idraulici, caricatori frontali e terne",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 52,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI GRU A TORRE (GRU A ROTAZIONE IN ALTO)",
+  "originale": "Aggiornamento Addetto alla conduzione di gru a torre (Gru a rotazione in alto)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 53,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI GRU A TORRE (GRU A ROTAZIONE IN BASSO E GRU A ROTAZIONE IN ALTO)",
+  "originale": "Aggiornamento Addetto alla conduzione di gru a torre (Gru a rotazione in basso e gru a rotazione in alto)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 54,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI GRU A TORRE (GRU A ROTAZIONE IN BASSO)",
+  "originale": "Aggiornamento Addetto alla conduzione di gru a torre (Gru a rotazione in basso)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 55,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI GRU MOBILI",
+  "originale": "Aggiornamento Addetto alla conduzione di gru mobili",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 56,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI GRU PER AUTOCARRO",
+  "originale": "Aggiornamento Addetto alla conduzione di gru per autocarro",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 57,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI PALE CARICATRICI FRONTALI",
+  "originale": "Aggiornamento Addetto alla conduzione di pale caricatrici frontali",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 58,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE CON E SENZA STABILIZZATORI)",
+  "originale": "Aggiornamento Addetto alla conduzione di Piattaforme di Lavoro mobili Elevabili (PLE con e senza stabilizzatori)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 59,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE CON STABILIZZATORI)",
+  "originale": "Aggiornamento Addetto alla conduzione di Piattaforme di Lavoro mobili Elevabili (PLE con stabilizzatori)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 60,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE SENZA STABILIZZATORI)",
+  "originale": "Aggiornamento Addetto alla conduzione di Piattaforme di Lavoro mobili Elevabili (PLE senza stabilizzatori)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 61,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI POMPE PER CALCESTRUZZO",
+  "originale": "Aggiornamento Addetto alla conduzione di pompe per calcestruzzo",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 62,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI TERNE",
+  "originale": "Aggiornamento Addetto alla conduzione di terne",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 63,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI (PER TRATTORI A CINGOLI E RUOTE)",
+  "originale": "Aggiornamento Addetto alla conduzione di trattori agricoli o forestali (Per trattori a cingoli e ruote)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 64,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI (PER TRATTORI A CINGOLI)",
+  "originale": "Aggiornamento Addetto alla conduzione di trattori agricoli o forestali (Per trattori a cingoli)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 65,
+  "k": "AGGIORNAMENTO ADDETTO ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI (PER TRATTORI A RUOTE)",
+  "originale": "Aggiornamento Addetto alla conduzione di trattori agricoli o forestali (Per trattori a ruote)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 66,
+  "k": "AGGIORNAMENTO ADDETTO ANTINCENDIO RISCHIO ALTO",
+  "originale": "Aggiornamento addetto antincendio rischio alto",
+  "durata": "8",
+  "per": "3 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 67,
+  "k": "AGGIORNAMENTO ADDETTO LAVORATORE E PREPOSTO UTILIZZO DELLA SEGNALETICA STRADALE",
+  "originale": "Aggiornamento Addetto Lavoratore e Preposto Utilizzo della Segnaletica Stradale",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 68,
+  "k": "AGGIORNAMENTO ADDETTO PREVENZIONE INCENDIO, LOTTA ANTINCENDIO E GESTIONE DELL’EMERGENZA IN ATTIVITÀ A RISCHIO D’INCENDIO BASSO",
+  "originale": "Aggiornamento addetto prevenzione incendio, lotta antincendio e gestione dell’emergenza in attività a rischio d’incendio basso",
+  "durata": "2",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 69,
+  "k": "AGGIORNAMENTO ADDETTO PREVENZIONE INCENDIO, LOTTA ANTINCENDIO E GESTIONE DELL’EMERGENZA IN ATTIVITÀ A RISCHIO D’INCENDIO MEDIO",
+  "originale": "Aggiornamento addetto prevenzione incendio, lotta antincendio e gestione dell’emergenza in attività a rischio d’incendio medio",
+  "durata": "5",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 70,
+  "k": "AGGIORNAMENTO ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO A",
+  "originale": "AGGIORNAMENTO ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO A",
+  "durata": "6",
+  "per": "3 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 71,
+  "k": "AGGIORNAMENTO ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO B-C",
+  "originale": "AGGIORNAMENTO ADDETTO PRIMO SOCCORSO AZIENDALE E GESTIONE DELLE EMERGENZE GRUPPO B-C",
+  "durata": "4",
+  "per": "3 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 72,
+  "k": "AGGIORNAMENTO ASPP",
+  "originale": "Aggiornamento ASPP",
+  "durata": "20",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 73,
+  "k": "AGGIORNAMENTO BLS-D (BASIC LIFE SUPPORT AND DEFIBRILLATION) LAICO",
+  "originale": "AGGIORNAMENTO BLS-D (Basic Life Support and Defibrillation) LAICO",
+  "durata": "3",
+  "per": "2 Anni",
+  "tip": "ECM",
+  "cat": "Generica"
+ },
+ {
+  "r": 74,
+  "k": "AGGIORNAMENTO COORDINATORE DELLA SICUREZZA NEI CANTIERI TEMPORANEI O MOBILI",
+  "originale": "Aggiornamento Coordinatore della Sicurezza nei cantieri temporanei o mobili",
+  "durata": "40",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 75,
+  "k": "AGGIORNAMENTO COORDINATORI PER LA PROGETTAZIONE E PER L’ESECUZIONE DEI LAVORI",
+  "originale": "AGGIORNAMENTO COORDINATORI PER LA PROGETTAZIONE E PER L’ESECUZIONE DEI LAVORI",
+  "durata": "40",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 76,
+  "k": "AGGIORNAMENTO DATORE DI LAVORO",
+  "originale": "Aggiornamento Datore di Lavoro",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 77,
+  "k": "AGGIORNAMENTO DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP",
+  "originale": "AGGIORNAMENTO DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 78,
+  "k": "AGGIORNAMENTO DATORE DI LAVORO CON MODULO AGGIUNTIVO “CANTIERI”",
+  "originale": "Aggiornamento Datore di Lavoro con Modulo aggiuntivo “Cantieri”",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 79,
+  "k": "AGGIORNAMENTO DIRIGENTI",
+  "originale": "Aggiornamento Dirigenti",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 80,
+  "k": "AGGIORNAMENTO FORMAZIONE DEI LAVORATORI RISCHIO ALTO",
+  "originale": "Aggiornamento formazione dei lavoratori Rischio Alto",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 81,
+  "k": "AGGIORNAMENTO FORMAZIONE DEI LAVORATORI RISCHIO BASSO",
+  "originale": "Aggiornamento formazione dei lavoratori Rischio Basso",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 82,
+  "k": "AGGIORNAMENTO FORMAZIONE DEI LAVORATORI RISCHIO MEDIO",
+  "originale": "Aggiornamento formazione dei lavoratori Rischio Medio",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 83,
+  "k": "AGGIORNAMENTO FORMAZIONE LAVORI IN QUOTA E DPI 3°CAT. ANTICADUTA",
+  "originale": "Aggiornamento formazione lavori in quota e DPI 3°Cat. anticaduta",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 84,
+  "k": "AGGIORNAMENTO LAVORATORI - 6 ORE - EDILIZIA",
+  "originale": "AGGIORNAMENTO LAVORATORI - 6 ORE - EDILIZIA",
+  "durata": "6",
+  "per": "3 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 85,
+  "k": "AGGIORNAMENTO LAVORATORI 6 ORE",
+  "originale": "Aggiornamento Lavoratori 6 ore",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 86,
+  "k": "AGGIORNAMENTO LAVORATORI ADDETTI ALLA CONDUZIONE DI CARICATORI PER LA MOVIMENTAZIONE DI MATERIALI (CMM)",
+  "originale": "Aggiornamento lavoratori addetti alla conduzione di caricatori per la movimentazione di materiali (CMM)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 87,
+  "k": "AGGIORNAMENTO LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRIPONTE CON COMANDO IN CABINA",
+  "originale": "Aggiornamento lavoratori addetti alla conduzione di carriponte con comando in cabina",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 88,
+  "k": "AGGIORNAMENTO LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRIPONTE CON COMANDO PENSILE/RADIOCOMANDO",
+  "originale": "Aggiornamento lavoratori addetti alla conduzione di carriponte con comando pensile/radiocomando",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 89,
+  "k": "AGGIORNAMENTO LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRIPONTE CON COMANDO PENSILE/RADIOCOMANDO E/O CON COMANDO IN CABINA",
+  "originale": "Aggiornamento lavoratori addetti alla conduzione di carriponte con comando pensile/radiocomando e/o con comando in cabina",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 90,
+  "k": "AGGIORNAMENTO LAVORATORI ADDETTI ALLA CONDUZIONE DI MACCHINA AGRICOLA RACCOGLIFRUTTA (COMUNEMENTE DETTA CARRO RACCOGLIFRUTTA CRF)",
+  "originale": "Aggiornamento lavoratori addetti alla conduzione di macchina agricola raccoglifrutta (comunemente detta carro raccoglifrutta CRF)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 91,
+  "k": "AGGIORNAMENTO LAVORATORI PREPOSTI",
+  "originale": "AGGIORNAMENTO LAVORATORI PREPOSTI",
+  "durata": "6",
+  "per": "2 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 92,
+  "k": "AGGIORNAMENTO PARZIALE PER LAVORATORI",
+  "originale": "AGGIORNAMENTO PARZIALE PER LAVORATORI",
+  "durata": "2",
+  "per": "",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 93,
+  "k": "AGGIORNAMENTO PARZIALE PER LAVORATORI - APERITIVO",
+  "originale": "AGGIORNAMENTO PARZIALE PER LAVORATORI - aperitivo",
+  "durata": "2",
+  "per": "",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 94,
+  "k": "AGGIORNAMENTO PARZIALE PER R.L.S.",
+  "originale": "AGGIORNAMENTO PARZIALE PER R.L.S.",
+  "durata": "2",
+  "per": "",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 95,
+  "k": "AGGIORNAMENTO PARZIALE PER RLS",
+  "originale": "AGGIORNAMENTO PARZIALE PER RLS",
+  "durata": "2",
+  "per": "",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 96,
+  "k": "AGGIORNAMENTO PARZIALE PER RSPP DATORE DI LAVORO RISCHIO ALTO",
+  "originale": "AGGIORNAMENTO PARZIALE PER RSPP DATORE DI LAVORO RISCHIO ALTO",
+  "durata": "2",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 97,
+  "k": "AGGIORNAMENTO PER LAVORATORI, DATORI DI LAVORO E LAVORATORI AUTONOMI CHE OPERANO IN AMBIENTI SOSPETTI DI INQUINAMENTO O CONFINATI",
+  "originale": "Aggiornamento per lavoratori, datori di lavoro e lavoratori autonomi che operano in ambienti sospetti di inquinamento o confinati",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 98,
+  "k": "AGGIORNAMENTO PES E PAV OPERATORI SU QUADRI ELETTRICI",
+  "originale": "Aggiornamento PES E PAV Operatori su Quadri Elettrici",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 99,
+  "k": "AGGIORNAMENTO R.L.S. 4 ORE",
+  "originale": "Aggiornamento R.L.S. 4 ore",
+  "durata": "4",
+  "per": "1 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 100,
+  "k": "AGGIORNAMENTO R.L.S. 8 ORE",
+  "originale": "Aggiornamento R.L.S. 8 ore",
+  "durata": "8",
+  "per": "1 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 101,
+  "k": "AGGIORNAMENTO R.S.P.P. A.S.R. 2016",
+  "originale": "Aggiornamento R.S.P.P. A.S.R. 2016",
+  "durata": "40",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 102,
+  "k": "AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO RISCHIO ALTO",
+  "originale": "AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO RISCHIO ALTO",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 103,
+  "k": "AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO RISCHIO BASSO",
+  "originale": "AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO RISCHIO BASSO",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 104,
+  "k": "AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO RISCHIO MEDIO",
+  "originale": "AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO RISCHIO MEDIO",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 105,
+  "k": "AGGIORNAMENTO R.SP.P./A.S.P.P. - MODULO B",
+  "originale": "AGGIORNAMENTO R.SP.P./A.S.P.P. - MODULO B",
+  "durata": "40",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 106,
+  "k": "AGGIORNAMENTO RSPP",
+  "originale": "Aggiornamento RSPP",
+  "durata": "40",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 107,
+  "k": "APPALTI E SUBAPPALTI",
+  "originale": "Appalti e Subappalti",
+  "durata": "8",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Dirigenti"
+ },
+ {
+  "r": 108,
+  "k": "BLS-D (BASIC LIFE SUPPORT AND DEFIBRILLATION) (LAICO)",
+  "originale": "BLS-D (Basic Life Support and Defibrillation) (laico)",
+  "durata": "4",
+  "per": "2 Anni",
+  "tip": "ECM",
+  "cat": "Generica"
+ },
+ {
+  "r": 109,
+  "k": "BLS-D (BASIC LIFE SUPPORT AND DEFIBRILLATION) LAICO",
+  "originale": "BLS-D (Basic Life Support and Defibrillation) LAICO",
+  "durata": "5",
+  "per": "2 Anni",
+  "tip": "ECM",
+  "cat": "Generica"
+ },
+ {
+  "r": 110,
+  "k": "BLS-D (BASIC LIFE SUPPORT AND DEFIBRILLATION) PER SANITARI",
+  "originale": "BLS-D (BASIC LIFE SUPPORT AND DEFIBRILLATION) PER SANITARI",
+  "durata": "4",
+  "per": "2 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 111,
+  "k": "COORDINATORE DELLA SICUREZZA NEI CANTIERI TEMPORANEI O MOBILI",
+  "originale": "Coordinatore della Sicurezza nei cantieri temporanei o mobili",
+  "durata": "120",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Coordinatore Sicurezza"
+ },
+ {
+  "r": 112,
+  "k": "CORSO ABC RIFIUTI",
+  "originale": "CORSO ABC RIFIUTI",
+  "durata": "4",
+  "per": "",
+  "tip": "AMBIENTE",
+  "cat": "Generica"
+ },
+ {
+  "r": 113,
+  "k": "CORSO ADEMPIMENTI E OBBLIGHI ATTUATIVI PREVISTI DAL REGOLAMENTO PRIVACY UE 2016/679 (GDPR)",
+  "originale": "CORSO ADEMPIMENTI E OBBLIGHI ATTUATIVI PREVISTI DAL REGOLAMENTO PRIVACY UE 2016/679 (GDPR)",
+  "durata": "2",
+  "per": "",
+  "tip": "PRIVACY",
+  "cat": "Generica"
+ },
+ {
+  "r": 114,
+  "k": "CORSO ANTINCENDIO RISCHIO ALTO",
+  "originale": "Corso Antincendio Rischio Alto",
+  "durata": "16",
+  "per": "3 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 115,
+  "k": "CORSO DI AGGIORNAMENTO ANTINCENDIO PER ADDETTI ANTINCENDIO IN ATTIVITÀ DI LIVELLO 1",
+  "originale": "Corso di aggiornamento antincendio per addetti antincendio in attività di livello 1",
+  "durata": "2",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 116,
+  "k": "CORSO DI AGGIORNAMENTO ANTINCENDIO PER ADDETTI ANTINCENDIO IN ATTIVITÀ DI LIVELLO 2",
+  "originale": "Corso di aggiornamento antincendio per addetti antincendio in attività di livello 2",
+  "durata": "5",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 117,
+  "k": "CORSO DI AGGIORNAMENTO ANTINCENDIO PER ADDETTI ANTINCENDIO IN ATTIVITÀ DI LIVELLO 3",
+  "originale": "Corso di aggiornamento antincendio per addetti antincendio in attività di livello 3",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 118,
+  "k": "CORSO DI AGGIORNAMENTO DIRIGENTE",
+  "originale": "CORSO DI AGGIORNAMENTO DIRIGENTE",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 119,
+  "k": "CORSO DI AGGIORNAMENTO DIRIGENTE CON MODULO AGGIUNTIVO CANTIERI",
+  "originale": "CORSO DI AGGIORNAMENTO DIRIGENTE  con modulo aggiuntivo cantieri",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 120,
+  "k": "CORSO DI AGGIORNAMENTO PER ADDETTO ALLA CONDUZIONE DI CARROPONTE",
+  "originale": "CORSO DI AGGIORNAMENTO PER ADDETTO ALLA CONDUZIONE DI CARROPONTE",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 121,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI AUTORIBALTABILI A CINGOLI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di autoribaltabili a cingoli",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 122,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI)",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli industriali semoventi)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 123,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI, CARRELLI SEMOVENTI A BRACCIO TELESCOPICO E CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli industriali semoventi, carrelli semoventi a braccio telescopico e carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 124,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI SEMOVENTI A BRACCIO TELESCOPICO)",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli semoventi a braccio telescopico)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 125,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 126,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI ESCAVATORI A FUNE",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di escavatori a fune",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 127,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI ESCAVATORI IDRAULICI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di escavatori idraulici",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 128,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI ESCAVATORI IDRAULICI, CARICATORI FRONTALI E TERNE",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di escavatori idraulici, caricatori frontali e terne",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 129,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU A TORRE A ROTAZIONE IN ALTO",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di gru a torre a rotazione in alto",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 130,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU A TORRE A ROTAZIONE IN BASSO",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di gru a torre a rotazione in basso",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 131,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU A TORRE A ROTAZIONE IN BASSO E IN ALTO",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di gru a torre a rotazione in basso e in alto",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 132,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU MOBILI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di gru mobili",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 133,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU PER AUTOCARRO",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di gru per autocarro",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 134,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PALE CARICATRICI FRONTALI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di pale caricatrici frontali",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 135,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE) CON E SENZA STABILIZZATORI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di piattaforme di lavoro mobili elevabili (PLE) con e senza stabilizzatori",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 136,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE) SENZA STABILIZZATORI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di piattaforme di lavoro mobili elevabili (PLE) senza stabilizzatori",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 137,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE) SU STABILIZZATORI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di piattaforme di lavoro mobili elevabili (PLE) su stabilizzatori",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 138,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI POMPE PER CALCESTRUZZO",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di pompe per calcestruzzo",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 139,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TERNE",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di terne",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 140,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI A CINGOLI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di trattori agricoli o forestali a cingoli",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 141,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI A RUOTE",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di trattori agricoli o forestali a ruote",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 142,
+  "k": "CORSO DI AGGIORNAMENTO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI A RUOTE E A CINGOLI",
+  "originale": "Corso di aggiornamento per lavoratori addetti alla conduzione di trattori agricoli o forestali a ruote e a cingoli",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 143,
+  "k": "CORSO DI AGGIORNAMENTO PER PREPOSTI",
+  "originale": "CORSO DI AGGIORNAMENTO PER PREPOSTI",
+  "durata": "6",
+  "per": "2 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 144,
+  "k": "CORSO DI FORMAZIONE ANTINCENDIO PER ADDETTI ANTINCENDIO IN ATTIVITÀ DI LIVELLO 1",
+  "originale": "Corso di formazione antincendio per addetti antincendio in attività di livello 1",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 145,
+  "k": "CORSO DI FORMAZIONE ANTINCENDIO PER ADDETTI ANTINCENDIO IN ATTIVITÀ DI LIVELLO 2",
+  "originale": "Corso di formazione antincendio per addetti antincendio in attività di livello 2",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 146,
+  "k": "CORSO DI FORMAZIONE ANTINCENDIO PER ADDETTI ANTINCENDIO IN ATTIVITÀ DI LIVELLO 3",
+  "originale": "Corso di formazione antincendio per addetti antincendio in attività di livello 3",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 147,
+  "k": "CORSO DI FORMAZIONE LAVORI IN QUOTA",
+  "originale": "Corso di formazione lavori in quota",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 148,
+  "k": "CORSO DI FORMAZIONE LAVORI IN QUOTA E DPI 3* CAT. ANTICADUTA + SCALE/TRABATTELLO",
+  "originale": "CORSO DI FORMAZIONE LAVORI IN QUOTA E DPI 3* CAT. ANTICADUTA + SCALE/TRABATTELLO",
+  "durata": "6",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 149,
+  "k": "CORSO DI FORMAZIONE LAVORI IN QUOTA E DPI 3°CAT. ANTICADUTA",
+  "originale": "Corso di formazione lavori in quota e DPI 3°Cat. anticaduta",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 150,
+  "k": "CORSO DI FORMAZIONE PER I COORDINATORI PER LA PROGETTAZIONE E PER L’ESECUZIONE DEI LAVORI",
+  "originale": "CORSO DI FORMAZIONE PER I COORDINATORI PER LA PROGETTAZIONE E PER L’ESECUZIONE DEI LAVORI",
+  "durata": "120",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 151,
+  "k": "CORSO DI FORMAZIONE PER PREPOSTI",
+  "originale": "CORSO DI FORMAZIONE PER PREPOSTI",
+  "durata": "12",
+  "per": "2 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 152,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI, SEMOVENTI A BRACCIO TELESCOPICO E CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Corso di formazione teorico-pratico per addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli industriali semoventi, semoventi a braccio telescopico e carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 153,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI AUTORIBALTABILI A CINGOLI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di autoribaltabili a cingoli",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 154,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARICATORI PER LA MOVIMENTAZIONE DI MATERIALI (CMM)",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di caricatori per la movimentazione di materiali (CMM)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 155,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI)",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli industriali semoventi)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 156,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI SEMOVENTI A BRACCIO TELESCOPICO)",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli semoventi a braccio telescopico)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 157,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI)",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di carrelli elevatori semoventi con conducente a bordo (carrelli/sollevatori/elevatori semoventi telescopici rotativi)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 158,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRIPONTE CON COMANDO IN CABINA",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di carriponte con comando in cabina",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 159,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRIPONTE CON COMANDO PENSILE/RADIOCOMANDO",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di carriponte con comando pensile/radiocomando",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 160,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRIPONTE CON COMANDO PENSILE/RADIOCOMANDO E/O CON COMANDO IN CABINA",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di carriponte con comando pensile/radiocomando e/o con comando in cabina",
+  "durata": "11",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 161,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI ESCAVATORI A FUNE",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di escavatori a fune",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 162,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI ESCAVATORI IDRAULICI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di escavatori idraulici",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 163,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI ESCAVATORI IDRAULICI, CARICATORI FRONTALI E TERNE",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di escavatori idraulici, caricatori frontali e terne",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 164,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU A TORRE A ROTAZIONE IN ALTO",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di gru a torre a rotazione in alto",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 165,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU A TORRE A ROTAZIONE IN BASSO",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di gru a torre a rotazione in basso",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 166,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU A TORRE A ROTAZIONE IN BASSO E IN ALTO",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di gru a torre a rotazione in basso e in alto",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 167,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU MOBILI-MODULO BASE E MODULO AGGIUNTIVO PER LE GRU MOBILI SU RUOTE CON FALCONE TELESCOPICO O BRANDEGGIABILE",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di gru mobili-Modulo Base e Modulo Aggiuntivo per le gru mobili su ruote con falcone telescopico o brandeggiabile",
+  "durata": "22",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 168,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU MOBILI-MODULO BASE PER GRU MOBILI AUTOCARRATE E SEMOVENTI SU RUOTE CON BRACCIO TELESCOPICO O TRALICCIATO ED EVENTUALE FALCONE FISSO",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di gru mobili-Modulo Base per gru mobili autocarrate e semoventi su ruote con braccio telescopico o tralicciato ed eventuale falcone fisso",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 169,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI GRU PER AUTOCARRO",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di gru per autocarro",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 170,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI MACCHINA AGRICOLA RACCOGLIFRUTTA (COMUNEMENTE DETTA CARRO RACCOGLIFRUTTA CRF)",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di macchina agricola raccoglifrutta (comunemente detta carro raccoglifrutta CRF)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 171,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PALE CARICATRICI FRONTALI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di pale caricatrici frontali",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 172,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE) CON E SENZA STABILIZZATORI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di piattaforme di lavoro mobili elevabili (PLE) con e senza stabilizzatori",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 173,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE) SENZA STABILIZZATORI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di piattaforme di lavoro mobili elevabili (PLE) senza stabilizzatori",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 174,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE) SU STABILIZZATORI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di piattaforme di lavoro mobili elevabili (PLE) su stabilizzatori",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 175,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI POMPE PER CALCESTRUZZO",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di pompe per calcestruzzo",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 176,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TERNE",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di terne",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 177,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI A CINGOLI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di trattori agricoli o forestali a cingoli",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 178,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI A RUOTE",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di trattori agricoli o forestali a ruote",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 179,
+  "k": "CORSO DI FORMAZIONE TEORICO-PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI TRATTORI AGRICOLI O FORESTALI A RUOTE E A CINGOLI",
+  "originale": "Corso di formazione teorico-pratico per lavoratori addetti alla conduzione di trattori agricoli o forestali a ruote e a cingoli",
+  "durata": "13",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 180,
+  "k": "CORSO PER ADDETTI AI LAVORI IN SPAZI CONFINATI E SOSPETTI DI INQUINAMENTO",
+  "originale": "CORSO PER ADDETTI  AI LAVORI IN SPAZI CONFINATI E SOSPETTI DI INQUINAMENTO",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 181,
+  "k": "CORSO PER ADDETTI AI LAVORI IN SPAZI CONFINATI E SOSPETTI DI INQUINAMENTO- ASR 2025",
+  "originale": "CORSO PER ADDETTI  AI LAVORI IN SPAZI CONFINATI E SOSPETTI DI INQUINAMENTO- ASR 2025",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 182,
+  "k": "CORSO PER ADDETTI AI LAVORI IN QUOTA E ALL'UTILIZZO DI SCALE PORTATILI E FISSE",
+  "originale": "CORSO PER ADDETTI AI LAVORI IN QUOTA E ALL'UTILIZZO DI SCALE PORTATILI E FISSE",
+  "durata": "2",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 183,
+  "k": "CORSO PER ADDETTO ALLA CONDUZIONE DI CARROPONTE",
+  "originale": "CORSO PER ADDETTO ALLA CONDUZIONE DI CARROPONTE",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 184,
+  "k": "CORSO PER ADDETTO ALLA CONDUZIONE DI CARROPONTE (GRU A PONTE)",
+  "originale": "Corso per Addetto alla conduzione di Carroponte (Gru a Ponte)",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 185,
+  "k": "CORSO PER DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP MODULO COMUNE",
+  "originale": "CORSO PER DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP MODULO COMUNE",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 186,
+  "k": "CORSO PER DIRIGENTE",
+  "originale": "CORSO PER DIRIGENTE",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 187,
+  "k": "CORSO PER DIRIGENTE CON MODULO AGGIUNTIVO CANTIERI",
+  "originale": "CORSO PER DIRIGENTE con modulo aggiuntivo cantieri",
+  "durata": "18",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 188,
+  "k": "CORSO PER LAVORATORI, DATORI DI LAVORO E LAVORATORI AUTONOMI CHE OPERANO IN AMBIENTI SOSPETTI DI INQUINAMENTO O CONFINATI",
+  "originale": "Corso per lavoratori, datori di lavoro e lavoratori autonomi che operano in ambienti sospetti di inquinamento o confinati",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 189,
+  "k": "CORSO PER PATENTINO FITOSANITARI (PRIMO RILASCIO)",
+  "originale": "Corso per patentino fitosanitari (primo rilascio)",
+  "durata": "20",
+  "per": "5 Anni",
+  "tip": "Formazione generica",
+  "cat": "Generica"
+ },
+ {
+  "r": 190,
+  "k": "CORSO PES, PAV, PEI PER ADDETTI AI LAVORI ELETTRICI – NUOVA NORMA CEI 11-27 EDIZIONE 2021",
+  "originale": "CORSO PES, PAV, PEI PER ADDETTI AI LAVORI ELETTRICI – NUOVA NORMA CEI 11-27 EDIZIONE 2021",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 191,
+  "k": "CORSO RINNOVO DEL PATENTINO FITOSANITARI",
+  "originale": "Corso rinnovo del patentino fitosanitari",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione generica",
+  "cat": "Generica"
+ },
+ {
+  "r": 192,
+  "k": "CORSO RSPP / ASPP MODULO A",
+  "originale": "CORSO RSPP / ASPP MODULO A",
+  "durata": "28",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 193,
+  "k": "CORSO RSPP / ASPP MODULO B COMUNE",
+  "originale": "CORSO RSPP / ASPP MODULO B COMUNE",
+  "durata": "48",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 194,
+  "k": "CORSO RSPP MODULO C",
+  "originale": "CORSO RSPP MODULO C",
+  "durata": "24",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 195,
+  "k": "CORSO TEORICO E PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI DI TIPO TRANSPALLET",
+  "originale": "CORSO TEORICO E PRATICO PER LAVORATORI ADDETTI ALLA CONDUZIONE DI CARRELLI ELEVATORI DI TIPO TRANSPALLET",
+  "durata": "2",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 196,
+  "k": "DATORE DI LAVORO",
+  "originale": "Datore di Lavoro",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 197,
+  "k": "DATORE DI LAVORO CON MODULO AGGIUNTIVO “CANTIERI”",
+  "originale": "Datore di Lavoro con Modulo aggiuntivo “Cantieri”",
+  "durata": "22",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 198,
+  "k": "DIRIGENTI",
+  "originale": "Dirigenti",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Dirigenti"
+ },
+ {
+  "r": 199,
+  "k": "ESECUTORE BLSD - CATEGORIA B",
+  "originale": "ESECUTORE BLSD - CATEGORIA B",
+  "durata": "5",
+  "per": "3 Anni",
+  "tip": "Formazione generica",
+  "cat": "Generica"
+ },
+ {
+  "r": 200,
+  "k": "FORMAZIONE ADDETTI ALLA CONDUZIONE CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI, SEMOVENTI A BRACCIO TELESCOPICO, CARRELLI/SOLLEVATORI/ELEVATORI SEMOVENTI TELESCOPICI ROTATIVI SOLLEVAMENTO CARICHI SOSPESI/PERSONE)",
+  "originale": "Formazione addetti alla conduzione carrelli elevatori semoventi con conducente a bordo (carrelli industriali semoventi, semoventi a braccio telescopico, carrelli/sollevatori/elevatori semoventi telescopici rotativi sollevamento carichi sospesi/persone)",
+  "durata": "14",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 201,
+  "k": "FORMAZIONE ADDETTO ALLA CONDUZIONE DI CARROPONTE (GRU CARROPONTE/ GRU A CAVALLETTO CON COMANDO PENSILE/RADIOCOMANDATO)",
+  "originale": "FORMAZIONE ADDETTO ALLA CONDUZIONE DI CARROPONTE (GRU CARROPONTE/ GRU A CAVALLETTO CON COMANDO PENSILE/RADIOCOMANDATO)",
+  "durata": "10",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 202,
+  "k": "FORMAZIONE DEI LAVORATORI (GENERALE)",
+  "originale": "Formazione dei lavoratori (generale)",
+  "durata": "4",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 203,
+  "k": "FORMAZIONE DEI LAVORATORI RISCHIO BASSO",
+  "originale": "Formazione dei lavoratori Rischio Basso",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 204,
+  "k": "FORMAZIONE LAVORATORI RISCHIO ALTO",
+  "originale": "Formazione Lavoratori Rischio Alto",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 205,
+  "k": "FORMAZIONE LAVORATORI RISCHIO ALTO - SPECIFICA",
+  "originale": "Formazione lavoratori Rischio Alto -  Specifica",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 206,
+  "k": "FORMAZIONE LAVORATORI RISCHIO BASSO",
+  "originale": "Formazione Lavoratori Rischio Basso",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore 2016"
+ },
+ {
+  "r": 207,
+  "k": "FORMAZIONE LAVORATORI RISCHIO BASSO - SPECIFICA",
+  "originale": "Formazione lavoratori Rischio Basso -  Specifica",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 208,
+  "k": "FORMAZIONE LAVORATORI RISCHIO MEDIO",
+  "originale": "Formazione Lavoratori Rischio Medio",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 209,
+  "k": "FORMAZIONE LAVORATORI RISCHIO MEDIO - SPECIFICA",
+  "originale": "Formazione lavoratori Rischio Medio -  Specifica",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 210,
+  "k": "FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI",
+  "originale": "FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI",
+  "durata": "8",
+  "per": "2 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 211,
+  "k": "FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI - BIENNALE",
+  "originale": "FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI - BIENNALE",
+  "durata": "12",
+  "per": "2 Anni",
+  "tip": "Formazione Preposto - biennale",
+  "cat": "Generica"
+ },
+ {
+  "r": 212,
+  "k": "FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI_BIENNALE",
+  "originale": "FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI_BIENNALE",
+  "durata": "8",
+  "per": "2 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 213,
+  "k": "FORMAZIONE PER L'USO DEI DIISOCIANATI - LIVELLO GENERALE, INTERMEDIO E AVANZATO",
+  "originale": "Formazione per l'uso dei diisocianati - Livello generale, intermedio e avanzato",
+  "durata": "2",
+  "per": "5 Anni",
+  "tip": "Formazione per l'uso dei diisocianati - Livello generale, intermedio e avanzato",
+  "cat": "Generica"
+ },
+ {
+  "r": 214,
+  "k": "FORMAZIONE PER L'USO DEI DIISOCIANATI: LIVELLO GENERALE, INTERMEDIO E AVANZATO",
+  "originale": "Formazione per l'uso dei diisocianati: Livello generale, intermedio e avanzato",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione per l'uso dei diisocianati - Livello generale, intermedio e avanzato",
+  "cat": "Generica"
+ },
+ {
+  "r": 215,
+  "k": "FORMAZIONE SPECIFICA RISCHIO ALTO PARZIALE 6H 1\\2",
+  "originale": "FORMAZIONE SPECIFICA RISCHIO ALTO PARZIALE 6H 1\\2",
+  "durata": "6",
+  "per": "",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 216,
+  "k": "FORMAZIONE SPECIFICA RISCHIO ALTO, PARZIALE 6H 2/2",
+  "originale": "FORMAZIONE SPECIFICA RISCHIO ALTO, PARZIALE 6H 2/2",
+  "durata": "6",
+  "per": "",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 217,
+  "k": "IGIENE ALIMENTI",
+  "originale": "IGIENE ALIMENTI",
+  "durata": "3",
+  "per": "3 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 218,
+  "k": "INTEGRAZIONE ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE CON STABILIZZATORI)",
+  "originale": "integrazione Addetto alla conduzione di Piattaforme di lavoro mobili Elevabili (Ple con stabilizzatori)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 219,
+  "k": "INTEGRAZIONE ADDETTO ALLA CONDUZIONE DI PIATTAFORME DI LAVORO MOBILI ELEVABILI (PLE SENZA STABILIZZATORI)",
+  "originale": "Integrazione Addetto alla conduzione di Piattaforme di Lavoro mobili Elevabili (PLE senza stabilizzatori)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 220,
+  "k": "INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI",
+  "originale": "INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI",
+  "durata": "3",
+  "per": "2 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 221,
+  "k": "INTEGRAZIONE FORMAZIONE SPECIFICA LAVORATORI - RISCHIO ALTO",
+  "originale": "Integrazione formazione specifica lavoratori - rischio alto",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 222,
+  "k": "INTEGRAZIONE FORMAZIONE SPECIFICA LAVORATORI- RISCHIO ALTO",
+  "originale": "Integrazione formazione specifica lavoratori- rischio alto",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 223,
+  "k": "INTEGRAZIONE FORMAZIONE SPECIFICA LAVORATORI-RISCHIO ALTO",
+  "originale": "Integrazione formazione specifica lavoratori-rischio alto",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 224,
+  "k": "INTEGRAZIONE FORMAZIONE SPECIFICA LAVORATORI-RISCHIO MEDIO",
+  "originale": "Integrazione formazione specifica lavoratori-Rischio Medio",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 225,
+  "k": "INTEGRAZIONE R.S.P.P. DATORE DI LAVORO MODULO 3 E 4 - RISCHIO ALTO",
+  "originale": "INTEGRAZIONE R.S.P.P. DATORE DI LAVORO MODULO 3 E 4 - RISCHIO ALTO",
+  "durata": "24",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 226,
+  "k": "INTEGRAZIONE R.S.P.P. DATORE DI LAVORO MODULO 3 E 4 - RISCHIO BASSO",
+  "originale": "INTEGRAZIONE R.S.P.P. DATORE DI LAVORO MODULO 3 E 4 - RISCHIO BASSO",
+  "durata": "8",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 227,
+  "k": "INTEGRAZIONE R.S.P.P. DATORE DI LAVORO MODULO 3 E 4 - RISCHIO MEDIO",
+  "originale": "INTEGRAZIONE R.S.P.P. DATORE DI LAVORO MODULO 3 E 4 - RISCHIO MEDIO",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 228,
+  "k": "LAVORATORI E PREPOSTI ADDETTI AL MONTAGGIO,&#XA;SMONTAGGIO E TRASFORMAZIONE DI PONTEGGI, USO DPI ANTICADUTA",
+  "originale": "Lavoratori e Preposti addetti al montaggio,&#xa;smontaggio e trasformazione di ponteggi, uso DPI anticaduta",
+  "durata": "28",
+  "per": "4 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 229,
+  "k": "LAVORI IN AMBIENTI CONFINATI (AGGIORNAMENTO COORDINATORE SICUREZZA)",
+  "originale": "Lavori in Ambienti Confinati (Aggiornamento Coordinatore Sicurezza)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 230,
+  "k": "LAVORI IN AMBIENTI CONFINATI (AGGIORNAMENTO LAVORATORI)",
+  "originale": "Lavori in Ambienti Confinati (Aggiornamento Lavoratori)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 231,
+  "k": "LAVORI IN AMBIENTI CONFINATI (AGGIORNAMENTO PREPOSTO)",
+  "originale": "Lavori in Ambienti Confinati (Aggiornamento Preposto)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 232,
+  "k": "LAVORI IN AMBIENTI CONFINATI (AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO)",
+  "originale": "Lavori in Ambienti Confinati (Aggiornamento R.S.P.P. Datore di Lavoro)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 233,
+  "k": "LAVORI IN AMBIENTI CONFINATI (AGGIORNAMENTO R.S.P.P. MODULO B)",
+  "originale": "Lavori in Ambienti Confinati (Aggiornamento R.S.P.P. Modulo B)",
+  "durata": "12",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Aggiornamenti"
+ },
+ {
+  "r": 234,
+  "k": "MODULO AGGIUNTIVO “CANTIERI” PER DATORI DI LAVORO",
+  "originale": "Modulo Aggiuntivo “Cantieri” per Datori di lavoro",
+  "durata": "6",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 235,
+  "k": "MODULO AGGIUNTIVO “CANTIERI” PER DIRIGENTE",
+  "originale": "MODULO AGGIUNTIVO “CANTIERI” PER DIRIGENTE",
+  "durata": "6",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 236,
+  "k": "MODULO B DI SPECIALIZZAZIONE SP1: AGRICOLTURA – SILVICOLTURA - ZOOTECNIA PER RSPP/ASPP",
+  "originale": "Modulo B di specializzazione SP1: Agricoltura – Silvicoltura - Zootecnia per RSPP/ASPP",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 237,
+  "k": "MODULO B DI SPECIALIZZAZIONE SP2: PESCA PER RSPP/ASPP",
+  "originale": "Modulo B di specializzazione SP2: Pesca per RSPP/ASPP",
+  "durata": "12",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 238,
+  "k": "MODULO B DI SPECIALIZZAZIONE SP3: COSTRUZIONI PER RSPP/ASPP",
+  "originale": "Modulo B di specializzazione SP3: Costruzioni per RSPP/ASPP",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 239,
+  "k": "MODULO B DI SPECIALIZZAZIONE SP4: SANITÀ RESIDENZIALE PER RSPP/ASPP",
+  "originale": "Modulo B di specializzazione SP4: Sanità residenziale per RSPP/ASPP",
+  "durata": "12",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 240,
+  "k": "MODULO B DI SPECIALIZZAZIONE SP5: CHIMICO - PETROLCHIMICO PER RSPP/ASPP",
+  "originale": "Modulo B di specializzazione SP5: Chimico - Petrolchimico per RSPP/ASPP",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 241,
+  "k": "MODULO INTEGRATIVO 1: AGRICOLTURA – SILVICOLTURA - ZOOTECNIA PER DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP",
+  "originale": "Modulo integrativo 1: Agricoltura – Silvicoltura - Zootecnia per Datore di Lavoro che svolge i compiti di RSPP",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 242,
+  "k": "MODULO INTEGRATIVO 2: PESCA PER DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP",
+  "originale": "Modulo integrativo 2: Pesca per Datore di Lavoro che svolge i compiti di RSPP",
+  "durata": "12",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 243,
+  "k": "MODULO INTEGRATIVO 3: COSTRUZIONI PER DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP",
+  "originale": "Modulo integrativo 3: Costruzioni  per Datore di Lavoro che svolge i compiti di RSPP",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 244,
+  "k": "MODULO INTEGRATIVO 4: CHIMICO - PETROLCHIMICO PER DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP",
+  "originale": "Modulo integrativo 4: Chimico - Petrolchimico per Datore di Lavoro che svolge i compiti di RSPP",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Accordo Stato Regioni 2025"
+ },
+ {
+  "r": 245,
+  "k": "MV 200 - RODIGGIO",
+  "originale": "MV 200 - Rodiggio",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 246,
+  "k": "MV 210 - CARRELLI",
+  "originale": "MV 210 - Carrelli",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 247,
+  "k": "MV 220 - IMPIANTO PNEUMATICO E FRENO",
+  "originale": "MV 220 - Impianto Pneumatico e Freno",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 248,
+  "k": "MV 230 - APPARECCHIATURE DI BORDO PER LO SICUREZZA DELLO CONDOTTA (IPE)",
+  "originale": "MV 230 - Apparecchiature di bordo per lo sicurezza dello condotta (IPE)",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 249,
+  "k": "MV 240 - ORGANI DI AGGANCIO E REPULSIONE",
+  "originale": "MV 240 - Organi di aggancio e repulsione",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 250,
+  "k": "MV 250 - IMPIANTISTICA ELETTRICA ED ELETTRONICA (DI BASE, DI POTENZA, DI SEGNALE)",
+  "originale": "MV 250 - Impiantistica Elettrica ed elettronica (di base, di potenza, di segnale)",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 251,
+  "k": "MV 260 - PORTE",
+  "originale": "MV 260 - Porte",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 252,
+  "k": "MV 270 - TELAIO E CASSA (DISPOSITIVI DI BLOCCO PARTI MOBILI)",
+  "originale": "MV 270 - Telaio e Cassa (Dispositivi di blocco parti mobili)",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 253,
+  "k": "MV 280 - IMPIANTO ANTINCENDIO",
+  "originale": "MV 280 - Impianto Antincendio",
+  "durata": "0",
+  "per": "",
+  "tip": "ANSF - Manutenzione",
+  "cat": "Generica"
+ },
+ {
+  "r": 254,
+  "k": "PEI, PES E PAV OPERATORI SU QUADRI ELETTRICI",
+  "originale": "PEI, PES E PAV Operatori su Quadri Elettrici",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 255,
+  "k": "PRE ASR_2015_ ADDETTO ALLA CONDUZIONE DI CARRELLI ELEVATORI SEMOVENTI CON CONDUCENTE A BORDO (CARRELLI INDUSTRIALI SEMOVENTI)",
+  "originale": "Pre ASR_2015_ Addetto alla conduzione di carrelli elevatori semoventi con conducente a bordo (Carrelli industriali semoventi)",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 256,
+  "k": "QUALIFICA SALDATORE",
+  "originale": "QUALIFICA SALDATORE",
+  "durata": "0",
+  "per": "3 Anni",
+  "tip": "SALDATURA",
+  "cat": "Generica"
+ },
+ {
+  "r": 257,
+  "k": "R.L.S.",
+  "originale": "R.L.S.",
+  "durata": "32",
+  "per": "1 Anni",
+  "tip": "Formazione 81",
+  "cat": "Lavoratore"
+ },
+ {
+  "r": 258,
+  "k": "R.S.P.P. - MODULO C - A.S.R. 2016",
+  "originale": "R.S.P.P. - Modulo C - A.S.R. 2016",
+  "durata": "24",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "RSPP 2016"
+ },
+ {
+  "r": 259,
+  "k": "R.S.P.P. / A.S.P.P. - MODULO A - A.S.R. 2016",
+  "originale": "R.S.P.P. / A.S.P.P. - Modulo A - A.S.R. 2016",
+  "durata": "28",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "RSPP 2016"
+ },
+ {
+  "r": 260,
+  "k": "R.S.P.P. / A.S.P.P. MODULO B COMUNE",
+  "originale": "R.S.P.P. / A.S.P.P.  modulo B COMUNE",
+  "durata": "48",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "RSPP 2016"
+ },
+ {
+  "r": 261,
+  "k": "R.S.P.P. / A.S.P.P. MODULO B",
+  "originale": "R.S.P.P. / A.S.P.P. modulo B",
+  "durata": "12",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "Generica"
+ },
+ {
+  "r": 262,
+  "k": "R.S.P.P. / A.S.P.P. MODULO B-SP1: AGRICOLTURA - PESCA",
+  "originale": "R.S.P.P. / A.S.P.P. modulo B-SP1: Agricoltura - Pesca",
+  "durata": "12",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "RSPP 2016"
+ },
+ {
+  "r": 263,
+  "k": "R.S.P.P. / A.S.P.P. MODULO B-SP2: ATTIVITÀ ESTRATTIVE- COSTRUZIONI",
+  "originale": "R.S.P.P. / A.S.P.P. modulo B-SP2: Attività Estrattive- Costruzioni",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "RSPP 2016"
+ },
+ {
+  "r": 264,
+  "k": "R.S.P.P. / A.S.P.P. MODULO B-SP3: SANITÀ RESIDENZIALE",
+  "originale": "R.S.P.P. / A.S.P.P. modulo B-SP3: Sanità residenziale",
+  "durata": "12",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "RSPP 2016"
+ },
+ {
+  "r": 265,
+  "k": "R.S.P.P. / A.S.P.P. MODULO B-SP4: CHIMICO - PETROLCHIMICO",
+  "originale": "R.S.P.P. / A.S.P.P. modulo B-SP4: Chimico - Petrolchimico",
+  "durata": "16",
+  "per": "",
+  "tip": "Formazione 81",
+  "cat": "RSPP 2016"
+ },
+ {
+  "r": 266,
+  "k": "R.S.P.P. DATORE DI LAVORO RISCHIO ALTO",
+  "originale": "R.S.P.P. DATORE DI LAVORO RISCHIO ALTO",
+  "durata": "48",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Datoriale"
+ },
+ {
+  "r": 267,
+  "k": "R.S.P.P. DATORE DI LAVORO RISCHIO BASSO",
+  "originale": "R.S.P.P. DATORE DI LAVORO RISCHIO BASSO",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Datoriale"
+ },
+ {
+  "r": 268,
+  "k": "R.S.P.P. DATORE DI LAVORO RISCHIO MEDIO",
+  "originale": "R.S.P.P. DATORE DI LAVORO RISCHIO MEDIO",
+  "durata": "32",
+  "per": "5 Anni",
+  "tip": "Formazione 81",
+  "cat": "Datoriale"
+ },
+ {
+  "r": 269,
+  "k": "RISCHIO CHIMICO E BIOLOGICO, SANIFICAZIONE DEGLI AMBIENTI DI LAVORO, CORRETTO USO DEI DPI E PROCEDURE ANTICONTAGIO CORONAVIRUS.",
+  "originale": "Rischio chimico e biologico, sanificazione degli ambienti di lavoro, corretto uso dei DPI e procedure anticontagio Coronavirus.",
+  "durata": "4",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ },
+ {
+  "r": 270,
+  "k": "SVOLGIMENTO DI ATTIVITA' IN QUOTA PER LAVORATORI ADDETTI ALL'INSTALLAZIONE E MANUTENZIONE DI PANNELLI FV",
+  "originale": "SVOLGIMENTO DI ATTIVITA' IN QUOTA PER LAVORATORI ADDETTI ALL'INSTALLAZIONE E MANUTENZIONE DI PANNELLI FV",
+  "durata": "16",
+  "per": "5 Anni",
+  "tip": "Formazione%20specifica",
+  "cat": "Generica"
+ }
+]
