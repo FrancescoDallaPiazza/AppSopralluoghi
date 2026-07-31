@@ -275,6 +275,26 @@ export function etichettaCliente(c: ClienteScelta): string {
   return c.ragione_sociale + (dove ? ` — ${dove}` : '');
 }
 
+// Divergenze fra il luogo del cliente scelto e lo stabilimento del file. Non
+// bloccano: l'abbinamento puo' essere giusto lo stesso e il gestionale non e' la
+// fonte di verita' dell'anagrafica. Ma un CAP sbagliato in anagrafica non si
+// vede da nessuna parte finche' non sposta un abbinamento in silenzio - qui lo
+// si ha sotto gli occhi accanto ai dati veri, ed e' il momento buono per dirlo.
+export function incoerenzeLuogo(u: UnitaFile, c: ClienteScelta): string[] {
+  const l = c.operativa ?? { localita: c.localita, cap: c.cap };
+  const dove = c.operativa ? 'sede operativa' : 'anagrafica';
+  const out: string[] = [];
+  const capApp = (l.cap ?? '').trim();
+  if (u.cap && capApp && capApp !== u.cap.trim()) {
+    out.push(`CAP ${capApp} in ${dove}, ${u.cap} nel file`);
+  }
+  const loc = chiave(l.localita ?? '');
+  if (loc !== '' && loc !== chiave(u.sede) && loc !== chiave(u.citta)) {
+    out.push(`localita' "${l.localita}" in ${dove}, "${u.citta || u.sede}" nel file`);
+  }
+  return out;
+}
+
 // I luoghi su cui un cliente puo' agganciare, in ordine di forza.
 const luoghiCliente = (c: ClienteScelta): { operativa: Luogo | null; legale: Luogo } => ({
   operativa: c.operativa,
@@ -311,8 +331,17 @@ export function proponiCliente(
   const combacia = (l: Luogo | null): boolean => {
     if (!l) return false;
     const loc = chiave(l.localita ?? '');
-    return (loc !== '' && (loc === sede || loc === citta))
-      || (!!u.cap && (l.cap ?? '').trim() === u.cap.trim());
+    if (loc !== '' && (loc === sede || loc === citta)) return true;
+    // Il CAP da solo puo' agganciare - serve quando la localita' e' scritta in
+    // forma abbreviata ("Villafranca V.se" per "Villafranca di Verona") - ma
+    // NON quando la localita' in app dice apertamente un altro paese: li' un
+    // CAP che combacia e' quasi sempre un errore di digitazione, e fidarsene
+    // significa mandare gli attestati di uno stabilimento sull'altro. Il
+    // riscontro e' sulla prima parola, che le abbreviazioni conservano sempre.
+    if (!u.cap || (l.cap ?? '').trim() !== u.cap.trim()) return false;
+    if (loc === '') return true;
+    const p = loc.split(' ')[0] ?? '';
+    return p !== '' && (p === sede.split(' ')[0] || p === citta.split(' ')[0]);
   };
 
   const perOperativa = conPiva.filter((c) => combacia(luoghiCliente(c).operativa));

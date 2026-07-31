@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   leggiExportFormazioni, raggruppaUnita, riconciliaUnita, applicaUnita,
   proponiAbbinamenti, caricaClientiScelta, chiaveImport, chiaviGiaImportate, caricaAlias,
-  etichettaCliente,
+  etichettaCliente, incoerenzeLuogo,
   type UnitaFile, type EsitoUnita, type ClienteScelta,
 } from '../lib/admin/formazioneImport';
 import { caricaCatalogo, caricaPersone, type CorsoCatalogo } from '../lib/admin/formazione';
@@ -169,6 +169,8 @@ export default function ImportFormazione() {
         const cid = scelta[u.chiave] ?? '';
         const orfane = e ? e.nuove.filter((v) => !v.persona_id).length : 0;
         const altre = cid ? altreSulCliente(cid, u) : [];
+        const scelto = cid ? clienti.find((c) => c.id === cid) ?? null : null;
+        const incoerenze = scelto ? incoerenzeLuogo(u, scelto) : [];
         return (
           <div key={u.chiave} className="bo-card">
             <div className="bo-meta" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
@@ -218,6 +220,16 @@ export default function ImportFormazione() {
                   </p>
                 )}
               </>
+            )}
+
+            {/* Segnalazione e non blocco: l'abbinamento puo' essere giusto lo
+                stesso (basta che combaci la localita'), ma un CAP sbagliato in
+                anagrafica altrove sposta gli abbinamenti senza farsi vedere. */}
+            {incoerenze.length > 0 && altre.length === 0 && (
+              <p className="bo-sub" style={{ color: 'var(--warn, #b7791f)' }}>
+                Dati diversi fra cliente e file: {incoerenze.join(' · ')}. Controlla l’anagrafica —
+                non blocca l’import, ma se è un refuso conviene correggerlo ora.
+              </p>
             )}
 
             {altre.length > 0 && (

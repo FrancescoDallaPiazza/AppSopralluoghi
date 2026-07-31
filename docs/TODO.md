@@ -187,6 +187,14 @@ Correzioni all'abbinamento fatte il 2026-07-31 dopo la prima prova sul campo:
     controllo per singola unità non poteva accorgersene: il passo sul luogo ci
     arrivava per due strade diverse (una unità per località, l'altra per CAP,
     quando il cliente tiene la località di una sede e il CAP dell'altra).
+  - Il **CAP da solo** aggancia solo se la località in app non contraddice
+    quella del file (riscontro sulla prima parola, che le abbreviazioni
+    conservano: "Villafranca V.se" resta compatibile, "Trevenzuolo" no).
+    Emerso da un refuso vero — CAP di Trevenzuolo sul cliente di Villafranca:
+    con l'OR secco fra località e CAP un CAP digitato male aggancia lo
+    stabilimento sbagliato in silenzio. `incoerenzeLuogo` mostra inoltre in
+    anteprima le divergenze CAP/località fra cliente scelto e file (segnala,
+    non blocca: il gestionale non è la fonte di verità dell'anagrafica).
   - La tendina mostra il luogo che distingue (`etichettaCliente`) e non la sola
     località dell'anagrafica; `autoComplete="off"` sul select, perché al refresh
     Chrome ripristina da sé il valore e l'abbinamento sembra comparso da solo.
