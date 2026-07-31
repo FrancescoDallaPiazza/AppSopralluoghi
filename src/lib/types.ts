@@ -355,13 +355,11 @@ export interface Adempimento {
   import_key: string | null;
 }
 
-// Dizionario testo-del-gestionale -> corso a catalogo.
-// corso_codice null = da mappare (l'import non si blocca, la voce resta in lista).
-export interface CorsoAlias {
-  id: string;
-  testo_gestionale: string;
-  corso_codice: string | null;
-  note: string | null;
-}
+// NB: il dizionario alias (`corso_alias`) NON si definisce qui. Ne esisteva una
+// copia con i soli 4 campi della migration 055, rimasta indietro quando 057 e
+// 059 hanno aggiunto `ignorato`, `pregressa`, `is_aggiornamento` e `parziale`:
+// nessuno la importava, ma chi l'avesse fatto avrebbe ottenuto un tipo mutilo
+// e perso i flag in silenzio. La definizione unica sta in
+// `lib/admin/aliasCorsi.ts`, accanto alla query che la popola.
 
 export const newId = (): string => crypto.randomUUID();

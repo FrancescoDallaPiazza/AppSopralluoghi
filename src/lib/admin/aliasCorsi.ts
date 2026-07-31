@@ -68,6 +68,12 @@ export interface CorsoAlias {
   // e' una coppia di colonne del corso base, non un corso a se'. Quindi le due
   // righe si mappano sullo stesso codice e le distingue solo questo flag.
   is_aggiornamento: boolean;
+  // true = l'alias e' uno SPEZZONE del corso mappato (migration 059): da solo
+  // non assolve, si somma agli altri spezzoni dello stesso corso. Nei dati veri
+  // sono 7 righe su 268 ("...PARZIALE 6H 1\2" + "2/2" = 12h = specifica rischio
+  // alto). L'import di C1b lo copia su `formazione.parziale`, ed e' li' che il
+  // motore lo legge: senza, uno spezzone da 2h risulterebbe un corso assolto.
+  parziale: boolean;
   note: string | null;
 }
 
@@ -125,7 +131,7 @@ export async function leggiCatalogoGestionale(file: File): Promise<RigaCatalogoG
 export async function caricaAlias(): Promise<CorsoAlias[]> {
   const { data, error } = await supabase
     .from('corso_alias')
-    .select('id, testo_gestionale, corso_codice, ignorato, pregressa, is_aggiornamento, note')
+    .select('id, testo_gestionale, corso_codice, ignorato, pregressa, parziale, is_aggiornamento, note')
     .order('testo_gestionale');
   if (error) throw error;
   return (data ?? []) as CorsoAlias[];
@@ -135,7 +141,7 @@ export const daMappare = (a: CorsoAlias): boolean => !a.corso_codice && !a.ignor
 
 export async function aggiornaAlias(
   id: string,
-  patch: Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'is_aggiornamento' | 'note'>>,
+  patch: Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'parziale' | 'is_aggiornamento' | 'note'>>,
 ): Promise<void> {
   const { error } = await supabase.from('corso_alias').update(patch).eq('id', id);
   if (error) throw error;

@@ -131,7 +131,7 @@ export default function AliasCorsi() {
     finally { setBusy(''); }
   }
 
-  type Patch = Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'is_aggiornamento'>>;
+  type Patch = Partial<Pick<CorsoAlias, 'corso_codice' | 'ignorato' | 'pregressa' | 'parziale' | 'is_aggiornamento'>>;
   async function patch(a: CorsoAlias, p: Patch) {
     const prima = alias;
     setAlias((l) => l.map((x) => (x.id === a.id ? { ...x, ...p } : x)));
@@ -278,10 +278,24 @@ export default function AliasCorsi() {
                     <i style={{ color: 'var(--faint)' }}>prima scegli il corso</i>
                   )}
                 </label>
+                {/* Spezzone: il gestionale eroga qualche corso a pezzi. Va
+                    visibile qui, non solo nel DB, altrimenti resta un flag che
+                    solo chi ha scritto la migration sa che esiste. */}
+                <label className="bo-meta" style={{ gap: 5 }}>
+                  <input type="checkbox" checked={a.parziale} disabled={a.ignorato || !a.corso_codice}
+                    onChange={(e) => void patch(a, { parziale: e.target.checked })} />
+                  <span>Spezzone</span>
+                </label>
               </div>
               {a.pregressa && (
                 <p className="bo-sub" style={{ margin: '4px 0 0' }}>
                   Attestato di vecchio regime: copre il requisito mappato, l&rsquo;import conserva il nome originale.
+                </p>
+              )}
+              {a.parziale && (
+                <p className="bo-sub" style={{ margin: '4px 0 0' }}>
+                  Frazione di corso: da sola non assolve il requisito. Il motore somma le ore degli
+                  spezzoni dello stesso corso e lo considera assolto solo al raggiungimento delle ore dovute.
                 </p>
               )}
             </div>
