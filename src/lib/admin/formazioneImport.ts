@@ -246,13 +246,40 @@ export function raggruppaUnita(righe: RigaGestionale[]): UnitaFile[] {
 // quello la cui localita' o CAP corrisponde alla sede del file. Se resta
 // ambiguo non si propone nulla: sceglie l'operatore. Meglio un menu da aprire
 // che un abbinamento sbagliato applicato in silenzio.
+export interface Luogo {
+  localita: string | null;
+  cap: string | null;
+}
+
 export interface ClienteScelta {
   id: string;
   ragione_sociale: string;
   partita_iva: string | null;
+  // Anagrafica del cliente = la sede LEGALE. Per un'azienda con piu' stabilimenti
+  // e' identica su tutti i clienti che la rappresentano: da sola non li separa.
   localita: string | null;
   cap: string | null;
+  // Sede OPERATIVA attiva (mig. 054), se c'e'. E' il luogo dove si lavora, ed e'
+  // quello che l'export del gestionale chiama "Sede": due clienti Ecodent hanno
+  // la stessa sede legale e sedi operative diverse, quindi e' l'unico dato che
+  // li distingue - sia per l'abbinamento sia per l'occhio di chi apre la tendina.
+  operativa: Luogo | null;
 }
+
+// Etichetta della tendina. Mostra il luogo che DISTINGUE (l'operativa se c'e')
+// e il CAP: senza, due clienti della stessa azienda compaiono come due voci
+// identiche e la scelta a mano diventa un tiro a indovinare.
+export function etichettaCliente(c: ClienteScelta): string {
+  const l = c.operativa ?? { localita: c.localita, cap: c.cap };
+  const dove = [l.localita, l.cap ? `(${l.cap})` : ''].filter(Boolean).join(' ').trim();
+  return c.ragione_sociale + (dove ? ` — ${dove}` : '');
+}
+
+// I luoghi su cui un cliente puo' agganciare, in ordine di forza.
+const luoghiCliente = (c: ClienteScelta): { operativa: Luogo | null; legale: Luogo } => ({
+  operativa: c.operativa,
+  legale: { localita: c.localita, cap: c.cap },
+});
 
 export function proponiCliente(
   u: UnitaFile,
@@ -271,14 +298,62 @@ export function proponiCliente(
   const unitaStessaPiva = tutte.filter(
     (x) => (x.partita_iva || '').replace(/\s/g, '') === piva).length;
   if (conPiva.length === 1 && unitaStessaPiva <= 1) return conPiva[0]!.id;
+
+  // Riscontro sul luogo. Si guarda PRIMA la sede operativa e solo dopo la
+  // legale, e non e' un dettaglio di priorita': la riga del file descrive uno
+  // stabilimento, e per un'azienda multi-sede la legale e' identica ovunque -
+  // cercare li' per primi vuol dire trovare due clienti buoni uguali e non
+  // proporre niente, pur avendo in mano il dato che li separa. Se l'operativa
+  // decide, si e' finito; se nessuno ha operativa (cliente a sede unica) si
+  // ricade sull'anagrafica, che li' e' proprio il luogo di lavoro.
   const sede = chiave(u.sede);
   const citta = chiave(u.citta);
-  const perLuogo = conPiva.filter((c) => {
-    const loc = chiave(c.localita ?? '');
+  const combacia = (l: Luogo | null): boolean => {
+    if (!l) return false;
+    const loc = chiave(l.localita ?? '');
     return (loc !== '' && (loc === sede || loc === citta))
-      || (!!u.cap && (c.cap ?? '').trim() === u.cap.trim());
-  });
-  return perLuogo.length === 1 ? perLuogo[0]!.id : null;
+      || (!!u.cap && (l.cap ?? '').trim() === u.cap.trim());
+  };
+
+  const perOperativa = conPiva.filter((c) => combacia(luoghiCliente(c).operativa));
+  if (perOperativa.length === 1) return perOperativa[0]!.id;
+  if (perOperativa.length > 1) return null;   // ambiguo davvero: decide l'operatore
+
+  // Nel ripiego sulla legale si scartano i clienti che HANNO una sede operativa:
+  // se ce l'hanno, e' li' che si lavora e la legale non e' un indirizzo di
+  // lavoro (per questo la si aggiunge - il caso del commercialista). Senza
+  // questa esclusione l'azienda con due stabilimenti e una sola sede legale
+  // resterebbe ambigua per sempre: la sede legale combacia con tutti.
+  const perLegale = conPiva.filter((c) => !c.operativa && combacia(luoghiCliente(c).legale));
+  return perLegale.length === 1 ? perLegale[0]!.id : null;
+}
+
+// Proposte per TUTTE le unita' del file in un colpo solo, ed e' il punto: la
+// proposta per unita' non basta a garantire che due unita' non finiscano sullo
+// stesso cliente. Il passo sul luogo puo' arrivarci per due strade diverse -
+// Villafranca aggancia per localita', Trevenzuolo per CAP, se il cliente in app
+// tiene la localita' di una sede e il CAP dell'altra (caso reale: un cliente ha
+// UN solo campo CAP, quello della sede legale). Il risultato sarebbe un
+// abbinamento sbagliato gia' scritto nella tendina, che nessuno ha scelto e che
+// si legge come una conferma. Quindi: se un cliente risulta proposto a piu' di
+// una unita', la proposta si ritira per tutte e decide l'operatore.
+export function proponiAbbinamenti(
+  unita: UnitaFile[],
+  clienti: ClienteScelta[],
+): Record<string, string> {
+  const prop = new Map<string, string | null>();
+  const quante = new Map<string, number>();
+  for (const u of unita) {
+    const id = proponiCliente(u, clienti, unita);
+    prop.set(u.chiave, id);
+    if (id) quante.set(id, (quante.get(id) ?? 0) + 1);
+  }
+  const out: Record<string, string> = {};
+  for (const u of unita) {
+    const id = prop.get(u.chiave) ?? null;
+    out[u.chiave] = id && (quante.get(id) ?? 0) === 1 ? id : '';
+  }
+  return out;
 }
 
 export async function caricaClientiScelta(): Promise<ClienteScelta[]> {
@@ -288,7 +363,22 @@ export async function caricaClientiScelta(): Promise<ClienteScelta[]> {
     .eq('attivo', true)
     .order('ragione_sociale');
   if (error) throw error;
-  return (data ?? []) as ClienteScelta[];
+  const clienti = (data ?? []) as Omit<ClienteScelta, 'operativa'>[];
+
+  // Sedi operative attive (`principale = false`): una per cliente nel modello a
+  // un solo organigramma. Query separata e non join annidata: PostgREST la
+  // renderebbe come array da appiattire comunque, e cosi' resta leggibile.
+  const { data: sedi, error: errSedi } = await supabase
+    .from('sede')
+    .select('cliente_id, localita, cap')
+    .eq('attivo', true)
+    .eq('principale', false);
+  if (errSedi) throw errSedi;
+  const perCliente = new Map<string, Luogo>();
+  for (const s of (sedi ?? []) as { cliente_id: string; localita: string | null; cap: string | null }[]) {
+    if (!perCliente.has(s.cliente_id)) perCliente.set(s.cliente_id, { localita: s.localita, cap: s.cap });
+  }
+  return clienti.map((c) => ({ ...c, operativa: perCliente.get(c.id) ?? null }));
 }
 
 // ============================ [3] RICONCILIAZIONE ============================

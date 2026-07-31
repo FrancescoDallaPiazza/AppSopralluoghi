@@ -14,7 +14,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   leggiExportFormazioni, raggruppaUnita, riconciliaUnita, applicaUnita,
-  proponiCliente, caricaClientiScelta, chiaveImport, chiaviGiaImportate, caricaAlias,
+  proponiAbbinamenti, caricaClientiScelta, chiaveImport, chiaviGiaImportate, caricaAlias,
+  etichettaCliente,
   type UnitaFile, type EsitoUnita, type ClienteScelta,
 } from '../lib/admin/formazioneImport';
 import { caricaCatalogo, caricaPersone, type CorsoCatalogo } from '../lib/admin/formazione';
@@ -58,14 +59,22 @@ export default function ImportFormazione() {
   // designano per luogo di lavoro: fondere Villafranca e Trevenzuolo farebbe
   // contare una sola squadra per due stabilimenti. E' un errore silenzioso -
   // l'import riuscirebbe benissimo - quindi va fermato qui, non spiegato dopo.
-  const clientiDoppi = useMemo(() => {
-    const conta = new Map<string, number>();
+  // Si tiene l'elenco delle unita' per cliente e non un semplice conteggio: a
+  // chi legge l'avviso serve sapere QUALE altra card tiene quel cliente, perche'
+  // la card sbagliata da correggere e' quasi sempre l'altra.
+  const unitaPerCliente = useMemo(() => {
+    const m = new Map<string, UnitaFile[]>();
     for (const u of unita) {
       const cid = scelta[u.chiave] ?? '';
-      if (cid) conta.set(cid, (conta.get(cid) ?? 0) + 1);
+      if (cid) m.set(cid, [...(m.get(cid) ?? []), u]);
     }
-    return new Set([...conta].filter(([, n]) => n > 1).map(([id]) => id));
+    return m;
   }, [unita, scelta]);
+  // Le ALTRE unita' abbinate allo stesso cliente. Vuoto = abbinamento pulito.
+  const altreSulCliente = (cid: string, u: UnitaFile): UnitaFile[] => {
+    const l = unitaPerCliente.get(cid) ?? [];
+    return l.length > 1 ? l.filter((x) => x.chiave !== u.chiave) : [];
+  };
 
   async function leggi(file: File | null) {
     if (!file) return;
@@ -79,9 +88,7 @@ export default function ImportFormazione() {
       // Le chiavi gia' presenti si chiedono UNA volta per tutto il file: e'
       // quello che distingue un secondo giro (0 nuove) da un primo.
       setChiaviPresenti(await chiaviGiaImportate(righe.map(chiaveImport)));
-      const s: Record<string, string> = {};
-      for (const x of u) s[x.chiave] = proponiCliente(x, clienti, u) ?? '';
-      setScelta(s);
+      setScelta(proponiAbbinamenti(u, clienti));
     } catch (e: any) { setErr(e?.message ?? 'Errore in lettura del file.'); }
     finally { setBusy(''); }
   }
@@ -161,6 +168,7 @@ export default function ImportFormazione() {
         const e = esiti[u.chiave];
         const cid = scelta[u.chiave] ?? '';
         const orfane = e ? e.nuove.filter((v) => !v.persona_id).length : 0;
+        const altre = cid ? altreSulCliente(cid, u) : [];
         return (
           <div key={u.chiave} className="bo-card">
             <div className="bo-meta" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
@@ -174,31 +182,52 @@ export default function ImportFormazione() {
 
             <label className="bo-field" style={{ maxWidth: 460 }}>
               <span>Cliente in app su cui importare</span>
-              <select value={cid} disabled={busy !== ''}
+              {/* autoComplete off: al refresh della pagina Chrome ripristina da
+                  se' il valore dei <select> per posizione nel DOM, e qui vuol
+                  dire riproporre l'abbinamento della card ACCANTO. E' una
+                  scelta che non ha fatto nessuno e che nessuno rilegge. */}
+              <select value={cid} disabled={busy !== ''} autoComplete="off"
                 onChange={(ev) => setScelta((s) => ({ ...s, [u.chiave]: ev.target.value }))}>
                 <option value="">— scegli il cliente —</option>
                 {clienti.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.ragione_sociale}{c.localita ? ` — ${c.localita}` : ''}
-                  </option>
+                  <option key={c.id} value={c.id}>{etichettaCliente(c)}</option>
                 ))}
               </select>
             </label>
 
             {!cid && (
-              <p className="bo-sub" style={{ color: 'var(--no)' }}>
-                Nessun cliente abbinato: questa unità non verrà importata. Se il cliente non esiste,
-                crealo in <i>Anagrafiche</i> con i dati qui sopra — l’import non lo crea da sé perché
-                mancherebbero ATECO, livello di rischio e livelli di emergenza, che guidano il motore.
-              </p>
+              <>
+                <p className="bo-sub" style={{ color: 'var(--no)', marginBottom: 4 }}>
+                  Nessun cliente abbinato: questa unità non verrà importata. Se il cliente non esiste,
+                  crealo in <i>Anagrafiche</i> con i dati qui sopra — l’import non lo crea da sé perché
+                  mancherebbero ATECO, livello di rischio e livelli di emergenza, che guidano il motore.
+                </p>
+                {/* Il caso che si incontra davvero: i clienti ci sono gia' tutti
+                    e due, ma condividono la sede legale, quindi in tendina sono
+                    due voci uguali e l'app non ha di che sceglierne una. Il dato
+                    che li separa esiste ed e' la sede operativa: va compilata,
+                    non indovinata. */}
+                {clienti.filter((c) => (c.partita_iva ?? '').replace(/\s/g, '')
+                  === (u.partita_iva || '').replace(/\s/g, '') && u.partita_iva).length > 1 && (
+                  <p className="bo-sub" style={{ color: 'var(--no)', marginTop: 0 }}>
+                    Con questa P.IVA ci sono <b>più clienti</b> e l’abbinamento si decide sul luogo:
+                    apri in <i>Anagrafiche</i> quello di questo stabilimento e dagli la{' '}
+                    <b>sede operativa</b> ({u.citta || u.sede}{u.cap && ` · ${u.cap}`}). Finché i clienti
+                    hanno solo la sede legale — che per l’azienda è una sola — restano indistinguibili
+                    qui e in tendina.
+                  </p>
+                )}
+              </>
             )}
 
-            {cid && clientiDoppi.has(cid) && (
+            {altre.length > 0 && (
               <p className="bo-sub" style={{ color: 'var(--no)' }}>
-                <b>Questo cliente è già abbinato a un’altra unità del file.</b> Due sedi sullo stesso
-                cliente finiscono in un unico organigramma: le squadre di emergenza si designano per
-                luogo di lavoro, e fondendole l’app conterebbe una squadra sola per due stabilimenti,
-                senza accorgersi se una sede resta scoperta. Crea il cliente mancante in{' '}
+                <b>Questo cliente è già abbinato a {altre.map((x) => x.sede || '(senza sede)').join(', ')}.</b>{' '}
+                Due sedi sullo stesso cliente finiscono in un unico organigramma: le squadre di
+                emergenza si designano per luogo di lavoro, e fondendole l’app conterebbe una squadra
+                sola per due stabilimenti, senza accorgersi se una sede resta scoperta. Sono bloccate
+                entrambe le unità perché l’app non sa quale delle due sia quella giusta: rimetti su{' '}
+                <i>— scegli il cliente —</i> quella da correggere, crea il cliente mancante in{' '}
                 <i>Anagrafiche</i> e abbinalo qui.
               </p>
             )}
@@ -231,7 +260,11 @@ export default function ImportFormazione() {
                   </div>
                 )}
 
-                {e.personeMancanti.length > 0 && (
+                {/* Niente proposta di creare persone su una card bloccata: le
+                    nascerebbe sul cliente sbagliato, e offrirlo qui si legge
+                    come se l'abbinamento fosse approvato. Prima si sistema il
+                    cliente, poi si guarda chi manca. */}
+                {e.personeMancanti.length > 0 && altre.length === 0 && (
                   <div style={{ marginBottom: 10 }}>
                     <label className="bo-meta" style={{ gap: 6 }}>
                       <input type="checkbox" checked={!!creaPersone[u.chiave]} disabled={busy !== ''}
@@ -282,7 +315,7 @@ export default function ImportFormazione() {
                     non si vede sfogliando l'anteprima, si vede mesi dopo in una
                     squadra di emergenza che risulta coperta e non lo e'. */}
                 <button className="bo-btn"
-                  disabled={busy !== '' || e.nuove.length === 0 || clientiDoppi.has(cid)}
+                  disabled={busy !== '' || e.nuove.length === 0 || altre.length > 0}
                   onClick={() => void applica(u)}>
                   {busy === 'applica' ? 'Importo…' : `Importa (${e.nuove.length})`}
                 </button>

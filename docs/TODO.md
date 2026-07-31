@@ -169,6 +169,29 @@ righe con data, ore e codice fiscale su tutte; **28 testi-corso distinti, 28 su
   cliente. Poi *Importa*; rilanciando lo stesso file: 0 nuove, tutte "già
   importate".
 - [ ] **`tsc -b` + `vite build` DA VERIFICARE** (node assente sulla macchina).
+- [ ] **Prerequisito in anagrafica per le aziende multi-stabilimento**: i clienti
+  che condividono la P.IVA condividono anche la **sede legale**, quindi
+  l'anagrafica da sola non li distingue — in tendina compaiono come due voci
+  identiche e nessuna proposta è possibile. Il dato che li separa è la **sede
+  operativa**: va compilata sul cliente di ogni stabilimento diverso dalla sede
+  legale (Ecodent: al cliente di Trevenzuolo la sede operativa VIA DEL LAVORO
+  6/8, 37060 TREVENZUOLO). Verificato il 2026-07-31 sull'app in produzione.
+
+Correzioni all'abbinamento fatte il 2026-07-31 dopo la prima prova sul campo:
+  - `proponiCliente` guarda **prima la sede operativa** e solo dopo la legale, e
+    nel ripiego sulla legale **scarta i clienti che hanno una sede operativa**
+    (se ce l'hanno, è lì che si lavora). Senza, un'azienda con due stabilimenti
+    e una sola sede legale resta ambigua per sempre.
+  - Nuova `proponiAbbinamenti`: la proposta si calcola per **tutto il file** e si
+    **ritira** se lo stesso cliente risulta proposto a più di una unità. Il
+    controllo per singola unità non poteva accorgersene: il passo sul luogo ci
+    arrivava per due strade diverse (una unità per località, l'altra per CAP,
+    quando il cliente tiene la località di una sede e il CAP dell'altra).
+  - La tendina mostra il luogo che distingue (`etichettaCliente`) e non la sola
+    località dell'anagrafica; `autoComplete="off"` sul select, perché al refresh
+    Chrome ripristina da sé il valore e l'abbinamento sembra comparso da solo.
+  - Niente spunta "crea le N persone" su una card bloccata: nascerebbero sul
+    cliente sbagliato e la proposta si legge come un'approvazione.
 
 Decisioni prese scrivendolo:
   - **Un'unità = (P.IVA, Sede)**, e ogni unità va su un cliente distinto.
