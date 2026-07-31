@@ -562,7 +562,7 @@ function SchedaCliente({
       {persistito && sezioneAttiva === 'risorse' && (
         <div className="dash-panel acc-risorse">
           <div className="dash-panel-tit">Risorse Umane</div>
-          <RisorseUmane clienteId={cliente.id}
+          <RisorseUmane clienteId={cliente.id} clienteNome={cliente.ragione_sociale}
             onCambia={() => setOrgRefresh((n) => n + 1)}
             onConteggio={setNPersone} />
         </div>

@@ -18,6 +18,7 @@ import {
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 import { valido as cfValido, pulisci as cfPulisci } from './codiceFiscale';
+import { LibrettoPersona } from './Libretto';
 
 type RischioPersona = Persona['livello_rischio'];
 
@@ -36,8 +37,9 @@ const svuota = (s: string): string | null => {
 
 // ============================ componente ============================
 
-export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
+export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: {
   clienteId: string;
+  clienteNome?: string;
   onCambia?: () => void;
   onConteggio?: (n: number) => void;
 }) {
@@ -47,6 +49,9 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
   const [agg, setAgg] = useState(false);
   const [importa, setImporta] = useState(false);
   const [q, setQ] = useState('');
+  // Libretto formativo aperto (id persona). Uno per volta: e' un dossier da
+  // leggere, non una colonna della tabella.
+  const [libretto, setLibretto] = useState<string | null>(null);
 
   function ricarica() {
     setFase('carico');
@@ -136,9 +141,20 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
                 onCambia={() => { setAgg(false); cambiato(); }}
                 onAnnulla={() => setAgg(false)} />
             )}
-            {visibili.map((p) => <RigaPersona key={p.id} persona={p} onCambia={cambiato} />)}
+            {visibili.map((p) => (
+              <RigaPersona key={p.id} persona={p} onCambia={cambiato}
+                onLibretto={() => setLibretto((cur) => (cur === p.id ? null : p.id))} />
+            ))}
           </tbody>
         </table>
+      )}
+
+      {/* Fuori dalla tabella e non dentro una riga: e' un documento, e infilarlo
+          in un <td> lo comprimerebbe nella colonna. La key sull'id lo rimonta
+          quando si passa da una persona all'altra. */}
+      {libretto && (
+        <LibrettoPersona key={libretto} clienteId={clienteId} personaId={libretto}
+          clienteNome={clienteNome ?? ''} onChiudi={() => setLibretto(null)} />
       )}
 
       {fase === 'pronto' && persone.some((p) => !p.attivo) && (
@@ -154,8 +170,9 @@ export function RisorseUmane({ clienteId, onCambia, onConteggio }: {
 
 // ============================ riga persona ============================
 
-function RigaPersona({ persona, onCambia, onAnnulla }: {
+function RigaPersona({ persona, onCambia, onAnnulla, onLibretto }: {
   persona: Persona; onCambia: () => void; onAnnulla?: () => void;
+  onLibretto?: () => void;
 }) {
   const nuova = !persona.id;
   const [modifica, setModifica] = useState(nuova);
@@ -204,6 +221,9 @@ function RigaPersona({ persona, onCambia, onAnnulla }: {
           {!p.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 8 }}>disattivato</span>}
         </td>
         <td className="ru-act">
+          {onLibretto && (
+            <button className="bo-btn ghost sm" onClick={onLibretto} title="Ruoli, formazione svolta e scadenze di questa persona">Libretto</button>
+          )}
           <button className="bo-btn ghost sm" onClick={() => setModifica(true)}>Modifica</button>
         </td>
       </tr>

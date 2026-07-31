@@ -373,7 +373,10 @@ function isoToDate(iso: string | null): Date | null {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
-function addMesi(iso: string, mesi: number): string {
+// Esportata perche' il libretto formativo calcola la scadenza anche degli
+// attestati che non servono a nessun requisito (li' non passa il motore, ma la
+// regola deve restare una sola).
+export function addMesi(iso: string, mesi: number): string {
   const d = isoToDate(iso);
   if (!d) return iso;
   const r = new Date(d.getFullYear(), d.getMonth() + mesi, d.getDate());

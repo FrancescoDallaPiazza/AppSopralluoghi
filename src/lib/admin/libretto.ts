@@ -1,0 +1,162 @@
+// Libretto formativo di UNA persona: dossier di sicurezza (D.Lgs. 81/08), non
+// il "libretto formativo del cittadino" del D.Lgs. 276/2003 - quello includerebbe
+// titoli di studio, apprendistato ed esperienze lavorative, che l'app non ha e
+// che nessuno qui raccoglie.
+//
+// Perche' esiste: l'organigramma taglia i dati per FIGURA (chi copre il ruolo,
+// cosa gli manca). Questo e' il taglio opposto, per PERSONA, ed e' quello che
+// serve quando la domanda arriva su un nome: cosa ha fatto, quando, quanto dura
+// ancora. E' anche l'unico posto dove compaiono gli attestati che NON servono a
+// nessun requisito dei suoi ruoli - il corso antincendio di chi in organigramma
+// e' solo lavoratore - che nell'organigramma sono invisibili per costruzione.
+//
+// Composizione: la parte "situazione" viene dal motore (stessa valutazione
+// dell'organigramma, quindi non puo' divergere), la parte "cosa ha svolto" dalle
+// righe grezze di `formazione`.
+
+import { supabase } from '../supabase';
+import {
+  valutaCliente, caricaCatalogo, addMesi, nomePersona,
+  type Formazione, type CorsoCatalogo, type RequisitoValutato,
+  type StatoRequisito,
+} from './formazione';
+
+export interface VoceLibretto {
+  id: string;
+  corso_nome: string;
+  corso_codice: string | null;
+  categoria: string | null;
+  data_completamento: string | null;
+  ore: number | null;
+  ente_formatore: string | null;
+  is_aggiornamento: boolean;
+  parziale: boolean;
+  // Scadenza dell'attestato: quella scritta se c'e', altrimenti calcolata dalla
+  // periodicita' del corso a catalogo. Si calcola qui e non si lascia vuota
+  // perche' su un libretto la riga senza scadenza si legge come "non scade".
+  scadenza: string | null;
+  allegato_url: string | null;
+  note: string | null;
+}
+
+export interface RuoloLibretto {
+  codice: string;
+  nome: string;
+  data_nomina: string | null;
+  evidenza_mancante: boolean;
+}
+
+export interface Libretto {
+  generato_il: string;
+  cliente_nome: string;
+  persona: {
+    nome: string;
+    codice_fiscale: string | null;
+    mansione: string | null;
+    reparto: string | null;
+    data_assunzione: string | null;
+    livello_rischio: string | null;
+    attivo: boolean;
+  };
+  ruoli: RuoloLibretto[];
+  // Tutto lo storico, dal piu' recente. Include gli spezzoni: su un libretto
+  // vanno detti (sono ore erogate davvero), marcati per non farli leggere come
+  // corsi interi.
+  svolti: VoceLibretto[];
+  // Situazione dai ruoli ricoperti: e' la stessa valutazione dell'organigramma.
+  requisiti: {
+    corso_nome: string;
+    stato: StatoRequisito;
+    dettaglio: string;
+    ore: number | null;
+    data_completamento: string | null;
+    scadenza: string | null;
+  }[];
+  conteggi: Record<StatoRequisito, number>;
+}
+
+const CONTEGGI_VUOTI = (): Record<StatoRequisito, number> => ({
+  conforme: 0, in_scadenza: 0, critico: 0, esonerato: 0, da_verificare: 0, facoltativo: 0,
+});
+
+function scadenzaVoce(f: Formazione, corso: CorsoCatalogo | undefined): string | null {
+  if (f.scadenza) return f.scadenza;
+  if (!f.data_completamento) return null;
+  const mesi = corso?.aggiornamento_mesi ?? null;
+  return mesi ? addMesi(f.data_completamento, mesi) : null;
+}
+
+export async function componiLibretto(
+  clienteId: string,
+  personaId: string,
+  clienteNome: string,
+): Promise<Libretto> {
+  const [riep, cat, righe] = await Promise.all([
+    valutaCliente(clienteId),
+    caricaCatalogo(),
+    supabase.from('formazione').select('*').eq('persona_id', personaId)
+      .then(({ data, error }) => { if (error) throw error; return (data ?? []) as Formazione[]; }),
+  ]);
+
+  const pv = riep.persone.find((x) => x.persona.id === personaId);
+  if (!pv) throw new Error('Persona non trovata fra quelle valutate del cliente.');
+  const byCodice = new Map(cat.corsi.map((c) => [c.codice, c]));
+
+  const svolti: VoceLibretto[] = righe
+    .map((f) => ({
+      id: f.id,
+      corso_nome: f.corso_nome,
+      corso_codice: f.corso_codice,
+      categoria: f.categoria,
+      data_completamento: f.data_completamento,
+      ore: f.ore,
+      ente_formatore: f.ente_formatore,
+      is_aggiornamento: f.is_aggiornamento,
+      parziale: f.parziale,
+      scadenza: scadenzaVoce(f, f.corso_codice ? byCodice.get(f.corso_codice) : undefined),
+      allegato_url: f.allegato_url,
+      note: f.note,
+    }))
+    // Piu' recente in cima; le righe senza data in fondo (esistono: attestati
+    // registrati a mano di cui non si conosce il giorno).
+    .sort((a, b) => (b.data_completamento ?? '').localeCompare(a.data_completamento ?? ''));
+
+  const conteggi = CONTEGGI_VUOTI();
+  for (const r of pv.requisiti) conteggi[r.stato]++;
+
+  return {
+    generato_il: new Date().toISOString().slice(0, 10),
+    cliente_nome: clienteNome,
+    persona: {
+      nome: nomePersona(pv.persona),
+      codice_fiscale: pv.persona.codice_fiscale,
+      mansione: pv.persona.mansione,
+      reparto: pv.persona.reparto,
+      data_assunzione: pv.persona.data_assunzione,
+      livello_rischio: pv.persona.livello_rischio ?? riep.livello_rischio,
+      attivo: pv.persona.attivo,
+    },
+    ruoli: pv.figure.map((f) => ({
+      codice: f.codice, nome: f.nome, data_nomina: f.data_nomina,
+      evidenza_mancante: f.evidenza_mancante,
+    })),
+    svolti,
+    requisiti: pv.requisiti.map((r: RequisitoValutato) => ({
+      corso_nome: r.corso_nome, stato: r.stato, dettaglio: r.dettaglio,
+      ore: r.ore, data_completamento: r.data_completamento, scadenza: r.scadenza,
+    })),
+    conteggi,
+  };
+}
+
+// PDF via Edge Function `libretto-pdf` (stessa pipeline PDFBolt di
+// `organigramma-pdf`: le Edge Function girano su Deno e non hanno un browser).
+// Ritorna l'URL firmato dell'artefatto - PDF, o HTML se PDFBOLT_API_KEY non e'
+// configurata lato server, esattamente come per report e organigramma.
+export async function esportaPdfLibretto(libretto: Libretto): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('libretto-pdf', { body: { libretto } });
+  if (error) throw error;
+  const d = data as { url?: string; error?: string };
+  if (!d?.url) throw new Error(d?.error ?? 'PDF non generato.');
+  return d.url;
+}

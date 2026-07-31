@@ -11,6 +11,24 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+Per attivare il **libretto formativo per persona** (scritto 2026-07-31):
+
+- [ ] Deployare la Edge Function **`libretto-pdf`** dal Dashboard Supabase
+  (self-contained, CORS inline, nessun import da `_shared`). Usa la stessa
+  `PDFBOLT_API_KEY` di report e organigramma: se manca, ripiega su HTML invece
+  di fallire. Senza deploy la schermata funziona lo stesso — è solo l'*Esporta
+  PDF* che risponde "Function not found".
+- [ ] Push dei sorgenti su `main` (Canale 1). Nuovi: `lib/admin/libretto.ts`,
+  `formazione/Libretto.tsx`; toccati `formazione/RisorseUmane.tsx` (bottone
+  *Libretto* per riga), `admin/Anagrafiche.tsx` (passa la ragione sociale),
+  `lib/admin/formazione.ts` (`addMesi` esportata).
+- [ ] Verifica: *Anagrafiche → cliente → Risorse Umane → Libretto* su una
+  persona con attestati importati. Attesi: i ruoli con data di nomina, TUTTA la
+  formazione svolta in ordine cronologico (compresi gli attestati che non
+  servono a nessun requisito dei suoi ruoli — è l'unico punto dell'app dove si
+  vedono) e la situazione rispetto ai ruoli. Poi *Esporta PDF*.
+
+
 Per attivare **C1a — alias corsi del gestionale**, nell'ordine:
 
 > **Correzione 2026-07-30 — l'export da caricare è un altro, e i numeri di
