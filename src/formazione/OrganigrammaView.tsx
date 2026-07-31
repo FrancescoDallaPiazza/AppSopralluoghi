@@ -656,6 +656,9 @@ function EditorRequisito({
         ore: oreAtt.trim() ? Number(oreAtt) : null,
         ente_formatore: enteAtt.trim() || null,
         is_aggiornamento: false,
+        // Registrazione a mano: sempre un attestato intero. Gli spezzoni
+        // arrivano solo dall'import del gestionale (alias marcato parziale).
+        parziale: false,
         scadenza: null,
         allegato_url: null,
         note: null,
@@ -954,7 +957,8 @@ function ModuloInline({
       const f: Formazione = {
         id: newId(), persona_id: personaId, corso_codice: corso.codice, corso_nome: corso.nome,
         categoria: corso.categoria, data_completamento: data, ore: ore === '' ? null : Number(ore),
-        ente_formatore: ente.trim() || null, is_aggiornamento: false, scadenza: null, allegato_url: null, note: null,
+        ente_formatore: ente.trim() || null, is_aggiornamento: false, parziale: false,
+        scadenza: null, allegato_url: null, note: null,
       };
       if (file) await adapter.salvaFormazioneConAllegato(f, file); else await adapter.salvaFormazione(f);
       await onSaved();

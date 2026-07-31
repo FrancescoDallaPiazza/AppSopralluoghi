@@ -735,7 +735,10 @@ function SezioneRuoloPregresso({ ruoloNome, requisiti, persona, clienteId, onCam
     return {
       id: newId(), persona_id: persona.id, corso_codice: req.corso_codice, corso_nome: riga.tipo.trim(),
       categoria: req.categoria, data_completamento: riga.data, ore: riga.ore === '' ? null : Number(riga.ore),
-      ente_formatore: null, is_aggiornamento: false, scadenza: riga.scad || null, allegato_url: allegatoUrl,
+      // parziale: la registrazione a mano e' sempre un attestato intero. Gli
+      // spezzoni arrivano solo dall'import del gestionale, marcati dall'alias.
+      ente_formatore: null, is_aggiornamento: false, parziale: false,
+      scadenza: riga.scad || null, allegato_url: allegatoUrl,
       note: MARCA_PREGRESSA + ' (ante ASR 2025) - ruolo ' + ruoloNome,
     };
   }

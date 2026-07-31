@@ -29,13 +29,14 @@ Per attivare **C1a — alias corsi del gestionale**, nell'ordine:
   nell'**SQL Editor** di Supabase (Canale 3): `corso_alias.ignorato` +
   `corso_alias.pregressa`. Idempotente, ASCII-only, `pglast` OK.
   **Eseguita** (verificato 2026-07-29: DB è alla 057).
-- [ ] Eseguire `supabase/migrations/058_catalogo_attrezzature_mancanti.sql`
-  nell'**SQL Editor** (Canale 3): 5 codici che mancavano al catalogo e che
+- [x] Eseguire `supabase/migrations/058_catalogo_attrezzature_mancanti.sql`
+  nell'**SQL Editor** (Canale 3): 6 codici che mancavano al catalogo e che
   l'export completo ha fatto emergere — `ATTR_AUTORIBALTABILI`, `ATTR_CMM`,
-  `ATTR_CRF`, `ATTR_POMPE_CLS` (attrezzature art. 73) e `PONTEGGI`
-  (Allegato XXI, 28h / aggiornamento 4h ogni 4 anni). Senza, quelle righe
-  resterebbero "da mappare" per sempre e il contatore non arriverebbe mai a 0.
-  Idempotente, ASCII-only, `pglast` OK (verificato 2026-07-30).
+  `ATTR_CRF`, `ATTR_POMPE_CLS`, `ATTR_TRATT_RUOTE_CINGOLI` (attrezzature
+  art. 73) e `PONTEGGI` (Allegato XXI, 28h / aggiornamento 4h ogni 4 anni).
+  Senza, quelle righe resterebbero "da mappare" per sempre e il contatore non
+  arriverebbe mai a 0. Idempotente, ASCII-only, `pglast` OK.
+  **Eseguita 2026-07-30.**
 - [ ] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy).
   Tocca: `lib/admin/aliasCorsi.ts` (nuovo), `admin/AliasCorsi.tsx` (nuovo),
   `admin/BackOffice.tsx`, `lib/admin/catalogoImport.ts` (esporta `periodicitaMesi`).
@@ -44,30 +45,23 @@ Per attivare **C1a — alias corsi del gestionale**, nell'ordine:
   distingue il catalogo ufficiale ASR 2025 dal bucket legacy "Generica", e un
   modulo B del 2016 dal suo omonimo 2025. **`tsc -b` + `vite build` DA
   VERIFICARE**: node non è installato sulla macchina di sviluppo attuale.
-- [ ] Verifica in back-office → **Regole app → Alias corsi**: caricare
-  `elencoAnagraficaFormazioni.xlsx` → l'anteprima deve dire **268 corsi nel
-  file** e altrettanti nuovi al primo giro → *Applica* → i 268 alias compaiono
-  in *Da mappare*. Ricaricando lo stesso file: 0 nuovi, 268 già nel dizionario
-  (idempotente).
-- [ ] Mappare gli alias: codice ASR dal menu, oppure *Ignorato*, oppure
-  *Evidenza pregressa* sulla riga `Pre ASR_2015_ Addetto alla conduzione di
-  carrelli elevatori…` (mappata sul requisito ASR che copre). Il contatore in
-  cima deve arrivare a **0 da mappare**: è ciò che sblocca C1b (import
-  formazione). Il lavoro si divide in due blocchi molto diversi:
-  **193 righe** dalle categorie ufficiali (Accordo Stato Regioni 2025,
-  Attrezzature, Aggiornamenti, Lavoratore, Datoriale, Dirigenti, RSPP 2016,
-  Coordinatore) — nomenclatura pulita, ore e periodicità coerenti col catalogo,
-  mappatura quasi meccanica; **75 righe** della categoria `Generica` — il
-  bucket legacy con quasi-duplicati, "aggiornamenti parziali", righe ECM/ANSF.
-  Decisioni prese il 2026-07-30: le attrezzature senza codice ottengono codici
-  propri (migration 058); il **Coordinatore della sicurezza in cantiere**
-  (CSP/CSE: corso 120h + aggiornamenti 40h, 4 righe) si **ignora** — non è una
-  figura dell'organigramma aziendale, sta in capo al cantiere (art. 98), e
-  mapparlo non produrrebbe alcun semaforo.
-- [ ] Eseguire `supabase/migrations/059_formazione_parziale.sql` nell'**SQL
+- [x] Verifica in back-office → **Regole app → Alias corsi**: caricato
+  `elencoAnagraficaFormazioni.xlsx`, anteprima **268 corsi nel file / 194
+  nuovi** → *Applica*. I nuovi sono 194 e non 268 perché 74 alias erano già in
+  tabella da un caricamento precedente del vecchio `ExportExcel` (268 − 74 =
+  194: i conti tornano esatti, non è un'anomalia). **Fatto 2026-07-30.**
+- [x] Mappare gli alias fino a **0 da mappare** — è ciò che sblocca C1b.
+  **Fatto 2026-07-30**, non a mano: il lavoro si divideva in **193 righe**
+  dalle categorie ufficiali (Accordo Stato Regioni 2025, Attrezzature,
+  Aggiornamenti, Lavoratore, Datoriale, Dirigenti, RSPP 2016, Coordinatore) —
+  nomenclatura pulita, mappatura quasi meccanica — e **75 righe** della
+  categoria `Generica`, il bucket legacy con quasi-duplicati, spezzoni e righe
+  ECM/ANSF. Decisioni di merito prese: vedi sotto.
+- [x] Eseguire `supabase/migrations/059_formazione_parziale.sql` nell'**SQL
   Editor** (Canale 3): `corso_alias.parziale` + `formazione.parziale`, per la
   formazione frazionata (vedi sotto). Idempotente, ASCII-only, `pglast` OK.
-- [ ] Applicare la mappatura di massa con
+  **Eseguita 2026-07-30.**
+- [x] Applicare la mappatura di massa con
   `supabase/scripts/mappatura_alias_gestionale.sql` (**non è una migration**:
   si esegue nell'SQL Editor DOPO l'upload, perché prima gli alias non
   esistono). Generato dall'export con un motore di regole, non trascritto a
@@ -77,6 +71,23 @@ Per attivare **C1a — alias corsi del gestionale**, nell'ordine:
   può esserlo: il testo deve combaciare carattere per carattere con quello
   caricato dal parser (apostrofi tipografici `’`, accentate `À`). Il `select`
   finale in coda allo script verifica che i conteggi tornino.
+  **Eseguito 2026-07-30: `damappare = 0`, totale 268.**
+- [x] Risolvere le divergenze con `supabase/scripts/divergenze_fix.sql`
+  (**Fatto 2026-07-30**). Gli update della mappatura di massa sono volutamente
+  non distruttivi (`where corso_codice is null and not ignorato`): non
+  sovrascrivono mai una decisione presa a mano, stesso principio di
+  `applicaAlias()`. `supabase/scripts/divergenze_alias.sql` — sola lettura —
+  elenca i casi in cui la decisione già presente diverge dalla proposta. Ne
+  sono emersi **2**, entrambi decisioni giuste quando furono prese e superate
+  dopo, quindi forzate a mano:
+  - *transpallet*, mappato su `ATTR_CARRELLO` → **ignorato**. L'Allegato A
+    riguarda i carrelli elevatori semoventi con conducente a bordo, non i
+    transpallet a timone: tenerlo lì avrebbe fatto risultare abilitata al
+    muletto una persona con 2h di transpallet.
+  - *ponteggi* (`LAVORATORI E PREPOSTI ADDETTI AL MONTAGGIO…`), ignorato →
+    **`PONTEGGI`**. Era escluso perché il codice non esisteva; la 058 lo ha
+    aggiunto. Senza la correzione sarebbe finito in uno stato diverso dalla sua
+    riga gemella della categoria Attrezzature.
 
 Decisioni di merito prese il 2026-07-30 sulle righe dubbie:
   - *trattori a ruote **e** cingoli* (4 righe): **terzo codice**
@@ -87,14 +98,38 @@ Decisioni di merito prese il 2026-07-30 sulle righe dubbie:
   - *righe "parziale"* (7): **mappate sul corso di cui sono spezzone e marcate
     `parziale = true`**. Vedi il blocco qui sotto: è la parte che manca.
 
-### ⚠ Somma delle formazioni frazionate — PREREQUISITO DI C1b
+### Somma delle formazioni frazionate — motore FATTO, resta l'aggancio a C1b
 
-**Da fare PRIMA di far girare l'import della formazione (C1b).** Oggi il flag
-`parziale` è solo un dato: il motore non lo legge. `scegliFormazione`
-(`lib/admin/formazione.ts`) prende l'attestato **più recente** per
-`corso_codice` e ne calcola la scadenza — quindi uno spezzone da 2h risulterebbe
-un requisito **assolto**. È un falso verde, cioè il contrario di ciò per cui
-esiste l'app. Le 7 righe interessate:
+- [x] **Motore** (2026-07-30, `lib/admin/formazione.ts`). `scegliFormazione`
+  esclude gli spezzoni: uno spezzone non può mai vincere come attestato.
+  `componiSpezzoni` li raggruppa per `corso_codice` + `is_aggiornamento` e,
+  quando la somma delle ore raggiunge la soglia, immette nella stessa gara un
+  attestato **virtuale** datato allo spezzone più recente del gruppo — è lì che
+  l'obbligo si è chiuso, ed è da lì che decorre la scadenza. Sotto soglia non
+  produce nulla e il dettaglio del requisito dice a che punto è
+  ("Formazione frazionata in corso: 4h su 6h"). Vale per back-office e campo
+  insieme: passano entrambi da `valutaCliente`.
+  Aggiunta `ORE_AGG_DL_RSPP` (6/10/14 per rischio): `corso_catalogo.ore_aggiornamento`
+  ne tiene una sola (6), che va bene per mostrare un numero ma non come soglia —
+  con 6 al posto di 14 tre spezzoni da 2h chiuderebbero un obbligo che ne vuole
+  sette. Non cambia nulla di preesistente: la soglia serve solo alla somma.
+  **`tsc -b` + `vite build` DA VERIFICARE** (node assente sulla macchina).
+- [ ] **Aggancio in C1b**: l'import deve copiare `corso_alias.parziale` su
+  `formazione.parziale`. Senza, gli spezzoni entrano come attestati interi e la
+  somma non serve a niente. `select('*')` ovunque, quindi la colonna arriva da
+  sola sia in back-office sia nella cache Dexie del campo: non c'è nessuna lista
+  di colonne da aggiornare.
+- [ ] **Limite noto da tenere d'occhio**: la somma non ha finestra temporale.
+  6h nel 2018 + 6h nel 2024 senza mai chiudere il corso risultano un obbligo
+  assolto nel 2024. Nei dati veri gli spezzoni sono erogati in sequenza
+  ravvicinata (1\2 e 2/2 dello stesso corso), quindi è teorico; una finestra
+  andrebbe legata al ciclo di aggiornamento e introdurrebbe errori suoi. Da
+  affrontare **se** emerge nei dati dopo il primo import.
+
+Il problema che tutto questo risolve: `scegliFormazione` prende l'attestato
+**più recente** per `corso_codice` e ne calcola la scadenza, quindi senza il
+flag uno spezzone da 2h risulterebbe un requisito **assolto**. Le 7 righe
+interessate:
 
 | spezzone | ore | requisito | soglia |
 |---|---|---|---|
@@ -109,24 +144,6 @@ motore (`ORE_SPECIFICA[rischio]` per LAV_SPEC, `oreModuloSettore` per i moduli
 di settore, `corso.ore` / `corso.ore_aggiornamento` altrove);
 `formazione.is_aggiornamento` distingue già gli spezzoni dell'iniziale da
 quelli del rinnovo.
-
-Disegno proposto (contenuto, un file più l'import):
-  - `scegliFormazione` **esclude** i record `parziale`: non possono mai vincere
-    come attestato pieno.
-  - una nuova funzione somma gli spezzoni dello stesso `corso_codice`,
-    raggruppati per `is_aggiornamento`, e li confronta con la soglia
-    corrispondente (iniziale → ore del requisito; rinnovo → `ore_aggiornamento`).
-  - se la somma raggiunge la soglia produce un attestato *virtuale* con
-    `data_completamento` = la **più recente** del gruppo (è lì che l'obbligo si
-    è chiuso, ed è da lì che parte la scadenza); vince fra reale e virtuale il
-    più recente.
-  - se la somma non arriva alla soglia il requisito **non** è assolto e il
-    dettaglio dice a che punto è ("formazione frazionata: 4h su 6h").
-  - `COLONNE_FORMAZIONE` deve includere `parziale`, e l'import C1b deve
-    copiarlo da `corso_alias.parziale` sull'attestato.
-
-Vale sia per il back-office sia per il campo senza lavoro in più: entrambi
-passano da `valutaCliente`.
 
 Per attivare la **revisione scheda organigramma** (due macro-blocchi
 obbligatorie/eventuali, figura *Datore delegato ex art. 16* con estremi procura,

@@ -116,6 +116,12 @@ export interface Formazione {
   ore: number | null;
   ente_formatore: string | null;
   is_aggiornamento: boolean;
+  // Spezzone di formazione frazionata: NON assolve il requisito da solo,
+  // concorre con le sue `ore` insieme agli altri spezzoni dello stesso corso.
+  // Il gestionale eroga alcuni corsi a pezzi ("...PARZIALE 6H 1\2" + "2/2" =
+  // 12h = specifica rischio alto). Senza questo flag il motore prenderebbe il
+  // pezzo piu' recente come attestato pieno: 2h su 6 = requisito assolto.
+  parziale: boolean;
   scadenza: string | null;
   allegato_url: string | null;
   note: string | null;
@@ -323,6 +329,15 @@ export function figuraChiedePregressa(
 // Ore di formazione specifica lavoratori per livello di rischio.
 const ORE_SPECIFICA: Record<LivelloRischio, number> = { basso: 4, medio: 8, alto: 12 };
 
+// Ore dell'AGGIORNAMENTO del datore di lavoro-RSPP, anch'esse per rischio.
+// `corso_catalogo.ore_aggiornamento` ne tiene una sola (6) e la sua nota dice
+// "storicamente 6/10/14 per rischio: verificare caso": va bene per mostrare un
+// numero, non per fare da soglia. Serve qui perche' la somma degli spezzoni si
+// misura contro le ore DOVUTE: con 6 al posto di 14 tre spezzoni da 2h
+// chiuderebbero un obbligo che ne vuole sette. Valori confermati dall'export
+// del gestionale (aggiornamento RSPP DL rischio basso 6h / medio 10h / alto 14h).
+const ORE_AGG_DL_RSPP: Record<LivelloRischio, number> = { basso: 6, medio: 10, alto: 14 };
+
 const vuotoNull = (s: string | null | undefined): string | null => {
   const v = (s ?? '').trim();
   return v === '' ? null : v;
@@ -405,6 +420,12 @@ function scegliFormazione(
   byCodice: Map<string, CorsoCatalogo>,
 ): Formazione | null {
   const candidate = formazioni.filter((f) => {
+    // Uno spezzone non puo' MAI vincere come attestato: da solo non assolve.
+    // Se il suo gruppo raggiunge la soglia, `componiSpezzoni` immette in questa
+    // stessa lista un attestato virtuale (parziale = false) che qui concorre
+    // normalmente. Filtrare qui, e non nei chiamanti, mette al riparo tutti e
+    // tre i punti che usano questa funzione.
+    if (f.parziale) return false;
     if (f.corso_codice && f.corso_codice === req.corso_codice) return true;
     if (req.per_categoria && categoriaFormazione(f, byCodice) === req.categoria) return true;
     return false;
@@ -413,6 +434,82 @@ function scegliFormazione(
   // la piu' recente per data_completamento (null in coda)
   candidate.sort((a, b) => (b.data_completamento ?? '').localeCompare(a.data_completamento ?? ''));
   return candidate[0];
+}
+
+// ---------- Formazione frazionata ----------
+//
+// Alcuni corsi il gestionale li eroga a spezzoni, e l'obbligo si assolve
+// sommandoli: "FORMAZIONE SPECIFICA RISCHIO ALTO PARZIALE 6H 1\2" + "2/2" fanno
+// 12h, cioe' la specifica per il rischio alto. Gli spezzoni arrivano marcati da
+// `corso_alias.parziale` (dizionario del gestionale) e l'import li scrive in
+// `formazione.parziale`.
+//
+// Iniziale e aggiornamento si sommano SEPARATAMENTE: sono due obblighi distinti
+// con soglie diverse (12h la specifica, 6h il suo rinnovo), e `is_aggiornamento`
+// e' gia' li' a distinguerli. Un gruppo che raggiunge la soglia diventa un
+// attestato VIRTUALE datato allo spezzone piu' recente del gruppo: e' quel
+// giorno che l'obbligo si e' chiuso, ed e' da quel giorno che deve decorrere la
+// scadenza. Sotto soglia non si produce nulla -- il requisito resta scoperto e
+// `progresso` dice a che punto e'.
+//
+// Uno spezzone senza ore o senza data non puo' concorrere: viene contato come 0.
+// E' conservativo di proposito, l'errore possibile e' un falso ROSSO (si chiede
+// una formazione gia' fatta), mai un falso verde.
+//
+// LIMITE NOTO: la somma non ha finestra temporale, prende tutti gli spezzoni del
+// gruppo. Se una persona ha 6h nel 2018 e 6h nel 2024 senza aver mai chiuso il
+// corso, i due pezzi risultano un obbligo assolto nel 2024. Nei dati veri gli
+// spezzoni sono erogati in sequenza ravvicinata (1\2 e 2/2 dello stesso corso),
+// quindi il caso e' teorico; una finestra andrebbe legata al ciclo di
+// aggiornamento del corso e introdurrebbe errori suoi. Se emerge nei dati, la
+// si aggiunge qui.
+interface EsitoSpezzoni {
+  virtuali: Formazione[];
+  progresso: { ore: number; soglia: number; aggiornamento: boolean }[];
+}
+
+function componiSpezzoni(
+  corsoCodice: string,
+  formazioni: Formazione[],
+  oreIniziale: number | null,
+  oreAggiornamento: number | null,
+): EsitoSpezzoni {
+  const out: EsitoSpezzoni = { virtuali: [], progresso: [] };
+  const spezzoni = formazioni.filter(
+    (f) => f.parziale && f.corso_codice === corsoCodice && f.data_completamento,
+  );
+  if (!spezzoni.length) return out;
+
+  for (const agg of [false, true]) {
+    const gruppo = spezzoni.filter((f) => f.is_aggiornamento === agg);
+    if (!gruppo.length) continue;
+    const soglia = agg ? oreAggiornamento : oreIniziale;
+    if (soglia == null || soglia <= 0) continue;  // soglia ignota: non si conclude nulla
+    const ore = gruppo.reduce((s, f) => s + (f.ore ?? 0), 0);
+    if (ore < soglia) {
+      out.progresso.push({ ore, soglia, aggiornamento: agg });
+      continue;
+    }
+    // Il piu' recente del gruppo: la data in cui l'obbligo si e' chiuso.
+    const ultimo = gruppo.reduce((a, b) =>
+      (b.data_completamento ?? '').localeCompare(a.data_completamento ?? '') > 0 ? b : a);
+    out.virtuali.push({
+      ...ultimo,
+      parziale: false,   // da qui in poi vale come attestato pieno
+      ore,
+      // La scadenza esplicita del singolo spezzone non ha senso per il gruppo:
+      // la si lascia calcolare al motore da data + aggiornamento_mesi.
+      scadenza: null,
+    });
+  }
+  return out;
+}
+
+// "4h su 6h" / "4h su 6h (aggiornamento)" per il dettaglio del requisito.
+function testoProgresso(p: EsitoSpezzoni['progresso']): string {
+  return p
+    .map((x) => `${x.ore}h su ${x.soglia}h${x.aggiornamento ? ' (aggiornamento)' : ''}`)
+    .join(', ');
 }
 
 // Valuta i moduli condizionati (es. cantieri): esoneri_ammessi tipo 'altro' con
@@ -659,7 +756,20 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     }
 
     // 2) attestato corrispondente?
-    const f = scegliFormazione({ corso_codice: r.corso_codice, per_categoria: r.per_categoria, categoria }, d.formazioni, byCodice);
+    // Gli spezzoni si sommano qui, dove le ore RICHIESTE sono note: `ore` e'
+    // gia' espansa per rischio (LAV_SPEC) e per ATECO (moduli di settore), che
+    // e' esattamente la soglia contro cui confrontare la somma. Un gruppo che
+    // arriva a soglia entra in gioco come attestato virtuale e da qui in poi
+    // segue la strada di tutti gli altri.
+    const oreAggDovute = r.corso_codice === 'DL_RSPP_BASE' && rischio
+      ? ORE_AGG_DL_RSPP[rischio]
+      : (corso?.ore_aggiornamento ?? null);
+    const spezzoni = componiSpezzoni(r.corso_codice, d.formazioni, ore, oreAggDovute);
+    const inGara = spezzoni.virtuali.length ? [...d.formazioni, ...spezzoni.virtuali] : d.formazioni;
+    const f = scegliFormazione({ corso_codice: r.corso_codice, per_categoria: r.per_categoria, categoria }, inGara, byCodice);
+    const noteSpezzoni = spezzoni.progresso.length
+      ? 'Formazione frazionata in corso: ' + testoProgresso(spezzoni.progresso)
+      : null;
     if (!f || !f.data_completamento) {
       // Nessun attestato e nessun esonero registrato.
       let stato: StatoRequisito = 'critico';
@@ -683,6 +793,12 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       if (multiPath && dettaglio === 'Mai svolto') {
         dettaglio = 'Corso da scegliere e registrare (livello/gruppo)';
       }
+      // Spezzoni sotto soglia: il requisito NON e' assolto, ma "mai svolto" e'
+      // falso e manda il consulente a cercare un corso intero che in parte e'
+      // gia' stato fatto. Si dice quante ore mancano.
+      if (noteSpezzoni) {
+        dettaglio = dettaglio === 'Mai svolto' ? noteSpezzoni : dettaglio + ' · ' + noteSpezzoni;
+      }
       requisiti.push({
         figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNomeNeutro,
         categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza,
@@ -704,7 +820,11 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     const pregressa = (f.note ?? '').startsWith(MARCA_PREGRESSA) && f.corso_nome.trim() !== '';
     const usaNomeAttestato = (pregressa || multiPath) && f.corso_nome.trim() !== '';
     const nomeMostrato = usaNomeAttestato ? f.corso_nome.trim() : corsoNome;
-    const dettaglioMostrato = pregressa ? dettaglio + ' \u00b7 pregresso, copre: ' + (corsoNome.split(' - ')[0] ?? corsoNome) : dettaglio;
+    const dettaglioBase = pregressa ? dettaglio + ' \u00b7 pregresso, copre: ' + (corsoNome.split(' - ')[0] ?? corsoNome) : dettaglio;
+    // Il requisito e' coperto, ma c'e' anche un gruppo di spezzoni incompleto
+    // (tipico: iniziale a posto, rinnovo iniziato a meta'). Dirlo qui evita che
+    // quelle ore sembrino perdute.
+    const dettaglioMostrato = noteSpezzoni ? dettaglioBase + ' \u00b7 ' + noteSpezzoni : dettaglioBase;
     requisiti.push({
       figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: nomeMostrato,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,
@@ -1384,6 +1504,7 @@ export async function salvaFormazione(f: Formazione): Promise<Formazione> {
     ore: f.ore,
     ente_formatore: vuotoNull(f.ente_formatore),
     is_aggiornamento: f.is_aggiornamento,
+    parziale: f.parziale,
     scadenza: vuotoNull(f.scadenza),
     allegato_url: vuotoNull(f.allegato_url),
     note: vuotoNull(f.note),
