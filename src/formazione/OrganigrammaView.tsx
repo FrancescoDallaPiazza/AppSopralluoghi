@@ -732,6 +732,10 @@ function EditorRequisito({
         corso_codice: scelto?.codice ?? req.corso_codice,
         corso_nome: scelto?.nome ?? req.corso_nome,
         categoria: req.categoria || null,
+        // La registrazione a mano documenta il percorso per intero: chi la
+        // compila ha l'attestato sotto gli occhi. L'evidenza incompleta nasce
+        // dall'import, dove il gestionale esporta solo un pezzo del corso.
+        evidenza_incompleta: false,
         data_completamento: dataAtt,
         // Campo vuoto -> null, NON le ore dovute dal requisito. Copiarle
         // registrava come fatto ("l'attestato dice 8h") cio' che era solo un
@@ -1048,6 +1052,9 @@ function ModuloInline({
         id: newId(), persona_id: personaId, corso_codice: corso.codice, corso_nome: corso.nome,
         categoria: corso.categoria, data_completamento: data, ore: ore === '' ? null : Number(ore),
         ente_formatore: ente.trim() || null, is_aggiornamento: false, parziale: false,
+        // Registrazione a mano: l'attestato e' sotto gli occhi di chi compila,
+        // quindi documenta tutto. L'evidenza incompleta nasce dall'import.
+        evidenza_incompleta: false,
         scadenza: null, allegato_url: null, note: null,
       };
       if (file) await adapter.salvaFormazioneConAllegato(f, file); else await adapter.salvaFormazione(f);

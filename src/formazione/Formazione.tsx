@@ -738,6 +738,10 @@ function SezioneRuoloPregresso({ ruoloNome, requisiti, persona, clienteId, onCam
       // parziale: la registrazione a mano e' sempre un attestato intero. Gli
       // spezzoni arrivano solo dall'import del gestionale, marcati dall'alias.
       ente_formatore: null, is_aggiornamento: false, parziale: false,
+      // Come per `parziale`: chi registra a mano ha l'attestato davanti e lo
+      // trascrive per intero. L'evidenza incompleta arriva dall'import, dove il
+      // gestionale esporta solo un pezzo del percorso.
+      evidenza_incompleta: false,
       scadenza: riga.scad || null, allegato_url: allegatoUrl,
       note: MARCA_PREGRESSA + ' (ante ASR 2025) - ruolo ' + ruoloNome,
     };
