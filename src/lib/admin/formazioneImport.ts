@@ -254,10 +254,23 @@ export interface ClienteScelta {
   cap: string | null;
 }
 
-export function proponiCliente(u: UnitaFile, clienti: ClienteScelta[]): string | null {
+export function proponiCliente(
+  u: UnitaFile,
+  clienti: ClienteScelta[],
+  tutte: UnitaFile[] = [u],
+): string | null {
   const piva = (u.partita_iva || '').replace(/\s/g, '');
   const conPiva = clienti.filter((c) => (c.partita_iva ?? '').replace(/\s/g, '') === piva && piva !== '');
-  if (conPiva.length === 1) return conPiva[0]!.id;
+  // Quante unita' del FILE condividono questa P.IVA. Se sono piu' di una, il
+  // fatto che in app esista un solo cliente con quella P.IVA non lo rende il
+  // cliente giusto: al massimo e' quello giusto per UNA delle unita', e per le
+  // altre manca. Proporlo lo stesso fonderebbe due sedi in un organigramma solo
+  // - il caso Ecodent (Villafranca + Trevenzuolo, squadre di emergenza
+  // distinte). Quindi con piu' unita' si passa oltre e si pretende un riscontro
+  // sul luogo: sede/citta' o CAP.
+  const unitaStessaPiva = tutte.filter(
+    (x) => (x.partita_iva || '').replace(/\s/g, '') === piva).length;
+  if (conPiva.length === 1 && unitaStessaPiva <= 1) return conPiva[0]!.id;
   const sede = chiave(u.sede);
   const citta = chiave(u.citta);
   const perLuogo = conPiva.filter((c) => {

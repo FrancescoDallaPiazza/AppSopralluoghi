@@ -53,6 +53,20 @@ export default function ImportFormazione() {
   const damappare = useMemo(
     () => alias.filter((a) => !a.corso_codice && !a.ignorato).length, [alias]);
 
+  // Due unita' sullo stesso cliente = due sedi fuse in un organigramma solo.
+  // In app un cliente ha UN organigramma, e gli addetti alle emergenze si
+  // designano per luogo di lavoro: fondere Villafranca e Trevenzuolo farebbe
+  // contare una sola squadra per due stabilimenti. E' un errore silenzioso -
+  // l'import riuscirebbe benissimo - quindi va fermato qui, non spiegato dopo.
+  const clientiDoppi = useMemo(() => {
+    const conta = new Map<string, number>();
+    for (const u of unita) {
+      const cid = scelta[u.chiave] ?? '';
+      if (cid) conta.set(cid, (conta.get(cid) ?? 0) + 1);
+    }
+    return new Set([...conta].filter(([, n]) => n > 1).map(([id]) => id));
+  }, [unita, scelta]);
+
   async function leggi(file: File | null) {
     if (!file) return;
     setBusy('lettura'); setErr(null); setMsg(null);
@@ -66,7 +80,7 @@ export default function ImportFormazione() {
       // quello che distingue un secondo giro (0 nuove) da un primo.
       setChiaviPresenti(await chiaviGiaImportate(righe.map(chiaveImport)));
       const s: Record<string, string> = {};
-      for (const x of u) s[x.chiave] = proponiCliente(x, clienti) ?? '';
+      for (const x of u) s[x.chiave] = proponiCliente(x, clienti, u) ?? '';
       setScelta(s);
     } catch (e: any) { setErr(e?.message ?? 'Errore in lettura del file.'); }
     finally { setBusy(''); }
@@ -179,6 +193,16 @@ export default function ImportFormazione() {
               </p>
             )}
 
+            {cid && clientiDoppi.has(cid) && (
+              <p className="bo-sub" style={{ color: 'var(--no)' }}>
+                <b>Questo cliente è già abbinato a un’altra unità del file.</b> Due sedi sullo stesso
+                cliente finiscono in un unico organigramma: le squadre di emergenza si designano per
+                luogo di lavoro, e fondendole l’app conterebbe una squadra sola per due stabilimenti,
+                senza accorgersi se una sede resta scoperta. Crea il cliente mancante in{' '}
+                <i>Anagrafiche</i> e abbinalo qui.
+              </p>
+            )}
+
             {e && cid && (
               <>
                 <div className="bo-meta" style={{ gap: 8, margin: '10px 0' }}>
@@ -254,7 +278,11 @@ export default function ImportFormazione() {
                   </details>
                 )}
 
-                <button className="bo-btn" disabled={busy !== '' || e.nuove.length === 0}
+                {/* Bloccato e non solo segnalato: l'esito di un doppio abbinamento
+                    non si vede sfogliando l'anteprima, si vede mesi dopo in una
+                    squadra di emergenza che risulta coperta e non lo e'. */}
+                <button className="bo-btn"
+                  disabled={busy !== '' || e.nuove.length === 0 || clientiDoppi.has(cid)}
                   onClick={() => void applica(u)}>
                   {busy === 'applica' ? 'Importo…' : `Importa (${e.nuove.length})`}
                 </button>
