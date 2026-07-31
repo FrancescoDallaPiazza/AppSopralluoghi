@@ -497,6 +497,22 @@ function AssegnaFiguraPanel({
           senza attestato risultano &laquo;da verificare&raquo; invece di &laquo;critici&raquo;;
           se <b>No</b> si procede con la formazione prevista dall'ASR 2025.
         </div>
+        {/* Stessa ragione della selezione di massa: con decine di persone
+            appena assegnate, rispondere riga per riga a una domanda che ha
+            quasi sempre la stessa risposta per tutta l'azienda e' tempo perso.
+            Resta modificabile per singola persona. */}
+        {nuove.length > 1 && (
+          <div className="fzr-actions" style={{ marginTop: 4, marginBottom: 4 }}>
+            <button type="button" className="fzr-mini" disabled={busy}
+              onClick={() => setRisposte(Object.fromEntries(nuove.map((p) => [p.id, 'si'])) as Record<string, 'si' | 'no'>)}>
+              Tutte pregresse
+            </button>
+            <button type="button" className="fzr-mini" disabled={busy}
+              onClick={() => setRisposte(Object.fromEntries(nuove.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>)}>
+              Tutte ASR 2025
+            </button>
+          </div>
+        )}
         {nuove.map((p) => (
           <div key={p.id} className="fzr-preg-row">
             <span className="fzr-preg-nome">{nomePersona(p)}</span>
@@ -534,6 +550,24 @@ function AssegnaFiguraPanel({
         </div>
       ) : (
         <div className="fzr-d" style={{ marginTop: 0 }}>Nessun assegnatario: scegli una o pi&ugrave; risorse dalla tendina.</div>
+      )}
+
+      {/* Assegnazione di massa. Serve per i ruoli che riguardano tutti - i
+          Lavoratori in primis: dopo un import del gestionale sono decine, e
+          sceglierli uno alla volta dalla tendina non e' un lavoro, e' un
+          ostacolo. Nessuna scrittura qui: cambia la selezione, si conferma con
+          Salva come per una scelta singola. */}
+      {persone.length > 1 && (
+        <div className="fzr-actions" style={{ marginTop: 8, marginBottom: 0 }}>
+          <button type="button" className="fzr-mini" disabled={busy || persone.every((p) => sel.has(p.id))}
+            onClick={() => setSel(new Set(persone.map((p) => p.id)))}>
+            Seleziona tutte ({persone.length})
+          </button>
+          <button type="button" className="fzr-mini" disabled={busy || sel.size === 0}
+            onClick={() => setSel(new Set())}>
+            Deseleziona tutte
+          </button>
+        </div>
       )}
 
       <div className="fzr-field" style={{ marginTop: 8 }}>

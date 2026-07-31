@@ -201,6 +201,19 @@ Correzioni all'abbinamento fatte il 2026-07-31 dopo la prima prova sul campo:
   - Niente spunta "crea le N persone" su una card bloccata: nascerebbero sul
     cliente sbagliato e la proposta si legge come un'approvazione.
 
+Aggancio all'organigramma (2026-07-31, dopo il primo import vero): le persone
+create dall'import ricevono la figura **`lavoratore`** (`nomina`, data = data di
+assunzione dal file). Senza, la persona non ha figure → nessun requisito → e la
+formazione l'app la mostra solo appesa a un requisito: gli attestati importati
+restavano righe scritte e invisibili, scadenzario compreso. Per i Lavoratori non
+è dovuto un atto di nomina (`evidenzaMancante` li esclude), quindi non si dà per
+fatto un adempimento che non c'è. Spunta togliibile, accesa di default.
+Nel pannello di assegnazione di un ruolo (`OrganigrammaView`) ci sono ora
+**Seleziona tutte / Deseleziona tutte** e, al passo della formazione pregressa,
+**Tutte pregresse / Tutte ASR 2025**: con 100 lavoratori la tendina uno-alla-
+volta non è un lavoro, è un ostacolo. Serve anche per le persone già importate
+prima di questa modifica, che nomine non ne hanno.
+
 Decisioni prese scrivendolo:
   - **Un'unità = (P.IVA, Sede)**, e ogni unità va su un cliente distinto.
     Ecodent ha due sedi operative con la **stessa P.IVA** e squadre di emergenza

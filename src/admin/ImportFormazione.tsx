@@ -35,6 +35,10 @@ export default function ImportFormazione() {
 
   const [scelta, setScelta] = useState<Record<string, string>>({});
   const [creaPersone, setCreaPersone] = useState<Record<string, boolean>>({});
+  // Default acceso (`!== false`): senza il ruolo Lavoratori gli attestati appena
+  // importati non affiorano da nessuna parte, quindi l'impostazione utile e'
+  // quella che fa vedere il risultato. Resta togliibile.
+  const [assegnaLav, setAssegnaLav] = useState<Record<string, boolean>>({});
   const [esiti, setEsiti] = useState<Record<string, EsitoUnita>>({});
 
   const [busy, setBusy] = useState<'' | 'avvio' | 'lettura' | 'calcolo' | 'applica'>('avvio');
@@ -117,9 +121,13 @@ export default function ImportFormazione() {
     if (!e || !e.cliente_id) return;
     setBusy('applica'); setErr(null); setMsg(null);
     try {
-      const r = await applicaUnita(e, { creaPersone: !!creaPersone[u.chiave] });
+      const r = await applicaUnita(e, {
+        creaPersone: !!creaPersone[u.chiave],
+        assegnaLavoratore: assegnaLav[u.chiave] !== false,
+      });
       setMsg(`${u.societa} · ${u.sede}: ${r.formazioniInserite} attestati importati`
         + (r.personeCreate ? `, ${r.personeCreate} persone create` : '')
+        + (r.nomineCreate ? `, ${r.nomineCreate} in organigramma come Lavoratori` : '')
         + (r.saltatePerPersona ? `, ${r.saltatePerPersona} righe saltate (persona assente)` : '') + '.');
       // Dopo la scrittura quelle chiavi esistono: si rileggono e si uniscono a
       // quelle gia' note, cosi' un secondo "Importa" dice 0 nuove invece di
@@ -287,6 +295,18 @@ export default function ImportFormazione() {
                       Senza la spunta i loro attestati restano fuori. Le persone nascono con cognome,
                       nome, codice fiscale, mansione e data di assunzione dal file; il livello di
                       rischio resta da impostare.
+                    </p>
+                    <label className="bo-meta" style={{ gap: 6 }}>
+                      <input type="checkbox" checked={assegnaLav[u.chiave] !== false}
+                        disabled={busy !== '' || !creaPersone[u.chiave]}
+                        onChange={(ev) => setAssegnaLav((c) => ({ ...c, [u.chiave]: ev.target.checked }))} />
+                      <span>Mettile in organigramma come <b>Lavoratori</b></span>
+                    </label>
+                    <p className="bo-sub" style={{ margin: '4px 0 0' }}>
+                      Consigliato: la formazione di una persona l’app la mostra appesa ai requisiti
+                      delle sue figure. Senza almeno il ruolo di lavoratore gli attestati importati
+                      restano scritti ma invisibili, e lo scadenzario non produce nulla. La data di
+                      nomina è quella di assunzione dal file, quando c’è.
                     </p>
                     <div style={{ maxHeight: 160, overflow: 'auto' }}>
                       {e.personeMancanti.map((p) => (

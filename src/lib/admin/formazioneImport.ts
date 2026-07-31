@@ -516,10 +516,12 @@ const MARCA_PREGRESSA = 'Evidenza pregressa';
 
 export interface OpzioniApplica {
   creaPersone: boolean;         // crea le persone mancanti dell'unita'
+  assegnaLavoratore: boolean;   // ...e le mette in organigramma come Lavoratori
 }
 
 export interface RisultatoApplica {
   personeCreate: number;
+  nomineCreate: number;
   formazioniInserite: number;
   saltatePerPersona: number;    // righe orfane lasciate indietro
 }
@@ -528,7 +530,9 @@ export async function applicaUnita(
   esito: EsitoUnita,
   opz: OpzioniApplica,
 ): Promise<RisultatoApplica> {
-  const res: RisultatoApplica = { personeCreate: 0, formazioniInserite: 0, saltatePerPersona: 0 };
+  const res: RisultatoApplica = {
+    personeCreate: 0, nomineCreate: 0, formazioniInserite: 0, saltatePerPersona: 0,
+  };
   if (!esito.cliente_id) throw new Error('Unita’ senza cliente abbinato.');
 
   // 1) persone mancanti. Si creano PRIMA, cosi' le righe che le riguardano
@@ -554,6 +558,32 @@ export async function applicaUnita(
       const salvata = await salvaPersona(p);
       idPerCf.set(m.cf, salvata.id);
       res.personeCreate++;
+    }
+
+    // 1-bis) ...e entrano nell'organigramma come LAVORATORI. Non e' un extra: le
+    // figure di una persona si ricavano dalle sue nomine, e senza nomine non ha
+    // figure, quindi nessun requisito - e la formazione l'app la mostra solo
+    // appesa a un requisito. Importare gli attestati senza questo passo lascia
+    // righe scritte e invisibili, e lo scadenzario muto. Ogni dipendente e'
+    // comunque un lavoratore (art. 37) e per questa figura non e' dovuto un atto
+    // di nomina, quindi non si sta dando per fatto un adempimento che non c'e'.
+    // Solo per le persone appena create: chi era gia' in organigramma ha i suoi
+    // ruoli, decisi da qualcuno, e non si tocca.
+    if (opz.assegnaLavoratore && idPerCf.size > 0) {
+      const dataPerCf = new Map(esito.personeMancanti.map((m) => [m.cf, m.data_assunzione]));
+      const nomine = [...idPerCf.entries()].map(([cf, personaId]) => ({
+        id: newId(),
+        persona_id: personaId,
+        figura_codice: 'lavoratore',
+        // La data di assunzione quando il file ce l'ha: e' da li' che decorrono
+        // gli obblighi formativi del lavoratore, non dal giorno dell'import.
+        data_nomina: dataPerCf.get(cf) ?? null,
+        attiva: true,
+        note: null,
+      }));
+      const { error } = await supabase.from('nomina').insert(nomine);
+      if (error) throw error;
+      res.nomineCreate = nomine.length;
     }
   }
 
