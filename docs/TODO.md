@@ -11,16 +11,16 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
-- [ ] Eseguire `supabase/migrations/060_evidenza_incompleta.sql` nell'**SQL
-  Editor** (Canale 3): `corso_alias.evidenza_incompleta` +
+- [x] Eseguire `supabase/migrations/060_evidenza_incompleta.sql` nell'**SQL
+  Editor** (Canale 3). **Eseguita 2026-07-31.** `corso_alias.evidenza_incompleta` +
   `formazione.evidenza_incompleta`. Marca gli attestati che documentano solo una
   PARTE del percorso svolto (la sola aula di un corso iniziato in e-learning).
   Non tocca la conformità — il requisito resta assolto — ma apre una pendenza
   **documentale**: avviso nel libretto e voce in *Cose da fare*, come già per le
   evidenze di nomina. Serve un flag e non la nota libera: un buco che non genera
   lavoro non viene chiuso. Idempotente, ASCII-only, `pglast` OK.
-- [ ] Eseguire `supabase/scripts/integrazione_preposti_pregressa.sql`
-  nell'**SQL Editor** (non è una migration: agisce sul dizionario `corso_alias`,
+- [x] Eseguire `supabase/scripts/integrazione_preposti_pregressa.sql`
+  nell'**SQL Editor** (**eseguito 2026-07-31**) (non è una migration: agisce sul dizionario `corso_alias`,
   popolato dai dati). `INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI`
   (3h) è la parte in aula di un corso preposti 8h ante ASR 2025 (prime 5h in
   e-learning, che il gestionale non esporta). **Deciso 2026-07-31: il corso è
@@ -36,12 +36,14 @@ sposta in fondo nella sezione "Fatti di recente".
 
 Per attivare il **libretto formativo per persona** (scritto 2026-07-31):
 
-- [ ] Deployare la Edge Function **`libretto-pdf`** dal Dashboard Supabase
+- [x] Deployare la Edge Function **`libretto-pdf`** dal Dashboard Supabase
+  (**fatto 2026-07-31**)
   (self-contained, CORS inline, nessun import da `_shared`). Usa la stessa
   `PDFBOLT_API_KEY` di report e organigramma: se manca, ripiega su HTML invece
   di fallire. Senza deploy la schermata funziona lo stesso — è solo l'*Esporta
   PDF* che risponde "Function not found".
-- [ ] Push dei sorgenti su `main` (Canale 1). Nuovi: `lib/admin/libretto.ts`,
+- [x] Push dei sorgenti su `main` (Canale 1) — **fatto 2026-07-31** (`a6837d5`,
+  build Vercel verde). Nuovi: `lib/admin/libretto.ts`,
   `formazione/Libretto.tsx`; toccati `formazione/RisorseUmane.tsx` (bottone
   *Libretto* per riga), `admin/Anagrafiche.tsx` (passa la ragione sociale),
   `lib/admin/formazione.ts` (`addMesi` esportata).
