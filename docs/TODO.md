@@ -207,15 +207,15 @@ l'header a riga 1, per questo lo si cerca invece di darlo per scontato); 127
 righe con data, ore e codice fiscale su tutte; **28 testi-corso distinti, 28 su
 28 risolti dal dizionario alias**; 127 chiavi di import distinte su 127 righe.
 
-- [ ] **Verifica in back-office → Anagrafiche → Import formazione** con
+- [x] **Verifica in back-office → Anagrafiche → Import formazione** con
   `ExportExcel.xlsx`. Atteso: 2 unità — `VILLAFRANCA DI VERONA` (60 righe, 11
   persone) e `TREVENZUOLO` (67 righe, 9 persone) — ognuna da abbinare al suo
   cliente. Poi *Importa*; rilanciando lo stesso file: 0 nuove, tutte "già
-  importate".
+  importate". **Provato in app 2026-08-02: OK — 2 unità abbinate, re-import 0 nuove.**
 - [x] **`tsc -b` + `vite build`** — **verdi 2026-08-02** (node reinstallato,
   `npm install` per ripristinare `node_modules`; build pulita, solo warning
   cosmetico chunk >500kB preesistente).
-- [ ] **Prerequisito in anagrafica per le aziende multi-stabilimento**: i clienti
+- [x] **Prerequisito in anagrafica per le aziende multi-stabilimento**: i clienti
   che condividono la P.IVA condividono anche la **sede legale**, quindi
   l'anagrafica da sola non li distingue — in tendina compaiono come due voci
   identiche e nessuna proposta è possibile. Il dato che li separa è la **sede
