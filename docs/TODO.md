@@ -11,6 +11,23 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+Per attivare la **data di cessazione della persona** (scritto 2026-08-02):
+
+- [ ] Eseguire `supabase/migrations/061_persona_data_cessazione.sql` nell'**SQL
+  Editor** (Canale 3): `persona.data_cessazione` (date, nullable). Idempotente,
+  ASCII-only. Eseguire **prima** del push: il codice fa l'insert con la colonna.
+- [ ] Push dei sorgenti su `main` (Canale 1). Tocca: `lib/admin/formazione.ts`
+  (tipo `Persona` + upsert), `formazione/RisorseUmane.tsx` (campo *Data
+  cessazione*, il bottone *Disattiva* la valorizza a oggi / *Riattiva* la azzera,
+  badge riga "cessato gg/mm/aaaa"), `formazione/OrganigrammaView.tsx` e
+  `lib/admin/formazioneImport.ts` (literal `Persona` allineati). La colonna e'
+  puramente anagrafica: **non** incide sulla valutazione, che resta su `attivo`.
+  `tsc -b` + `vite build` verdi 2026-08-02.
+- [ ] Verifica in *Anagrafiche → cliente → Risorse Umane*: aprire una persona,
+  vedere il campo *Data cessazione*; *Disattiva* mette la data a oggi e la riga
+  mostra "cessato gg/mm/aaaa"; *Riattiva* la toglie; la data resta correggibile
+  a mano.
+
 - [x] Eseguire `supabase/migrations/060_evidenza_incompleta.sql` nell'**SQL
   Editor** (Canale 3). **Eseguita 2026-07-31.** `corso_alias.evidenza_incompleta` +
   `formazione.evidenza_incompleta`. Marca gli attestati che documentano solo una

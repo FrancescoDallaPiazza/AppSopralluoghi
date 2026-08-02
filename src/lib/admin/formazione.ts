@@ -75,6 +75,7 @@ export interface Persona {
   mansione: string | null;
   reparto: string | null;
   data_assunzione: string | null;
+  data_cessazione: string | null;
   livello_rischio: LivelloRischio | null;
   attivo: boolean;
   note: string | null;
@@ -1204,6 +1205,7 @@ export async function salvaPersona(p: Persona): Promise<Persona> {
     mansione: vuotoNull(p.mansione),
     reparto: vuotoNull(p.reparto),
     data_assunzione: vuotoNull(p.data_assunzione),
+    data_cessazione: vuotoNull(p.data_cessazione),
     livello_rischio: p.livello_rischio,
     attivo: p.attivo,
     note: vuotoNull(p.note),

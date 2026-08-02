@@ -25,8 +25,8 @@ type RischioPersona = Persona['livello_rischio'];
 function personaVuota(clienteId: string): Persona {
   return {
     id: '', cliente_id: clienteId, nome: '', cognome: null, codice_fiscale: null,
-    mansione: null, reparto: null, data_assunzione: null, livello_rischio: null,
-    attivo: true, note: null, formazione_pregressa: false,
+    mansione: null, reparto: null, data_assunzione: null, data_cessazione: null,
+    livello_rischio: null, attivo: true, note: null, formazione_pregressa: false,
   };
 }
 
@@ -196,7 +196,14 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto }: {
   }
   async function toggle() {
     setBusy(true); setMsg(null);
-    try { await salvaPersona({ ...persona, attivo: !persona.attivo }); onCambia(); }
+    // Disattivare = la persona ha cessato: se non c'e' gia' una data, la si mette
+    // a oggi. Riattivare azzera la cessazione. La data resta comunque editabile a
+    // mano nel form (retrodatare dimissioni gia' avvenute).
+    const disattiva = persona.attivo;
+    const data_cessazione = disattiva
+      ? (persona.data_cessazione ?? new Date().toISOString().slice(0, 10))
+      : null;
+    try { await salvaPersona({ ...persona, attivo: !persona.attivo, data_cessazione }); onCambia(); }
     catch (e: any) { setMsg(e?.message ?? 'Operazione non riuscita.'); }
     finally { setBusy(false); }
   }
@@ -218,7 +225,9 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto }: {
         </td>
         <td className="ru-man">
           {p.mansione ?? '—'}
-          {!p.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 8 }}>disattivato</span>}
+          {!p.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 8 }}>
+            {p.data_cessazione ? `cessato ${p.data_cessazione.split('-').reverse().join('/')}` : 'disattivato'}
+          </span>}
         </td>
         <td className="ru-act">
           {onLibretto && (
@@ -255,6 +264,11 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto }: {
               <span>Data assunzione</span>
               <input type="date" value={p.data_assunzione ?? ''}
                 onChange={(e) => set({ data_assunzione: e.target.value || null })} />
+            </label>
+            <label className="bo-field">
+              <span>Data cessazione</span>
+              <input type="date" value={p.data_cessazione ?? ''}
+                onChange={(e) => set({ data_cessazione: e.target.value || null })} />
             </label>
             <label className="bo-field">
               <span>Mansione</span>

@@ -216,7 +216,7 @@ normalizzati a CRLF prima della consegna.
     corso della categoria, tipico di antincendio/primo soccorso). Dalla 018 ogni
     figura porta anche `gruppo`/`gruppo_ordine`/`guida`/`obbligo` (metadati della
     "checklist ragionata"); aggiunta la figura `operatore_attrezzatura` (art. 73).
-  - `persona` — personale del cliente (mansione, reparto, CF, override rischio).
+  - `persona` — personale del cliente (mansione, reparto, CF, date assunzione/cessazione, override rischio).
   - `nomina` — quali figure ricopre una persona (l'organigramma).
   - `formazione` — gli attestati svolti (lo "stato attuale").
   - `esonero` — esoneri/crediti decisi per una persona (motivazione + norma).
@@ -287,8 +287,10 @@ soccorso, `azione.origine_ramo`, deleghe + evidenze di nomina, **sede prima clas
 055 `adempimento` + `corso_alias` + `import_key` su `formazione`/`persona` (unique parziale) ·
 056 `azione.origine_requisito_key` (scadenze formative senza attestato) ·
 057 `corso_alias.ignorato` + `corso_alias.pregressa` + `corso_alias.is_aggiornamento` (mappatura del catalogo del gestionale; il nome del file cita solo le prime due) ·
+058-061 catalogo attrezzature mancanti, `*.parziale` (formazione frazionata),
+`*.evidenza_incompleta` (documentazione parziale del percorso), `persona.data_cessazione` ·
 il dettaglio di ognuna sta nella **Cronologia** in fondo.
-**Prossima libera: 058.**
+**Prossima libera: 062.**
 
 Nota RLS: attualmente permissiva (`staff_full using(true)`); il gating per ruolo è
 applicato in-app. L'isolamento a livello DB è rinviato come step separato.

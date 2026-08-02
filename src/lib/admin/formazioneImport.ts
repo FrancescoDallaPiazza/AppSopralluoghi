@@ -571,6 +571,7 @@ export async function applicaUnita(
         mansione: m.mansione || null,
         reparto: null,
         data_assunzione: m.data_assunzione,
+        data_cessazione: null,
         livello_rischio: null,
         attivo: true,
         note: null,

@@ -321,6 +321,7 @@ function PersonaForm({
         mansione: mansione.trim() || null,
         reparto: persona?.reparto ?? null,
         data_assunzione: persona?.data_assunzione ?? null,
+        data_cessazione: persona?.data_cessazione ?? null,
         livello_rischio: persona?.livello_rischio ?? null,
         attivo: true,
         note: persona?.note ?? null,
