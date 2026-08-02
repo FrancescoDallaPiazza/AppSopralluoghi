@@ -47,11 +47,12 @@ Per attivare il **libretto formativo per persona** (scritto 2026-07-31):
   `formazione/Libretto.tsx`; toccati `formazione/RisorseUmane.tsx` (bottone
   *Libretto* per riga), `admin/Anagrafiche.tsx` (passa la ragione sociale),
   `lib/admin/formazione.ts` (`addMesi` esportata).
-- [ ] Verifica: *Anagrafiche → cliente → Risorse Umane → Libretto* su una
+- [x] Verifica: *Anagrafiche → cliente → Risorse Umane → Libretto* su una
   persona con attestati importati. Attesi: i ruoli con data di nomina, TUTTA la
   formazione svolta in ordine cronologico (compresi gli attestati che non
   servono a nessun requisito dei suoi ruoli — è l'unico punto dell'app dove si
   vedono) e la situazione rispetto ai ruoli. Poi *Esporta PDF*.
+  **Provato in app 2026-08-02: OK.**
 
 
 Per attivare **C1a — alias corsi del gestionale**, nell'ordine:
@@ -156,7 +157,7 @@ Decisioni di merito prese il 2026-07-30 sulle righe dubbie:
   ne tiene una sola (6), che va bene per mostrare un numero ma non come soglia —
   con 6 al posto di 14 tre spezzoni da 2h chiuderebbero un obbligo che ne vuole
   sette. Non cambia nulla di preesistente: la soglia serve solo alla somma.
-  **`tsc -b` + `vite build` DA VERIFICARE** (node assente sulla macchina).
+  **`tsc -b` + `vite build` VERIFICATI 2026-08-02 — verdi.**
 - [ ] **Aggancio in C1b**: l'import deve copiare `corso_alias.parziale` su
   `formazione.parziale`. Senza, gli spezzoni entrano come attestati interi e la
   somma non serve a niente. `select('*')` ovunque, quindi la colonna arriva da
@@ -211,7 +212,9 @@ righe con data, ore e codice fiscale su tutte; **28 testi-corso distinti, 28 su
   persone) e `TREVENZUOLO` (67 righe, 9 persone) — ognuna da abbinare al suo
   cliente. Poi *Importa*; rilanciando lo stesso file: 0 nuove, tutte "già
   importate".
-- [ ] **`tsc -b` + `vite build` DA VERIFICARE** (node assente sulla macchina).
+- [x] **`tsc -b` + `vite build`** — **verdi 2026-08-02** (node reinstallato,
+  `npm install` per ripristinare `node_modules`; build pulita, solo warning
+  cosmetico chunk >500kB preesistente).
 - [ ] **Prerequisito in anagrafica per le aziende multi-stabilimento**: i clienti
   che condividono la P.IVA condividono anche la **sede legale**, quindi
   l'anagrafica da sola non li distingue — in tendina compaiono come due voci
@@ -386,7 +389,7 @@ RLS) sono aziendali e si leggono dal CLIENTE. Stato:
   (coincidono / non ci ha pensato nessuno) e niente le distingueva: è il motivo
   per cui due clienti della stessa azienda risultavano identici all'import del
   gestionale. Rispondendo, il luogo di lavoro è sempre scritto.
-  **`tsc -b` + `vite build` DA VERIFICARE** (node assente sulla macchina).
+  **`tsc -b` + `vite build` VERIFICATI 2026-08-02 — verdi.**
 - [ ] Fase 4 - scadenzario: opzionale etichetta della sede sulle voci (roll-up
   multi-sede non serve piu': una sola sede-organigramma per cliente).
 - [ ] Fase 5 - offline: il riepilogo in campo segue la sede-organigramma del cliente
