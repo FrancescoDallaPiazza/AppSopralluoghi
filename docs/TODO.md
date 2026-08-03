@@ -176,11 +176,13 @@ Decisioni di merito prese il 2026-07-30 sulle righe dubbie:
   con 6 al posto di 14 tre spezzoni da 2h chiuderebbero un obbligo che ne vuole
   sette. Non cambia nulla di preesistente: la soglia serve solo alla somma.
   **`tsc -b` + `vite build` VERIFICATI 2026-08-02 — verdi.**
-- [ ] **Aggancio in C1b**: l'import deve copiare `corso_alias.parziale` su
-  `formazione.parziale`. Senza, gli spezzoni entrano come attestati interi e la
-  somma non serve a niente. `select('*')` ovunque, quindi la colonna arriva da
-  sola sia in back-office sia nella cache Dexie del campo: non c'è nessuna lista
-  di colonne da aggiornare.
+- [x] **Aggancio in C1b** — **fatto**: l'import copia `corso_alias.parziale` su
+  `formazione.parziale` (`formazioneImport.ts`, `parziale: a.parziale` in lettura
+  del dizionario e `parziale: v.parziale` nell'insert degli attestati). Senza,
+  gli spezzoni entrerebbero come attestati interi e la somma non servirebbe a
+  niente. `select('*')` ovunque, quindi la colonna arriva da sola sia in
+  back-office sia nella cache Dexie del campo: nessuna lista di colonne da
+  aggiornare.
 - [ ] **Limite noto da tenere d'occhio**: la somma non ha finestra temporale.
   6h nel 2018 + 6h nel 2024 senza mai chiudere il corso risultano un obbligo
   assolto nel 2024. Nei dati veri gli spezzoni sono erogati in sequenza
@@ -638,6 +640,19 @@ sedi li accende; gli attributi si leggono dal cliente).
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-08-03** Elenchi di persone **per cognome** (`ad53a53`, `20dca5c`).
+  `nomePersonaCognome` ("Cognome Nome", la forma da elenco — `nomePersona` resta
+  la forma discorsiva per frasi e documenti) e `confrontaPersone` (localeCompare
+  `it`, sensitivity base: dal gestionale i cognomi arrivano in maiuscolo e con
+  accenti, dall'inserimento a mano no) in `lib/admin/formazione.ts`. Applicati in
+  `OrganigrammaView.tsx` a: tendina candidati del pannello di assegnazione, chip
+  degli assegnatari, passo *formazione pregressa*, righe incaricati, tabella di
+  copertura e testo "N persone hanno gia' il corso". Dopo un import del
+  gestionale i Lavoratori sono decine: una tendina in ordine di arrivo (che il
+  motore raggruppa per valutazione) si scorre due volte per trovare un cognome.
+  I due commit sono edit da web GitHub; **`tsc -b` + `vite build` verificati in
+  locale 2026-08-03 — verdi.**
 
 - [x] **2026-07-01** Fase 3 · **scadenzario unico** (read-model). Il back-office
   "Cose da fare" fonde in un unico elenco ordinato per data: scadenze formative +
