@@ -11,6 +11,33 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+Per attivare il **numero di lavoratori** e le ore RLS che ne dipendono
+(scritto 2026-08-03):
+
+- [ ] Eseguire `supabase/migrations/062_cliente_numero_lavoratori.sql` nell'**SQL
+  Editor** (Canale 3): `cliente.numero_lavoratori` (integer, nullable).
+  Idempotente, ASCII-only, `pglast` OK. Eseguire **prima** del push: il codice
+  legge e scrive la colonna.
+- [ ] Push dei sorgenti su `main` (Canale 1). Tocca: `types.ts`,
+  `lib/admin/anagrafiche.ts` (colonne + upsert + `clienteVuoto`),
+  `admin/Anagrafiche.tsx` (campo *Numero di lavoratori* sotto l'ATECO),
+  `lib/admin/cosedafare.ts` (`ore_nota` + regola RLS), `lib/admin/scadenzario.ts`,
+  `admin/Scadenzario.tsx`. `tsc -b` + `vite build` verdi 2026-08-03.
+- [ ] Verifica: *Anagrafiche → cliente → Dati anagrafici*, campo **Numero di
+  lavoratori** vuoto → nello **Scadenzario** la riga dell'aggiornamento RLS
+  mostra "4h o 8h — indicare il numero di lavoratori in anagrafica" al posto
+  delle ore; compilando 40 → 4h, compilando 60 → 8h.
+
+Il dato **non si deduce**: art. 37 c. 11 D.Lgs 81/08 lega le ore
+dell'aggiornamento RLS alla dimensione (4h fino a 50 lavoratori, 8h oltre) e il
+catalogo (015) teneva fisso il minimo, sbagliato per difetto sopra i 50 senza
+che nulla lo segnalasse. Un default plausibile non si distingue da un dato
+verificato, quindi l'app lo chiede e dichiara l'incertezza finche' manca.
+
+**Da decidere** (non implementato): sotto i 15 lavoratori l'aggiornamento
+periodico dell'RLS non e' previsto dalla norma. Oggi l'app lo pretende comunque
+— toglierlo significa cambiare la valutazione di conformita', non un'etichetta.
+
 Per attivare la **data di cessazione della persona** (scritto 2026-08-02):
 
 - [x] Eseguire `supabase/migrations/061_persona_data_cessazione.sql` nell'**SQL

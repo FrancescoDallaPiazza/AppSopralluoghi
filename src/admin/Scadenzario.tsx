@@ -182,7 +182,15 @@ export default function Scadenzario(
           {!dentroScheda && r.cliente_nome && <div className="sc-sub"><span>{r.cliente_nome}</span></div>}
         </td>
         <td className="sc-corso">{corso}</td>
-        <td className="sc-ore">{r.ore != null ? r.ore + 'h' : '—'}</td>
+        {/* Ore ignote perche' manca un dato che le determina: si dichiara, non si
+            stampa il minimo. Il testo dice anche dove si rimedia. */}
+        <td className="sc-ore">
+          {r.ore != null
+            ? r.ore + 'h'
+            : r.ore_nota
+              ? <span className="sc-daconf" title={r.ore_nota}>{r.ore_nota}</span>
+              : '—'}
+        </td>
         <td className={'sc-scad' + (r.scaduta ? ' warn' : '')}>
           {r.scaduta ? 'Scaduta ' : ''}{fmt(r.data)}
         </td>
@@ -244,7 +252,8 @@ export default function Scadenzario(
         .sc-corso{width:34%;line-height:1.25}
         .sc-d{font-weight:600;line-height:1.25}
         .sc-sub{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;font-size:11px;color:var(--ink-soft,#5c5f66)}
-        .sc-ore{width:9%;white-space:nowrap;font-weight:700;color:#3a3d43}
+        .sc-ore{width:11%;white-space:nowrap;font-weight:700;color:#3a3d43}
+        .sc-daconf{display:inline-block;white-space:normal;font-size:11px;font-weight:700;line-height:1.25;color:#8a6212}
         .sc-scad{width:16%;white-space:nowrap;color:var(--ink-soft,#5c5f66)}
         .sc-scad.warn{color:var(--no,#d24028);font-weight:700}
         .sc-stato{width:14%}

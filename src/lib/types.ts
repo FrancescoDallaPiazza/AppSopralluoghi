@@ -58,6 +58,11 @@ export interface Cliente {
   livello_rischio: 'basso' | 'medio' | 'alto' | null;
   // Emergenze (migration 041/049): livello rischio incendio e gruppo primo
   // soccorso, definiti a monte; guidano il corso richiesto agli addetti.
+  // Numero di lavoratori occupati (migration 062). Determina le ore dovute dove
+  // la norma le lega alla dimensione aziendale (aggiornamento RLS: 4h fino a 50,
+  // 8h oltre - art. 37 c. 11). NULL = non ancora confermato: si chiede, non si
+  // deduce.
+  numero_lavoratori: number | null;
   livello_antincendio: '1' | '2' | '3' | null;
   antincendio_definito_mediante: string | null;
   gruppo_primo_soccorso: 'A' | 'B' | 'C' | 'BC' | null;

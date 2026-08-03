@@ -21,7 +21,7 @@ import {
 
 const COLONNE_CLIENTE =
   'id, werp_id, ragione_sociale, partita_iva, codice_fiscale, codice_ateco, ' +
-  'livello_rischio, livello_antincendio, antincendio_definito_mediante, gruppo_primo_soccorso, primo_soccorso_definito_mediante, ' +
+  'livello_rischio, numero_lavoratori, livello_antincendio, antincendio_definito_mediante, gruppo_primo_soccorso, primo_soccorso_definito_mediante, ' +
   'referente, telefono, email, referente_amm, telefono_amm, email_amm, ' +
   'referente_commerciale, canale_commerciale, ' +
   'localita, indirizzo, cap, provincia, lat, lng, attivo';
@@ -107,6 +107,7 @@ export async function salvaCliente(c: Cliente): Promise<void> {
     codice_fiscale: vuotoNull(c.codice_fiscale),
     codice_ateco: vuotoNull(c.codice_ateco),
     livello_rischio: c.livello_rischio,
+    numero_lavoratori: c.numero_lavoratori,
     livello_antincendio: c.livello_antincendio,
     antincendio_definito_mediante: vuotoNull(c.antincendio_definito_mediante),
     gruppo_primo_soccorso: c.gruppo_primo_soccorso,
@@ -171,7 +172,8 @@ export function clienteVuoto(): Cliente {
   return {
     id: newId(), werp_id: null, ragione_sociale: '',
     partita_iva: null, codice_fiscale: null, codice_ateco: null,
-    livello_rischio: null, livello_antincendio: null, antincendio_definito_mediante: null,
+    livello_rischio: null, numero_lavoratori: null,
+    livello_antincendio: null, antincendio_definito_mediante: null,
     gruppo_primo_soccorso: null, primo_soccorso_definito_mediante: null,
     referente: null, telefono: null, email: null,
     referente_amm: null, telefono_amm: null, email_amm: null,

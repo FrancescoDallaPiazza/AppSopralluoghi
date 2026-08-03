@@ -87,6 +87,10 @@ interface CosaDaFareBase {
   // contro ore): senza portarla fuori, la vista scrive il nome del corso iniziale
   // accanto alle ore dell'aggiornamento, e sembra un errore di ore.
   aggiornamento: boolean;
+  // Perche' le ore non ci sono: il dato che le determina manca e va CHIESTO, non
+  // dedotto. Valorizzata solo quando `ore` e' null per questo motivo (oggi:
+  // aggiornamento RLS senza il numero di lavoratori del cliente).
+  ore_nota: string | null;
 }
 
 // Union discriminata su `kind`: solo le righe azione portano l'Azione completa
@@ -141,6 +145,15 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
   const { data: corsiData } = await supabase.from('corso_catalogo').select('codice, nome, ore, ore_aggiornamento');
   // Ore iniziali e ore di aggiornamento restano DISTINTE: un rinnovo vuole le
   // seconde, una prima formazione da erogare vuole le prime.
+  // Numero di lavoratori per cliente (migration 062): dove la norma lega le ore
+  // alla dimensione aziendale non si sceglie un default. Tabella piccola, una
+  // sola lettura come per il catalogo.
+  const { data: clientiData } = await supabase.from('cliente').select('id, numero_lavoratori');
+  const nLavPer = new Map<string, number | null>(
+    ((clientiData ?? []) as { id: string; numero_lavoratori: number | null }[])
+      .map((c) => [c.id, c.numero_lavoratori ?? null]),
+  );
+
   const corsoInfo = new Map<string, { nome: string | null; ore: number | null; ore_agg: number | null }>(
     ((corsiData ?? []) as { codice: string; nome: string | null; ore: number | null; ore_aggiornamento: number | null }[])
       .map((c) => [c.codice, { nome: c.nome, ore: c.ore ?? null, ore_agg: c.ore_aggiornamento ?? null }]),
@@ -185,9 +198,10 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     // tutto il resto (attestato da rinnovare, credito/esonero in scadenza) e'
     // per definizione un aggiornamento.
     const aggiornamento = !reqKey;
-    const ore: number | null = reqKey
+    let ore: number | null = reqKey
       ? (ci?.ore ?? null)
       : (ci?.ore_agg ?? ci?.ore ?? null);
+    let ore_nota: string | null = null;
     const corso_nome: string | null = ci?.nome ?? null;
     const pAnag = fPers ?? ePers ?? reqPers;
     const persona_nome: string | null = pAnag
@@ -201,6 +215,21 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       cliOrig?.id ?? r.responsabile_cliente_id ?? fPers?.cliente_id ?? ePers?.cliente_id
       ?? reqPers?.cliente_id ?? null;
     const clienteNome: string | null = cliOrig?.ragione_sociale ?? cliResp?.ragione_sociale ?? null;
+
+    // Ore legate alla DIMENSIONE aziendale: aggiornamento RLS 4h fino a 50
+    // lavoratori, 8h oltre (art. 37 c. 11 D.Lgs 81/08). Il catalogo tiene il
+    // minimo, che sopra i 50 e' sbagliato per difetto. Senza il numero di
+    // lavoratori non si sceglie: la riga dichiara l'incertezza e chiede il dato,
+    // perche' un 4h scritto per default non si distingue da un 4h verificato.
+    if (aggiornamento && corsoCodice === 'RLS') {
+      const nLav = clienteId ? nLavPer.get(clienteId) ?? null : null;
+      if (nLav == null) {
+        ore = null;
+        ore_nota = '4h o 8h — indicare il numero di lavoratori in anagrafica';
+      } else {
+        ore = nLav > 50 ? 8 : 4;
+      }
+    }
 
     let dTipo: DestinatarioTipo;
     let dNome: string | null;
@@ -241,6 +270,7 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       persona_nome,
       corso_nome,
       aggiornamento,
+      ore_nota,
       azione: azione as unknown as Azione,
     };
   });
@@ -290,6 +320,7 @@ async function caricaSopralluoghiPianificati(): Promise<CosaDaFareAdmin[]> {
       persona_nome: null,
       corso_nome: null,
       aggiornamento: false,   // un sopralluogo pianificato non e' un corso
+      ore_nota: null,
       azione: null,
     };
   });

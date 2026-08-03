@@ -55,6 +55,9 @@ interface RigaBase {
   // svolto (le `ore` sono allora quelle dell'aggiornamento). Sugli adempimenti
   // non ha senso e resta false.
   aggiornamento: boolean;
+  // Perche' le ore mancano, quando mancano perche' il dato che le determina non
+  // e' stato ancora confermato (vedi cosedafare.ts).
+  ore_nota: string | null;
   periodicita_mesi: number | null;
   sede_nome: string | null;
 }
@@ -96,6 +99,7 @@ async function caricaScadenzeFormative(): Promise<RigaScadenzario[]> {
       corso_nome: r.corso_nome,
       ore: r.ore,
       aggiornamento: r.aggiornamento,
+      ore_nota: r.ore_nota,
       periodicita_mesi: r.kind === 'azione' ? (r.azione.periodicita_mesi ?? null) : null,
       sede_nome: null,
       azione: (r as { azione: Azione }).azione,
@@ -149,6 +153,7 @@ async function caricaAdempimenti(): Promise<RigaScadenzario[]> {
       corso_nome: r.tipo,
       ore: null,
       aggiornamento: false,
+      ore_nota: null,
       periodicita_mesi: r.periodicita_mesi ?? null,
       sede_nome: sede?.nome ?? null,
       azione: null,

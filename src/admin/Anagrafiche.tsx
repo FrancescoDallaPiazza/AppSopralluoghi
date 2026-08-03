@@ -377,6 +377,25 @@ function SchedaCliente({
           livello={cliente.livello_rischio}
           onPatch={patch}
         />
+        {/* Numero di lavoratori: dato NORMATIVO, non statistico. Le ore
+            dell'aggiornamento RLS dipendono dalla soglia dei 50 (art. 37 c. 11),
+            e finche' il campo e' vuoto lo scadenzario scrive "4h o 8h - da
+            confermare" invece di stampare il minimo come se fosse verificato. */}
+        <div className="bo-grid" style={{ marginTop: 12 }}>
+          <label className="bo-field" style={{ marginBottom: 0 }}>
+            <span>Numero di lavoratori</span>
+            <input type="number" min={0} step={1} value={cliente.numero_lavoratori ?? ''}
+              placeholder="da confermare"
+              onChange={(e) => patch({
+                numero_lavoratori: e.target.value === '' ? null : Math.max(0, Math.trunc(Number(e.target.value))),
+              })} />
+          </label>
+          <div className="bo-sub" style={{ alignSelf: 'end', marginBottom: 6 }}>
+            {cliente.numero_lavoratori == null
+              ? 'Serve per le ore dovute che dipendono dalla dimensione: aggiornamento RLS 4h fino a 50 lavoratori, 8h oltre (art. 37 c. 11 D.Lgs 81/08). Senza, resta "da confermare".'
+              : 'Aggiornamento RLS dovuto: ' + (cliente.numero_lavoratori > 50 ? '8h (oltre 50 lavoratori)' : '4h (fino a 50 lavoratori)') + '.'}
+          </div>
+        </div>
         {/* contatti operativi: referente, telefono, mail */}
         <div className="bo-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginTop: 12 }}>
           <label className="bo-field" style={{ marginBottom: 0 }}>
