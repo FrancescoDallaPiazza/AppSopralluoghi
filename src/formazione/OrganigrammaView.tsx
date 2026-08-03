@@ -238,8 +238,18 @@ const CSS = `
 .fzr-tab thead th{text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft,#5b5f66); background:#faf7f1; border-bottom:1px solid var(--line,#e3ddd2); padding:6px 10px; font-weight:800;}
 .fzr-tab td{border-top:1px solid var(--line,#e3ddd2); padding:7px 10px; vertical-align:top;}
 .fzr-tab tr.clic{cursor:pointer;} .fzr-tab tr.clic:hover td{background:#faf7ef;}
+/* Riga-testata della fisarmonica: e' un ruolo, non un dato, quindi ha il fondo
+   della thead e non le righe. Il +/- sta a sinistra con larghezza fissa perche'
+   passando da + a - il nome non deve spostarsi. */
+.fzr-tab tr.figrow{cursor:pointer; background:#faf7f1;}
+.fzr-tab tr.figrow:hover td{background:#f4efe4;}
+.fzr-tab tr.figrow td{padding:7px 10px;}
+.fzr-tab .fzr-tab-pm{display:inline-block; width:12px; font-weight:800; color:var(--ink-soft,#5b5f66);}
+.fzr-tab .fzr-tab-fn{font-weight:700; margin-left:2px;}
+.fzr-tab .fzr-tab-n{font-size:11px; color:var(--ink-soft,#5b5f66); margin-left:7px;}
+.fzr-tab .fzr-tab-n.crit{color:var(--no,#d8442f); font-style:italic; font-weight:700;}
 .fzr-tab .ruolo{font-weight:700; width:24%; white-space:nowrap;}
-.fzr-tab .cpers{width:26%;}
+.fzr-tab .cpers{width:32%;}
 .fzr-tab .pn{font-weight:600;} .fzr-tab .pm{font-size:11px; color:var(--ink-soft,#5b5f66); margin-top:1px;}
 .fzr-tab .vuoto{color:var(--no,#d8442f); font-style:italic;}
 .fzr-tab .ev{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:2px 0;}
@@ -1632,29 +1642,46 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     );
   };
 
-  // ORGANIGRAMMA ATTUALE: tabella ruolo -> persona -> evidenze (esito, gemella del PDF),
-  // interattiva: clic su una riga apre la scheda singola della figura corrispondente.
+  // ORGANIGRAMMA ATTUALE: ruolo -> persona -> evidenze (esito, gemella del PDF).
+  // A FISARMONICA: ogni figura e' una riga-testata richiudibile, e all'apertura
+  // sono TUTTE chiuse (`aperte` parte vuoto). Il ruolo non e' piu' una colonna ma
+  // la testata del suo blocco: srotolata tutta insieme, dopo un import del
+  // gestionale la tabella e' lunga centinaia di righe e per confrontare due ruoli
+  // si scorre a lungo. La riga chiusa dice gia' cio' che serve per decidere se
+  // aprirla (semaforo, nome, quanti incaricati o se e' scoperta). Il clic su una
+  // riga-persona continua ad aprire la scheda singola della figura.
   const renderTabella = () => (
     <div className="fzr-tab">
       <table>
-        <thead><tr><th>Ruolo organigramma</th><th>Anagrafica persona</th><th>Evidenze formazione / esonero</th></tr></thead>
-        <tbody>
-          {gruppiCopertura.flatMap((g) => g.righe).map(({ figura, assegnate }) => {
-            if (assegnate.length === 0) {
-              const sc = riep.figureScoperte.find((f) => f.codice === figura.codice);
-              const em = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
-              return (
-                <tr key={figura.codice} className="clic" onClick={() => apriFigura(figura.codice)}>
-                  <td className="ruolo">{figura.nome}</td>
+        <thead><tr><th>Anagrafica persona</th><th>Evidenze formazione / esonero</th></tr></thead>
+        {gruppiCopertura.flatMap((g) => g.righe).map(({ figura, assegnate }) => {
+          const open = aperte.has(figura.codice);
+          const stato = statoFigura(figura, assegnate);
+          const sc = riep.figureScoperte.find((f) => f.codice === figura.codice);
+          const em = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
+          return (
+            <tbody key={figura.codice}>
+              <tr className="figrow" onClick={() => toggleFigura(figura.codice)}>
+                <td colSpan={2}>
+                  <span className="fzr-tab-pm">{open ? '−' : '+'}</span>
+                  <span className={'fzr-dot ' + stato} />
+                  <span className="fzr-tab-fn">{figura.nome}</span>
+                  <span className={'fzr-tab-n' + (assegnate.length === 0 && sc ? ' crit' : '')}>
+                    {assegnate.length === 0
+                      ? (sc ? 'scoperto (obbligatorio)' : 'nessun incaricato')
+                      : assegnate.length + (assegnate.length === 1 ? ' incaricato' : ' incaricati')}
+                  </span>
+                </td>
+              </tr>
+              {open && assegnate.length === 0 && (
+                <tr className="clic" onClick={() => apriFigura(figura.codice)}>
                   <td className="vuoto" colSpan={2}>Nessun incaricato{sc && em ? ' (corso: ' + em.testo + ')' : ''}</td>
                 </tr>
-              );
-            }
-            return assegnate.map((pv, i) => {
+              )}
+              {open && assegnate.map((pv) => {
               const { reqs, mods } = evidenzePerFigura(pv, figura.codice);
               return (
                 <tr key={figura.codice + '|' + pv.persona.id} className="clic" onClick={() => apriFigura(figura.codice)}>
-                  {i === 0 && <td className="ruolo" rowSpan={assegnate.length}>{figura.nome}</td>}
                   <td className="cpers">
                     <div className="pn">{nomePersonaCognome(pv.persona)}</div>
                     {(pv.persona.mansione || pv.persona.reparto) && (
@@ -1679,9 +1706,10 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   </td>
                 </tr>
               );
-            });
-          })}
-        </tbody>
+              })}
+            </tbody>
+          );
+        })}
       </table>
     </div>
   );
@@ -1730,6 +1758,21 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
         <div className="fzr-split">
           <div className="fzr-split-main">
             <div className="fzr-col-title">Organigramma attuale</div>
+            {/* Con i ruoli chiusi di default questa e' la sola via alla vista
+                d'insieme di prima (rileggere tutto l'organigramma, o controllarlo
+                prima di esportarlo), e "Chiudi tutte" e' il modo di tornare
+                indietro senza richiudere un ruolo per volta. */}
+            <div className="fzr-actions" style={{ margin: '0 0 6px' }}>
+              <button type="button" className="fzr-mini"
+                disabled={figureAttese.every((f) => aperte.has(f.codice))}
+                onClick={() => setAperte(new Set(figureAttese.map((f) => f.codice)))}>
+                Espandi tutte ({figureAttese.length})
+              </button>
+              <button type="button" className="fzr-mini" disabled={aperte.size === 0}
+                onClick={() => setAperte(new Set())}>
+                Chiudi tutte
+              </button>
+            </div>
             {renderTabella()}
           </div>
           <div className="fzr-split-side">

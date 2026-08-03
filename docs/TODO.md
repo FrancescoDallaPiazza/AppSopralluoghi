@@ -654,15 +654,21 @@ sedi li accende; gli attributi si leggono dal cliente).
   I due commit sono edit da web GitHub; **`tsc -b` + `vite build` verificati in
   locale 2026-08-03 — verdi.**
 
-- [x] **2026-08-03** Figure dell'organigramma **richiudibili e chiuse all'apertura**
-  (`20dca5c`, stesso commit di cui sopra). Lo stato `aperte` parte da un Set vuoto
-  ed e' stato rimosso `initAperte`, il ref che apriva tutte le figure una volta al
-  caricamento: la pagina si apre sulla mappa dei chip (pallino di stato, nome,
-  numero di incaricati, `+`/`-`) e si espande solo cio' che si vuole leggere.
-  Aggiunti **Espandi tutte (N)** / **Chiudi tutte** — con i ruoli chiusi di
-  default quella e' la sola via alla vista d'insieme di prima (rilettura completa
-  o export) e il modo di tornare indietro senza chiudere scheda per scheda; nella
-  scheda aperta resta il `-` "Chiudi scheda". Da provare in app.
+- [x] **2026-08-03** Figure dell'organigramma **richiudibili e chiuse all'apertura**.
+  In due tempi, perche' il primo giro ha coperto la sezione sbagliata:
+  - `20dca5c`: chip richiudibili (+ **Espandi tutte** / **Chiudi tutte**) e
+    rimozione di `initAperte`, il ref che apriva tutte le figure al caricamento.
+    Vale pero' solo **dentro il box "Aggiorna organigramma"** (`aggiornaOpen`),
+    che all'apertura e' chiuso: la vista che si vede arrivando sul cliente e'
+    un'altra.
+  - Vista principale *Organigramma attuale* (`renderTabella`): era una tabella
+    piatta ruolo→persona→evidenze, srotolata tutta, senza alcun toggle. Ora e' una
+    **fisarmonica**: il ruolo non e' piu' una colonna ma la riga-testata del suo
+    blocco (semaforo, nome, "N incaricati" oppure "scoperto (obbligatorio)" in
+    rosso), chiusa di default; il clic apre/chiude solo quel ruolo. Stesso stato
+    `aperte` dei chip — una figura aperta e' aperta ovunque — e stessi **Espandi
+    tutte / Chiudi tutte** sopra la tabella. Il clic su una riga-persona continua
+    ad aprire la scheda singola. `tsc -b` + `vite build` verdi. Da provare in app.
 
 - [x] **2026-07-01** Fase 3 · **scadenzario unico** (read-model). Il back-office
   "Cose da fare" fonde in un unico elenco ordinato per data: scadenze formative +
