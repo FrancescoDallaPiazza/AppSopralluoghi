@@ -13,10 +13,11 @@ sposta in fondo nella sezione "Fatti di recente".
 
 Per attivare la **data di cessazione della persona** (scritto 2026-08-02):
 
-- [ ] Eseguire `supabase/migrations/061_persona_data_cessazione.sql` nell'**SQL
+- [x] Eseguire `supabase/migrations/061_persona_data_cessazione.sql` nell'**SQL
   Editor** (Canale 3): `persona.data_cessazione` (date, nullable). Idempotente,
-  ASCII-only. Eseguire **prima** del push: il codice fa l'insert con la colonna.
-- [ ] Push dei sorgenti su `main` (Canale 1). Tocca: `lib/admin/formazione.ts`
+  ASCII-only. **Eseguita 2026-08-03.**
+- [x] Push dei sorgenti su `main` (Canale 1) — **fatto 2026-08-02** (`1112a10`).
+  Tocca: `lib/admin/formazione.ts`
   (tipo `Persona` + upsert), `formazione/RisorseUmane.tsx` (campo *Data
   cessazione*, il bottone *Disattiva* la valorizza a oggi / *Riattiva* la azzera,
   badge riga "cessato gg/mm/aaaa"), `formazione/OrganigrammaView.tsx` e
