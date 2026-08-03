@@ -82,6 +82,11 @@ interface CosaDaFareBase {
   ore: number | null;                // ore di formazione del corso (aggiornamento se rinnovo)
   persona_nome: string | null;       // discente (cognome nome), per le scadenze di formazione
   corso_nome: string | null;         // tipo corso dal catalogo, per le scadenze di formazione
+  // true = cio' che e' dovuto e' l'AGGIORNAMENTO di un corso gia' svolto, non il
+  // corso iniziale. Le `ore` seguono gia' questa distinzione (ore_aggiornamento
+  // contro ore): senza portarla fuori, la vista scrive il nome del corso iniziale
+  // accanto alle ore dell'aggiornamento, e sembra un errore di ore.
+  aggiornamento: boolean;
 }
 
 // Union discriminata su `kind`: solo le righe azione portano l'Azione completa
@@ -176,6 +181,10 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       uno<any>(r.f_orig)?.corso_codice ?? uno<any>(r.e_orig)?.corso_codice ?? reqCorso ?? null;
     const ci = corsoCodice ? corsoInfo.get(corsoCodice) : undefined;
     // Un rinnovo mostra le ore di aggiornamento; una prima formazione le iniziali.
+    // `origine_requisito_key` c'e' SOLO sulle prime formazioni da erogare (056):
+    // tutto il resto (attestato da rinnovare, credito/esonero in scadenza) e'
+    // per definizione un aggiornamento.
+    const aggiornamento = !reqKey;
     const ore: number | null = reqKey
       ? (ci?.ore ?? null)
       : (ci?.ore_agg ?? ci?.ore ?? null);
@@ -231,6 +240,7 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
       ore,
       persona_nome,
       corso_nome,
+      aggiornamento,
       azione: azione as unknown as Azione,
     };
   });
@@ -279,6 +289,7 @@ async function caricaSopralluoghiPianificati(): Promise<CosaDaFareAdmin[]> {
       ore: null,
       persona_nome: null,
       corso_nome: null,
+      aggiornamento: false,   // un sopralluogo pianificato non e' un corso
       azione: null,
     };
   });

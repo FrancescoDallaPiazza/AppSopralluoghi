@@ -51,6 +51,10 @@ interface RigaBase {
   persona_nome: string | null;       // discente (formazione) o lavoratore (sorveglianza)
   corso_nome: string | null;         // tipo corso / tipo adempimento
   ore: number | null;
+  // Formazione: true se cio' che scade e' l'aggiornamento di un corso gia'
+  // svolto (le `ore` sono allora quelle dell'aggiornamento). Sugli adempimenti
+  // non ha senso e resta false.
+  aggiornamento: boolean;
   periodicita_mesi: number | null;
   sede_nome: string | null;
 }
@@ -91,6 +95,7 @@ async function caricaScadenzeFormative(): Promise<RigaScadenzario[]> {
       persona_nome: r.persona_nome,
       corso_nome: r.corso_nome,
       ore: r.ore,
+      aggiornamento: r.aggiornamento,
       periodicita_mesi: r.kind === 'azione' ? (r.azione.periodicita_mesi ?? null) : null,
       sede_nome: null,
       azione: (r as { azione: Azione }).azione,
@@ -143,6 +148,7 @@ async function caricaAdempimenti(): Promise<RigaScadenzario[]> {
       persona_nome: pers ? ([pers.cognome, pers.nome].filter(Boolean).join(' ') || null) : null,
       corso_nome: r.tipo,
       ore: null,
+      aggiornamento: false,
       periodicita_mesi: r.periodicita_mesi ?? null,
       sede_nome: sede?.nome ?? null,
       azione: null,

@@ -60,6 +60,7 @@ export default function Scadenzario(
   const [fStato, setFStato] = useState<FStato>('aperte');
   const [fScad, setFScad] = useState<FScad>('tutte');
   const [q, setQ] = useState('');
+  const [ordine, setOrdine] = useState<'scadenza' | 'discente'>('scadenza');
 
   const dentroScheda = clienteId != null;
 
@@ -131,20 +132,38 @@ export default function Scadenzario(
     }).sort((x, y) => {
       const dx = x.data ?? '9999-99-99';
       const dy = y.data ?? '9999-99-99';
-      return dx < dy ? -1 : dx > dy ? 1 : 0;
+      // I discenti sono gia' "COGNOME Nome" (caricaAzioniAdmin li compone cosi'),
+      // quindi l'ordine alfabetico e' quello per cognome. `sensitivity: base`
+      // perche' dal gestionale i nomi arrivano in maiuscolo e con accenti.
+      const nx = x.persona_nome ?? '￿';
+      const ny = y.persona_nome ?? '￿';
+      const perNome = nx.localeCompare(ny, 'it', { sensitivity: 'base' });
+      // Di default lo scadenzario e' cronologico - e' il suo mestiere: dice cosa
+      // scade prima. A parita' di data ordina per discente, cosi' le righe dello
+      // stesso giorno non escono in ordine arbitrario. Con "Discente" i due
+      // criteri si scambiano: si legge per persona, e per ciascuna in ordine di
+      // scadenza.
+      if (ordine === 'discente') return perNome !== 0 ? perNome : (dx < dy ? -1 : dx > dy ? 1 : 0);
+      return dx < dy ? -1 : dx > dy ? 1 : perNome;
     });
-  }, [righe, fStato, fScad, q]);
+  }, [righe, fStato, fScad, q, ordine]);
 
   const scadute = useMemo(() => righe.filter((r) => r.scaduta).length, [righe]);
 
   // Riga di formazione: discente · corso · ore · scadenza · stato editabile.
   function RigaFormazione({ r }: { r: RigaScadenzario }) {
-    const corso = r.corso_nome ?? r.descrizione
+    const base = r.corso_nome ?? r.descrizione
       .replace(/^Rinnovo formazione - /, '')
       .replace(/^Rinnovo credito\/esonero - /, '')
       .replace(/^Prima formazione - /, '')
       .replace(/\s*\([^)]*\)\s*$/, '')
       .trim();
+    // Cio' che e' dovuto alla scadenza e' l'AGGIORNAMENTO, non il corso iniziale:
+    // il catalogo non tiene un corso a parte per il rinnovo (stessa riga, con
+    // `ore_aggiornamento` e `aggiornamento_mesi`), quindi il nome va qualificato
+    // qui. Le ore nella colonna accanto sono gia' quelle dell'aggiornamento: con
+    // il solo nome del corso iniziale sembravano sbagliate.
+    const corso = r.aggiornamento && base ? 'Aggiornamento — ' + base : base;
     // Righe gia' concluse da prima di questa regola: l'opzione va comunque
     // mostrata, altrimenti la select renderizza un valore che non esiste fra le
     // sue opzioni e appare vuota. Si puo' solo riaprirle, non concluderne di nuove.
@@ -262,6 +281,13 @@ export default function Scadenzario(
             <option value="tutte">Tutte</option>
             <option value="scadute">Scadute</option>
             <option value="prossime">Prossimi 30 giorni</option>
+          </select>
+        </label>
+        <label className="bo-field" style={{ margin: 0, minWidth: 150 }}>
+          <span>Ordina per</span>
+          <select value={ordine} onChange={(e) => setOrdine(e.target.value as 'scadenza' | 'discente')}>
+            <option value="scadenza">Scadenza</option>
+            <option value="discente">Discente (A-Z)</option>
           </select>
         </label>
         <label className="bo-field" style={{ margin: 0, flex: 1, minWidth: 200 }}>
