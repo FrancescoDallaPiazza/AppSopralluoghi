@@ -14,11 +14,11 @@ sposta in fondo nella sezione "Fatti di recente".
 Per attivare il **numero di lavoratori** e le ore RLS che ne dipendono
 (scritto 2026-08-03):
 
-- [ ] Eseguire `supabase/migrations/062_cliente_numero_lavoratori.sql` nell'**SQL
+- [x] Eseguire `supabase/migrations/062_cliente_numero_lavoratori.sql` nell'**SQL
   Editor** (Canale 3): `cliente.numero_lavoratori` (integer, nullable).
-  Idempotente, ASCII-only, `pglast` OK. Eseguire **prima** del push: il codice
-  legge e scrive la colonna.
-- [ ] Push dei sorgenti su `main` (Canale 1). Tocca: `types.ts`,
+  Idempotente, ASCII-only, `pglast` OK. **Eseguita 2026-08-03.**
+- [x] Push dei sorgenti su `main` (Canale 1) — **fatto 2026-08-03** (`caf33bf`).
+  Tocca: `types.ts`,
   `lib/admin/anagrafiche.ts` (colonne + upsert + `clienteVuoto`),
   `admin/Anagrafiche.tsx` (campo *Numero di lavoratori* sotto l'ATECO),
   `lib/admin/cosedafare.ts` (`ore_nota` + regola RLS), `lib/admin/scadenzario.ts`,
