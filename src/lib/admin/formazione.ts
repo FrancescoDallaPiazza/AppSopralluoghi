@@ -385,6 +385,32 @@ export function nomePersona(p: { nome?: string | null; cognome?: string | null }
   return [n, c].filter(Boolean).join(' ') || 'Persona';
 }
 
+// "Cognome Nome" - la forma da ELENCO. Dove si sceglie una persona fra molte
+// (assegnazione a un ruolo, candidati con il corso svolto) si cerca per cognome,
+// e un elenco ordinato per cognome ma scritto "Nome Cognome" costringe a leggere
+// ogni riga fino in fondo per capire dove si e' arrivati. `nomePersona` resta la
+// forma discorsiva, per le frasi e i documenti; questa e' per le liste.
+export function nomePersonaCognome(p: { nome?: string | null; cognome?: string | null }): string {
+  const n = (p.nome ?? '').trim();
+  const c = (p.cognome ?? '').trim();
+  return [c, n].filter(Boolean).join(' ') || 'Persona';
+}
+
+// Ordinamento alfabetico cognome-poi-nome. `localeCompare` con sensitivity base
+// perche' gli elenchi veri hanno accenti e maiuscole miste (dal gestionale
+// arrivano tutti in maiuscolo, dall'inserimento a mano no): senza, "D'Onofrio"
+// e "DE STEFANO" finiscono in ordine arbitrario rispetto a "Dubyna".
+export function confrontaPersone(
+  a: { nome?: string | null; cognome?: string | null },
+  b: { nome?: string | null; cognome?: string | null },
+): number {
+  const ca = (a.cognome ?? '').trim();
+  const cb = (b.cognome ?? '').trim();
+  const perCognome = ca.localeCompare(cb, 'it', { sensitivity: 'base' });
+  if (perCognome !== 0) return perCognome;
+  return (a.nome ?? '').trim().localeCompare((b.nome ?? '').trim(), 'it', { sensitivity: 'base' });
+}
+
 function oggi(): Date {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
