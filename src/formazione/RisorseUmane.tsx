@@ -11,10 +11,10 @@
 // per CF / scartate) e si applica. Il match con le persone gia' presenti e' sul
 // codice fiscale; le righe senza nome vengono scartate e mostrate.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
-  caricaPersone, salvaPersona, eliminaPersona, type Persona,
+  caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona, type Persona,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 import { valido as cfValido, pulisci as cfPulisci } from './codiceFiscale';
@@ -49,9 +49,25 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
   const [agg, setAgg] = useState(false);
   const [importa, setImporta] = useState(false);
   const [q, setQ] = useState('');
+  // Ruoli dell'organigramma per persona: etichetta in riga e filtro. Caricati a
+  // parte e in modo non bloccante - se la lettura fallisce, l'anagrafica si vede
+  // lo stesso, senza pill.
+  const [ruoli, setRuoli] = useState<Map<string, string[]>>(new Map());
+  const [ruolo, setRuolo] = useState('');   // '' = tutti | '-' = senza ruolo | nome figura
   // Libretto formativo aperto (id persona). Uno per volta: e' un dossier da
   // leggere, non una colonna della tabella.
   const [libretto, setLibretto] = useState<string | null>(null);
+  // Il libretto si monta DOPO la tabella: con un'anagrafica lunga (decine di
+  // righe dopo un import) esce sotto il fondo pagina e il clic sembra non aver
+  // fatto niente. Due rAF perche' il primo frame monta il "Carico..." e la sua
+  // altezza definitiva arriva dopo.
+  const librettoRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!libretto) return;
+    const t = requestAnimationFrame(() => requestAnimationFrame(() =>
+      librettoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+    return () => cancelAnimationFrame(t);
+  }, [libretto]);
 
   function ricarica() {
     setFase('carico');
@@ -60,6 +76,9 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
         setPersone(p);
         setFase('pronto');
         onConteggio?.(p.filter((x) => x.attivo).length);
+        caricaRuoliPerPersona(p.map((x) => x.id))
+          .then(setRuoli)
+          .catch(() => setRuoli(new Map()));
       })
       .catch(() => setFase('errore'));
   }
@@ -68,10 +87,18 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
   const cambiato = () => { ricarica(); onCambia?.(); };
 
   const ago = q.trim().toLowerCase();
+  const ruoliDi = (id: string): string[] => ruoli.get(id) ?? [];
+  // Tendina dei ruoli: solo quelli davvero assegnati in questo cliente, non tutto
+  // il catalogo delle figure - un filtro che offre voci senza nessuno dietro fa
+  // sembrare vuota l'anagrafica.
+  const ruoliPresenti = [...new Set([...ruoli.values()].flat())].sort((a, b) => a.localeCompare(b, 'it'));
   const visibili = persone.filter((p) => {
     if (!mostraInattivi && !p.attivo) return false;
+    const suoi = ruoliDi(p.id);
+    if (ruolo === '-' && suoi.length > 0) return false;
+    if (ruolo && ruolo !== '-' && !suoi.includes(ruolo)) return false;
     if (!ago) return true;
-    return [p.cognome, p.nome, p.codice_fiscale, p.mansione, p.reparto]
+    return [p.cognome, p.nome, p.codice_fiscale, p.mansione, p.reparto, ...suoi]
       .some((v) => (v ?? '').toLowerCase().includes(ago));
   });
 
@@ -83,11 +110,14 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
         .ru-tr td{padding:8px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
         .ru-tr:last-child td{border-bottom:none}
         .ru-tr.dim{opacity:.5}
-        .ru-cog{width:24%;font-weight:700}
-        .ru-nom{width:22%;font-weight:600}
-        .ru-cf{width:26%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3a3d43}
+        .ru-cog{width:17%;font-weight:700}
+        .ru-nom{width:15%;font-weight:600}
+        .ru-cf{width:21%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3a3d43}
         .ru-cf.bad{color:var(--no,#d24028)}
-        .ru-man{width:22%}
+        .ru-man{width:17%}
+        .ru-ruoli{width:24%}
+        .ru-ruolo{display:inline-block;font-size:11px;font-weight:700;line-height:1.4;padding:1px 7px;margin:1px 4px 1px 0;border-radius:999px;background:#eef5ef;border:1px solid #cfe6d8;color:#1f5b38}
+        .ru-noruolo{color:var(--ink-soft,#5c5f66)}
         .ru-act{width:6%;text-align:right;white-space:nowrap}
       `}</style>
       <div className="bo-row" style={{ margin: '0 0 10px' }}>
@@ -113,9 +143,19 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
       {fase === 'errore' && <div className="bo-err">Errore nel caricamento del personale.</div>}
 
       {fase === 'pronto' && persone.length > 0 && (
-        <input type="text" placeholder="Cerca per cognome, nome, CF, mansione o reparto…"
-          value={q} onChange={(e) => setQ(e.target.value)}
-          style={{ maxWidth: 380, marginBottom: 10 }} />
+        <div className="bo-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+          <input type="text" placeholder="Cerca per cognome, nome, CF, mansione, reparto o ruolo…"
+            value={q} onChange={(e) => setQ(e.target.value)}
+            style={{ maxWidth: 380, margin: 0 }} />
+          {ruoliPresenti.length > 0 && (
+            <select value={ruolo} onChange={(e) => setRuolo(e.target.value)}
+              style={{ maxWidth: 260, margin: 0 }}>
+              <option value="">Tutti i ruoli</option>
+              {ruoliPresenti.map((r) => <option key={r} value={r}>{r}</option>)}
+              <option value="-">Senza ruolo assegnato</option>
+            </select>
+          )}
+        </div>
       )}
 
       {fase === 'pronto' && visibili.length === 0 && !agg && (
@@ -132,6 +172,7 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
               <th>Nome</th>
               <th>CF</th>
               <th>Mansione</th>
+              <th>Ruoli organigramma</th>
               <th></th>
             </tr>
           </thead>
@@ -142,7 +183,7 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
                 onAnnulla={() => setAgg(false)} />
             )}
             {visibili.map((p) => (
-              <RigaPersona key={p.id} persona={p} onCambia={cambiato}
+              <RigaPersona key={p.id} persona={p} onCambia={cambiato} ruoli={ruoliDi(p.id)}
                 onLibretto={() => setLibretto((cur) => (cur === p.id ? null : p.id))} />
             ))}
           </tbody>
@@ -153,8 +194,10 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
           in un <td> lo comprimerebbe nella colonna. La key sull'id lo rimonta
           quando si passa da una persona all'altra. */}
       {libretto && (
-        <LibrettoPersona key={libretto} clienteId={clienteId} personaId={libretto}
-          clienteNome={clienteNome ?? ''} onChiudi={() => setLibretto(null)} />
+        <div ref={librettoRef}>
+          <LibrettoPersona key={libretto} clienteId={clienteId} personaId={libretto}
+            clienteNome={clienteNome ?? ''} onChiudi={() => setLibretto(null)} />
+        </div>
       )}
 
       {fase === 'pronto' && persone.some((p) => !p.attivo) && (
@@ -170,9 +213,9 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
 
 // ============================ riga persona ============================
 
-function RigaPersona({ persona, onCambia, onAnnulla, onLibretto }: {
+function RigaPersona({ persona, onCambia, onAnnulla, onLibretto, ruoli = [] }: {
   persona: Persona; onCambia: () => void; onAnnulla?: () => void;
-  onLibretto?: () => void;
+  onLibretto?: () => void; ruoli?: string[];
 }) {
   const nuova = !persona.id;
   const [modifica, setModifica] = useState(nuova);
@@ -229,6 +272,14 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto }: {
             {p.data_cessazione ? `cessato ${p.data_cessazione.split('-').reverse().join('/')}` : 'disattivato'}
           </span>}
         </td>
+        {/* Le nomine si assegnano nel tab Organigramma: qui sono in sola lettura,
+            e il loro posto e' l'anagrafica perche' e' li' che si cerca una
+            persona ("chi e' il preposto del reparto X?"). */}
+        <td className="ru-ruoli">
+          {ruoli.length === 0
+            ? <span className="ru-noruolo">—</span>
+            : ruoli.map((r) => <span key={r} className="ru-ruolo">{r}</span>)}
+        </td>
         <td className="ru-act">
           {onLibretto && (
             <button className="bo-btn ghost sm" onClick={onLibretto} title="Ruoli, formazione svolta e scadenze di questa persona">Libretto</button>
@@ -241,7 +292,7 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto }: {
 
   return (
     <tr className="ru-tr">
-      <td colSpan={5} style={{ padding: 0 }}>
+      <td colSpan={6} style={{ padding: 0 }}>
         <div className="bo-card flat" style={{ marginBottom: 8 }}>
           {msg && <div className="bo-err">{msg}</div>}
           <div className="bo-grid">

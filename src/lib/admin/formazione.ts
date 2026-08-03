@@ -1028,6 +1028,43 @@ async function caricaPerPersone<T>(tabella: string, personaIds: string[]): Promi
   return (data ?? []) as T[];
 }
 
+// Ruoli dell'organigramma per persona (nomine ATTIVE), come nomi gia' pronti da
+// mostrare. Serve all'etichetta e al filtro in Risorse Umane: li' l'organigramma
+// non si valuta, si legge solo chi ricopre cosa, quindi non si passa da
+// `valutaCliente` (che tirerebbe dentro formazioni, esoneri e motore per
+// stampare una pill).
+export async function caricaRuoliPerPersona(personaIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  if (!personaIds.length) return out;
+  const [nomine, fig] = await Promise.all([
+    caricaPerPersone<Nomina>('nomina', personaIds),
+    supabase.from('figura_sicurezza').select('codice, nome, gruppo_ordine, ordine'),
+  ]);
+  if (fig.error) throw fig.error;
+  const righe = (fig.data ?? []) as { codice: string; nome: string; gruppo_ordine: number | null; ordine: number }[];
+  const nomeDi = new Map(righe.map((f) => [f.codice, f.nome]));
+  // Ordine del catalogo (gruppo, poi ordine) e non quello di inserimento delle
+  // nomine: le pill di una persona devono leggersi sempre nella stessa sequenza,
+  // e chi ha piu' ruoli va letto dal piu' alto in organigramma.
+  const pos = new Map([...righe]
+    .sort((a, b) => (a.gruppo_ordine ?? 999) - (b.gruppo_ordine ?? 999) || a.ordine - b.ordine)
+    .map((f, i) => [f.codice, i] as const));
+  const codiciPer = new Map<string, string[]>();
+  for (const n of nomine) {
+    if (!n.attiva) continue;
+    if (!nomeDi.has(n.figura_codice)) continue;   // figura non piu' a catalogo
+    const l = codiciPer.get(n.persona_id) ?? [];
+    if (!l.includes(n.figura_codice)) l.push(n.figura_codice);
+    codiciPer.set(n.persona_id, l);
+  }
+  for (const [personaId, codici] of codiciPer) {
+    out.set(personaId, codici
+      .sort((a, b) => (pos.get(a) ?? 999) - (pos.get(b) ?? 999))
+      .map((c) => nomeDi.get(c) as string));
+  }
+  return out;
+}
+
 // Dati grezzi dell'organigramma di un cliente, gia' caricati da qualunque
 // sorgente: Supabase (online, back-office) oppure cache locale Dexie (offline,
 // campo). Alimentano la funzione di assemblaggio pura qui sotto.

@@ -1693,7 +1693,10 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                     {reqs.length === 0 && mods.length === 0 && <span className="none">nessuna evidenza</span>}
                     {reqs.map((r) => (
                       <div key={r.corso_codice} className="ev">
-                        <span className="corso">{r.corso_nome}{r.dettaglio ? ' \u2014 ' + r.dettaglio : ''}{r.data_completamento ? ' \u00b7 svolto il ' + dataIT(r.data_completamento) : ''}{r.scadenza ? ' ' : ''}<span className="scad">{r.scadenza ? '(scad. ' + dataIT(r.scadenza) + ')' : ''}</span></span>
+                        {/* "svolto il" solo quando c'e' una scadenza: senza, il
+                            dettaglio e' gia' "Svolto il gg/mm/aaaa - non scade"
+                            (statoDaScadenza) e la data comparirebbe due volte. */}
+                        <span className="corso">{r.corso_nome}{r.dettaglio ? ' \u2014 ' + r.dettaglio : ''}{r.data_completamento && r.scadenza ? ' \u00b7 svolto il ' + dataIT(r.data_completamento) : ''}{r.scadenza ? ' ' : ''}<span className="scad">{r.scadenza ? '(scad. ' + dataIT(r.scadenza) + ')' : ''}</span></span>
                         <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
                       </div>
                     ))}
