@@ -19,7 +19,8 @@ import {
   type TipoEsonero, type Formazione, type Esonero,
   type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
   type CorsoCatalogo, type Catalogo, type NominaEvidenza,
-  nomePersona, dataIT, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
+  nomePersona, nomePersonaCognome, confrontaPersone,
+  dataIT, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 
@@ -440,7 +441,12 @@ function AssegnaFiguraPanel({
   const attinenti = useMemo(() => new Set(corsiAttinenti), [corsiAttinenti]);
   const haCorso = useCallback((id: string): boolean =>
     (corsiSvoltiPer.get(id) ?? []).some((c) => attinenti.has(c)), [corsiSvoltiPer, attinenti]);
-  const formati = useMemo(() => persone.filter((p) => haCorso(p.id)), [persone, haCorso]);
+  // Ordine alfabetico cognome-poi-nome, imposto QUI e non lasciato all'ordine di
+  // arrivo: le persone risalgono dal riepilogo del motore, che le raggruppa per
+  // valutazione, e dopo un import del gestionale sono decine. Una tendina in
+  // ordine incerto si scorre due volte per trovare un cognome.
+  const ordinate = useMemo(() => [...persone].sort(confrontaPersone), [persone]);
+  const formati = useMemo(() => ordinate.filter((p) => haCorso(p.id)), [ordinate, haCorso]);
   // Filtro acceso di default quando ha senso: la figura ha corsi propri e almeno
   // una persona li ha. Resta togliibile - il corso non e' un requisito per essere
   // designati (si puo' nominare e formare dopo), quindi non si nasconde nessuno
@@ -453,8 +459,8 @@ function AssegnaFiguraPanel({
   // selezionato o titolare resta sempre visibile - un filtro che fa sparire una
   // persona gia' assegnata la farebbe togliere per sbaglio al Salva successivo.
   const candidati = useMemo(
-    () => (soloFormati ? persone.filter((p) => haCorso(p.id) || sel.has(p.id)) : persone),
-    [soloFormati, persone, haCorso, sel]);
+    () => (soloFormati ? ordinate.filter((p) => haCorso(p.id) || sel.has(p.id)) : ordinate),
+    [soloFormati, ordinate, haCorso, sel]);
   const daScegliere = useMemo(() => candidati.filter((p) => !sel.has(p.id)), [candidati, sel]);
   // passo 2: per chi e' appena stato assegnato si chiede la formazione pregressa
   const [step, setStep] = useState<'assegna' | 'pregressa'>('assegna');
@@ -486,7 +492,9 @@ function AssegnaFiguraPanel({
       // passo 2 (pregressa) solo per chi e' stato assegnato ex-novo a un ruolo
       // con formazione soggetta al regime ASR 2025.
       if (chiediPregressa && aggiunte.length > 0) {
-        setNuove(aggiunte);
+        // Ordinate come la tendina da cui sono state scelte: si risponde riga per
+        // riga, e ritrovarle in un ordine diverso obbliga a rileggerle tutte.
+        setNuove([...aggiunte].sort(confrontaPersone));
         setRisposte(Object.fromEntries(aggiunte.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>);
         setStep('pregressa');
         await onSaved();
@@ -547,7 +555,7 @@ function AssegnaFiguraPanel({
         )}
         {nuove.map((p) => (
           <div key={p.id} className="fzr-preg-row">
-            <span className="fzr-preg-nome">{nomePersona(p)}</span>
+            <span className="fzr-preg-nome">{nomePersonaCognome(p)}</span>
             <span className="fzr-preg-choice">
               <button className={'fzr-mini' + (risposte[p.id] === 'si' ? ' on' : '')} disabled={busy}
                 onClick={() => setRisposte((r) => ({ ...r, [p.id]: 'si' }))}>S&igrave;, pregressa</button>
@@ -566,15 +574,15 @@ function AssegnaFiguraPanel({
   return (
     <div className="fzr-ed">
       <div className="fzr-grp" style={{ marginTop: 0 }}>Assegnatari del ruolo</div>
-      {persone.filter((p) => sel.has(p.id)).length > 0 ? (
+      {ordinate.filter((p) => sel.has(p.id)).length > 0 ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
-          {persone.filter((p) => sel.has(p.id)).map((p) => (
+          {ordinate.filter((p) => sel.has(p.id)).map((p) => (
             <span key={p.id} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
               background: '#eef5ef', border: '1px solid #cfe6d8', color: '#1f5b38',
               borderRadius: 999, padding: '3px 6px 3px 11px',
             }}>
-              {nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}
+              {nomePersonaCognome(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}
               <button type="button" disabled={busy} onClick={() => toggle(p.id)}
                 style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>&times;</button>
             </span>
@@ -630,7 +638,7 @@ function AssegnaFiguraPanel({
           </option>
           {daScegliere.map((p) => (
             <option key={p.id} value={p.id}>
-              {nomePersona(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}{haCorso(p.id) ? ' \u00b7 corso svolto' : ''}
+              {nomePersonaCognome(p)}{p.mansione ? ' \u00b7 ' + p.mansione : ''}{haCorso(p.id) ? ' \u00b7 corso svolto' : ''}
             </option>
           ))}
         </select>
@@ -1108,7 +1116,6 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const [aggiornaOpen, setAggiornaOpen] = useState(false);   // box di lavoro (ruoli/evidenze) aperto da "Aggiorna organigramma"
   const [focusFigura, setFocusFigura] = useState<string | null>(null); // scheda singola aperta dal clic sulla tabella
   const [focusEdit, setFocusEdit] = useState(false);                   // scheda singola in modalita' editor completo
-  const initAperte = useRef(false);                          // apri tutte le figure una sola volta
   const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const focusRef = useRef<HTMLDivElement | null>(null);      // ancora per scroll alla scheda singola
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
@@ -1167,31 +1174,37 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const giaFormatiPer = (codice: string): typeof riep.persone => {
     const cors = new Set(corsiDellaFigura(codice));
     if (!cors.size) return [];
-    return riep.persone.filter((pv) => (pv.corsiSvolti ?? []).some((c) => cors.has(c)));
+    return riep.persone
+      .filter((pv) => (pv.corsiSvolti ?? []).some((c) => cors.has(c)))
+      .sort((a, b) => confrontaPersone(a.persona, b.persona));
   };
   const testoGiaFormati = (l: typeof riep.persone): string => {
-    const nomi = l.slice(0, 3).map((pv) => nomePersona(pv.persona)).join(', ');
+    const nomi = l.slice(0, 3).map((pv) => nomePersonaCognome(pv.persona)).join(', ');
     return (l.length === 1 ? '1 persona ha gia’ il corso richiesto' : l.length + ' persone hanno gia’ il corso richiesto')
       + ' (' + nomi + (l.length > 3 ? ', …' : '') + '): manca la designazione, non la formazione.';
   };
   type RigaCop = { figura: FiguraSicurezza; assegnate: typeof riep.persone };
   const gruppiCopertura: { nome: string; macro: string; righe: RigaCop[] }[] = [];
   for (const f of figureAttese) {
-    const assegnate = riep.persone.filter((p) => p.figure.some((x) => x.codice === f.codice));
+    // Ordinati per cognome: la lista degli incaricati di un ruolo si legge per
+    // cercarci qualcuno, e su "Lavoratori" dopo un import sono decine.
+    const assegnate = riep.persone
+      .filter((p) => p.figure.some((x) => x.codice === f.codice))
+      .sort((a, b) => confrontaPersone(a.persona, b.persona));
     const g = f.gruppo || 'Altre figure';
     let grp = gruppiCopertura.find((x) => x.nome === g);
     if (!grp) { grp = { nome: g, macro: f.macro || 'eventuale', righe: [] }; gruppiCopertura.push(grp); }
     grp.righe.push({ figura: f, assegnate });
   }
 
-  // Vista tipo-PDF: all'ingresso apriamo TUTTE le figure attese cosi' l'organigramma
-  // si vede subito per intero (ruolo -> persone -> evidenze), gia' interattivo.
-  // Una sola volta: dopo, l'utente resta libero di collassare/espandere le singole figure.
-  useEffect(() => {
-    if (initAperte.current || figureAttese.length === 0) return;
-    initAperte.current = true;
-    setAperte(new Set(figureAttese.map((f) => f.codice)));
-  }, [figureAttese]);
+  // I ruoli partono CHIUSI. Aprirli tutti all'ingresso (com'era) rendeva la
+  // pagina un muro: ogni scheda porta con se' incaricati, requisiti, evidenze e
+  // moduli, quindi con un organigramma vero si apriva su decine di schermate e
+  // per confrontare due ruoli si scorreva a lungo. La riga chiusa dice gia' cio'
+  // che serve per scegliere dove entrare - nome, semaforo, numero di incaricati -
+  // e il resto si apre a richiesta, uno o piu' alla volta.
+  // I due bottoni "Espandi/Chiudi tutte" qui sotto tengono comunque a portata la
+  // vista d'insieme di prima.
 
   // #5: colore del bottone-figura con una ratio chiara, dallo stato REALE:
   //   - nessun incaricato + ruolo obbligatorio scoperto -> critico (rosso)
@@ -1389,7 +1402,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   <div className="fzr-inc-top">
                     <span className="fzr-inc-nome">
                       <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
-                      {nomePersona(pv.persona)}
+                      {nomePersonaCognome(pv.persona)}
                     </span>
                     {pv.persona.da_confermare && (
                       <span className="fzr-dacnf" title="Riga copiata da un'altra sede: verificala e confermala">copia da confermare</span>
@@ -1580,7 +1593,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
               return (
                 <div key={pv.persona.id} className="fzr-focus-row">
                   <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
-                  <span className="fzr-focus-pn">{nomePersona(pv.persona)}</span>
+                  <span className="fzr-focus-pn">{nomePersonaCognome(pv.persona)}</span>
                   <span className={'fzr-st ' + pv.stato}>{TXT[pv.stato]}</span>
                   <span className="fzr-infowrap">
                     <button type="button" className="fzr-info" aria-label="Dettagli formazione ed esonero">i</button>
@@ -1643,7 +1656,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                 <tr key={figura.codice + '|' + pv.persona.id} className="clic" onClick={() => apriFigura(figura.codice)}>
                   {i === 0 && <td className="ruolo" rowSpan={assegnate.length}>{figura.nome}</td>}
                   <td className="cpers">
-                    <div className="pn">{nomePersona(pv.persona)}</div>
+                    <div className="pn">{nomePersonaCognome(pv.persona)}</div>
                     {(pv.persona.mansione || pv.persona.reparto) && (
                       <div className="pm">{[pv.persona.mansione, pv.persona.reparto].filter(Boolean).join(' \u00b7 ')}</div>
                     )}
@@ -1744,6 +1757,21 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
               {riep.figureScoperte.length > 0 && (
                 <span style={{ color: 'var(--no,#d8442f)', fontWeight: 800 }}> {'\u00b7'} {riep.figureScoperte.length} scoperte</span>
               )}
+            </div>
+            {/* Espansione di massa. Con i ruoli chiusi di default questa e' la
+                sola via alla vista d'insieme di prima (utile per rileggere tutto
+                l'organigramma o prima di esportarlo), e "Chiudi tutte" e' il modo
+                di tornare indietro senza chiudere una scheda per volta. */}
+            <div className="fzr-actions" style={{ margin: '0 0 6px' }}>
+              <button type="button" className="fzr-mini"
+                disabled={figureAttese.every((f) => aperte.has(f.codice))}
+                onClick={() => setAperte(new Set(figureAttese.map((f) => f.codice)))}>
+                Espandi tutte ({figureAttese.length})
+              </button>
+              <button type="button" className="fzr-mini" disabled={aperte.size === 0}
+                onClick={() => setAperte(new Set())}>
+                Chiudi tutte
+              </button>
             </div>
             <div className="fzr-legenda">
               <span><span className="fzr-dot critico" /> obbligatorio scoperto / criticità</span>
