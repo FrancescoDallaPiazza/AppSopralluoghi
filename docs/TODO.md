@@ -668,6 +668,24 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-04** Organigramma: **assegnare/nominare dalla fisarmonica**
+  (`OrganigrammaView.tsx`, non ancora committato). Aprendo un ruolo scoperto la
+  riga diceva solo "Nessun incaricato" e finiva li': l'assegnazione esisteva ma
+  stava tre clic sotto (riga → scheda singola → *Modifica* → *Assegna*), quindi
+  la fisarmonica sembrava di sola lettura. Ora:
+  - riga vuota → bottone **Assegna…** (**Adibisci…** sui Lavoratori) che porta
+    dritto al pannello `AssegnaFiguraPanel`, gia' aperto sulla tendina delle
+    risorse umane;
+  - ruolo gia' coperto → riga in coda con **Modifica incaricati…** (aggiungere
+    una persona a un ruolo non vuoto e' la stessa operazione);
+  - scheda singola a ruolo vuoto: il bottone non dice piu' "Modifica" (non c'e'
+    nulla da modificare) ma **Assegna**/**Adibisci** e apre subito il pannello.
+  Nuovo helper `apriAssegna()`: chiude *Aggiorna organigramma*, apre la figura in
+  editor con il pannello espanso e ci scrolla sopra. Il pannello e' quello
+  esistente, quindi restano invariati filtro "solo chi ha gia' il corso
+  attinente", selezione di massa e passo *formazione pregressa*. Nessuna
+  migration (solo Canale 1). `tsc --noEmit` verde. **Da provare in app.**
+
 - [x] **2026-08-03** Elenchi di persone **per cognome** (`ad53a53`, `20dca5c`).
   `nomePersonaCognome` ("Cognome Nome", la forma da elenco — `nomePersona` resta
   la forma discorsiva per frasi e documenti) e `confrontaPersone` (localeCompare

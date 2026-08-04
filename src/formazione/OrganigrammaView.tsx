@@ -252,6 +252,8 @@ const CSS = `
 .fzr-tab .cpers{width:32%;}
 .fzr-tab .pn{font-weight:600;} .fzr-tab .pm{font-size:11px; color:var(--ink-soft,#5b5f66); margin-top:1px;}
 .fzr-tab .vuoto{color:var(--no,#d8442f); font-style:italic;}
+.fzr-tab-empty{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.fzr-tab-empty .fzr-mini{font-style:normal; flex:0 0 auto;}
 .fzr-tab .ev{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:2px 0;}
 .fzr-tab .ev + .ev{border-top:1px dotted #ece7dd;}
 .fzr-tab .corso{font-size:11.5px; line-height:1.35;}
@@ -1542,6 +1544,19 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
       focusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
   };
 
+  // Apre la figura DIRETTAMENTE sul pannello di assegnazione. Davanti a un ruolo
+  // scoperto la domanda che nasce e' "chi ci metto?", e la risposta stava tre
+  // clic sotto (riga -> scheda -> Modifica -> Assegna): la fisarmonica aperta
+  // diceva solo "Nessun incaricato", senza via d'uscita visibile.
+  const apriAssegna = (codice: string) => {
+    setAggiornaOpen(false);
+    setFocusFigura(codice);
+    setFocusEdit(true);
+    setAssegnaFigura(codice);
+    requestAnimationFrame(() => requestAnimationFrame(() =>
+      focusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
+  };
+
   // Evidenze di una persona LIMITATE alla figura (stesso filtro della scheda e del PDF).
   const evidenzePerFigura = (pv: RiepilogoCliente['persone'][number], figuraCodice: string) => {
     const reqs = pv.requisiti.filter((r) => r.figura_codici.includes(figuraCodice));
@@ -1574,7 +1589,12 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
             {figura.nome}
             {figura.obbligo && <span className={'fzr-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
           </span>
-          <button className="fzr-edit-btn" onClick={() => setFocusEdit(true)}>Modifica</button>
+          {/* A ruolo vuoto "Modifica" non descrive cio' che serve fare (non c'e'
+              niente da modificare): l'azione e' nominare, e porta dritta al
+              pannello di assegnazione. */}
+          <button className="fzr-edit-btn" onClick={() => (assegnate.length === 0 ? apriAssegna(figura.codice) : setFocusEdit(true))}>
+            {assegnate.length === 0 ? (figura.codice === 'lavoratore' ? 'Adibisci' : 'Assegna') : 'Modifica'}
+          </button>
           <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => setFocusFigura(null)}>{'\u2715'}</button>
         </div>
 
@@ -1675,7 +1695,18 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
               </tr>
               {open && assegnate.length === 0 && (
                 <tr className="clic" onClick={() => apriFigura(figura.codice)}>
-                  <td className="vuoto" colSpan={2}>Nessun incaricato{sc && em ? ' (corso: ' + em.testo + ')' : ''}</td>
+                  <td className="vuoto" colSpan={2}>
+                    <div className="fzr-tab-empty">
+                      <span>Nessun incaricato{sc && em ? ' (corso: ' + em.testo + ')' : ''}</span>
+                      {/* L'azione sta QUI, dove nasce la domanda: la riga aperta
+                          diceva solo che il ruolo e' vuoto, e chi compila doveva
+                          indovinare che si nomina da un'altra vista. */}
+                      <button type="button" className="fzr-mini"
+                        onClick={(e) => { e.stopPropagation(); apriAssegna(figura.codice); }}>
+                        {figura.codice === 'lavoratore' ? 'Adibisci…' : 'Assegna…'}
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )}
               {open && assegnate.map((pv) => {
@@ -1710,6 +1741,19 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                 </tr>
               );
               })}
+              {/* Anche a ruolo coperto la modifica degli incaricati deve essere
+                  raggiungibile da qui: aggiungere una persona a un ruolo che ne
+                  ha gia' una e' la stessa operazione del ruolo vuoto. */}
+              {open && assegnate.length > 0 && (
+                <tr>
+                  <td colSpan={2} style={{ background: '#fdfcfa' }}>
+                    <button type="button" className="fzr-mini"
+                      onClick={() => apriAssegna(figura.codice)}>
+                      {figura.codice === 'lavoratore' ? 'Modifica adibiti…' : 'Modifica incaricati…'}
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           );
         })}
