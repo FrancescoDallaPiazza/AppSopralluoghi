@@ -126,14 +126,16 @@ Per attivare **C1a — alias corsi del gestionale**, nell'ordine:
   Senza, quelle righe resterebbero "da mappare" per sempre e il contatore non
   arriverebbe mai a 0. Idempotente, ASCII-only, `pglast` OK.
   **Eseguita 2026-07-30.**
-- [ ] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy).
+- [x] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy) — **fatto**
+  (verificato 2026-08-04: `aliasCorsi.ts` / `AliasCorsi.tsx` in albero da
+  `be89272`, working tree clean).
   Tocca: `lib/admin/aliasCorsi.ts` (nuovo), `admin/AliasCorsi.tsx` (nuovo),
   `admin/BackOffice.tsx`, `lib/admin/catalogoImport.ts` (esporta `periodicitaMesi`).
   Aggiunta 2026-07-30: `RigaCatalogoGestionale.categoria` (colonna E) letta dal
   parser e mostrata come pill in anteprima e in lista — è il segnale che
   distingue il catalogo ufficiale ASR 2025 dal bucket legacy "Generica", e un
-  modulo B del 2016 dal suo omonimo 2025. **`tsc -b` + `vite build` DA
-  VERIFICARE**: node non è installato sulla macchina di sviluppo attuale.
+  modulo B del 2016 dal suo omonimo 2025. **`tsc -b` + `vite build` verificati
+  2026-08-02** (node reinstallato: la nota "node non è installato" è superata).
 - [x] Verifica in back-office → **Regole app → Alias corsi**: caricato
   `elencoAnagraficaFormazioni.xlsx`, anteprima **268 corsi nel file / 194
   nuovi** → *Applica*. I nuovi sono 194 e non 268 perché 74 alias erano già in
@@ -364,7 +366,9 @@ obbligatorie/eventuali, figura *Datore delegato ex art. 16* con estremi procura,
   `nomina.estremi_procura` e `azione.origine_nomina_id`, figura
   `datore_lavoro_art16`, tabella `nomina_evidenza` + RLS. Idempotente, ASCII-only,
   `pglast` OK. **Eseguita** (verificato 2026-07-29: DB è alla 057; oggetti presenti).
-- [ ] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy) + refresh PWA.
+- [x] Push dei sorgenti su `main` (Canale 1, Vercel auto-deploy) + refresh PWA —
+  **fatto** (verificato 2026-08-04: `estremi_procura` presente in
+  `OrganigrammaView.tsx` e `lib/admin/formazione.ts` su `main`, working tree clean).
   Tocca: `OrganigrammaView.tsx`, `Formazione.tsx`, `lib/admin/formazione.ts`.
   `tsc -b` + `vite build` verdi.
 - [ ] Verifica in back-office -> Formazione -> cliente: i due blocchi
@@ -668,8 +672,30 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-04** Organigramma: **il clic su una persona apre la sua sola
+  scheda** (`OrganigrammaView.tsx`, non ancora committato). Nella fisarmonica
+  *Organigramma attuale* il clic su una riga-persona apriva la scheda del RUOLO
+  con dentro **tutti** gli incaricati: sui Lavoratori dopo un import del
+  gestionale sono decine, e la persona appena cliccata andava ritrovata a mano
+  in un secondo elenco piu' lungo del primo. Ora `apriFigura(codice, personaId?)`
+  porta con se' chi si e' cliccato (`focusPersona`) e la scheda mostra quella
+  sola persona, con in testa una barra che dice cosa non si sta vedendo
+  ("Scheda di Rossi Mario · il ruolo ha 12 incaricati") e il bottone **Vedi
+  tutti gli incaricati (N)**: un filtro silenzioso su un ruolo affollato si
+  legge come "ne ha uno". Il filtro segue anche in *Modifica* (renderFigCard,
+  4o parametro `soloPersonaId`), ma **solo per le schede mostrate**: `titolari`
+  — cio' che `AssegnaFiguraPanel` considera gia' assegnato — resta sull'elenco
+  completo, altrimenti il salvataggio cancellerebbe gli altri incaricati. Le
+  altre vie restano sul ruolo intero perche' e' quello che chiedono: riga-testata
+  del ruolo, riga "Nessun incaricato", *Apri il ruolo* dalla ricerca, nodo dello
+  schema, e `apriAssegna` (assegnare e' un'operazione sul ruolo: filtrare
+  nasconderebbe proprio chi c'e' gia'). Se la persona sparisce dagli incaricati
+  mentre la scheda e' aperta (rimossa dal ruolo) si ricade sull'elenco intero.
+  Solo Canale 1, nessuna migration. `tsc --noEmit` + `vite build` verdi.
+  **Da provare in app.**
+
 - [x] **2026-08-04** Organigramma: **ricerca per persona** (`OrganigrammaView.tsx`,
-  non ancora committato). L'organigramma e' ordinato per RUOLO, ma la domanda che
+  `7315b7d`). L'organigramma e' ordinato per RUOLO, ma la domanda che
   arriva a voce e' sull'individuo — "Rossi e' a posto?" — e per rispondere si
   aprivano i ruoli a uno a uno leggendo gli elenchi. Campo di ricerca sopra
   *Organigramma attuale*: da 2 caratteri in su **sostituisce la tabella** (non le
@@ -686,7 +712,7 @@ sedi li accende; gli attributi si leggono dal cliente).
   migration. `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
 
 - [x] **2026-08-04** Organigramma: **niente doppioni fra pannello e scheda**
-  (`OrganigrammaView.tsx`, non ancora committato). Correzione di `ad9e476`,
+  (`OrganigrammaView.tsx`, `3979c67`). Correzione di `ad9e476`,
   provata in app e sbagliata su due punti.
   - Il passo 2 del pannello (data di nomina + evidenze per le assegnazioni
     appena create) **ripeteva** il passo 1 della scheda dell'incaricato, che
@@ -713,7 +739,7 @@ sedi li accende; gli attributi si leggono dal cliente).
   Solo Canale 1, nessuna migration. `tsc --noEmit` + `vite build` verdi.
 
 - [x] **2026-08-04** Organigramma: **prima la persona, poi il percorso formativo**
-  (`OrganigrammaView.tsx`, non ancora committato). Tre cose, un solo filo:
+  (`OrganigrammaView.tsx`, `ad9e476`). Tre cose, un solo filo:
   l'ordine in cui si compila un ruolo.
   - **Guida condensata in due bottoni**. `figura_sicurezza.guida` e' un testo
     unico che mescola percorso formativo (corso base, moduli ATECO/rischio,
@@ -743,10 +769,10 @@ sedi li accende; gli attributi si leggono dal cliente).
     bottone di un requisito ancora vuoto dice **Formazione o esonero** (resta
     "Registra" per antincendio/primo soccorso, che non hanno crediti).
   Solo Canale 1, nessuna migration. `tsc --noEmit` + `vite build` verdi.
-  **Da provare in app.**
+  **Provata in app: da qui le due correzioni di `3979c67`.**
 
 - [x] **2026-08-04** Organigramma: **assegnare/nominare dalla fisarmonica**
-  (`OrganigrammaView.tsx`, non ancora committato). Aprendo un ruolo scoperto la
+  (`OrganigrammaView.tsx`, `c7d5464`). Aprendo un ruolo scoperto la
   riga diceva solo "Nessun incaricato" e finiva li': l'assegnazione esisteva ma
   stava tre clic sotto (riga → scheda singola → *Modifica* → *Assegna*), quindi
   la fisarmonica sembrava di sola lettura. Ora:

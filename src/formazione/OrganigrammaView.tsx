@@ -301,6 +301,9 @@ const CSS = `
 .fzr-focus-nome{flex:1 1 auto; min-width:0; font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
 .fzr-focus-empty{margin:8px 0 2px;}
 .fzr-focus-list{margin-top:8px; display:flex; flex-direction:column; gap:6px;}
+/* Barra "stai guardando una persona sola": dice cosa e' nascosto e come rivederlo.
+   Un filtro silenzioso su un ruolo con 40 adibiti si legge come "ne ha uno". */
+.fzr-focus-filtro{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0 2px; font-size:12px; color:#6b6257;}
 .fzr-focus-row{display:flex; align-items:center; gap:8px; padding:6px 8px; border:1px solid var(--line,#e3ddd2); border-radius:9px; background:#fcfbf9;}
 .fzr-focus-pn{flex:1 1 auto; min-width:0; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .fzr-infowrap{position:relative; flex:0 0 auto; display:inline-flex;}
@@ -1164,6 +1167,11 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const [aggiornaOpen, setAggiornaOpen] = useState(false);   // box di lavoro (ruoli/evidenze) aperto da "Aggiorna organigramma"
   const [focusFigura, setFocusFigura] = useState<string | null>(null); // scheda singola aperta dal clic sulla tabella
   const [focusEdit, setFocusEdit] = useState(false);                   // scheda singola in modalita' editor completo
+  // Chi si e' cliccato: il clic su una RIGA-PERSONA chiede di quella persona, non
+  // del ruolo. Senza, si apriva la scheda del ruolo con dentro tutti gli
+  // incaricati, e su un ruolo con decine di adibiti (Lavoratori dopo un import)
+  // la persona cercata andava ritrovata a mano in un secondo elenco.
+  const [focusPersona, setFocusPersona] = useState<string | null>(null);
   const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const focusRef = useRef<HTMLDivElement | null>(null);      // ancora per scroll alla scheda singola
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
@@ -1374,7 +1382,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
 
   // Scheda di una figura: usata INLINE dentro il proprio gruppo (#4), non in coda,
   // oppure da sola nella scheda singola (onClose la riporta alla vista compatta).
-  const renderFigCard = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate'], onClose?: () => void) => {
+  const renderFigCard = (figura: FiguraSicurezza, assegnate: RigaCop['assegnate'], onClose?: () => void, soloPersonaId?: string | null) => {
     const scoperta = scoperteSet.has(figura.codice);
     const stato = statoFigura(figura, assegnate);
     const aperto = assegnaFigura === figura.codice;
@@ -1386,10 +1394,15 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     // Solo quando la figura e' senza incaricati: a ruolo coperto la domanda
     // non si pone piu'.
     const giaFormati = assegnate.length === 0 ? giaFormatiPer(figura.codice) : [];
+    // `titolari` resta sull'elenco COMPLETO anche quando si guarda una sola
+    // persona: e' quello che il pannello di assegnazione considera gia'
+    // assegnato, e filtrarlo cancellerebbe gli altri incaricati al salvataggio.
+    // Il filtro vale solo per le schede mostrate.
     const titolari = assegnate.map((pv) => ({
       personaId: pv.persona.id,
       nominaId: pv.figure.find((x) => x.codice === figura.codice)?.nomina_id ?? null,
     }));
+    const incaricati = soloPersonaId ? assegnate.filter((pv) => pv.persona.id === soloPersonaId) : assegnate;
     return (
       <div key={figura.codice} className="fzr-figrow" ref={(el) => { figRef.current[figura.codice] = el; }}>
         <div className="fzr-figrow-top">
@@ -1449,8 +1462,8 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           </>
         ) : (
           <div className="fzr-inc">
-            <div className="fzr-inc-h">Incaricati</div>
-            {assegnate.map((pv) => {
+            <div className="fzr-inc-h">{incaricati.length < assegnate.length ? 'Incaricato' : 'Incaricati'}</div>
+            {incaricati.map((pv) => {
               const fg = pv.figure.find((x) => x.codice === figura.codice);
               const nomina: Nomina | null = fg
                 ? { id: fg.nomina_id ?? '', persona_id: pv.persona.id, figura_codice: figura.codice, data_nomina: fg.data_nomina, attiva: true, note: null, estremi_procura: fg.estremi_procura }
@@ -1629,10 +1642,14 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   // Clic su una figura (tabella o schema): apre SOLO la scheda di quella figura.
   // Chiude il pannello "Aggiorna organigramma": le due viste sono alternative,
   // cosi' la figura non viene mai renderizzata due volte (ref/scroll ambigui).
-  const apriFigura = (codice: string) => {
+  // `personaId` = si e' cliccato su una persona e non sul ruolo: la scheda si
+  // apre sulla sola persona (restano un clic e un bottone per vedere gli altri
+  // incaricati). Omesso = ruolo intero, come prima.
+  const apriFigura = (codice: string, personaId?: string) => {
     setAggiornaOpen(false);
     setFocusEdit(false);
     setFocusFigura(codice);
+    setFocusPersona(personaId ?? null);
     requestAnimationFrame(() => requestAnimationFrame(() =>
       focusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
   };
@@ -1644,6 +1661,10 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const apriAssegna = (codice: string) => {
     setAggiornaOpen(false);
     setFocusFigura(codice);
+    // Assegnare e' un'operazione sul RUOLO (si sceglie fra tutte le risorse e si
+    // vedono i titolari attuali): un filtro su una persona qui nasconderebbe
+    // proprio chi c'e' gia'.
+    setFocusPersona(null);
     setFocusEdit(true);
     setAssegnaFigura(codice);
     requestAnimationFrame(() => requestAnimationFrame(() =>
@@ -1666,11 +1687,27 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     // Solo quando la figura e' senza incaricati: a ruolo coperto la domanda
     // non si pone piu'.
     const giaFormati = assegnate.length === 0 ? giaFormatiPer(figura.codice) : [];
+    // Si e' cliccato su una persona: si mostra la sua sola scheda. Se quella
+    // persona non e' (piu') fra gli incaricati - tolta dal ruolo mentre la
+    // scheda era aperta - si ricade sull'elenco intero: meglio tutti che il
+    // vuoto senza spiegazione.
+    const mirate = focusPersona ? assegnate.filter((pv) => pv.persona.id === focusPersona) : [];
+    const mostrate = mirate.length > 0 ? mirate : assegnate;
+    const filtrata = mostrate.length < assegnate.length;
+    const barraTutti = filtrata ? (
+      <div className="fzr-focus-filtro">
+        <span>{'Scheda di ' + nomePersonaCognome(mostrate[0].persona) + ' · il ruolo ha ' + assegnate.length + ' incaricati'}</span>
+        <button type="button" className="fzr-mini" onClick={() => setFocusPersona(null)}>
+          Vedi tutti gli incaricati ({assegnate.length})
+        </button>
+      </div>
+    ) : null;
     // "Modifica": l'editor completo della SOLA figura scelta, qui dentro.
     if (focusEdit) {
       return (
         <div className="fzr-focus" ref={focusRef}>
-          {renderFigCard(figura, assegnate, () => setFocusEdit(false))}
+          {barraTutti}
+          {renderFigCard(figura, assegnate, () => setFocusEdit(false), filtrata ? mostrate[0].persona.id : null)}
         </div>
       );
     }
@@ -1689,7 +1726,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           <button className="fzr-edit-btn" onClick={() => (assegnate.length === 0 ? apriAssegna(figura.codice) : setFocusEdit(true))}>
             {assegnate.length === 0 ? (figura.codice === 'lavoratore' ? 'Adibisci' : 'Assegna') : 'Modifica'}
           </button>
-          <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => setFocusFigura(null)}>{'\u2715'}</button>
+          <button className="fzr-edit-btn" title="Chiudi scheda" onClick={() => { setFocusFigura(null); setFocusPersona(null); }}>{'\u2715'}</button>
         </div>
 
         {assegnate.length === 0 ? (
@@ -1710,7 +1747,8 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           </div>
         ) : (
           <div className="fzr-focus-list">
-            {assegnate.map((pv) => {
+            {barraTutti}
+            {mostrate.map((pv) => {
               const fg = pv.figure.find((x) => x.codice === figura.codice);
               const { reqs, mods } = evidenzePerFigura(pv, figura.codice);
               const nInfo = reqs.length + mods.length;
@@ -1911,7 +1949,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
               {open && assegnate.map((pv) => {
               const { reqs, mods } = evidenzePerFigura(pv, figura.codice);
               return (
-                <tr key={figura.codice + '|' + pv.persona.id} className="clic" onClick={() => apriFigura(figura.codice)}>
+                <tr key={figura.codice + '|' + pv.persona.id} className="clic" onClick={() => apriFigura(figura.codice, pv.persona.id)}>
                   <td className="cpers">
                     <div className="pn">{nomePersonaCognome(pv.persona)}</div>
                     {(pv.persona.mansione || pv.persona.reparto) && (
