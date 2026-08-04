@@ -668,6 +668,39 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-04** Organigramma: **prima la persona, poi il percorso formativo**
+  (`OrganigrammaView.tsx`, non ancora committato). Tre cose, un solo filo:
+  l'ordine in cui si compila un ruolo.
+  - **Guida condensata in due bottoni**. `figura_sicurezza.guida` e' un testo
+    unico che mescola percorso formativo (corso base, moduli ATECO/rischio,
+    aggiornamento) e crediti/esoneri Allegato III: srotolato erano 5-8 righe
+    sopra ogni ruolo. Nuovo `dividiGuida()` che separa per riga (dalla prima
+    riga con "esoner/credito" in poi e' blocco esoneri; le sotto-righe "- "
+    seguono la riga madre) + due bottoni **Percorso formativo** / **Esonero e
+    crediti**, chiusi di default, uno aperto per volta. Nessuna migration: il
+    testo a catalogo non cambia, cambia come si legge.
+  - **Via la domanda pregressa dall'assegnazione**. Il passo "azienda gia'
+    operante prima dell'ASR 2025? Si'/No" dopo il Salva, e l'apertura automatica
+    di *Evidenze pregresse*, chiedevano evidenze di credito a chi stava solo
+    nominando qualcuno. Tolti dal flusso di assegnazione; il flag
+    `formazione_pregressa` **resta nell'anagrafica persona** (e con esso la
+    valutazione "da verificare" invece di "critico") e il credito si dichiara
+    dopo la nomina, come esonero sul singolo requisito.
+  - **Pannello di assegnazione in due passi**. Passo 1 *Chi ricopre il ruolo*:
+    tendina delle risorse umane **+ "Persona non in elenco"**, che crea
+    l'anagrafica senza uscire dal pannello (prima si finiva in Risorse Umane
+    perdendo ruolo e selezione) — `PersonaForm` guadagna `mostraPregressa` e
+    `onCreata`. Passo 2 *Evidenza della nomina*: `NominaInline` (data, a oggi ma
+    correggibile) + `EvidenzeNomina` (atto, visura, procura) per le sole
+    assegnazioni appena create, dove l'adapter le fornisce (back-office; in
+    campo resta la sola data). `salvaNomina` ora si usa il valore di ritorno,
+    che serve per l'id delle evidenze.
+  - Nella scheda incaricato il passo 2 si chiama **Percorso formativo** e il
+    bottone di un requisito ancora vuoto dice **Formazione o esonero** (resta
+    "Registra" per antincendio/primo soccorso, che non hanno crediti).
+  Solo Canale 1, nessuna migration. `tsc --noEmit` + `vite build` verdi.
+  **Da provare in app.**
+
 - [x] **2026-08-04** Organigramma: **assegnare/nominare dalla fisarmonica**
   (`OrganigrammaView.tsx`, non ancora committato). Aprendo un ruolo scoperto la
   riga diceva solo "Nessun incaricato" e finiva li': l'assegnazione esisteva ma

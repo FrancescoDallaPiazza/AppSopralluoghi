@@ -74,6 +74,25 @@ const TIPI_ESONERO: Array<{ v: TipoEsonero; l: string }> = [
 
 const oggiISO = () => new Date().toISOString().slice(0, 10);
 
+// La guida di catalogo (`figura_sicurezza.guida`) e' un testo unico che tiene
+// insieme due discorsi diversi: il PERCORSO FORMATIVO (corso base, moduli per
+// ATECO/rischio, aggiornamento) e i CREDITI/ESONERI dell'Allegato III ASR 2025.
+// Srotolati insieme sono cinque-otto righe sopra ogni ruolo: si leggono una
+// volta e poi restano li' a spingere in basso cio' che si usa davvero. Qui si
+// separano per riga, cosi' la scheda puo' mostrarli a richiesta, uno per volta.
+// Regola: dalla prima riga che parla di esonero/credito in poi e' blocco
+// esoneri; le sotto-righe ("- ...") seguono sempre la riga che le introduce.
+function dividiGuida(guida: string | null | undefined): { formazione: string[]; esonero: string[] } {
+  const formazione: string[] = [];
+  const esonero: string[] = [];
+  let inEsonero = false;
+  for (const riga of (guida ?? '').split('\n').map((l) => l.trim()).filter(Boolean)) {
+    if (!riga.startsWith('- ')) inEsonero = /esoner|credito/i.test(riga);
+    (inEsonero ? esonero : formazione).push(riga);
+  }
+  return { formazione, esonero };
+}
+
 const CSS = `
 .fzr{font-size:13px;}
 .fzr-sem{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;}
@@ -196,6 +215,7 @@ const CSS = `
 .fzr-figchip-n{font-size:11px; font-weight:800; background:rgba(255,255,255,.28); color:inherit; border-radius:999px; padding:1px 7px; min-width:18px; text-align:center;}
 .fzr-figchip.neutro .fzr-figchip-n{background:#e0e2e6;}
 .fzr-figchip-pm{font-size:16px; font-weight:800; color:inherit; opacity:.85; width:13px; text-align:center; line-height:1;}
+.fzr-guida-tabs{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 0 18px;}
 .fzr-guida{margin:6px 0 6px 20px; padding:0; font-size:11.5px; color:var(--ink-soft,#5b5f66); line-height:1.45;}
 .fzr-guida li{margin:1px 0;}
 .fzr-guida li.sub{list-style:none; margin-left:-6px;}
@@ -298,6 +318,7 @@ interface Props {
 // ---------- form anagrafica persona (nuova o modifica) ----------
 function PersonaForm({
   persona, clienteId, onSaved, onClose, onEvidenzePregresse, mostraRimuoviPersona = true,
+  mostraPregressa = true, onCreata,
 }: {
   persona: Persona | null;
   clienteId: string;
@@ -305,6 +326,13 @@ function PersonaForm({
   onClose: () => void;
   onEvidenzePregresse?: (persona: Persona) => void;
   mostraRimuoviPersona?: boolean;
+  // Dentro l'assegnazione la domanda "azienda pre-ASR 2025?" non si pone: li' si
+  // sta scegliendo CHI ricopre il ruolo, e il regime formativo (iniziale oppure
+  // credito/esonero) si decide dopo, sul percorso formativo. Resta nell'anagrafica.
+  mostraPregressa?: boolean;
+  // Chi crea la persona al volo deve poterla usare subito (selezionarla per il
+  // ruolo): serve la riga salvata, non il solo "e' andata bene".
+  onCreata?: (p: Persona) => void;
 }) {
   const adapter = useAdapter();
   const [cognome, setCognome] = useState(persona?.cognome ?? '');
@@ -340,8 +368,9 @@ function PersonaForm({
         note: persona?.note ?? null,
         formazione_pregressa: pregressa,
       };
-      await adapter.salvaPersona(p);
+      const salvata = await adapter.salvaPersona(p);
       await onSaved();
+      if (!persona) onCreata?.(salvata ?? p);
       onClose();
     } finally { setBusy(false); }
   }
@@ -394,11 +423,13 @@ function PersonaForm({
           </small>
         )}
       </div>
-      <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '2px 0 4px' }}>
-        <input type="checkbox" checked={pregressa} onChange={(e) => setPregressa(e.target.checked)} />
-        <span>Formazione pregressa (azienda già operante prima dell'ASR 2025): i requisiti senza attestato risultano "da verificare" invece di "critici".</span>
-      </label>
-      {pregressa && persona && onEvidenzePregresse && (
+      {mostraPregressa && (
+        <label className="chk" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '2px 0 4px' }}>
+          <input type="checkbox" checked={pregressa} onChange={(e) => setPregressa(e.target.checked)} />
+          <span>Formazione pregressa (azienda già operante prima dell'ASR 2025): i requisiti senza attestato risultano "da verificare" invece di "critici".</span>
+        </label>
+      )}
+      {mostraPregressa && pregressa && persona && onEvidenzePregresse && (
         <div className="fzr-actions" style={{ marginBottom: 4 }}>
           <button className="fzr-btn ghost" disabled={busy} onClick={() => onEvidenzePregresse(persona)}>Evidenze pregresse</button>
         </div>
@@ -417,20 +448,24 @@ function PersonaForm({
 }
 
 // ---------- pannello assegnazione PER FIGURA (paradigma back-office) ----------
-// Aperto dal bottone "assegna/modifica" di una riga-figura: si spuntano le
-// persone gia' in organigramma da incaricare di QUELLA figura, e/o se ne crea
-// una nuova al volo (cognome/nome). Per chi viene assegnato per la prima volta a
-// un ruolo con formazione soggetta al regime ASR 2025 si chiede (scelta esplicita
-// SI/NO) se ha formazione pregressa. Scritture via adapter.
+// Aperto dal bottone "assegna/modifica" di una riga-figura. L'ordine e' quello
+// reale del lavoro, in due passi:
+//   1. CHI ricopre il ruolo — si scelgono le persone gia' in organigramma, e
+//      chi non c'e' si crea al volo senza uscire dal pannello (l'elenco delle
+//      risorse umane non e' mai completo quando si compila un organigramma).
+//   2. Con che EVIDENZA — data di nomina e documenti a supporto (atto di
+//      nomina, visura, procura) per le assegnazioni appena create.
+// Il percorso formativo NON si tocca qui: la scelta fra formazione iniziale e
+// condizioni di esonero viene dopo, sulla scheda del ruolo, quando la persona
+// c'e' gia'. Scritture via adapter.
 function AssegnaFiguraPanel({
-  figura, persone, titolari, clienteId, chiediPregressa, corsiAttinenti, corsiSvoltiPer,
-  filtraDiDefault, onSaved, onClose, onEvidenzePregresse,
+  figura, persone, titolari, clienteId, corsiAttinenti, corsiSvoltiPer,
+  filtraDiDefault, onSaved, onClose,
 }: {
   figura: FiguraSicurezza;
   persone: Persona[];
   titolari: { personaId: string; nominaId: string | null }[];
   clienteId: string;
-  chiediPregressa: boolean;
   // Corsi che questa figura richiede, e corsi che ciascuna persona ha davvero
   // svolto. Servono a proporre i candidati sensati per gli addetti alle
   // emergenze: chi ha gia' il corso antincendio non e' scritto da nessuna parte
@@ -446,9 +481,11 @@ function AssegnaFiguraPanel({
   filtraDiDefault: boolean;
   onSaved: () => Promise<void>;
   onClose: () => void;
-  onEvidenzePregresse?: (p: Persona) => void;
 }) {
   const adapter = useAdapter();
+  // Le evidenze documentali della nomina esistono solo dove l'adapter le
+  // fornisce (back-office). In campo il passo 2 resta la sola data.
+  const gestioneEvidenze = typeof adapter.evidenzeNomina === 'function';
   const titolariIds = useMemo(() => titolari.map((t) => t.personaId), [titolari]);
   const attinenti = useMemo(() => new Set(corsiAttinenti), [corsiAttinenti]);
   const haCorso = useCallback((id: string): boolean =>
@@ -474,10 +511,11 @@ function AssegnaFiguraPanel({
     () => (soloFormati ? ordinate.filter((p) => haCorso(p.id) || sel.has(p.id)) : ordinate),
     [soloFormati, ordinate, haCorso, sel]);
   const daScegliere = useMemo(() => candidati.filter((p) => !sel.has(p.id)), [candidati, sel]);
-  // passo 2: per chi e' appena stato assegnato si chiede la formazione pregressa
-  const [step, setStep] = useState<'assegna' | 'pregressa'>('assegna');
-  const [nuove, setNuove] = useState<Persona[]>([]);
-  const [risposte, setRisposte] = useState<Record<string, 'si' | 'no'>>({});
+  // passo 2: evidenza delle assegnazioni appena create (data + documenti)
+  const [step, setStep] = useState<'assegna' | 'evidenza'>('assegna');
+  const [create, setCreate] = useState<{ persona: Persona; nomina: Nomina }[]>([]);
+  // creazione al volo di una persona che non e' ancora fra le risorse umane
+  const [nuovaPersona, setNuovaPersona] = useState(false);
 
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -486,14 +524,15 @@ function AssegnaFiguraPanel({
     setBusy(true);
     try {
       const dopo = new Set(sel);
-      const aggiunte: Persona[] = [];
+      const aggiunte: { persona: Persona; nomina: Nomina }[] = [];
       // aggiunte: selezionati ora ma non titolari prima
       for (const id of dopo) {
         if (titolariIds.includes(id)) continue;
-        await adapter.salvaNomina({ id: newId(), persona_id: id, figura_codice: figura.codice, data_nomina: oggiISO(), attiva: true, note: null });
-        if (!aggiunte.some((a) => a.id === id)) {
+        const richiesta: Nomina = { id: newId(), persona_id: id, figura_codice: figura.codice, data_nomina: oggiISO(), attiva: true, note: null };
+        const salvata = await adapter.salvaNomina(richiesta);
+        if (!aggiunte.some((a) => a.persona.id === id)) {
           const p = persone.find((x) => x.id === id);
-          if (p) aggiunte.push(p);
+          if (p) aggiunte.push({ persona: p, nomina: salvata ?? richiesta });
         }
       }
       // rimozioni: titolari prima ma non piu' selezionati
@@ -501,83 +540,45 @@ function AssegnaFiguraPanel({
         if (dopo.has(t.personaId)) continue;
         if (t.nominaId) await adapter.eliminaNomina(t.nominaId);
       }
-      // passo 2 (pregressa) solo per chi e' stato assegnato ex-novo a un ruolo
-      // con formazione soggetta al regime ASR 2025.
-      if (chiediPregressa && aggiunte.length > 0) {
-        // Ordinate come la tendina da cui sono state scelte: si risponde riga per
-        // riga, e ritrovarle in un ordine diverso obbliga a rileggerle tutte.
-        setNuove([...aggiunte].sort(confrontaPersone));
-        setRisposte(Object.fromEntries(aggiunte.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>);
-        setStep('pregressa');
-        await onSaved();
+      await onSaved();
+      // passo 2: l'assegnazione appena fatta va documentata (data e atto). E' il
+      // seguito naturale del "chi", non una schermata a parte da ritrovare.
+      if (aggiunte.length > 0) {
+        setCreate([...aggiunte].sort((a, b) => confrontaPersone(a.persona, b.persona)));
+        setStep('evidenza');
         setBusy(false);
         return;
       }
-      await onSaved();
       onClose();
     } finally { setBusy(false); }
   }
 
-  async function confermaPregressa() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const conPregressa: Persona[] = [];
-      for (const p of nuove) {
-        if (risposte[p.id] === 'si') {
-          const agg = { ...p, formazione_pregressa: true };
-          await adapter.salvaPersona(agg);
-          conPregressa.push(agg);
-        }
-      }
-      await onSaved();
-      onClose();
-      // Apri SUBITO il pannello "Evidenze pregresse" per la prima persona
-      // dichiarata pregressa: l'utente carica gli attestati senza doverli
-      // cercare/aprire riga per riga (la scelta pregressa implica il caricamento).
-      if (conPregressa.length > 0 && onEvidenzePregresse) onEvidenzePregresse(conPregressa[0]);
-    } finally { setBusy(false); }
-  }
-
-  if (step === 'pregressa') {
-    const tutteScelte = nuove.every((p) => risposte[p.id] === 'si' || risposte[p.id] === 'no');
+  // ---- passo 2: evidenza dell'assegnazione appena registrata ----
+  if (step === 'evidenza') {
+    const atto = figura.codice === 'lavoratore' ? 'adibizione' : 'nomina';
     return (
       <div className="fzr-ed">
-        <div className="fzr-hint" style={{ marginTop: 0 }}>
-          Per ogni persona appena assegnata a &laquo;{figura.nome}&raquo;: l'azienda era gi&agrave;
-          operante prima dell'ASR 2025 con formazione pregressa? Se <b>S&igrave;</b> i requisiti
-          senza attestato risultano &laquo;da verificare&raquo; invece di &laquo;critici&raquo;;
-          se <b>No</b> si procede con la formazione prevista dall'ASR 2025.
+        <div className="fzr-step-h" style={{ marginBottom: 8 }}>
+          <span className="fzr-step-n">2</span>Evidenza dell&rsquo;{atto}
         </div>
-        {/* Stessa ragione della selezione di massa: con decine di persone
-            appena assegnate, rispondere riga per riga a una domanda che ha
-            quasi sempre la stessa risposta per tutta l'azienda e' tempo perso.
-            Resta modificabile per singola persona. */}
-        {nuove.length > 1 && (
-          <div className="fzr-actions" style={{ marginTop: 4, marginBottom: 4 }}>
-            <button type="button" className="fzr-mini" disabled={busy}
-              onClick={() => setRisposte(Object.fromEntries(nuove.map((p) => [p.id, 'si'])) as Record<string, 'si' | 'no'>)}>
-              Tutte pregresse
-            </button>
-            <button type="button" className="fzr-mini" disabled={busy}
-              onClick={() => setRisposte(Object.fromEntries(nuove.map((p) => [p.id, 'no'])) as Record<string, 'si' | 'no'>)}>
-              Tutte ASR 2025
-            </button>
-          </div>
-        )}
-        {nuove.map((p) => (
-          <div key={p.id} className="fzr-preg-row">
-            <span className="fzr-preg-nome">{nomePersonaCognome(p)}</span>
-            <span className="fzr-preg-choice">
-              <button className={'fzr-mini' + (risposte[p.id] === 'si' ? ' on' : '')} disabled={busy}
-                onClick={() => setRisposte((r) => ({ ...r, [p.id]: 'si' }))}>S&igrave;, pregressa</button>
-              <button className={'fzr-mini' + (risposte[p.id] === 'no' ? ' on' : '')} disabled={busy}
-                onClick={() => setRisposte((r) => ({ ...r, [p.id]: 'no' }))}>No, ASR 2025</button>
-            </span>
+        <div className="fzr-hint" style={{ marginTop: 0 }}>
+          {create.length === 1 ? 'Assegnazione registrata' : create.length + ' assegnazioni registrate'} a
+          {' '}&laquo;{figura.nome}&raquo;. La data e&rsquo; a oggi: correggila se l&rsquo;{atto} porta
+          un&rsquo;altra data
+          {gestioneEvidenze && figura.codice !== 'lavoratore' ? ', e allega i documenti a supporto.' : '.'}
+          {' '}Il percorso formativo si definisce dopo, nella scheda del ruolo.
+        </div>
+        {create.map(({ persona, nomina }) => (
+          <div key={persona.id} className="fzr-inc-card">
+            <div className="fzr-inc-nome">{nomePersonaCognome(persona)}</div>
+            <NominaInline nomina={nomina} onSaved={onSaved} />
+            {gestioneEvidenze && nomina.id && figura.codice !== 'lavoratore' && (
+              <EvidenzeNomina nominaId={nomina.id} figuraCodice={figura.codice} onSaved={onSaved} />
+            )}
           </div>
         ))}
         <div className="fzr-actions" style={{ marginTop: 8 }}>
-          <button className="fzr-btn primary" disabled={busy || !tutteScelte} onClick={() => void confermaPregressa()}>Conferma</button>
+          <button className="fzr-btn primary" disabled={busy} onClick={onClose}>Fine</button>
         </div>
       </div>
     );
@@ -585,6 +586,10 @@ function AssegnaFiguraPanel({
 
   return (
     <div className="fzr-ed">
+      <div className="fzr-step-h" style={{ marginBottom: 8 }}>
+        <span className="fzr-step-n">1</span>
+        {figura.codice === 'lavoratore' ? 'Chi e’ adibito al ruolo' : 'Chi ricopre il ruolo'}
+      </div>
       <div className="fzr-grp" style={{ marginTop: 0 }}>Assegnatari del ruolo</div>
       {ordinate.filter((p) => sel.has(p.id)).length > 0 ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
@@ -655,14 +660,38 @@ function AssegnaFiguraPanel({
           ))}
         </select>
       </div>
-      {persone.length === 0 && (
+      {/* Chi non e' in elenco si crea QUI. Mandare in "Risorse Umane" e tornare
+          indietro faceva perdere il ruolo su cui si stava lavorando, e con esso
+          la selezione gia' fatta: chi compila un organigramma scopre le persone
+          mancanti proprio mentre assegna, non prima. */}
+      {nuovaPersona ? (
+        <div style={{ marginTop: 8 }}>
+          <div className="fzr-grp" style={{ marginTop: 0 }}>Nuova persona</div>
+          <PersonaForm
+            persona={null}
+            clienteId={clienteId}
+            mostraPregressa={false}
+            onSaved={onSaved}
+            onCreata={(p) => setSel((s) => new Set([...s, p.id]))}
+            onClose={() => setNuovaPersona(false)}
+          />
+        </div>
+      ) : (
+        <div className="fzr-actions" style={{ marginTop: 0, marginBottom: 4 }}>
+          <button type="button" className="fzr-mini" disabled={busy} onClick={() => setNuovaPersona(true)}>
+            + Persona non in elenco
+          </button>
+        </div>
+      )}
+
+      {persone.length === 0 && !nuovaPersona && (
         <div className="fzr-hint" style={{ marginTop: 8 }}>
-          Nessuna risorsa disponibile: aggiungi prima le persone nella sezione &laquo;Risorse Umane&raquo; della scheda cliente.
+          Nessuna risorsa in anagrafica: creala qui con &laquo;Persona non in elenco&raquo;, oppure dalla sezione &laquo;Risorse Umane&raquo; della scheda cliente.
         </div>
       )}
 
       <div className="fzr-actions">
-        <button className="fzr-btn primary" disabled={busy} onClick={() => void salva()}>Salva</button>
+        <button className="fzr-btn primary" disabled={busy || nuovaPersona} onClick={() => void salva()}>Salva assegnazione</button>
         <button className="fzr-btn ghost" disabled={busy} onClick={onClose}>Annulla</button>
       </div>
     </div>
@@ -1131,6 +1160,8 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const focusRef = useRef<HTMLDivElement | null>(null);      // ancora per scroll alla scheda singola
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
+  // Quale blocco della guida e' aperto per ciascuna figura ('form' | 'eson' | null).
+  const [guidaOpen, setGuidaOpen] = useState<Record<string, 'form' | 'eson' | null>>({});
   const toggleFigura = (codice: string) => setAperte((s) => {
     const n = new Set(s);
     if (n.has(codice)) n.delete(codice); else n.add(codice);
@@ -1323,7 +1354,11 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     const scoperta = scoperteSet.has(figura.codice);
     const stato = statoFigura(figura, assegnate);
     const aperto = assegnaFigura === figura.codice;
-    const guidaRighe = (figura.guida ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+    const guida = dividiGuida(figura.guida);
+    const guidaAperta = guidaOpen[figura.codice] ?? null;
+    const guidaRighe = guidaAperta === 'form' ? guida.formazione : guidaAperta === 'eson' ? guida.esonero : [];
+    const mostraGuida = (v: 'form' | 'eson') =>
+      setGuidaOpen((g) => ({ ...g, [figura.codice]: g[figura.codice] === v ? null : v }));
     const emerg = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
     // Solo quando la figura e' senza incaricati: a ruolo coperto la domanda
     // non si pone piu'.
@@ -1355,6 +1390,25 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           </div>
         )}
 
+        {/* Le prescrizioni del ruolo condensate in due voci: cosa serve fare
+            (percorso) e cosa puo' evitarlo (crediti). Chiuse, perche' si
+            consultano quando si decide, non ogni volta che si apre il ruolo. */}
+        {(guida.formazione.length > 0 || guida.esonero.length > 0) && (
+          <div className="fzr-guida-tabs">
+            {guida.formazione.length > 0 && (
+              <button type="button" className={'fzr-mini' + (guidaAperta === 'form' ? ' on' : '')}
+                onClick={() => mostraGuida('form')}>
+                Percorso formativo
+              </button>
+            )}
+            {guida.esonero.length > 0 && (
+              <button type="button" className={'fzr-mini' + (guidaAperta === 'eson' ? ' on' : '')}
+                onClick={() => mostraGuida('eson')}>
+                Esonero / crediti
+              </button>
+            )}
+          </div>
+        )}
         {guidaRighe.length > 0 && (
           <ul className="fzr-guida">
             {guidaRighe.map((l, i) => (
@@ -1369,13 +1423,11 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
             persone={tuttePersone}
             titolari={titolari}
             clienteId={clienteId}
-            chiediPregressa={figureChePregressa.has(figura.codice)}
             corsiAttinenti={corsiDellaFigura(figura.codice)}
             corsiSvoltiPer={corsiSvoltiPer}
             filtraDiDefault={!!emerg}
             onSaved={ricarica}
             onClose={() => setAssegnaFigura(null)}
-            onEvidenzePregresse={onEvidenzePregresse}
           />
         )}
 
@@ -1464,7 +1516,11 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   </div>
 
                   <div className="fzr-step">
-                    <div className="fzr-step-h"><span className="fzr-step-n">2</span>Formazione</div>
+                    {/* Passo 2: qui si sceglie la strada, non si "registra" e
+                        basta - la formazione iniziale e il credito/esonero sono
+                        due risposte alla stessa domanda, e stanno nello stesso
+                        editor (due schede). */}
+                    <div className="fzr-step-h"><span className="fzr-step-n">2</span>Percorso formativo</div>
                     {reqs.length === 0 && mods.length === 0 && (
                       <div className="fzr-step-empty">Nessun percorso formativo sicurezza per questa figura: e{'\u0027'} sufficiente la nomina.</div>
                     )}
@@ -1481,7 +1537,13 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                           <span className="fzr-r-right">
                             <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
                             <button className="fzr-edit-btn" onClick={() => setEditKey(apertoR ? null : key)}>
-                              {apertoR ? 'Chiudi' : (r.esonero_id ? 'Esonero' : 'Registra')}
+                              {apertoR ? 'Chiudi'
+                                : r.esonero_id ? 'Esonero'
+                                : r.formazione_id ? 'Registra'
+                                // Antincendio e primo soccorso hanno regime proprio: nessun
+                                // credito da valutare, quindi non si offre una scelta che non c'e'.
+                                : CATEGORIE_NO_PREGRESSA.has(r.categoria) ? 'Registra'
+                                : 'Formazione o esonero'}
                             </button>
                           </span>
                         </div>
