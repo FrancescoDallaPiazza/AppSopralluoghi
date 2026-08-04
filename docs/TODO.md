@@ -668,6 +668,23 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-04** Organigramma: **ricerca per persona** (`OrganigrammaView.tsx`,
+  non ancora committato). L'organigramma e' ordinato per RUOLO, ma la domanda che
+  arriva a voce e' sull'individuo — "Rossi e' a posto?" — e per rispondere si
+  aprivano i ruoli a uno a uno leggendo gli elenchi. Campo di ricerca sopra
+  *Organigramma attuale*: da 2 caratteri in su **sostituisce la tabella** (non le
+  si affianca: due viste degli stessi dati una sopra l'altra sono il doppione
+  appena tolto altrove) con la scheda di ogni persona trovata — semaforo e stato
+  complessivo, attestati che coprono solo una parte del percorso, poi un blocco
+  per ruolo con data di nomina, "atto ufficiale mancante" dove manca, requisiti e
+  moduli con esito e dettaglio, piu' *Apri il ruolo* che pulisce la ricerca e
+  porta alla scheda. `normalizza()` (minuscole + accenti via NFD) e
+  `corrispondePersona()`: tutti i termini digitati devono comparire, in qualunque
+  ordine e campo, cosi' "rossi mario", "mario rossi" e "rossi saldatore" trovano
+  la stessa persona; guarda cognome, nome, mansione, reparto e codice fiscale.
+  Essendo in `OrganigrammaView` vale **anche in campo**. Solo Canale 1, nessuna
+  migration. `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+
 - [x] **2026-08-04** Organigramma: **niente doppioni fra pannello e scheda**
   (`OrganigrammaView.tsx`, non ancora committato). Correzione di `ad9e476`,
   provata in app e sbagliata su due punti.

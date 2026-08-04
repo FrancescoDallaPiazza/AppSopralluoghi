@@ -74,6 +74,18 @@ const TIPI_ESONERO: Array<{ v: TipoEsonero; l: string }> = [
 
 const oggiISO = () => new Date().toISOString().slice(0, 10);
 
+// Confronto "da ricerca": senza accenti e senza maiuscole, perche' dal gestionale
+// i cognomi arrivano in maiuscolo e accentati, a mano no, e chi cerca digita
+// come gli viene.
+const normalizza = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+// Tutti i termini digitati devono comparire, in qualunque ordine e in qualunque
+// campo: "rossi mario" e "mario rossi" trovano la stessa persona, e "rossi
+// saldatore" la trova per cognome e mansione insieme.
+function corrispondePersona(p: Persona, termini: string[]): boolean {
+  const campi = normalizza([p.cognome, p.nome, p.mansione, p.reparto, p.codice_fiscale].filter(Boolean).join(' '));
+  return termini.every((t) => campi.includes(t));
+}
+
 // La guida di catalogo (`figura_sicurezza.guida`) e' un testo unico che tiene
 // insieme due discorsi diversi: il PERCORSO FORMATIVO (corso base, moduli per
 // ATECO/rischio, aggiornamento) e i CREDITI/ESONERI dell'Allegato III ASR 2025.
@@ -250,6 +262,9 @@ const CSS = `
 .fzr-split-main{flex:0 0 80%; max-width:80%; min-width:0;}
 .fzr-split-side{flex:1 1 20%; min-width:0; display:flex; flex-direction:column; gap:8px; position:sticky; top:8px;}
 .fzr-col-title{font-size:12px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink,#2a2c30); margin:0 0 8px;}
+.fzr-cerca{display:flex; align-items:center; gap:6px; margin:0 0 8px;}
+.fzr-cerca input{flex:1 1 auto; min-width:0; padding:8px 10px; border:1px solid var(--line,#e3ddd2); border-radius:8px; font-family:inherit; font-size:13px; background:#fff; color:var(--ink,#2a2c30);}
+.fzr-cerca .fzr-mini{flex:0 0 auto;}
 .fzr-aggiorna{width:100%; background:var(--ink,#2a2c30); color:#fff; border:none; border-radius:10px; padding:12px 14px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; text-transform:uppercase; letter-spacing:.02em; box-shadow:0 1px 2px rgba(0,0,0,.08);}
 .fzr-aggiorna:hover{filter:brightness(1.08);}
 .fzr-aggiorna.on{background:var(--no,#d8442f);}
@@ -1152,6 +1167,10 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const focusRef = useRef<HTMLDivElement | null>(null);      // ancora per scroll alla scheda singola
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
+  // Ricerca per persona. L'organigramma e' ordinato per RUOLO, ma la domanda che
+  // arriva a voce e' sull'individuo ("Rossi e' a posto?"): senza questo si
+  // aprono i ruoli a uno a uno e si leggono gli elenchi finche' salta fuori.
+  const [cerca, setCerca] = useState('');
   // Quale blocco delle prescrizioni e' aperto, per singola scheda incaricato
   // (chiave persona|figura): aprirlo su un incaricato non lo apre sugli altri.
   const [guidaOpen, setGuidaOpen] = useState<Record<string, 'form' | 'eson' | null>>({});
@@ -1267,6 +1286,16 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     }
     return worst;
   };
+
+  // Chi risponde alla ricerca. Da due caratteri in su: con uno solo l'elenco
+  // sarebbe mezza azienda, e la ricerca non risponderebbe a nulla.
+  const terminiCerca = normalizza(cerca.trim()).split(/\s+/).filter(Boolean);
+  const cercaAttiva = normalizza(cerca.trim()).length >= 2;
+  const trovate = cercaAttiva
+    ? riep.persone
+      .filter((pv) => corrispondePersona(pv.persona, terminiCerca))
+      .sort((a, b) => confrontaPersone(a.persona, b.persona))
+    : [];
 
   const tuttePersone = riep.persone.map((p) => p.persona);
   const corsoByCodice = new Map(catalogo.corsi.map((c) => [c.codice, c]));
@@ -1727,6 +1756,111 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     );
   };
 
+  // RICERCA PERSONA: si scrive un cognome e si legge il suo stato, ruolo per
+  // ruolo, con la stessa lettura delle evidenze della tabella. SOSTITUISCE la
+  // tabella mentre e' attiva invece di affiancarsi: due viste degli stessi dati,
+  // una sopra l'altra, sono il doppione che si e' appena tolto altrove.
+  const renderRicerca = () => {
+    if (trovate.length === 0) {
+      return (
+        <div className="fzr-tab" style={{ padding: '12px 14px' }}>
+          <div className="fzr-figrow-crit">Nessuna persona trovata per &laquo;{cerca.trim()}&raquo;.</div>
+          <div className="fzr-d">La ricerca guarda cognome, nome, mansione, reparto e codice fiscale.</div>
+        </div>
+      );
+    }
+    return (
+      <div>
+        <div className="fzr-d" style={{ margin: '0 0 6px' }}>
+          {trovate.length === 1 ? '1 persona trovata' : trovate.length + ' persone trovate'}
+          {' · '}la ricerca guarda cognome, nome, mansione, reparto e codice fiscale.
+        </div>
+        {trovate.map((pv) => (
+          <div key={pv.persona.id} className="fzr-focus">
+            <div className="fzr-focus-top">
+              <span className={'fzr-dot ' + pv.stato} title={TXT[pv.stato]} />
+              <span className="fzr-focus-nome">
+                {nomePersonaCognome(pv.persona)}
+                {(pv.persona.mansione || pv.persona.reparto) && (
+                  <span className="fzr-d" style={{ marginTop: 0 }}>
+                    {[pv.persona.mansione, pv.persona.reparto].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+                {!pv.persona.attivo && <span className="fzr-badge eventuale">non attivo</span>}
+              </span>
+              <span className={'fzr-st ' + pv.stato}>{TXT[pv.stato]}</span>
+            </div>
+
+            {/* Attestati che coprono solo un pezzo del percorso: sono dell'ATTESTATO,
+                non di un ruolo, quindi vanno detti sulla persona. */}
+            {pv.evidenzeIncomplete.length > 0 && (
+              <div className="fzr-emerg" style={{ margin: '6px 0 0' }}>
+                {pv.evidenzeIncomplete.length === 1
+                  ? '1 attestato documenta solo una parte del percorso'
+                  : pv.evidenzeIncomplete.length + ' attestati documentano solo una parte del percorso'}
+                {': '}
+                {pv.evidenzeIncomplete.map((e) => e.corso_nome).join(', ')}.
+              </div>
+            )}
+
+            {pv.figure.length === 0 ? (
+              <div className="fzr-step-empty" style={{ marginTop: 8 }}>
+                Non ricopre alcun ruolo nell&rsquo;organigramma: e&rsquo; in anagrafica ma non assegnata.
+              </div>
+            ) : pv.figure.map((fg) => {
+              const { reqs, mods } = evidenzePerFigura(pv, fg.codice);
+              return (
+                <div key={fg.codice} className="fzr-step">
+                  <div className="fzr-step-h">
+                    <span>{fg.nome}</span>
+                    <button type="button" className="fzr-mini" style={{ marginLeft: 'auto' }}
+                      onClick={() => { setCerca(''); apriFigura(fg.codice); }}>
+                      Apri il ruolo
+                    </button>
+                  </div>
+                  <div className="fzr-nomina" style={{ margin: '0 0 4px' }}>
+                    <span>
+                      {fg.codice === 'lavoratore' ? 'Adibito' : 'Nominato'}
+                      {fg.data_nomina ? ' il ' + dataIT(fg.data_nomina) : ' — data non registrata'}
+                    </span>
+                    {fg.evidenza_mancante && <span className="fzr-dacnf">atto ufficiale mancante</span>}
+                  </div>
+                  {reqs.length === 0 && mods.length === 0 && (
+                    <div className="fzr-step-empty">Nessun percorso formativo: e&rsquo; sufficiente la nomina.</div>
+                  )}
+                  {reqs.map((r) => (
+                    <div key={r.corso_codice} className="fzr-r">
+                      <div className="fzr-r-main">
+                        <span className="fzr-r-name">
+                          <span className={'fzr-dot ' + r.stato} title={TXT[r.stato]} />
+                          <span>{r.corso_nome}{r.ore != null ? ' · ' + r.ore + 'h' : ''}</span>
+                        </span>
+                        <span className={'fzr-st ' + r.stato}>{TXT[r.stato]}</span>
+                      </div>
+                      <div className="fzr-d">{r.dettaglio}</div>
+                    </div>
+                  ))}
+                  {mods.map((m) => (
+                    <div key={'m-' + m.corso_codice} className="fzr-r">
+                      <div className="fzr-r-main">
+                        <span className="fzr-r-name">
+                          <span className={'fzr-dot ' + m.stato} title={TXT[m.stato]} />
+                          <span>{m.corso_nome}<span className="fzr-modtag">modulo</span></span>
+                        </span>
+                        <span className={'fzr-st ' + m.stato}>{TXT[m.stato]}</span>
+                      </div>
+                      {m.dettaglio && <div className="fzr-d">{m.dettaglio}</div>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // ORGANIGRAMMA ATTUALE: ruolo -> persona -> evidenze (esito, gemella del PDF).
   // A FISARMONICA: ogni figura e' una riga-testata richiudibile, e all'apertura
   // sono TUTTE chiuse (`aperte` parte vuoto). Il ruolo non e' piu' una colonna ma
@@ -1870,22 +2004,33 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
         <div className="fzr-split">
           <div className="fzr-split-main">
             <div className="fzr-col-title">Organigramma attuale</div>
-            {/* Con i ruoli chiusi di default questa e' la sola via alla vista
-                d'insieme di prima (rileggere tutto l'organigramma, o controllarlo
-                prima di esportarlo), e "Chiudi tutte" e' il modo di tornare
-                indietro senza richiudere un ruolo per volta. */}
-            <div className="fzr-actions" style={{ margin: '0 0 6px' }}>
-              <button type="button" className="fzr-mini"
-                disabled={figureAttese.every((f) => aperte.has(f.codice))}
-                onClick={() => setAperte(new Set(figureAttese.map((f) => f.codice)))}>
-                Espandi tutte ({figureAttese.length})
-              </button>
-              <button type="button" className="fzr-mini" disabled={aperte.size === 0}
-                onClick={() => setAperte(new Set())}>
-                Chiudi tutte
-              </button>
+            <div className="fzr-cerca">
+              <input type="search" value={cerca} onChange={(e) => setCerca(e.target.value)}
+                placeholder="Cerca una persona: cognome, nome, mansione, codice fiscale" />
+              {cerca !== '' && (
+                <button type="button" className="fzr-mini" onClick={() => setCerca('')}>Pulisci</button>
+              )}
             </div>
-            {renderTabella()}
+            {cercaAttiva ? renderRicerca() : (
+              <>
+                {/* Con i ruoli chiusi di default questa e' la sola via alla vista
+                    d'insieme di prima (rileggere tutto l'organigramma, o controllarlo
+                    prima di esportarlo), e "Chiudi tutte" e' il modo di tornare
+                    indietro senza richiudere un ruolo per volta. */}
+                <div className="fzr-actions" style={{ margin: '0 0 6px' }}>
+                  <button type="button" className="fzr-mini"
+                    disabled={figureAttese.every((f) => aperte.has(f.codice))}
+                    onClick={() => setAperte(new Set(figureAttese.map((f) => f.codice)))}>
+                    Espandi tutte ({figureAttese.length})
+                  </button>
+                  <button type="button" className="fzr-mini" disabled={aperte.size === 0}
+                    onClick={() => setAperte(new Set())}>
+                    Chiudi tutte
+                  </button>
+                </div>
+                {renderTabella()}
+              </>
+            )}
           </div>
           <div className="fzr-split-side">
             <button type="button" className={'fzr-aggiorna' + (aggiornaOpen ? ' on' : '')}
