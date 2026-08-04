@@ -668,6 +668,33 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-04** Organigramma: **niente doppioni fra pannello e scheda**
+  (`OrganigrammaView.tsx`, non ancora committato). Correzione di `ad9e476`,
+  provata in app e sbagliata su due punti.
+  - Il passo 2 del pannello (data di nomina + evidenze per le assegnazioni
+    appena create) **ripeteva** il passo 1 della scheda dell'incaricato, che
+    compare due centimetri sotto con gli stessi identici campi: stessa nomina
+    stampata due volte, una sopra l'altra. Il pannello ora risponde alla sola
+    domanda "chi ricopre il ruolo" e alla conferma si chiude; data e documenti
+    restano dove erano gia', nel passo 1 della scheda.
+  - I due bottoni delle prescrizioni erano in testa al ruolo, cioe' prima della
+    nomina: ma il passo 1 e' la nomina e il passo 2 e' la formazione, quindi ora
+    stanno **nella testata del passo 2 di ogni incaricato** (*Corsi e
+    aggiornamenti* / *Esonero e crediti*), aperti per singola scheda.
+  - I promemoria degli esoneri ammessi sotto ogni requisito dicevano parola per
+    parola cio' che dice il bottone *Esonero e crediti*: ora compaiono **solo con
+    l'editor aperto**, dove servono a scegliere fra attestato ed esonero.
+  - Un ruolo **senza incaricati** non ha un passo 2, quindi resterebbe senza
+    prescrizioni: nuovo `GuidaInfo`, la **"i" accanto al nome del ruolo** che a
+    passaggio del mouse (o da tastiera, `:focus-within`) apre le due sezioni
+    *Corsi e aggiornamenti* / *Esonero e crediti*. Riusa il popup gia' in uso
+    nella scheda singola, con variante `.fzr-pop.sx` ancorata a sinistra (la "i"
+    sta a inizio riga: verso destra uscirebbe dalla scheda). Presente sia nella
+    scheda-editor sia nella scheda singola aperta dalla fisarmonica, cosi' la
+    domanda "che formazione comporta questo ruolo?" non richiede piu' di
+    nominarci prima qualcuno.
+  Solo Canale 1, nessuna migration. `tsc --noEmit` + `vite build` verdi.
+
 - [x] **2026-08-04** Organigramma: **prima la persona, poi il percorso formativo**
   (`OrganigrammaView.tsx`, non ancora committato). Tre cose, un solo filo:
   l'ordine in cui si compila un ruolo.

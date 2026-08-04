@@ -215,7 +215,8 @@ const CSS = `
 .fzr-figchip-n{font-size:11px; font-weight:800; background:rgba(255,255,255,.28); color:inherit; border-radius:999px; padding:1px 7px; min-width:18px; text-align:center;}
 .fzr-figchip.neutro .fzr-figchip-n{background:#e0e2e6;}
 .fzr-figchip-pm{font-size:16px; font-weight:800; color:inherit; opacity:.85; width:13px; text-align:center; line-height:1;}
-.fzr-guida-tabs{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 0 18px;}
+.fzr-guida-tabs{display:inline-flex; flex-wrap:wrap; gap:6px; margin-left:auto;}
+.fzr-guida-tabs .fzr-mini{text-transform:none; letter-spacing:normal; font-weight:700;}
 .fzr-guida{margin:6px 0 6px 20px; padding:0; font-size:11.5px; color:var(--ink-soft,#5b5f66); line-height:1.45;}
 .fzr-guida li{margin:1px 0;}
 .fzr-guida li.sub{list-style:none; margin-left:-6px;}
@@ -292,6 +293,10 @@ const CSS = `
 .fzr-infowrap:hover .fzr-info,.fzr-infowrap:focus-within .fzr-info{border-color:var(--ink,#2a2c30); color:var(--ink,#2a2c30);}
 .fzr-pop{position:absolute; right:0; top:calc(100% + 6px); z-index:40; width:290px; max-width:78vw; padding:9px 11px; background:#fff; border:1px solid var(--line,#d9d2c6); border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.14); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .12s,transform .12s; pointer-events:none;}
 .fzr-infowrap:hover .fzr-pop,.fzr-infowrap:focus-within .fzr-pop{opacity:1; visibility:visible; transform:translateY(0); pointer-events:auto;}
+/* Variante ancorata a sinistra: la "i" del nome ruolo sta a inizio riga, e un
+   popup che si apre verso sinistra finirebbe fuori dalla scheda. */
+.fzr-pop.sx{right:auto; left:0;}
+.fzr-pop .fzr-guida{color:var(--ink,#2a2c30);}
 .fzr-pop-sec{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft,#5b5f66); margin:6px 0 4px;}
 .fzr-pop-sec:first-child{margin-top:0;}
 .fzr-pop-line{font-size:11.5px; color:var(--ink,#2a2c30); line-height:1.4; margin:2px 0;}
@@ -447,17 +452,52 @@ function PersonaForm({
   );
 }
 
+// ---------- prescrizioni del ruolo a comparsa (la "i" accanto al nome) --------
+// Un ruolo ancora scoperto non ha incaricati, quindi non ha il passo 2 dove
+// stanno i due bottoni: senza questo, per sapere che formazione comporta un
+// ruolo bisognava prima nominarci qualcuno - cioe' l'inverso di come si decide.
+// A comparsa e non srotolato perche' e' testo di legge da consultare, non un
+// dato del cliente: si guarda quando serve e non deve occupare la scheda.
+function GuidaInfo({ guida }: { guida: { formazione: string[]; esonero: string[] } }) {
+  if (guida.formazione.length === 0 && guida.esonero.length === 0) return null;
+  const righe = (l: string[]) => (
+    <ul className="fzr-guida" style={{ margin: '2px 0 0 14px' }}>
+      {l.map((riga, i) => (riga.startsWith('- ')
+        ? <li key={i} className="sub">{riga.slice(2).trim()}</li>
+        : <li key={i}>{riga}</li>))}
+    </ul>
+  );
+  return (
+    <span className="fzr-infowrap">
+      <button type="button" className="fzr-info" aria-label="Prescrizioni del ruolo">i</button>
+      <div className="fzr-pop sx" role="tooltip">
+        {guida.formazione.length > 0 && (
+          <>
+            <div className="fzr-pop-sec">Corsi e aggiornamenti</div>
+            {righe(guida.formazione)}
+          </>
+        )}
+        {guida.esonero.length > 0 && (
+          <>
+            <div className="fzr-pop-sec">Esonero e crediti</div>
+            {righe(guida.esonero)}
+          </>
+        )}
+      </div>
+    </span>
+  );
+}
+
 // ---------- pannello assegnazione PER FIGURA (paradigma back-office) ----------
-// Aperto dal bottone "assegna/modifica" di una riga-figura. L'ordine e' quello
-// reale del lavoro, in due passi:
-//   1. CHI ricopre il ruolo — si scelgono le persone gia' in organigramma, e
-//      chi non c'e' si crea al volo senza uscire dal pannello (l'elenco delle
-//      risorse umane non e' mai completo quando si compila un organigramma).
-//   2. Con che EVIDENZA — data di nomina e documenti a supporto (atto di
-//      nomina, visura, procura) per le assegnazioni appena create.
-// Il percorso formativo NON si tocca qui: la scelta fra formazione iniziale e
-// condizioni di esonero viene dopo, sulla scheda del ruolo, quando la persona
-// c'e' gia'. Scritture via adapter.
+// Aperto dal bottone "assegna/modifica" di una riga-figura, risponde a UNA sola
+// domanda: CHI ricopre il ruolo. Si scelgono le persone gia' in organigramma, e
+// chi non c'e' si crea al volo senza uscire dal pannello (l'elenco delle risorse
+// umane non e' mai completo quando si compila un organigramma).
+// Cio' che viene dopo NON sta qui: la data di nomina e i documenti a supporto
+// sono il passo 1 della scheda dell'incaricato, il percorso formativo (con la
+// scelta fra formazione e credito/esonero) e' il passo 2. Sono a due centimetri
+// piu' sotto, e chiederli anche qui faceva vedere la stessa nomina due volte.
+// Scritture via adapter.
 function AssegnaFiguraPanel({
   figura, persone, titolari, clienteId, corsiAttinenti, corsiSvoltiPer,
   filtraDiDefault, onSaved, onClose,
@@ -483,9 +523,6 @@ function AssegnaFiguraPanel({
   onClose: () => void;
 }) {
   const adapter = useAdapter();
-  // Le evidenze documentali della nomina esistono solo dove l'adapter le
-  // fornisce (back-office). In campo il passo 2 resta la sola data.
-  const gestioneEvidenze = typeof adapter.evidenzeNomina === 'function';
   const titolariIds = useMemo(() => titolari.map((t) => t.personaId), [titolari]);
   const attinenti = useMemo(() => new Set(corsiAttinenti), [corsiAttinenti]);
   const haCorso = useCallback((id: string): boolean =>
@@ -511,9 +548,6 @@ function AssegnaFiguraPanel({
     () => (soloFormati ? ordinate.filter((p) => haCorso(p.id) || sel.has(p.id)) : ordinate),
     [soloFormati, ordinate, haCorso, sel]);
   const daScegliere = useMemo(() => candidati.filter((p) => !sel.has(p.id)), [candidati, sel]);
-  // passo 2: evidenza delle assegnazioni appena create (data + documenti)
-  const [step, setStep] = useState<'assegna' | 'evidenza'>('assegna');
-  const [create, setCreate] = useState<{ persona: Persona; nomina: Nomina }[]>([]);
   // creazione al volo di una persona che non e' ancora fra le risorse umane
   const [nuovaPersona, setNuovaPersona] = useState(false);
 
@@ -524,16 +558,10 @@ function AssegnaFiguraPanel({
     setBusy(true);
     try {
       const dopo = new Set(sel);
-      const aggiunte: { persona: Persona; nomina: Nomina }[] = [];
       // aggiunte: selezionati ora ma non titolari prima
       for (const id of dopo) {
         if (titolariIds.includes(id)) continue;
-        const richiesta: Nomina = { id: newId(), persona_id: id, figura_codice: figura.codice, data_nomina: oggiISO(), attiva: true, note: null };
-        const salvata = await adapter.salvaNomina(richiesta);
-        if (!aggiunte.some((a) => a.persona.id === id)) {
-          const p = persone.find((x) => x.id === id);
-          if (p) aggiunte.push({ persona: p, nomina: salvata ?? richiesta });
-        }
+        await adapter.salvaNomina({ id: newId(), persona_id: id, figura_codice: figura.codice, data_nomina: oggiISO(), attiva: true, note: null });
       }
       // rimozioni: titolari prima ma non piu' selezionati
       for (const t of titolari) {
@@ -541,56 +569,20 @@ function AssegnaFiguraPanel({
         if (t.nominaId) await adapter.eliminaNomina(t.nominaId);
       }
       await onSaved();
-      // passo 2: l'assegnazione appena fatta va documentata (data e atto). E' il
-      // seguito naturale del "chi", non una schermata a parte da ritrovare.
-      if (aggiunte.length > 0) {
-        setCreate([...aggiunte].sort((a, b) => confrontaPersone(a.persona, b.persona)));
-        setStep('evidenza');
-        setBusy(false);
-        return;
-      }
+      // Qui il pannello ha finito il suo lavoro e si chiude. La data di nomina e
+      // i documenti a supporto NON si chiedono qui: la scheda dell'incaricato,
+      // che compare subito sotto, ha gia' il passo 1 "Nomina" con esattamente
+      // quei campi. Chiederli anche nel pannello faceva vedere due volte la
+      // stessa nomina, una sopra l'altra.
       onClose();
     } finally { setBusy(false); }
   }
 
-  // ---- passo 2: evidenza dell'assegnazione appena registrata ----
-  if (step === 'evidenza') {
-    const atto = figura.codice === 'lavoratore' ? 'adibizione' : 'nomina';
-    return (
-      <div className="fzr-ed">
-        <div className="fzr-step-h" style={{ marginBottom: 8 }}>
-          <span className="fzr-step-n">2</span>Evidenza dell&rsquo;{atto}
-        </div>
-        <div className="fzr-hint" style={{ marginTop: 0 }}>
-          {create.length === 1 ? 'Assegnazione registrata' : create.length + ' assegnazioni registrate'} a
-          {' '}&laquo;{figura.nome}&raquo;. La data e&rsquo; a oggi: correggila se l&rsquo;{atto} porta
-          un&rsquo;altra data
-          {gestioneEvidenze && figura.codice !== 'lavoratore' ? ', e allega i documenti a supporto.' : '.'}
-          {' '}Il percorso formativo si definisce dopo, nella scheda del ruolo.
-        </div>
-        {create.map(({ persona, nomina }) => (
-          <div key={persona.id} className="fzr-inc-card">
-            <div className="fzr-inc-nome">{nomePersonaCognome(persona)}</div>
-            <NominaInline nomina={nomina} onSaved={onSaved} />
-            {gestioneEvidenze && nomina.id && figura.codice !== 'lavoratore' && (
-              <EvidenzeNomina nominaId={nomina.id} figuraCodice={figura.codice} onSaved={onSaved} />
-            )}
-          </div>
-        ))}
-        <div className="fzr-actions" style={{ marginTop: 8 }}>
-          <button className="fzr-btn primary" disabled={busy} onClick={onClose}>Fine</button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fzr-ed">
-      <div className="fzr-step-h" style={{ marginBottom: 8 }}>
-        <span className="fzr-step-n">1</span>
+      <div className="fzr-grp" style={{ marginTop: 0 }}>
         {figura.codice === 'lavoratore' ? 'Chi e’ adibito al ruolo' : 'Chi ricopre il ruolo'}
       </div>
-      <div className="fzr-grp" style={{ marginTop: 0 }}>Assegnatari del ruolo</div>
       {ordinate.filter((p) => sel.has(p.id)).length > 0 ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
           {ordinate.filter((p) => sel.has(p.id)).map((p) => (
@@ -1160,8 +1152,11 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
   const figRef = useRef<Record<string, HTMLDivElement | null>>({}); // ancore per scroll dalla tabella
   const focusRef = useRef<HTMLDivElement | null>(null);      // ancora per scroll alla scheda singola
   const [assegnaFigura, setAssegnaFigura] = useState<string | null>(null);
-  // Quale blocco della guida e' aperto per ciascuna figura ('form' | 'eson' | null).
+  // Quale blocco delle prescrizioni e' aperto, per singola scheda incaricato
+  // (chiave persona|figura): aprirlo su un incaricato non lo apre sugli altri.
   const [guidaOpen, setGuidaOpen] = useState<Record<string, 'form' | 'eson' | null>>({});
+  const mostraGuida = (chiave: string, v: 'form' | 'eson') =>
+    setGuidaOpen((g) => ({ ...g, [chiave]: g[chiave] === v ? null : v }));
   const toggleFigura = (codice: string) => setAperte((s) => {
     const n = new Set(s);
     if (n.has(codice)) n.delete(codice); else n.add(codice);
@@ -1354,11 +1349,10 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     const scoperta = scoperteSet.has(figura.codice);
     const stato = statoFigura(figura, assegnate);
     const aperto = assegnaFigura === figura.codice;
+    // Prescrizioni del ruolo (testo di catalogo) divise nei due discorsi che
+    // contiene. Non si mostrano qui in testa: appartengono al passo 2 di ogni
+    // incaricato, che e' il momento in cui si decide come coprire il requisito.
     const guida = dividiGuida(figura.guida);
-    const guidaAperta = guidaOpen[figura.codice] ?? null;
-    const guidaRighe = guidaAperta === 'form' ? guida.formazione : guidaAperta === 'eson' ? guida.esonero : [];
-    const mostraGuida = (v: 'form' | 'eson') =>
-      setGuidaOpen((g) => ({ ...g, [figura.codice]: g[figura.codice] === v ? null : v }));
     const emerg = corsoEmergenzaRichiesto(figura.codice, riep.livello_antincendio, riep.gruppo_primo_soccorso);
     // Solo quando la figura e' senza incaricati: a ruolo coperto la domanda
     // non si pone piu'.
@@ -1375,6 +1369,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           </span>
           <span className="fzr-figrow-nome">
             {figura.nome}
+            <GuidaInfo guida={guida} />
             {figura.obbligo && <span className={'fzr-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
           </span>
           <button className="fzr-edit-btn" onClick={() => setAssegnaFigura(aperto ? null : figura.codice)}>
@@ -1390,32 +1385,6 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           </div>
         )}
 
-        {/* Le prescrizioni del ruolo condensate in due voci: cosa serve fare
-            (percorso) e cosa puo' evitarlo (crediti). Chiuse, perche' si
-            consultano quando si decide, non ogni volta che si apre il ruolo. */}
-        {(guida.formazione.length > 0 || guida.esonero.length > 0) && (
-          <div className="fzr-guida-tabs">
-            {guida.formazione.length > 0 && (
-              <button type="button" className={'fzr-mini' + (guidaAperta === 'form' ? ' on' : '')}
-                onClick={() => mostraGuida('form')}>
-                Percorso formativo
-              </button>
-            )}
-            {guida.esonero.length > 0 && (
-              <button type="button" className={'fzr-mini' + (guidaAperta === 'eson' ? ' on' : '')}
-                onClick={() => mostraGuida('eson')}>
-                Esonero / crediti
-              </button>
-            )}
-          </div>
-        )}
-        {guidaRighe.length > 0 && (
-          <ul className="fzr-guida">
-            {guidaRighe.map((l, i) => (
-              l.startsWith('- ') ? <li key={i} className="sub">{l.slice(2).trim()}</li> : <li key={i}>{l}</li>
-            ))}
-          </ul>
-        )}
 
         {aperto && (
           <AssegnaFiguraPanel
@@ -1519,8 +1488,36 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                     {/* Passo 2: qui si sceglie la strada, non si "registra" e
                         basta - la formazione iniziale e il credito/esonero sono
                         due risposte alla stessa domanda, e stanno nello stesso
-                        editor (due schede). */}
-                    <div className="fzr-step-h"><span className="fzr-step-n">2</span>Percorso formativo</div>
+                        editor (due schede). Le prescrizioni di catalogo stanno
+                        dietro i due bottoni, non srotolate: sono il testo di
+                        legge da consultare mentre si decide, e aperte dicono le
+                        stesse cose che il requisito qui sotto gia' dice. */}
+                    <div className="fzr-step-h">
+                      <span className="fzr-step-n">2</span>Percorso formativo
+                      {(guida.formazione.length > 0 || guida.esonero.length > 0) && (
+                        <span className="fzr-guida-tabs">
+                          {guida.formazione.length > 0 && (
+                            <button type="button" className={'fzr-mini' + (guidaOpen[anagKey] === 'form' ? ' on' : '')}
+                              onClick={() => mostraGuida(anagKey, 'form')}>
+                              Corsi e aggiornamenti
+                            </button>
+                          )}
+                          {guida.esonero.length > 0 && (
+                            <button type="button" className={'fzr-mini' + (guidaOpen[anagKey] === 'eson' ? ' on' : '')}
+                              onClick={() => mostraGuida(anagKey, 'eson')}>
+                              Esonero e crediti
+                            </button>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    {guidaOpen[anagKey] && (
+                      <ul className="fzr-guida">
+                        {(guidaOpen[anagKey] === 'form' ? guida.formazione : guida.esonero).map((l, i) => (
+                          l.startsWith('- ') ? <li key={i} className="sub">{l.slice(2).trim()}</li> : <li key={i}>{l}</li>
+                        ))}
+                      </ul>
+                    )}
                     {reqs.length === 0 && mods.length === 0 && (
                       <div className="fzr-step-empty">Nessun percorso formativo sicurezza per questa figura: e{'\u0027'} sufficiente la nomina.</div>
                     )}
@@ -1548,7 +1545,12 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                           </span>
                         </div>
                         <div className="fzr-d">{r.dettaglio}</div>
-                        {!apertoR && r.promemoria.map((a) => (
+                        {/* I promemoria sono gli esoneri ammessi per questo
+                            requisito: la stessa cosa che dice il bottone
+                            "Esonero e crediti" qui sopra. Srotolati sotto ogni
+                            riga si leggevano due volte, quindi si mostrano solo
+                            mentre l'editor e' aperto, dove servono a scegliere. */}
+                        {apertoR && r.promemoria.map((a) => (
                           <div key={a.id} className="fzr-hint">
                             {a.descrizione}{a.riferimento_norm ? ' \u2014 ' + a.riferimento_norm : ''}
                           </div>
@@ -1649,6 +1651,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
           <span className={'fzr-dot ' + stato} />
           <span className="fzr-focus-nome">
             {figura.nome}
+            <GuidaInfo guida={dividiGuida(figura.guida)} />
             {figura.obbligo && <span className={'fzr-badge ' + figura.obbligo}>{LABEL_OBBLIGO[figura.obbligo] ?? figura.obbligo}</span>}
           </span>
           {/* A ruolo vuoto "Modifica" non descrive cio' che serve fare (non c'e'
