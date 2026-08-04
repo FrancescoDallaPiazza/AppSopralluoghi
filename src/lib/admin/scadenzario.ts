@@ -44,6 +44,13 @@ interface RigaBase {
   categoria: CategoriaScadenza;
   descrizione: string;
   data: string | null;               // la scadenza
+  // Dovuto SUBITO: formazione mancante per cui non esiste una data, perche' non
+  // c'e' un attestato da cui calcolarla ne' un termine di legge — il corso e'
+  // semplicemente da erogare. Non e' "senza data" nel senso di dato incompleto:
+  // e' la piu' urgente delle righe, e la vista la mostra come "SUBITO" prima di
+  // ogni scadenza datata. Solo sulle righe di formazione: un adempimento senza
+  // data e' un'altra cosa (manca il dato, non e' un lavoro in ritardo).
+  subito: boolean;
   scaduta: boolean;
   conclusa: boolean;
   cliente_id: string | null;
@@ -91,6 +98,11 @@ async function caricaScadenzeFormative(): Promise<RigaScadenzario[]> {
       categoria: 'formazione',
       descrizione: r.descrizione,
       data: r.data,
+      // Una riga di formazione senza data e' per costruzione un corso dovuto e
+      // mai erogato: le scadenze vere una data ce l'hanno sempre (dall'attestato
+      // o dalla norma). Vale sia per le righe automatiche del motore sia per i
+      // gap generati a mano dal pannello dell'organigramma.
+      subito: r.data === null && !r.conclusa,
       scaduta: r.scaduta,
       conclusa: r.conclusa,
       cliente_id: r.cliente_id,
@@ -145,6 +157,9 @@ async function caricaAdempimenti(): Promise<RigaScadenzario[]> {
       categoria: CATEGORIA_DA_ADEMPIMENTO[r.categoria as AdempimentoCategoria],
       descrizione: r.descrizione || r.tipo,
       data: r.data_scadenza ?? null,
+      // Un adempimento senza data non e' un lavoro in ritardo: e' una riga a cui
+      // manca il dato. Non si promuove a "SUBITO".
+      subito: false,
       scaduta: !!(r.data_scadenza && r.data_scadenza < o),
       conclusa: false,
       cliente_id: r.cliente_id,

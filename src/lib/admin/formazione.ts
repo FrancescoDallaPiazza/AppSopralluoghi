@@ -1438,6 +1438,15 @@ export function azioneScadenzaEsonero(
 //     scadenzario: il backfill le saltava per mancanza di chiave e
 //     `proponiCoseDaFare` le saltava perche' avevano gia' una scadenza.
 // Fa upsert delle azioni attese (requisiti CON scadenza) e cancella gli orfani.
+// Un requisito e' un GAP SENZA DATA quando e' critico, non ha ne' attestato ne'
+// esonero e nessuna norma gli fissa un termine: il corso e' semplicemente da
+// erogare, e va fatto subito. Da qui in avanti lo materializza da se'
+// `backfillAzioniEsoneri`, quindi `proponiCoseDaFare` NON deve riproporlo: la
+// stessa mancanza comparirebbe due volte, una automatica e una a mano, e
+// chiuderne una lascerebbe l'altra aperta.
+export const gapSenzaData = (r: RequisitoValutato): boolean =>
+  !r.scadenza && r.stato === 'critico' && !r.formazione_id && !r.esonero_id;
+
 export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoCliente): Promise<number> {
   if (!riep) return 0; // senza requisiti valutati non si sincronizza
   const areaId = await areaFormazioneId();
@@ -1450,7 +1459,17 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
   for (const pv of riep.persone) {
     const nome = nomePersona(pv.persona);
     for (const r of pv.requisiti) {
-      if (!r.scadenza) continue; // solo scadenze monitorabili
+      // Requisito CRITICO senza scadenza: il corso non e' mai stato svolto e
+      // nessun termine di legge fissa una data (fuori dal caso datore/ASR 2025,
+      // che una data ce l'ha). Prima venivano saltati qui, e il risultato era il
+      // peggiore possibile: la persona risultava CRITICA nell'organigramma e
+      // INVISIBILE nello scadenzario, cioe' la mancanza piu' grave era l'unica
+      // che non generava lavoro. Ora la riga si scrive lo stesso, con
+      // `data_scadenza` NULL: una data non c'e' e non si inventa (oggi, o
+      // oggi+30, sarebbe un dato dedotto che non si distingue da uno vero). E'
+      // la vista a renderla "SUBITO" e a metterla prima di ogni riga datata.
+      const gapSubito = gapSenzaData(r);
+      if (!r.scadenza && !gapSubito) continue;
       const base = (extra: Record<string, unknown>): Record<string, unknown> => {
         const az: Record<string, unknown> = {
           tipo: 'azione_correttiva', origine_esito_id: null, sopralluogo_origine_id: null,
@@ -1476,11 +1495,19 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
         // legge. E' una scadenza formativa a tutti gli effetti (ha discente,
         // corso, ore e data), solo senza una carta dietro.
         const key = pv.persona.id + ':' + r.corso_codice;
+        // Il dettaglio del requisito sta DENTRO la parentesi e non in coda: la
+        // vista ricava il nome del corso togliendo il prefisso e l'ultima
+        // parentesi, e un pezzo di testo dopo la chiusa le resterebbe attaccato.
+        // Serve perche' "Mai svolto" e "Formazione frazionata: 4h su 6h" sono
+        // due lavori diversi (erogare un corso / recuperare la data di un pezzo
+        // gia' fatto e pagato) e la riga da sola non li distinguerebbe.
+        const chi = gapSubito && r.dettaglio ? nome + ' · ' + r.dettaglio : nome;
         perChiave.push({
           key,
           az: base({
             origine_requisito_key: key,
-            descrizione: 'Prima formazione - ' + r.corso_nome + ' (' + nome + ')',
+            descrizione: (gapSubito ? 'Formazione da erogare - ' : 'Prima formazione - ')
+              + r.corso_nome + ' (' + chi + ')',
           }),
         });
       }
@@ -1770,6 +1797,13 @@ export function proponiCoseDaFare(riep: RiepilogoCliente, includiInScadenza: boo
       // manca non e' formazione ma la DATA di chiusura della parte a distanza.
       // Si propone anche quando il requisito non e' critico: le ore erogate
       // scadono comunque, e ricostruire la data dopo anni non e' piu' possibile.
+      // Gia' materializzato in automatico dal backfill (riga "SUBITO" nello
+      // scadenzario): riproporlo qui creerebbe la seconda copia della stessa
+      // mancanza. Vale anche per la formazione frazionata quando il requisito e'
+      // critico e senza data; resta invece proposta qui quando il requisito NON
+      // e' critico (ore erogate che scadono comunque), caso che il backfill non
+      // tocca perche' li' una scadenza c'e'.
+      if (gapSenzaData(r)) continue;
       if (r.frazionata.length > 0) {
         const dett = r.frazionata
           .map((x) => `${x.ore}h su ${x.soglia}h${x.aggiornamento ? ' (aggiornamento)' : ''}`)

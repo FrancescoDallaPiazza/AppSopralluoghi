@@ -121,8 +121,11 @@ export default function Scadenzario(
     return righe.filter((r) => {
       if (fStato === 'aperte' && r.conclusa) return false;
       if (fStato === 'concluse' && !r.conclusa) return false;
-      if (fScad === 'scadute' && !r.scaduta) return false;
-      if (fScad === 'prossime' && !(r.data && r.data >= o && r.data <= lim)) return false;
+      // "Scadute" e "Prossime" devono contenere il dovuto SUBITO: non ha una
+      // data, ma e' il piu' in ritardo di tutti. Escluderlo lo renderebbe
+      // invisibile proprio nei due filtri che si usano per lavorare.
+      if (fScad === 'scadute' && !r.scaduta && !r.subito) return false;
+      if (fScad === 'prossime' && !r.subito && !(r.data && r.data >= o && r.data <= lim)) return false;
       if (ago) {
         const blob = [r.descrizione, r.cliente_nome, r.persona_nome, r.corso_nome, r.sede_nome]
           .filter(Boolean).join(' ').toLowerCase();
@@ -130,8 +133,13 @@ export default function Scadenzario(
       }
       return true;
     }).sort((x, y) => {
-      const dx = x.data ?? '9999-99-99';
-      const dy = y.data ?? '9999-99-99';
+      // Il dovuto SUBITO viene prima di qualunque data: non e' "senza scadenza",
+      // e' scaduto da sempre. Ordinandolo come null finiva in fondo alla lista,
+      // dietro anche alle scadenze del 2030 — cioe' la mancanza piu' grave era
+      // l'ultima che si leggeva. Fra loro le righe SUBITO restano ordinate per
+      // discente dal criterio piu' sotto.
+      const dx = x.subito ? '' : x.data ?? '9999-99-99';
+      const dy = y.subito ? '' : y.data ?? '9999-99-99';
       // I discenti sono gia' "COGNOME Nome" (caricaAzioniAdmin li compone cosi'),
       // quindi l'ordine alfabetico e' quello per cognome. `sensitivity: base`
       // perche' dal gestionale i nomi arrivano in maiuscolo e con accenti.
@@ -148,7 +156,10 @@ export default function Scadenzario(
     });
   }, [righe, fStato, fScad, q, ordine]);
 
-  const scadute = useMemo(() => righe.filter((r) => r.scaduta).length, [righe]);
+  // Il dovuto SUBITO conta come in ritardo: non ha una data da superare, ma e'
+  // dovuto da prima di qualunque riga scaduta. Lasciarlo fuori dal contatore
+  // avrebbe detto "0 scadute" con dei lavoratori senza formazione alcuna.
+  const scadute = useMemo(() => righe.filter((r) => r.scaduta || r.subito).length, [righe]);
 
   // Riga di formazione: discente · corso · ore · scadenza · stato editabile.
   function RigaFormazione({ r }: { r: RigaScadenzario }) {
@@ -156,6 +167,7 @@ export default function Scadenzario(
       .replace(/^Rinnovo formazione - /, '')
       .replace(/^Rinnovo credito\/esonero - /, '')
       .replace(/^Prima formazione - /, '')
+      .replace(/^Formazione da erogare - /, '')
       .replace(/\s*\([^)]*\)\s*$/, '')
       .trim();
     // Cio' che e' dovuto alla scadenza e' l'AGGIORNAMENTO, non il corso iniziale:
@@ -176,7 +188,7 @@ export default function Scadenzario(
       </select>
     ) : <span className="bo-sub">—</span>;
     return (
-      <tr className={'sc-tr' + (r.conclusa ? ' dim' : '') + (r.scaduta ? ' scad' : '')}>
+      <tr className={'sc-tr' + (r.conclusa ? ' dim' : '') + (r.scaduta || r.subito ? ' scad' : '')}>
         <td className="sc-disc">
           <div className="sc-d">{r.persona_nome ?? '—'}</div>
           {!dentroScheda && r.cliente_nome && <div className="sc-sub"><span>{r.cliente_nome}</span></div>}
@@ -191,8 +203,12 @@ export default function Scadenzario(
               ? <span className="sc-daconf" title={r.ore_nota}>{r.ore_nota}</span>
               : '—'}
         </td>
-        <td className={'sc-scad' + (r.scaduta ? ' warn' : '')}>
-          {r.scaduta ? 'Scaduta ' : ''}{fmt(r.data)}
+        {/* Nessuna data da mostrare, ma non e' un vuoto: il corso non e' mai
+            stato svolto e va erogato adesso. "—" si leggeva come "non scade". */}
+        <td className={'sc-scad' + (r.scaduta || r.subito ? ' warn' : '')}>
+          {r.subito
+            ? <span className="sc-subito" title="Formazione mai svolta: non c’e’ una scadenza da rispettare, e’ gia’ dovuta.">SUBITO</span>
+            : <>{r.scaduta ? 'Scaduta ' : ''}{fmt(r.data)}</>}
         </td>
         <td className="sc-stato">{statoCell}</td>
         <td className="sc-act">
@@ -256,6 +272,9 @@ export default function Scadenzario(
         .sc-daconf{display:inline-block;white-space:normal;font-size:11px;font-weight:700;line-height:1.25;color:#8a6212}
         .sc-scad{width:16%;white-space:nowrap;color:var(--ink-soft,#5c5f66)}
         .sc-scad.warn{color:var(--no,#d24028);font-weight:700}
+        /* Non e' una data: si distingue anche dalle date scadute, che sono
+           rosse ma leggibili come giorno. */
+        .sc-subito{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--no,#d24028);color:#fff;font-size:11px;font-weight:800;letter-spacing:.04em}
         .sc-stato{width:14%}
         .sc-stato select{width:100%;font-size:12px;padding:4px 6px}
         .sc-act{width:10%;text-align:center;white-space:nowrap}

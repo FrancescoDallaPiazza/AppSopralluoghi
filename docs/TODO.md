@@ -672,6 +672,48 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-04** Scadenzario: **la formazione mai svolta è "SUBITO"**, ed è la
+  prima riga (non ancora committato). Una persona con *Formazione generale
+  lavoratori — Mai svolto* risultava **critica** nell'organigramma e
+  **assente** dallo scadenzario: la mancanza più grave era l'unica che non
+  generava lavoro. Causa: `backfillAzioniEsoneri` apriva con
+  `if (!r.scadenza) continue` — solo scadenze monitorabili — e un corso mai
+  svolto una scadenza non ce l'ha, perché non c'è né un attestato da cui
+  calcolarla né (fuori dal datore ASR 2025) un termine di legge. Le proponeva
+  solo `proponiCoseDaFare`, cioè il pannello **manuale** "Genera cose da fare".
+  Ora:
+  - nuovo predicato `gapSenzaData(r)` = critico, senza attestato né esonero,
+    senza scadenza. Il backfill materializza anche queste, con
+    `data_scadenza` **NULL**: una data non c'è e **non si inventa** (oggi, o
+    oggi+30, sarebbe un dato dedotto indistinguibile da uno vero). Descrizione
+    *"Formazione da erogare — CORSO (COGNOME Nome · Mai svolto)"*, col dettaglio
+    dentro la parentesi perché la vista ricava il nome del corso togliendo
+    prefisso e ultima parentesi.
+  - `RigaScadenzario.subito`: riga di formazione senza data e non conclusa. Sugli
+    **adempimenti** resta sempre `false` — lì "senza data" vuol dire che manca il
+    dato, non che il lavoro è in ritardo.
+  - `Scadenzario.tsx`: pill rossa **SUBITO** al posto del trattino (che si
+    leggeva "non scade"); ordinamento con chiave `''`, quindi **prima di
+    qualunque data** (prima finiva dietro anche alle scadenze del 2030);
+    contata fra le **scadute** (altrimenti "0 scadute" con lavoratori senza
+    alcuna formazione); inclusa nei filtri *Scadute* e *Prossime*, i due che si
+    usano per lavorare.
+  - `proponiCoseDaFare` **non** ripropone più i gap ora automatici: sarebbe la
+    stessa mancanza due volte, una automatica e una a mano, e chiuderne una
+    lascerebbe l'altra aperta. Resta la formazione frazionata quando il
+    requisito **non** è critico (ore erogate che scadono comunque).
+  Nessuna migration (`azione.data_scadenza` è già nullable). `tsc --noEmit` +
+  `vite build` verdi. **Da provare in app.**
+  - [ ] **Doppioni pregressi da controllare**: se in passato si è premuto
+    "Genera cose da fare", esistono righe `origine_ramo='formazione'` senza data
+    per gli stessi gap che ora il backfill crea con `origine_requisito_key`.
+    Compaiono entrambe come SUBITO. Non le cancello d'ufficio (sono righe create
+    di proposito): da guardare sul cliente vero e decidere.
+  - [ ] **Limite noto**: il tab Scadenzario di back-office (tutti i clienti) non
+    sincronizza — lo fa solo la scheda del singolo cliente, per non valutare
+    l'organigramma di ogni cliente a ogni apertura. Le righe SUBITO compaiono lì
+    dopo essere passati sulla scheda del cliente. Comportamento preesistente.
+
 - [x] **2026-08-04** Organigramma: **il clic su una persona apre la sua sola
   scheda** (`OrganigrammaView.tsx`, non ancora committato). Nella fisarmonica
   *Organigramma attuale* il clic su una riga-persona apriva la scheda del RUOLO
