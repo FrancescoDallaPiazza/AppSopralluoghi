@@ -11,6 +11,65 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+### Verifiche in app arretrate (scritto 2026-08-05)
+
+Tutto quanto segue è **già su `main`** e non richiede migration né deploy di
+Edge Function: è solo Canale 1, con `tsc --noEmit` + `vite build` verdi. Manca
+la prova sull'app vera. Raggruppate qui perché sono lavoro di una sessione sola
+davanti al cliente giusto, non tre cose diverse.
+
+**Mansione e reparto** (`fbfe2a3`, `6b7ee0b`, `9262bcb` — 2026-08-05):
+
+- [ ] *Risorse Umane → + Aggiungi*: digitare **mansione** e **reparto** in
+  minuscolo → si scrivono in maiuscolo mentre si digita. Stessa cosa aprendo in
+  *Modifica* una persona già esistente.
+- [ ] Su un cliente con **almeno due mansioni diverse** già in anagrafica: il
+  campo *Mansione* apre la tendina delle mansioni già usate; sceglierne una la
+  compila. Idem per *Reparto* con la sua tendina, che deve essere **separata**
+  (le mansioni non devono comparire fra i reparti e viceversa).
+- [ ] **Scrivere una mansione nuova**, non in elenco → si inserisce lo stesso.
+  È un `<datalist>` e non una `<select>`: se non si riesce a digitare un valore
+  nuovo, il campo è stato chiuso per errore ed è un difetto.
+- [ ] La tendina deve proporre anche le mansioni di persone **cessate** e di
+  quelle escluse dalla ricerca in corso: filtrare l'elenco a schermo non deve
+  togliere voci al vocabolario. Prova: cercare qualcosa che nasconda quasi
+  tutti, poi aprire il form e controllare che le proposte siano ancora tutte.
+- [ ] *Organigramma → apri un ruolo → Assegna → **+ Persona non in elenco***:
+  stessa tendina di mansioni della scheda Risorse Umane. È il caso che il
+  lavoro doveva risolvere — chi crea la persona al volo è chi inventava
+  diciture nuove.
+- [ ] **In campo** (`FormazioneRiepilogo`): la stessa tendina deve comparire,
+  offline compresa. `OrganigrammaView` è condivisa, quindi se manca lì è un
+  problema di dati passati, non di UI.
+- [ ] *Risorse Umane → Importa da Excel* con mansioni/reparti in minuscolo nel
+  file → entrano in **maiuscolo**.
+- [ ] **Grafie doppie già a DB**: controllare che una mansione scritta in
+  passato in due modi (`Saldatore` / `SALDATORE`) compaia **una sola volta** in
+  tendina. Il dedup è case-insensitive, ma le varianti *diverse* nel testo
+  (`SALDATORE` / `ADDETTO SALDATURA`) restano tutte: sono da accorpare a mano
+  se e quando lo si decide. Vedi la voce in coda.
+
+**Organigramma e scadenzario** (`7315b7d`, `d750f54`, `57c8bc6` — 2026-08-04):
+
+- [ ] *Organigramma attuale* → clic su una **riga-persona** di un ruolo
+  affollato (i Lavoratori dopo un import): si apre la **sua sola** scheda, con
+  in testa la barra "Scheda di … · il ruolo ha N incaricati" e il bottone
+  *Vedi tutti gli incaricati (N)*. Dalla riga-testata del ruolo, invece, si
+  deve continuare ad aprire il ruolo **intero**.
+- [ ] **Ricerca per persona** sopra *Organigramma attuale*: da 2 caratteri
+  sostituisce la tabella; "rossi mario" e "mario rossi" trovano la stessa
+  persona; cerca anche per mansione, reparto e codice fiscale; *Apri il ruolo*
+  pulisce la ricerca e porta alla scheda.
+- [ ] **Scadenzario**: una persona con un corso **Mai svolto** produce una riga
+  con pill rossa **SUBITO**, in cima a qualunque data, contata fra le
+  *Scadute* e presente nei filtri *Scadute* e *Prossime*. Ricordare che il tab
+  Scadenzario generale non sincronizza: passare **prima** sulla scheda del
+  cliente.
+- [ ] **Doppioni pregressi**: se su quel cliente era già stato premuto *Genera
+  cose da fare*, gli stessi gap possono comparire **due volte** come SUBITO
+  (una riga `origine_ramo='formazione'` senza data + una nuova da backfill).
+  Guardare e decidere: non le ho cancellate d'ufficio.
+
 Per attivare il **numero di lavoratori** e le ore RLS che ne dipendono
 (scritto 2026-08-03):
 
@@ -687,7 +746,7 @@ sedi li accende; gli attributi si leggono dal cliente).
     ha quel campo — crea la persona con cognome, nome, mansione e CF, e il
     reparto lo porta avanti invariato da `persona?.reparto`. Quindi nessuna
     modifica lì, e nessuna parità da recuperare in campo.
-  `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+  `tsc --noEmit` + `vite build` verdi. **Da provare in app — checklist in §A.**
 
 - [x] **2026-08-05** Anagrafica persona: **le mansioni già usate si ripropongono**
   (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
@@ -718,7 +777,8 @@ sedi li accende; gli attributi si leggono dal cliente).
     tutte le input alla prima lista incontrata. Uno solo per tabella, montato
     fuori dal `<tbody>` (dentro sarebbe markup non valido).
   Nessuna migration, nessuna normalizzazione retroattiva delle mansioni già
-  scritte. `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+  scritte. `tsc --noEmit` + `vite build` verdi. **Da provare in app — checklist
+  in §A.**
 
 - [x] **2026-08-05** Risorse Umane: **la mansione si scrive in stampatello**
   (`RisorseUmane.tsx`). Cognome, nome e codice fiscale erano già forzati a
@@ -733,7 +793,8 @@ sedi li accende; gli attributi si leggono dal cliente).
   questa: forzarla solo a mano avrebbe rimesso il minuscolo a ogni import.
   Il **reparto** è lasciato com'è — non è stato chiesto e non è lo stesso dato.
   Nessuna migration, nessuna normalizzazione retroattiva delle righe già in
-  tabella. `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+  tabella. `tsc --noEmit` + `vite build` verdi. **Da provare in app — checklist
+  in §A.**
 
 - [x] **2026-08-04** Scadenzario: **la formazione mai svolta è "SUBITO"**, ed è la
   prima riga (`57c8bc6`). Una persona con *Formazione generale
@@ -766,7 +827,7 @@ sedi li accende; gli attributi si leggono dal cliente).
     lascerebbe l'altra aperta. Resta la formazione frazionata quando il
     requisito **non** è critico (ore erogate che scadono comunque).
   Nessuna migration (`azione.data_scadenza` è già nullable). `tsc --noEmit` +
-  `vite build` verdi. **Da provare in app.**
+  `vite build` verdi. **Da provare in app — checklist in §A.**
   - [ ] **Doppioni pregressi da controllare**: se in passato si è premuto
     "Genera cose da fare", esistono righe `origine_ramo='formazione'` senza data
     per gli stessi gap che ora il backfill crea con `origine_requisito_key`.
@@ -797,7 +858,7 @@ sedi li accende; gli attributi si leggono dal cliente).
   nasconderebbe proprio chi c'e' gia'). Se la persona sparisce dagli incaricati
   mentre la scheda e' aperta (rimossa dal ruolo) si ricade sull'elenco intero.
   Solo Canale 1, nessuna migration. `tsc --noEmit` + `vite build` verdi.
-  **Da provare in app.**
+  **Da provare in app — checklist in §A.**
 
 - [x] **2026-08-04** Organigramma: **ricerca per persona** (`OrganigrammaView.tsx`,
   `7315b7d`). L'organigramma e' ordinato per RUOLO, ma la domanda che
@@ -814,7 +875,8 @@ sedi li accende; gli attributi si leggono dal cliente).
   ordine e campo, cosi' "rossi mario", "mario rossi" e "rossi saldatore" trovano
   la stessa persona; guarda cognome, nome, mansione, reparto e codice fiscale.
   Essendo in `OrganigrammaView` vale **anche in campo**. Solo Canale 1, nessuna
-  migration. `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+  migration. `tsc --noEmit` + `vite build` verdi. **Da provare in app —
+  checklist in §A.**
 
 - [x] **2026-08-04** Organigramma: **niente doppioni fra pannello e scheda**
   (`OrganigrammaView.tsx`, `3979c67`). Correzione di `ad9e476`,
