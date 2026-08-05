@@ -38,16 +38,23 @@
 -- E' un dizionario, non un dato raccolto: nessuna tabella lo referenzia (i suoi
 -- flag vengono COPIATI su `formazione` al momento dell'import, non letti dopo),
 -- quindi cancellarlo non trascina via nulla.
--- E si rifa' in tre passi, tutti gia' nel repo - non e' lavoro a mano:
---   1. back-office -> Regole app -> Alias corsi: caricare
---      `elencoAnagraficaFormazioni.xlsx` (268 corsi) e premere Applica;
---   2. eseguire `supabase/scripts/mappatura_alias_gestionale.sql`
---      (motore di regole: 237 mappati, 31 ignorati, 0 da mappare);
---   3. eseguire `supabase/scripts/divergenze_fix.sql` (le 2 decisioni di
---      merito prese a mano: transpallet -> ignorato, ponteggi -> PONTEGGI).
--- Serve pero' avere ancora il file `elencoAnagraficaFormazioni.xlsx`: senza
--- quello il punto 1 non si fa, e gli altri due non hanno righe su cui agire.
--- ASSICURATI DI AVERLO PRIMA DI LANCIARE LA PARTE 2.
+-- E si rifa' interamente DAL REPO, senza bisogno dell'export Excel:
+--   1. `supabase/scripts/ripristina_alias_gestionale.sql`
+--      -> reimmette i 268 testi esatti del gestionale come "da mappare".
+--         Sono conservati dentro `mappatura_alias_gestionale.sql`, che li
+--         elenca uno per uno per poterli riconoscere: e' da li' che sono
+--         copiati, carattere per carattere.
+--   2. `supabase/scripts/mappatura_alias_gestionale.sql` (PASSO 2)
+--      -> 237 mappati, 31 ignorati, 0 da mappare.
+--   3. `supabase/scripts/integrazione_preposti_pregressa.sql`
+--      -> la riga INTEGRAZIONE 3h marcata `pregressa`.
+-- `divergenze_fix.sql` NON serve in questa sequenza: le sue due decisioni
+-- (transpallet -> ignorato, ponteggi -> PONTEGGI) sono gia' dentro la
+-- mappatura, e ripartendo da zero non c'e' nessuna scelta precedente da
+-- sovrascrivere.
+-- Se hai ancora `elencoAnagraficaFormazioni.xlsx` puoi in alternativa
+-- ricaricarlo da back-office -> Regole app -> Alias corsi al posto del punto 1:
+-- l'esito e' lo stesso.
 --
 -- ----------------------------------------------------------------------------
 -- PERCHE' QUEST'ORDINE
@@ -166,5 +173,6 @@ commit;
 --
 -- 4. IL DIZIONARIO ALIAS VA RIFATTO PRIMA DEL PROSSIMO IMPORT FORMAZIONE.
 --    Con `corso_alias` vuoto l'import del gestionale non riconosce piu' nessun
---    testo-corso: non sbaglia, si ferma: ogni riga risulta "da mappare" e non
---    entra nulla. I tre passi sono in testa a questo file.
+--    testo-corso: non sbaglia, si ferma - ogni riga risulta "da mappare" e non
+--    entra nulla. I tre script sono elencati in testa a questo file; il primo
+--    e' `ripristina_alias_gestionale.sql` e non richiede l'Excel.
