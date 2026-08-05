@@ -634,6 +634,49 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **Mansione e reparto: vocabolario aziendale, non testo libero**
+  (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
+  Due campi dell'anagrafica persona che nessuna regola governava. Il gestionale
+  e le mani diverse che compilano producevano "SALDATORE", "Saldatore",
+  "ADDETTO SALDATURA" e "SALDATORE CARPENTERIA" come quattro voci per la stessa
+  cosa: la ricerca per mansione (Risorse Umane, ricerca persona
+  dell'organigramma) trovava quello che trovava, e nessuno se ne accorgeva
+  perche' ogni singola riga, letta da sola, e' scritta bene.
+  Due interventi, in quest'ordine: **stampatello alla digitazione** (come gia'
+  facevano cognome, nome e CF, e come `PersonaForm` faceva gia' per la sola
+  mansione — le due vie per creare una persona applicavano regole diverse allo
+  stesso campo), e **le voci gia' usate riproposte in tendina**.
+  La tendina e' un `<datalist>` e **non** una `<select>`: l'elenco chiuso
+  avrebbe impedito di inserire la prima persona di ogni mansione nuova, cioe'
+  proprio il caso in cui la si sta creando. Non e' un catalogo da governare a
+  monte — e' quello che l'azienda ha gia' scritto, mostrato a chi scrive dopo.
+  `mansioniUsate` / `repartiUsati` (facciate di `valoriUsati`) tengono due
+  vocabolari **separati**: "MANUTENZIONE" e' legittimamente sia un reparto sia
+  una mansione, ma mescolarli riempirebbe ogni tendina di voci mai usate in
+  quel campo. Dedup su chiave case-insensitive, perche' le righe pregresse e
+  quelle da import sono scritte come capita. L'elenco si legge da TUTTE le
+  persone del cliente, cessate comprese: il filtro a schermo e' di chi guarda
+  adesso, il vocabolario e' dell'azienda. Nessuna normalizzazione retroattiva
+  del pregresso: accorpare due diciture e' una decisione di merito, non un
+  `update`. Vale anche in campo (`OrganigrammaView` e' condivisa).
+  Il reparto esiste solo in Risorse Umane: `PersonaForm` non ha quel campo.
+
+- **Risorse Umane: chi e' cessato si vede e si filtra** (`RisorseUmane.tsx`).
+  Correzione emersa guardando la tendina delle mansioni. L'elenco mostrava di
+  default i soli attivi, ma il comando che lo decideva era una spunta "Mostra
+  anche i disattivati" **in fondo alla tabella**: sotto le righe che governa e
+  staccata dagli altri due filtri, che stanno in testa. Chi non scorreva fino
+  in fondo non sapeva di star guardando un elenco parziale. Ora e' una tendina
+  accanto a ricerca e ruoli — *In forza (N)* / *Solo cessati (N)* / *Tutti (N)*
+  — che compare solo se qualcuno e' cessato davvero, come gia' fa quella dei
+  ruoli. Il terzo stato non c'era e serve: "chi se n'e' andato" e' una domanda
+  che si fa, e con la spunta i cessati si potevano solo aggiungere agli attivi,
+  mai isolare. L'etichetta *cessato gg/mm/aaaa* e' passata dalla colonna
+  Mansione — dove si leggeva come un attributo del lavoro svolto — alla colonna
+  Cognome, che e' l'identita' della riga. Il vuoto per filtro non dice piu'
+  "Aggiungine una": suggerire di rifare l'anagrafica a chi ha solo ristretto
+  l'elenco e' un consiglio sbagliato.
+
 - **Le ore dell'attestato tornano a essere un fatto** (`OrganigrammaView.tsx`,
   `EditorRequisito`). Il campo Ore dell'editor nasceva precompilato con le ore
   DOVUTE (`useState(req.ore != null ? String(req.ore) : '')`) e al salvataggio
@@ -1208,6 +1251,9 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   localita, indirizzo (cliente); cognome, nome, mansione, codice fiscale (persona
   in campo) e nome/cognome (persona back-office). Esclusi email, telefono e id
   Werp. Solo front-end; verificato `tsc -b` + `vite build`.
+  **Esteso il 2026-08-05** a mansione e reparto della persona in back-office
+  (`RisorseUmane.tsx`), che erano rimasti fuori — scheda e pannello Import.
+  Vedi la voce in cima alla Cronologia.
 
 - **Ordine capitoli nel compositore + sposta/copia voci tra sezioni**
   (`src/admin/ComponiTemplate.tsx`, `src/admin/CapitoloEditor.tsx`): nel

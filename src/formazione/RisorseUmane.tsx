@@ -46,7 +46,14 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
 }) {
   const [persone, setPersone] = useState<Persona[]>([]);
   const [fase, setFase] = useState<'carico' | 'pronto' | 'errore'>('carico');
-  const [mostraInattivi, setMostraInattivi] = useState(false);
+  // Chi si vede: attivi (default), soli cessati, o tutti. Era una spunta "Mostra
+  // anche i disattivati" IN FONDO alla tabella - cioe' il comando che decide
+  // quali righe compaiono stava sotto le righe che governa, staccato dagli altri
+  // due filtri che stanno in testa. Chi non scorreva fino in fondo non sapeva di
+  // star guardando un elenco parziale. Ed e' un terzo stato utile di suo: "chi
+  // se n'e' andato" e' una domanda che si fa (consegne, attestati da archiviare),
+  // e con la spunta si poteva solo aggiungerli agli attivi, mai isolarli.
+  const [stato, setStato] = useState<'attivi' | 'cessati' | 'tutti'>('attivi');
   const [agg, setAgg] = useState(false);
   const [importa, setImporta] = useState(false);
   const [q, setQ] = useState('');
@@ -107,8 +114,10 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
   // il catalogo delle figure - un filtro che offre voci senza nessuno dietro fa
   // sembrare vuota l'anagrafica.
   const ruoliPresenti = [...new Set([...ruoli.values()].flat())].sort((a, b) => a.localeCompare(b, 'it'));
+  const cessati = persone.filter((p) => !p.attivo).length;
   const visibili = persone.filter((p) => {
-    if (!mostraInattivi && !p.attivo) return false;
+    if (stato === 'attivi' && !p.attivo) return false;
+    if (stato === 'cessati' && p.attivo) return false;
     const suoi = ruoliDi(p.id);
     if (ruolo === '-' && suoi.length > 0) return false;
     if (ruolo && ruolo !== '-' && !suoi.includes(ruolo)) return false;
@@ -125,11 +134,11 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
         .ru-tr td{padding:8px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
         .ru-tr:last-child td{border-bottom:none}
         .ru-tr.dim{opacity:.5}
-        .ru-cog{width:17%;font-weight:700}
+        .ru-cog{width:22%;font-weight:700}
         .ru-nom{width:15%;font-weight:600}
         .ru-cf{width:21%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3a3d43}
         .ru-cf.bad{color:var(--no,#d24028)}
-        .ru-man{width:17%}
+        .ru-man{width:12%}
         .ru-ruoli{width:24%}
         .ru-ruolo{display:inline-block;font-size:11px;font-weight:700;line-height:1.4;padding:1px 7px;margin:1px 4px 1px 0;border-radius:999px;background:#eef5ef;border:1px solid #cfe6d8;color:#1f5b38}
         .ru-noruolo{color:var(--ink-soft,#5c5f66)}
@@ -170,12 +179,28 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
               <option value="-">Senza ruolo assegnato</option>
             </select>
           )}
+          {/* Solo se qualcuno e' cessato davvero: un filtro che offre "Cessati
+              (0)" fa cercare a vuoto una categoria che in azienda non esiste.
+              Stesso criterio della tendina dei ruoli qui accanto. */}
+          {cessati > 0 && (
+            <select value={stato} onChange={(e) => setStato(e.target.value as typeof stato)}
+              style={{ maxWidth: 220, margin: 0 }}>
+              <option value="attivi">In forza ({persone.length - cessati})</option>
+              <option value="cessati">Solo cessati ({cessati})</option>
+              <option value="tutti">Tutti ({persone.length})</option>
+            </select>
+          )}
         </div>
       )}
 
+      {/* Vuoto per filtro e vuoto per davvero sono due cose diverse: proporre
+          "Aggiungine una" a chi ha solo ristretto l'elenco fa credere che
+          l'anagrafica sia da rifare. */}
       {fase === 'pronto' && visibili.length === 0 && !agg && (
         <div className="bo-empty">
-          {ago ? 'Nessuna persona corrisponde alla ricerca.' : 'Nessuna persona. Aggiungine una o importa da Excel.'}
+          {persone.length === 0
+            ? 'Nessuna persona. Aggiungine una o importa da Excel.'
+            : 'Nessuna persona con i filtri attivi.'}
         </div>
       )}
 
@@ -230,13 +255,8 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
         </div>
       )}
 
-      {fase === 'pronto' && persone.some((p) => !p.attivo) && (
-        <label className="chk" style={{ marginTop: 8 }}>
-          <input type="checkbox" checked={mostraInattivi}
-            onChange={(e) => setMostraInattivi(e.target.checked)} />
-          Mostra anche i disattivati
-        </label>
-      )}
+      {/* La scelta di chi vedere e' salita in testa, accanto a ricerca e ruoli:
+          qui in fondo restava sotto le righe che governa. */}
     </>
   );
 }
@@ -296,17 +316,21 @@ function RigaPersona({
     const cfBad = p.codice_fiscale != null && !cfValido(p.codice_fiscale);
     return (
       <tr className={'ru-tr' + (p.attivo ? '' : ' dim')}>
-        <td className="ru-cog">{p.cognome ?? '—'}</td>
+        {/* L'etichetta "cessato" sta sull'IDENTITA' della persona, non nella
+            colonna Mansione dov'era prima: li' si leggeva come un attributo del
+            lavoro svolto, e con l'elenco filtrato su "Tutti" la sola riga
+            sbiadita non basta a dire perche'. */}
+        <td className="ru-cog">
+          {p.cognome ?? '—'}
+          {!p.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 6 }}>
+            {p.data_cessazione ? `cessato ${p.data_cessazione.split('-').reverse().join('/')}` : 'cessato'}
+          </span>}
+        </td>
         <td className="ru-nom">{p.nome || '—'}</td>
         <td className={'ru-cf' + (cfBad ? ' bad' : '')}>
           {p.codice_fiscale ?? '—'}{cfBad ? ' · CF non valido' : ''}
         </td>
-        <td className="ru-man">
-          {p.mansione ?? '—'}
-          {!p.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 8 }}>
-            {p.data_cessazione ? `cessato ${p.data_cessazione.split('-').reverse().join('/')}` : 'disattivato'}
-          </span>}
-        </td>
+        <td className="ru-man">{p.mansione ?? '—'}</td>
         {/* Le nomine si assegnano nel tab Organigramma: qui sono in sola lettura,
             e il loro posto e' l'anagrafica perche' e' li' che si cerca una
             persona ("chi e' il preposto del reparto X?"). */}

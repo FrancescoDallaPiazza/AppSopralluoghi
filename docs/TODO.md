@@ -43,6 +43,14 @@ davanti al cliente giusto, non tre cose diverse.
   problema di dati passati, non di UI.
 - [ ] *Risorse Umane → Importa da Excel* con mansioni/reparti in minuscolo nel
   file → entrano in **maiuscolo**.
+- [ ] **Filtro cessati** (nuovo, 2026-08-05): in testa a *Risorse Umane*, accanto
+  a ricerca e ruoli, la tendina **In forza / Solo cessati / Tutti** con i
+  conteggi; compare **solo** se qualcuno è cessato. La vecchia spunta *Mostra
+  anche i disattivati* in fondo alla tabella non c'è più. Con *Tutti* o *Solo
+  cessati*, la riga porta l'etichetta **cessato gg/mm/aaaa** accanto al
+  **cognome** (prima era nella colonna Mansione). Filtrando fino a zero righe il
+  messaggio dice "Nessuna persona con i filtri attivi" e **non** "Aggiungine
+  una".
 - [ ] **Grafie doppie già a DB**: controllare che una mansione scritta in
   passato in due modi (`Saldatore` / `SALDATORE`) compaia **una sola volta** in
   tendina. Il dedup è case-insensitive, ma le varianti *diverse* nel testo
@@ -730,6 +738,30 @@ sedi li accende; gli attributi si leggono dal cliente).
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-08-05** Risorse Umane: **chi è cessato si vede e si filtra**
+  (`RisorseUmane.tsx`). Emersa dalla domanda "nelle risorse vengono proposte
+  tutte, attive e cessate?". Risposta: l'elenco mostrava di default i **soli
+  attivi** — ma il comando che lo decideva era una spunta *Mostra anche i
+  disattivati* **in fondo alla tabella**, sotto le righe che governa e staccata
+  dagli altri due filtri, che stanno in testa. Chi non scorreva fino in fondo
+  non sapeva di star guardando un elenco parziale.
+  - Ora è una tendina accanto a ricerca e ruoli: **In forza (N) / Solo cessati
+    (N) / Tutti (N)**, visibile solo se qualcuno è cessato davvero (stesso
+    criterio della tendina dei ruoli: un filtro che offre "Cessati (0)" fa
+    cercare a vuoto una categoria che non esiste).
+  - Il **terzo stato** non c'era e serve: "chi se n'è andato" è una domanda che
+    si fa (consegne, attestati da archiviare), e con la spunta i cessati si
+    potevano solo **aggiungere** agli attivi, mai isolare.
+  - L'etichetta *cessato gg/mm/aaaa* esisteva già, ma nella colonna **Mansione**,
+    dove si legge come un attributo del lavoro svolto. Spostata sul **cognome**,
+    che è l'identità della riga. Colonne riequilibrate (`ru-cog` 17→22%,
+    `ru-man` 17→12%).
+  - Il vuoto per filtro non dice più *"Aggiungine una o importa da Excel"*:
+    suggerire di rifare l'anagrafica a chi ha solo ristretto l'elenco è un
+    consiglio sbagliato. Ora distingue elenco vuoto da filtro vuoto.
+  Nessuna migration. `tsc --noEmit` + `vite build` verdi. **Da provare in app —
+  checklist in §A.**
 
 - [x] **2026-08-05** Risorse Umane: **stesso trattamento al reparto**
   (`lib/admin/formazione.ts`, `RisorseUmane.tsx`). Stampatello in inserimento +
