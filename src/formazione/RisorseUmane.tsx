@@ -15,7 +15,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
   caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona,
-  mansioniUsate, repartiUsati, type Persona,
+  mansioniUsate, repartiUsati, attivoDopoCessazione, type Persona,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 import { valido as cfValido, pulisci as cfPulisci } from './codiceFiscale';
@@ -285,7 +285,12 @@ function RigaPersona({
     if (!p.nome.trim()) { setMsg('Il nome è obbligatorio.'); return; }
     setBusy(true); setMsg(null);
     try {
-      await salvaPersona({ ...p, id: p.id || newId() });
+      // E' la data di cessazione a decidere se la persona e' in forza: qui si
+      // salva l'esito della regola, non il valore che `attivo` aveva prima.
+      await salvaPersona({
+        ...p, id: p.id || newId(),
+        attivo: attivoDopoCessazione(p, nuova ? null : persona),
+      });
       if (nuova) setP(personaVuota(persona.cliente_id));
       setModifica(false);
       onCambia();
@@ -294,14 +299,23 @@ function RigaPersona({
   }
   async function toggle() {
     setBusy(true); setMsg(null);
-    // Disattivare = la persona ha cessato: se non c'e' gia' una data, la si mette
-    // a oggi. Riattivare azzera la cessazione. La data resta comunque editabile a
-    // mano nel form (retrodatare dimissioni gia' avvenute).
+    // Scorciatoia dalla scheda: Disattiva mette la data a oggi se non c'e'
+    // gia', Riattiva la toglie. La data resta correggibile a mano nel form
+    // (retrodatare dimissioni gia' avvenute).
+    //
+    // Si parte da `p` e NON da `persona`: il bottone sta nella stessa scheda
+    // dei campi, e leggere lo stato salvato buttava via le modifiche non ancora
+    // confermate - a partire proprio dalla data appena digitata, che veniva
+    // sostituita con oggi.
     const disattiva = persona.attivo;
     const data_cessazione = disattiva
-      ? (persona.data_cessazione ?? new Date().toISOString().slice(0, 10))
+      ? (p.data_cessazione ?? new Date().toISOString().slice(0, 10))
       : null;
-    try { await salvaPersona({ ...persona, attivo: !persona.attivo, data_cessazione }); onCambia(); }
+    try {
+      const dopo = { ...p, id: p.id || persona.id, data_cessazione };
+      await salvaPersona({ ...dopo, attivo: attivoDopoCessazione({ ...dopo, attivo: !persona.attivo }, persona) });
+      onCambia();
+    }
     catch (e: any) { setMsg(e?.message ?? 'Operazione non riuscita.'); }
     finally { setBusy(false); }
   }
@@ -379,6 +393,34 @@ function RigaPersona({
               <span>Data cessazione</span>
               <input type="date" value={p.data_cessazione ?? ''}
                 onChange={(e) => set({ data_cessazione: e.target.value || null })} />
+              {/* La data governa `attivo`, e uscire dall'organigramma vuol dire
+                  sparire da requisiti, scadenzario e cose da fare del cliente.
+                  E' un effetto grosso per un campo data: si dice PRIMA del
+                  Salva, cosi' un anno digitato male si vede mentre lo si
+                  scrive e non tre schermate dopo. */}
+              {(() => {
+                const d = p.data_cessazione;
+                const oggi = new Date().toISOString().slice(0, 10);
+                if (!d) {
+                  return persona.data_cessazione
+                    ? <small style={{ color: 'var(--hi-dark,#8a6d00)' }}>
+                        Togliendo la data, salvando la persona torna in forza.
+                      </small>
+                    : null;
+                }
+                if (d > oggi) {
+                  return <small style={{ color: 'var(--ink-soft,#5c5f66)' }}>
+                    Cessazione programmata: resta in forza fino al {d.split('-').reverse().join('/')}.
+                    Non esce da sola quel giorno — va risalvata.
+                  </small>;
+                }
+                return persona.attivo
+                  ? <small style={{ color: 'var(--hi-dark,#8a6d00)' }}>
+                      Salvando, esce dall&rsquo;organigramma: i suoi requisiti e le sue
+                      scadenze spariscono dal riepilogo del cliente.
+                    </small>
+                  : null;
+              })()}
             </label>
             <label className="bo-field">
               <span>Mansione</span>
@@ -493,7 +535,11 @@ function pianifica(righe: Record<string, unknown>[], esistenti: Persona[], clien
       mansione: svuota(pick('mansione', 'ruolo', 'qualifica', 'profilo', 'profiloprofessionale'))?.toUpperCase() ?? base.mansione,
       reparto: svuota(pick('reparto', 'area', 'settore', 'ufficio'))?.toUpperCase() ?? base.reparto,
       data_assunzione: isoData(pick('dataassunzione', 'assunzione', 'dataassunz', 'datadiassunzione', 'datainizio')) ?? base.data_assunzione,
-      attivo: true,
+      // `attivo: true` secco riportava in forza chi era cessato: il file non ha
+      // una colonna di cessazione, quindi non dice nulla sul punto, e comparire
+      // in un elenco di personale non e' la prova che il rapporto sia ripreso.
+      // Chi ha una data di cessazione la conserva, e la regola decide.
+      attivo: attivoDopoCessazione({ ...base, attivo: true }, base),
     };
 
     const chiave = cf || `riga:${senzaCf++}`;

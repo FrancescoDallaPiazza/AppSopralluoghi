@@ -43,6 +43,25 @@ davanti al cliente giusto, non tre cose diverse.
   problema di dati passati, non di UI.
 - [ ] *Risorse Umane → Importa da Excel* con mansioni/reparti in minuscolo nel
   file → entrano in **maiuscolo**.
+- [ ] **La data di cessazione disattiva da sola** (nuovo, 2026-08-05): aprire una
+  persona **in forza**, scrivere una data di cessazione **passata** → sotto il
+  campo compare l'avviso "Salvando, esce dall'organigramma…"; dopo *Salva* la
+  persona sparisce dall'elenco (filtro *In forza*), non compare più
+  nell'organigramma e **i suoi requisiti e le sue scadenze spariscono dal
+  riepilogo del cliente e dallo scadenzario**. Riaprirla con *Tutti*, togliere
+  la data, *Salva* → torna in forza con i suoi requisiti.
+- [ ] **Data futura**: scrivere una cessazione **di domani** → avviso grigio
+  "resta in forza fino al …" e dopo *Salva* la persona **resta** in elenco e in
+  organigramma. È voluto: una cessazione programmata non licenzia nessuno oggi.
+  Attenzione al limite — quel giorno **non scatta da sola**, serve risalvare.
+- [ ] **Disattiva non butta più le modifiche**: in modifica, scrivere una data di
+  cessazione (o cambiare la mansione) e premere **Disattiva** *senza* aver
+  premuto Salva → la data digitata e le altre modifiche vengono conservate.
+  Prima `toggle()` leggeva lo stato salvato e sostituiva la data con oggi.
+- [ ] **Import da Excel non riattiva i cessati**: reimportare un file che
+  contiene una persona già cessata → deve **restare** cessata (prima
+  `attivo: true` secco la riportava in forza tenendole però la data, cioè
+  proprio lo stato incoerente che questo lavoro elimina).
 - [ ] **Filtro cessati** (nuovo, 2026-08-05): in testa a *Risorse Umane*, accanto
   a ricerca e ruoli, la tendina **In forza / Solo cessati / Tutti** con i
   conteggi; compare **solo** se qualcuno è cessato. La vecchia spunta *Mostra
@@ -738,6 +757,42 @@ sedi li accende; gli attributi si leggono dal cliente).
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-08-05** Persona: **la data di cessazione disattiva da sola**
+  (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
+  Erano due dati che dicevano la stessa cosa e solo uno aveva effetto:
+  `attivo` decide chi entra nell'organigramma (`assemblaRiepilogo` filtra su
+  quello) e quindi requisiti, scadenzario e cose da fare; `data_cessazione` si
+  limitava a stamparsi. Chi compilava **solo la data** vedeva la persona
+  restare in elenco e continuare a generare scadenze — e non compariva nemmeno
+  l'etichetta *cessato*, condizionata a `!attivo`. Silenzio totale.
+  - Nuova `attivoDopoCessazione(p, precedente)`, regola in un punto solo:
+    data non futura → fuori forza; data **tolta** → rientro; data **futura** →
+    `attivo` invariato (una cessazione programmata non licenzia nessuno oggi);
+    nessuna data né prima né ora → invariato, così aprire e salvare la scheda
+    di un disattivato-senza-data (righe pre-migration 061) non lo rimette in
+    organigramma di nascosto.
+  - Avviso **sotto il campo, prima del Salva**: "esce dall'organigramma…" per
+    le date passate, "resta in forza fino al …" per le programmate. Un anno
+    digitato male si vede mentre lo si scrive, non tre schermate dopo.
+  - **Baco corretto**: `toggle()` (bottone *Disattiva*) leggeva `persona`, lo
+    stato **salvato**, e non `p`. Scrivere la data e premere Disattiva senza
+    Salva buttava via la data appena digitata sostituendola con oggi — e i due
+    comandi stanno nella stessa scheda a una riga di distanza.
+  - **Import**: `attivo: true` secco riportava in forza chi era cessato,
+    tenendogli però la data. Il file non ha una colonna di cessazione, quindi
+    non dice nulla sul punto: ora la regola decide e il cessato resta cessato.
+  - `PersonaForm` (organigramma) non hardcoda più `attivo: true`: quel form non
+    governa la cessazione e non deve riaffermarne lo stato.
+  - **Deciso di proposito, contro il default della casa**: qui un dato *deduce*
+    un esito invece di chiederlo. La scelta è consapevole (vedi
+    [[dati-mancanti-si-chiedono]]) e mitigata dall'avviso preventivo.
+  - **LIMITE NOTO**: la derivazione avviene al **salvataggio**, non c'è un job
+    che scandisce le date. Una cessazione programmata **non scatta da sola** il
+    giorno in cui matura: resta in forza finché qualcuno non risalva quella
+    persona. Serve una query periodica (o un cron) se lo si vuole davvero.
+  Nessuna migration (`persona.data_cessazione` è già dalla 061).
+  `tsc --noEmit` + `vite build` verdi. **Da provare in app — checklist in §A.**
 
 - [x] **2026-08-05** Risorse Umane: **chi è cessato si vede e si filtra**
   (`RisorseUmane.tsx`). Emersa dalla domanda "nelle risorse vengono proposte

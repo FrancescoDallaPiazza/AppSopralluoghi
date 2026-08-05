@@ -634,6 +634,38 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **La data di cessazione governa `attivo`** (`lib/admin/formazione.ts`,
+  `RisorseUmane.tsx`, `OrganigrammaView.tsx`). Erano due dati che dicevano la
+  stessa cosa con un solo effetto: `attivo` decide chi entra
+  nell'organigramma — `assemblaRiepilogo` filtra su quello — e quindi
+  requisiti, scadenzario e cose da fare, mentre `data_cessazione` (migration
+  061) si limitava a stamparsi. Chi compilava la sola data vedeva la persona
+  restare in elenco e continuare a generare scadenze, senza nemmeno
+  l'etichetta *cessato*, che era condizionata a `!attivo`.
+  Nuova `attivoDopoCessazione(p, precedente)`, regola in un punto solo e usata
+  da salvataggio, bottone *Disattiva* e import: data non futura -> fuori forza;
+  data tolta -> rientro; data **futura** -> `attivo` invariato (una cessazione
+  programmata non licenzia nessuno oggi); nessuna data ne' prima ne' ora ->
+  invariato, cosi' salvare la scheda di un disattivato-senza-data (righe
+  anteriori alla 061) non lo rimette in organigramma di nascosto.
+  **E' una deroga consapevole al principio "il dato si chiede, non si deduce"**
+  che governa il resto dell'app: qui un campo cambia da solo l'esito di
+  conformita'. La deroga regge perche' la deduzione e' l'identita' fra due dati
+  che gia' significavano la stessa cosa, non un'invenzione a colmare un vuoto;
+  ed e' mitigata dall'avviso mostrato **prima** del Salva ("esce
+  dall'organigramma…" / "resta in forza fino al …"), cosi' un anno digitato male
+  si vede mentre lo si scrive.
+  Corretti nello stesso giro due punti che riaffermavano `attivo: true` a
+  sproposito: l'**import** riportava in forza i cessati tenendogli la data
+  (il file non ha una colonna di cessazione: non dice nulla sul punto), e
+  `PersonaForm` lo hardcodava pur non governando quel campo. Corretto anche
+  `toggle()`, che leggeva lo stato salvato e non quello in modifica: scrivere
+  la data e premere *Disattiva* senza Salva buttava via la data appena
+  digitata.
+  **Limite noto**: la derivazione avviene al salvataggio, non c'e' un job che
+  scandisce le date — una cessazione programmata non scatta da sola il giorno
+  in cui matura. Serve una query periodica se lo si vuole davvero.
+
 - **Mansione e reparto: vocabolario aziendale, non testo libero**
   (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
   Due campi dell'anagrafica persona che nessuna regola governava. Il gestionale

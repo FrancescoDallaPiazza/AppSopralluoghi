@@ -393,7 +393,11 @@ function PersonaForm({
         data_assunzione: persona?.data_assunzione ?? null,
         data_cessazione: persona?.data_cessazione ?? null,
         livello_rischio: persona?.livello_rischio ?? null,
-        attivo: true,
+        // Qui la cessazione non si tocca (il form non ha quel campo) e
+        // l'organigramma vede solo chi e' in forza, quindi `persona` e' sempre
+        // attiva. Ma `true` secco significava "salvare da qui riattiva":
+        // meglio non riaffermare uno stato che questo form non governa.
+        attivo: persona?.attivo ?? true,
         note: persona?.note ?? null,
         formazione_pregressa: pregressa,
       };

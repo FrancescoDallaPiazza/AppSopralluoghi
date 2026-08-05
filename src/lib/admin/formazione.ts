@@ -446,6 +446,40 @@ export function mansioniUsate(persone: Array<{ mansione?: string | null }>): str
   return valoriUsati(persone.map((p) => p.mansione));
 }
 
+// La DATA DI CESSAZIONE governa `attivo`. Prima erano due dati separati che
+// dicevano la stessa cosa e solo uno aveva effetto: `attivo` decide chi entra
+// nell'organigramma (`assemblaRiepilogo` filtra su quello) e quindi requisiti,
+// scadenzario e cose da fare, mentre la data si limitava a stamparsi. Chi
+// compilava solo la data vedeva la persona restare in elenco e continuare a
+// generare scadenze, senza un segnale che qualcosa non tornava.
+//
+// Regole, in quest'ordine:
+//  - data compilata e NON futura -> fuori forza. E' il caso normale.
+//  - data TOLTA (c'era, ora non c'e' piu') -> rientro in forza. E' l'unico modo
+//    di annullare una cessazione scritta per sbaglio senza un secondo comando.
+//  - data futura -> `attivo` invariato. Una cessazione programmata non licenzia
+//    nessuno oggi: fino a quel giorno la persona ha ruoli e obblighi veri.
+//  - nessuna data, ne' prima ne' ora -> `attivo` invariato. NON si riattiva chi
+//    e' fuori forza senza data (righe anteriori alla migration 061, e la
+//    disattivazione fatta a mano): aprire e salvare la loro scheda per
+//    correggere una mansione li rimetterebbe in organigramma in silenzio.
+//
+// LIMITE NOTO: la derivazione avviene al SALVATAGGIO, non c'e' un job che
+// scandisce le date. Una cessazione datata avanti nel tempo non si attiva da
+// sola il giorno in cui scade: resta in forza finche' qualcuno non risalva
+// quella persona. Serve un passaggio a monte (query o cron) se si vuole
+// davvero far scattare le programmate.
+export function attivoDopoCessazione(
+  p: { attivo: boolean; data_cessazione: string | null },
+  precedente?: { data_cessazione: string | null } | null,
+): boolean {
+  const oggi = new Date().toISOString().slice(0, 10);
+  const d = (p.data_cessazione ?? '').trim();
+  if (d && d <= oggi) return false;
+  if (!d && (precedente?.data_cessazione ?? null) !== null) return true;
+  return p.attivo;
+}
+
 // Stessa logica sul reparto. Sono due vocabolari SEPARATI e non vanno mescolati:
 // "MANUTENZIONE" puo' essere legittimamente sia un reparto sia una mansione, ma
 // proporre le mansioni fra i reparti (e viceversa) riempirebbe ogni tendina di
