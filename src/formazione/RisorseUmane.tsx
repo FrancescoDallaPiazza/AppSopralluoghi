@@ -11,10 +11,11 @@
 // per CF / scartate) e si applica. Il match con le persone gia' presenti e' sul
 // codice fiscale; le righe senza nome vengono scartate e mostrate.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
-  caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona, type Persona,
+  caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona, mansioniUsate,
+  type Persona,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 import { valido as cfValido, pulisci as cfPulisci } from './codiceFiscale';
@@ -85,6 +86,17 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
   useEffect(ricarica, [clienteId]);
 
   const cambiato = () => { ricarica(); onCambia?.(); };
+
+  // Mansioni gia' in uso, proposte a chi inserisce la persona successiva. Si
+  // leggono da TUTTE le persone e non dalle sole visibili: il filtro in alto e'
+  // di chi sta guardando l'elenco adesso, mentre il vocabolario aziendale delle
+  // mansioni comprende anche i cessati e chi la ricerca sta escludendo.
+  const mansioni = mansioniUsate(persone);
+  // Un solo <datalist> per tutta la tabella: le righe in modifica possono essere
+  // piu' d'una insieme, e un id duplicato nel DOM farebbe agganciare tutte le
+  // input alla prima lista incontrata. `useId` lo tiene distinto anche se un
+  // giorno due schede cliente convivessero nella stessa pagina.
+  const listaMansioni = useId();
 
   const ago = q.trim().toLowerCase();
   const ruoliDi = (id: string): string[] => ruoli.get(id) ?? [];
@@ -178,16 +190,25 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
           </thead>
           <tbody>
             {agg && (
-              <RigaPersona persona={personaVuota(clienteId)}
+              <RigaPersona persona={personaVuota(clienteId)} listaMansioni={listaMansioni}
                 onCambia={() => { setAgg(false); cambiato(); }}
                 onAnnulla={() => setAgg(false)} />
             )}
             {visibili.map((p) => (
               <RigaPersona key={p.id} persona={p} onCambia={cambiato} ruoli={ruoliDi(p.id)}
+                listaMansioni={listaMansioni}
                 onLibretto={() => setLibretto((cur) => (cur === p.id ? null : p.id))} />
             ))}
           </tbody>
         </table>
+      )}
+
+      {/* Fuori dalla tabella: un <datalist> non rende nulla, ma dentro un <tbody>
+          sarebbe markup non valido e il browser lo sposterebbe da se'. */}
+      {mansioni.length > 0 && (
+        <datalist id={listaMansioni}>
+          {mansioni.map((m) => <option key={m} value={m} />)}
+        </datalist>
       )}
 
       {/* Fuori dalla tabella e non dentro una riga: e' un documento, e infilarlo
@@ -213,9 +234,11 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
 
 // ============================ riga persona ============================
 
-function RigaPersona({ persona, onCambia, onAnnulla, onLibretto, ruoli = [] }: {
+function RigaPersona({ persona, onCambia, onAnnulla, onLibretto, ruoli = [], listaMansioni }: {
   persona: Persona; onCambia: () => void; onAnnulla?: () => void;
   onLibretto?: () => void; ruoli?: string[];
+  // id del <datalist> con le mansioni gia' usate nell'azienda (vedi sopra).
+  listaMansioni?: string;
 }) {
   const nuova = !persona.id;
   const [modifica, setModifica] = useState(nuova);
@@ -323,7 +346,7 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto, ruoli = [] }: {
             </label>
             <label className="bo-field">
               <span>Mansione</span>
-              <input type="text" value={p.mansione ?? ''}
+              <input type="text" value={p.mansione ?? ''} list={listaMansioni}
                 onChange={(e) => set({ mansione: e.target.value.toUpperCase() || null })} />
             </label>
             <label className="bo-field">

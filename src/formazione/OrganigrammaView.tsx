@@ -12,14 +12,14 @@
 // Eredita la palette del contesto (var --ok/--no/--hi/--ink/--line) con fallback,
 // quindi rende bene sia sotto .compila (campo) sia nel back-office (.bo).
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { pulisci as pulisciCF, valido as cfValido, crossCheck as cfCrossCheck, analizzaCF, type DatiCF } from './codiceFiscale';
 import {
   type RiepilogoCliente, type RequisitoValutato, type StatoRequisito,
   type TipoEsonero, type Formazione, type Esonero,
   type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
   type CorsoCatalogo, type Catalogo, type NominaEvidenza,
-  nomePersona, nomePersonaCognome, confrontaPersone,
+  nomePersona, nomePersonaCognome, confrontaPersone, mansioniUsate,
   dataIT, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
@@ -341,7 +341,7 @@ interface Props {
 // ---------- form anagrafica persona (nuova o modifica) ----------
 function PersonaForm({
   persona, clienteId, onSaved, onClose, onEvidenzePregresse, mostraRimuoviPersona = true,
-  mostraPregressa = true, onCreata,
+  mostraPregressa = true, onCreata, mansioni = [],
 }: {
   persona: Persona | null;
   clienteId: string;
@@ -349,6 +349,11 @@ function PersonaForm({
   onClose: () => void;
   onEvidenzePregresse?: (persona: Persona) => void;
   mostraRimuoviPersona?: boolean;
+  // Mansioni gia' usate in azienda, proposte in tendina sul campo Mansione. Le
+  // due vie per creare una persona (qui e Risorse Umane) devono proporre lo
+  // stesso vocabolario, altrimenti chi crea "al volo" durante un'assegnazione
+  // ricomincia a inventare diciture.
+  mansioni?: string[];
   // Dentro l'assegnazione la domanda "azienda pre-ASR 2025?" non si pone: li' si
   // sta scegliendo CHI ricopre il ruolo, e il regime formativo (iniziale oppure
   // credito/esonero) si decide dopo, sul percorso formativo. Resta nell'anagrafica.
@@ -358,6 +363,7 @@ function PersonaForm({
   onCreata?: (p: Persona) => void;
 }) {
   const adapter = useAdapter();
+  const listaMansioni = useId();
   const [cognome, setCognome] = useState(persona?.cognome ?? '');
   const [nome, setNome] = useState(persona?.nome ?? '');
   const [mansione, setMansione] = useState(persona?.mansione ?? '');
@@ -420,7 +426,13 @@ function PersonaForm({
       </div>
       <div className="fzr-field">
         <label>Mansione</label>
-        <input type="text" value={mansione} onChange={(e) => setMansione(e.target.value.toUpperCase())} />
+        <input type="text" value={mansione} list={mansioni.length ? listaMansioni : undefined}
+          onChange={(e) => setMansione(e.target.value.toUpperCase())} />
+        {mansioni.length > 0 && (
+          <datalist id={listaMansioni}>
+            {mansioni.map((m) => <option key={m} value={m} />)}
+          </datalist>
+        )}
       </div>
       <div className="fzr-field">
         <label>Codice fiscale (facoltativo)</label>
@@ -550,6 +562,10 @@ function AssegnaFiguraPanel({
   // valutazione, e dopo un import del gestionale sono decine. Una tendina in
   // ordine incerto si scorre due volte per trovare un cognome.
   const ordinate = useMemo(() => [...persone].sort(confrontaPersone), [persone]);
+  // Vocabolario delle mansioni per la creazione al volo: `persone` e' gia' tutto
+  // l'organico del cliente (il pannello lo riceve da `tuttePersone`), quindi la
+  // proposta e' la stessa che si vede in Risorse Umane.
+  const mansioni = useMemo(() => mansioniUsate(persone), [persone]);
   const formati = useMemo(() => ordinate.filter((p) => haCorso(p.id)), [ordinate, haCorso]);
   // Filtro acceso di default quando ha senso: la figura ha corsi propri e almeno
   // una persona li ha. Resta togliibile - il corso non e' un requisito per essere
@@ -681,6 +697,7 @@ function AssegnaFiguraPanel({
             persona={null}
             clienteId={clienteId}
             mostraPregressa={false}
+            mansioni={mansioni}
             onSaved={onSaved}
             onCreata={(p) => setSel((s) => new Set([...s, p.id]))}
             onClose={() => setNuovaPersona(false)}
@@ -1306,6 +1323,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
     : [];
 
   const tuttePersone = riep.persone.map((p) => p.persona);
+  const mansioniCliente = mansioniUsate(tuttePersone);
   const corsoByCodice = new Map(catalogo.corsi.map((c) => [c.codice, c]));
   const ammessoById = new Map(catalogo.esoneriAmmessi.map((a) => [a.id, a]));
 
@@ -1512,7 +1530,7 @@ export default function OrganigrammaView({ clienteId, riep, catalogo, adapter, r
                   </div>
 
                   {anagAperto && (
-                    <PersonaForm persona={pv.persona} clienteId={clienteId} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} mostraRimuoviPersona={false} />
+                    <PersonaForm persona={pv.persona} clienteId={clienteId} mansioni={mansioniCliente} onSaved={ricarica} onClose={() => setEditPersona(null)} onEvidenzePregresse={onEvidenzePregresse} mostraRimuoviPersona={false} />
                   )}
 
                   <div className="fzr-step">

@@ -672,6 +672,37 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-05** Anagrafica persona: **le mansioni già usate si ripropongono**
+  (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
+  Seguito dello stampatello qui sotto: il maiuscolo toglie una delle grafie
+  divergenti, non la sostanza. "SALDATORE", "ADDETTO SALDATURA" e "SALDATORE
+  CARPENTERIA" restavano tre voci per la stessa cosa, e nascevano così perché
+  chi inseriva la seconda persona non aveva modo di sapere come era stata
+  scritta la prima. Una mansione è **vocabolario aziendale**, non catalogo: non
+  si può normalizzare a monte, si può solo far vedere quello che già esiste.
+  - Nuova `mansioniUsate(persone)` in `lib/admin/formazione.ts` (accanto a
+    `confrontaPersone`, stessa famiglia): mansioni distinte, ordinate,
+    dedup su chiave **case-insensitive** — le righe vecchie e quelle arrivate
+    dagli import sono scritte come capita, e proporre "Saldatore" e "SALDATORE"
+    come due voci rimetterebbe in campo l'ambiguità che l'elenco toglie.
+  - Serve un **`<datalist>`, non una `<select>`**: l'elenco chiuso avrebbe
+    impedito di inserire la prima persona di ogni mansione nuova, cioè proprio
+    il caso in cui la si sta creando. Si scrive liberamente, la tendina propone.
+  - Vale in **entrambe le vie** per creare una persona — la scheda di *Risorse
+    Umane* e il *+ Persona non in elenco* del pannello di assegnazione ruolo
+    (`PersonaForm`, prop `mansioni`) — altrimenti chi crea "al volo" durante
+    un'assegnazione ricomincia a inventare diciture. Essendo in
+    `OrganigrammaView`, la proposta arriva **anche in campo**.
+  - L'elenco si legge da **tutte** le persone del cliente, non dalle sole
+    visibili: filtro di ricerca e cessati non tolgono una mansione dal
+    vocabolario dell'azienda.
+  - `useId()` per l'id del `<datalist>`: in Risorse Umane le righe in modifica
+    possono essere più d'una insieme, e un id duplicato nel DOM aggancerebbe
+    tutte le input alla prima lista incontrata. Uno solo per tabella, montato
+    fuori dal `<tbody>` (dentro sarebbe markup non valido).
+  Nessuna migration, nessuna normalizzazione retroattiva delle mansioni già
+  scritte. `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+
 - [x] **2026-08-05** Risorse Umane: **la mansione si scrive in stampatello**
   (`RisorseUmane.tsx`). Cognome, nome e codice fiscale erano già forzati a
   maiuscolo in inserimento; mansione e reparto no, quindi la stessa mansione

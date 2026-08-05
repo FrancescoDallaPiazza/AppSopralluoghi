@@ -411,6 +411,36 @@ export function confrontaPersone(
   return (a.nome ?? '').trim().localeCompare((b.nome ?? '').trim(), 'it', { sensitivity: 'base' });
 }
 
+// Le mansioni GIA' USATE in questa azienda, per proporle a chi inserisce la
+// persona successiva. Una mansione e' un vocabolario aziendale, non un catalogo:
+// "SALDATORE", "ADDETTO SALDATURA" e "SALDATORE CARPENTERIA" sono tre voci
+// diverse per la stessa cosa, e nascono cosi' perche' chi compila non ha modo di
+// sapere come e' stata scritta la volta prima. Riproponendo l'esistente la
+// seconda persona eredita la dicitura della prima, e la ricerca per mansione
+// (RisorseUmane, OrganigrammaView) smette di dipendere da come si e' digitato.
+//
+// Sono SUGGERIMENTI, non un elenco chiuso: si serve a un `<datalist>`, quindi
+// una mansione nuova si scrive lo stesso. Chiuderla in una `<select>` avrebbe
+// impedito la prima persona di ogni mansione nuova - cioe' proprio il caso in
+// cui la si sta creando.
+//
+// Il confronto e' su testo gia' normalizzato a maiuscolo dai form, ma il
+// dedup passa comunque da una chiave case-insensitive: le righe vecchie (e
+// quelle arrivate dagli import) sono scritte come capita, e mostrare
+// "Saldatore" e "SALDATORE" come due proposte distinte rimetterebbe in campo
+// proprio l'ambiguita' che l'elenco serve a togliere. Vince la prima grafia
+// incontrata scorrendo l'elenco; l'ordinamento e' alfabetico e viene dopo.
+export function mansioniUsate(persone: Array<{ mansione?: string | null }>): string[] {
+  const per = new Map<string, string>();
+  for (const p of persone) {
+    const m = (p.mansione ?? '').trim();
+    if (!m) continue;
+    const k = m.toLocaleUpperCase('it');
+    if (!per.has(k)) per.set(k, m);
+  }
+  return [...per.values()].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+}
+
 function oggi(): Date {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
