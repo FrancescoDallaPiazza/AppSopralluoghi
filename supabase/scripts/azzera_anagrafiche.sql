@@ -25,13 +25,29 @@
 --                         revisioni e box del sopralluogo
 --   azione .............. TUTTE le cose da fare e le scadenze, con il loro
 --                         storico di aggiornamenti
+--   corso_alias ......... il dizionario testo-del-gestionale -> corso_catalogo
+--                         (vedi nota sotto: si ricostruisce)
 --
 -- COSA **NON** VIENE TOCCATO (configurazione, non anagrafica):
 --   tecnico, area_interna,
 --   checklist_template + voce_template, box_catalogo + box_sezione,
---   corso_catalogo, figura_sicurezza, figura_requisito, esonero_ammesso,
---   corso_alias (il dizionario del gestionale: 268 righe mappate a mano,
---               ricostruirlo sarebbe mezza giornata di lavoro)
+--   corso_catalogo, figura_sicurezza, figura_requisito, esonero_ammesso
+--
+-- ----------------------------------------------------------------------------
+-- SU `corso_alias` - PERCHE' SI PUO' CANCELLARE
+-- E' un dizionario, non un dato raccolto: nessuna tabella lo referenzia (i suoi
+-- flag vengono COPIATI su `formazione` al momento dell'import, non letti dopo),
+-- quindi cancellarlo non trascina via nulla.
+-- E si rifa' in tre passi, tutti gia' nel repo - non e' lavoro a mano:
+--   1. back-office -> Regole app -> Alias corsi: caricare
+--      `elencoAnagraficaFormazioni.xlsx` (268 corsi) e premere Applica;
+--   2. eseguire `supabase/scripts/mappatura_alias_gestionale.sql`
+--      (motore di regole: 237 mappati, 31 ignorati, 0 da mappare);
+--   3. eseguire `supabase/scripts/divergenze_fix.sql` (le 2 decisioni di
+--      merito prese a mano: transpallet -> ignorato, ponteggi -> PONTEGGI).
+-- Serve pero' avere ancora il file `elencoAnagraficaFormazioni.xlsx`: senza
+-- quello il punto 1 non si fa, e gli altri due non hanno righe su cui agire.
+-- ASSICURATI DI AVERLO PRIMA DI LANCIARE LA PARTE 2.
 --
 -- ----------------------------------------------------------------------------
 -- PERCHE' QUEST'ORDINE
@@ -65,6 +81,8 @@ union all select '  checklist_compilata', count(*) from checklist_compilata
 union all select '  esito_voce',          count(*) from esito_voce
 union all select '  foto',                count(*) from foto
 union all select 'azione',                count(*) from azione
+union all select 'corso_alias',           count(*) from corso_alias
+union all select '  di cui mappati',      count(*) from corso_alias where corso_codice is not null
 order by 1;
 
 -- Controprova: cosa NON deve sparire. Questi numeri devono restare identici
@@ -74,7 +92,6 @@ union all select 'checklist_template', count(*) from checklist_template
 union all select 'box_catalogo',       count(*) from box_catalogo
 union all select 'corso_catalogo',     count(*) from corso_catalogo
 union all select 'figura_sicurezza',   count(*) from figura_sicurezza
-union all select 'corso_alias',        count(*) from corso_alias
 order by 1;
 
 
@@ -103,6 +120,11 @@ begin;
   --    organigramma_revisione, werp_da_rivedere, werp_da_chiarire.
   delete from cliente;
 
+  -- 5. Dizionario alias del gestionale. Ultimo perche' e' indipendente da tutto
+  --    il resto: nessuna tabella lo referenzia. Si ricostruisce coi tre passi
+  --    descritti in testa - a patto di avere ancora il file Excel.
+  delete from corso_alias;
+
   -- Verifica dentro la transazione: devono essere tutti 0.
   select 'cliente' as tabella, count(*) from cliente
   union all select 'persona',     count(*) from persona
@@ -116,6 +138,7 @@ begin;
   union all select 'esito_voce',  count(*) from esito_voce
   union all select 'foto',        count(*) from foto
   union all select 'azione',      count(*) from azione
+  union all select 'corso_alias', count(*) from corso_alias
   order by 1;
 
 commit;
@@ -138,5 +161,10 @@ commit;
 --    verso clienti cancellati. Su ogni dispositivo installato: chiudere e
 --    riaprire la PWA, e se restano dati fantasma svuotare i dati del sito.
 --
--- 3. Il catalogo, i template e il dizionario `corso_alias` sono intatti:
---    ricreando un cliente, l'organigramma e i requisiti funzionano subito.
+-- 3. Il catalogo corsi, le figure e i template sono intatti: ricreando un
+--    cliente, l'organigramma e i requisiti funzionano subito.
+--
+-- 4. IL DIZIONARIO ALIAS VA RIFATTO PRIMA DEL PROSSIMO IMPORT FORMAZIONE.
+--    Con `corso_alias` vuoto l'import del gestionale non riconosce piu' nessun
+--    testo-corso: non sbaglia, si ferma: ogni riga risulta "da mappare" e non
+--    entra nulla. I tre passi sono in testa a questo file.
