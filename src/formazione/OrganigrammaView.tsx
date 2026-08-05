@@ -20,6 +20,7 @@ import {
   type Persona, type Nomina, type FiguraSicurezza, type ModuloValutato, type EsoneroAmmesso,
   type CorsoCatalogo, type Catalogo, type NominaEvidenza,
   nomePersona, nomePersonaCognome, confrontaPersone, mansioniUsate,
+  oggiISO as oggiISOLocale,
   dataIT, CATEGORIE_NO_PREGRESSA, figuraChiedePregressa, corsoEmergenzaRichiesto,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
@@ -72,7 +73,10 @@ const TIPI_ESONERO: Array<{ v: TipoEsonero; l: string }> = [
   { v: 'altro', l: 'Altro' },
 ];
 
-const oggiISO = () => new Date().toISOString().slice(0, 10);
+// Stesso motivo per cui `oggiISO` sta in `lib/admin/formazione.ts`: la data
+// locale, non quella UTC. Qui alimenta le date di nomina, che a tarda notte
+// nascevano datate al giorno prima.
+const oggiISO = oggiISOLocale;
 
 // Confronto "da ricerca": senza accenti e senza maiuscole, perche' dal gestionale
 // i cognomi arrivano in maiuscolo e accentati, a mano no, e chi cerca digita

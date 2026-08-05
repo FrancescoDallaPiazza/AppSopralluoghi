@@ -446,6 +446,19 @@ export function mansioniUsate(persone: Array<{ mansione?: string | null }>): str
   return valoriUsati(persone.map((p) => p.mansione));
 }
 
+// Oggi in data LOCALE, non UTC. `new Date().toISOString()` da' la data di
+// Greenwich: in Italia (UTC+1/+2) fra mezzanotte e le due del mattino torna
+// ANCORA IERI. Un `<input type="date">` invece produce sempre la data del
+// calendario locale, quindi confrontare i due significa, in quella finestra,
+// leggere la data di oggi come se fosse domani - e una cessazione registrata a
+// tarda notte non disattivava nessuno, mostrando anzi l'avviso "data nel
+// futuro". Vale per ogni confronto fra un valore di `<input type="date">` e
+// "adesso".
+export function oggiISO(): string {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 // La DATA DI CESSAZIONE governa `attivo`. Prima erano due dati separati che
 // dicevano la stessa cosa e solo uno aveva effetto: `attivo` decide chi entra
 // nell'organigramma (`assemblaRiepilogo` filtra su quello) e quindi requisiti,
@@ -477,7 +490,7 @@ export function attivoDopoCessazione(
   p: { attivo: boolean; data_cessazione: string | null },
   precedente?: { data_cessazione: string | null } | null,
 ): boolean {
-  const oggi = new Date().toISOString().slice(0, 10);
+  const oggi = oggiISO();
   const d = (p.data_cessazione ?? '').trim();
   if (d && d <= oggi) return false;
   if (!d && (precedente?.data_cessazione ?? null) !== null) return true;

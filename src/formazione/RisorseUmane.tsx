@@ -15,7 +15,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
   caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona,
-  mansioniUsate, repartiUsati, attivoDopoCessazione, type Persona,
+  mansioniUsate, repartiUsati, attivoDopoCessazione, oggiISO, type Persona,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 import { valido as cfValido, pulisci as cfPulisci } from './codiceFiscale';
@@ -309,7 +309,7 @@ function RigaPersona({
     // sostituita con oggi.
     const disattiva = persona.attivo;
     const data_cessazione = disattiva
-      ? (p.data_cessazione ?? new Date().toISOString().slice(0, 10))
+      ? (p.data_cessazione ?? oggiISO())
       : null;
     try {
       const dopo = { ...p, id: p.id || persona.id, data_cessazione };
@@ -344,7 +344,7 @@ function RigaPersona({
               (giustamente, la persona lavora), quindi l'anno digitato male
               resterebbe invisibile proprio a chi credeva di averla fatta
               uscire. Qui si vede senza aprire la scheda. */}
-          {p.attivo && p.data_cessazione && p.data_cessazione > new Date().toISOString().slice(0, 10) && (
+          {p.attivo && p.data_cessazione && p.data_cessazione > oggiISO() && (
             <span className="bo-pill warn" style={{ marginLeft: 6 }}
               title={'Data di cessazione ' + p.data_cessazione.split('-').reverse().join('/')
                 + ': e’ nel futuro, quindi la persona risulta ancora in forza. Se la cessazione e’ gia’ avvenuta, correggi l’anno.'}>
@@ -412,7 +412,7 @@ function RigaPersona({
                   scrive e non tre schermate dopo. */}
               {(() => {
                 const d = p.data_cessazione;
-                const oggi = new Date().toISOString().slice(0, 10);
+                const oggi = oggiISO();
                 if (!d) {
                   return persona.data_cessazione
                     ? <small style={{ color: 'var(--hi-dark,#8a6d00)' }}>
