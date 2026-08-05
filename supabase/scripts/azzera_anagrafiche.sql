@@ -128,8 +128,8 @@ begin;
   delete from cliente;
 
   -- 5. Dizionario alias del gestionale. Ultimo perche' e' indipendente da tutto
-  --    il resto: nessuna tabella lo referenzia. Si ricostruisce coi tre passi
-  --    descritti in testa - a patto di avere ancora il file Excel.
+  --    il resto: nessuna tabella lo referenzia. Si ricostruisce dal repo coi
+  --    tre script elencati in testa, senza bisogno dell'export Excel.
   delete from corso_alias;
 
   -- Verifica dentro la transazione: devono essere tutti 0.
