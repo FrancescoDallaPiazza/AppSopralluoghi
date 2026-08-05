@@ -672,8 +672,23 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-05** Risorse Umane: **la mansione si scrive in stampatello**
+  (`RisorseUmane.tsx`). Cognome, nome e codice fiscale erano già forzati a
+  maiuscolo in inserimento; mansione e reparto no, quindi la stessa mansione
+  entrava scritta in tre modi diversi a seconda di chi compilava, e la colonna
+  *Mansione* dell'elenco si leggeva a macchia. Ora `toUpperCase()` sul campo
+  della scheda, **come già faceva `PersonaForm` in `OrganigrammaView.tsx:423`**:
+  le due vie per creare una persona (Risorse Umane e il pannello di assegnazione
+  di un ruolo) scrivevano lo stesso campo con due regole diverse.
+  Uppercase anche sulla mansione letta dal **pannello Import** della stessa
+  schermata (riga incollata/Excel), che già normalizzava nome e cognome ma non
+  questa: forzarla solo a mano avrebbe rimesso il minuscolo a ogni import.
+  Il **reparto** è lasciato com'è — non è stato chiesto e non è lo stesso dato.
+  Nessuna migration, nessuna normalizzazione retroattiva delle righe già in
+  tabella. `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+
 - [x] **2026-08-04** Scadenzario: **la formazione mai svolta è "SUBITO"**, ed è la
-  prima riga (non ancora committato). Una persona con *Formazione generale
+  prima riga (`57c8bc6`). Una persona con *Formazione generale
   lavoratori — Mai svolto* risultava **critica** nell'organigramma e
   **assente** dallo scadenzario: la mancanza più grave era l'unica che non
   generava lavoro. Causa: `backfillAzioniEsoneri` apriva con
@@ -715,7 +730,7 @@ sedi li accende; gli attributi si leggono dal cliente).
     dopo essere passati sulla scheda del cliente. Comportamento preesistente.
 
 - [x] **2026-08-04** Organigramma: **il clic su una persona apre la sua sola
-  scheda** (`OrganigrammaView.tsx`, non ancora committato). Nella fisarmonica
+  scheda** (`OrganigrammaView.tsx`, `d750f54`). Nella fisarmonica
   *Organigramma attuale* il clic su una riga-persona apriva la scheda del RUOLO
   con dentro **tutti** gli incaricati: sui Lavoratori dopo un import del
   gestionale sono decine, e la persona appena cliccata andava ritrovata a mano

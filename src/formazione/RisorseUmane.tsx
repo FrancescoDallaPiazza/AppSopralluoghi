@@ -324,7 +324,7 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto, ruoli = [] }: {
             <label className="bo-field">
               <span>Mansione</span>
               <input type="text" value={p.mansione ?? ''}
-                onChange={(e) => set({ mansione: e.target.value || null })} />
+                onChange={(e) => set({ mansione: e.target.value.toUpperCase() || null })} />
             </label>
             <label className="bo-field">
               <span>Reparto</span>
@@ -431,7 +431,7 @@ function pianifica(righe: Record<string, unknown>[], esistenti: Persona[], clien
       nome: nome.toUpperCase(),
       cognome: cognome ? cognome.toUpperCase() : base.cognome,
       codice_fiscale: cf || base.codice_fiscale,
-      mansione: svuota(pick('mansione', 'ruolo', 'qualifica', 'profilo', 'profiloprofessionale')) ?? base.mansione,
+      mansione: svuota(pick('mansione', 'ruolo', 'qualifica', 'profilo', 'profiloprofessionale'))?.toUpperCase() ?? base.mansione,
       reparto: svuota(pick('reparto', 'area', 'settore', 'ufficio')) ?? base.reparto,
       data_assunzione: isoData(pick('dataassunzione', 'assunzione', 'dataassunz', 'datadiassunzione', 'datainizio')) ?? base.data_assunzione,
       attivo: true,
