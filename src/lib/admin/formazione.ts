@@ -457,18 +457,22 @@ export function mansioniUsate(persone: Array<{ mansione?: string | null }>): str
 //  - data compilata e NON futura -> fuori forza. E' il caso normale.
 //  - data TOLTA (c'era, ora non c'e' piu') -> rientro in forza. E' l'unico modo
 //    di annullare una cessazione scritta per sbaglio senza un secondo comando.
-//  - data futura -> `attivo` invariato. Una cessazione programmata non licenzia
-//    nessuno oggi: fino a quel giorno la persona ha ruoli e obblighi veri.
+//  - data futura -> `attivo` invariato. NON e' il supporto a una "cessazione
+//    programmata": quelle non si gestiscono (deciso 2026-08-05, non e' un caso
+//    reale). Nei dati veri una data avanti nel tempo e' quasi sempre l'anno
+//    digitato male, e disattivare su quella base farebbe uscire
+//    dall'organigramma una persona che lavora. Il ramo esiste per non fare
+//    danno; a segnalare l'errore ci pensa la UI (avviso rosso sotto il campo e
+//    pill "data da verificare" in elenco).
 //  - nessuna data, ne' prima ne' ora -> `attivo` invariato. NON si riattiva chi
 //    e' fuori forza senza data (righe anteriori alla migration 061, e la
 //    disattivazione fatta a mano): aprire e salvare la loro scheda per
 //    correggere una mansione li rimetterebbe in organigramma in silenzio.
 //
-// LIMITE NOTO: la derivazione avviene al SALVATAGGIO, non c'e' un job che
-// scandisce le date. Una cessazione datata avanti nel tempo non si attiva da
-// sola il giorno in cui scade: resta in forza finche' qualcuno non risalva
-// quella persona. Serve un passaggio a monte (query o cron) se si vuole
-// davvero far scattare le programmate.
+// La derivazione avviene al SALVATAGGIO e non c'e' un job che scandisce le
+// date: una data futura non scatta da sola quando matura. Non e' una lacuna da
+// colmare ma la conseguenza di come sopra - le cessazioni programmate non
+// esistono in questo dominio, quindi non c'e' niente da far scattare.
 export function attivoDopoCessazione(
   p: { attivo: boolean; data_cessazione: string | null },
   precedente?: { data_cessazione: string | null } | null,

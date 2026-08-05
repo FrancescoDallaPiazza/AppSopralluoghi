@@ -339,6 +339,18 @@ function RigaPersona({
           {!p.attivo && <span className="bo-pill archiviato" style={{ marginLeft: 6 }}>
             {p.data_cessazione ? `cessato ${p.data_cessazione.split('-').reverse().join('/')}` : 'cessato'}
           </span>}
+          {/* Data di cessazione futura su una persona ANCORA IN FORZA: e' il
+              caso muto. La riga non e' sbiadita e non porta il badge "cessato"
+              (giustamente, la persona lavora), quindi l'anno digitato male
+              resterebbe invisibile proprio a chi credeva di averla fatta
+              uscire. Qui si vede senza aprire la scheda. */}
+          {p.attivo && p.data_cessazione && p.data_cessazione > new Date().toISOString().slice(0, 10) && (
+            <span className="bo-pill warn" style={{ marginLeft: 6 }}
+              title={'Data di cessazione ' + p.data_cessazione.split('-').reverse().join('/')
+                + ': e’ nel futuro, quindi la persona risulta ancora in forza. Se la cessazione e’ gia’ avvenuta, correggi l’anno.'}>
+              data da verificare
+            </span>
+          )}
         </td>
         <td className="ru-nom">{p.nome || '—'}</td>
         <td className={'ru-cf' + (cfBad ? ' bad' : '')}>
@@ -408,10 +420,21 @@ function RigaPersona({
                       </small>
                     : null;
                 }
+                // Una data di cessazione nel futuro non e' una cessazione
+                // programmata: quelle non si gestiscono qui, e nei dati veri
+                // una data avanti nel tempo e' quasi sempre l'anno digitato
+                // male. Il punto e' che l'errore e' MUTO: la persona resta in
+                // forza, quindi chi credeva di averla fatta uscire la ritrova
+                // nell'organigramma senza che niente lo segnali. Si dice qui,
+                // in rosso, con il numero degli anni per rendere evidente il
+                // caso "2027 al posto di 2026".
                 if (d > oggi) {
-                  return <small style={{ color: 'var(--ink-soft,#5c5f66)' }}>
-                    Cessazione programmata: resta in forza fino al {d.split('-').reverse().join('/')}.
-                    Non esce da sola quel giorno — va risalvata.
+                  const gg = Math.round((Date.parse(d) - Date.parse(oggi)) / 86400000);
+                  return <small style={{ color: 'var(--no,#d24028)' }}>
+                    Data <strong>nel futuro</strong> ({d.split('-').reverse().join('/')}, fra {gg}{' '}
+                    {gg === 1 ? 'giorno' : 'giorni'}): la persona <strong>resta in forza</strong> e
+                    non esce dall&rsquo;organigramma. Se la cessazione è già avvenuta, controlla
+                    l&rsquo;anno.
                   </small>;
                 }
                 return persona.attivo

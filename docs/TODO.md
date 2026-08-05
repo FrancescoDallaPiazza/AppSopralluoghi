@@ -50,10 +50,12 @@ davanti al cliente giusto, non tre cose diverse.
   nell'organigramma e **i suoi requisiti e le sue scadenze spariscono dal
   riepilogo del cliente e dallo scadenzario**. Riaprirla con *Tutti*, togliere
   la data, *Salva* → torna in forza con i suoi requisiti.
-- [ ] **Data futura**: scrivere una cessazione **di domani** → avviso grigio
-  "resta in forza fino al …" e dopo *Salva* la persona **resta** in elenco e in
-  organigramma. È voluto: una cessazione programmata non licenzia nessuno oggi.
-  Attenzione al limite — quel giorno **non scatta da sola**, serve risalvare.
+- [ ] **Data futura = errore probabile**: scrivere una cessazione **dell'anno
+  prossimo** → avviso **rosso** sotto il campo ("Data nel futuro (…, fra N
+  giorni): la persona resta in forza…"). Dopo *Salva* la persona **resta** in
+  elenco e in organigramma — voluto — ma la riga porta la pill rossa **data da
+  verificare** accanto al cognome, con il dettaglio nel tooltip. Correggendo
+  l'anno a una data passata, la pill sparisce e la persona esce.
 - [ ] **Disattiva non butta più le modifiche**: in modifica, scrivere una data di
   cessazione (o cambiare la mansione) e premere **Disattiva** *senza* aver
   premuto Salva → la data digitata e le altre modifiche vengono conservate.
@@ -787,10 +789,16 @@ sedi li accende; gli attributi si leggono dal cliente).
   - **Deciso di proposito, contro il default della casa**: qui un dato *deduce*
     un esito invece di chiederlo. La scelta è consapevole (vedi
     [[dati-mancanti-si-chiedono]]) e mitigata dall'avviso preventivo.
-  - **LIMITE NOTO**: la derivazione avviene al **salvataggio**, non c'è un job
-    che scandisce le date. Una cessazione programmata **non scatta da sola** il
-    giorno in cui matura: resta in forza finché qualcuno non risalva quella
-    persona. Serve una query periodica (o un cron) se lo si vuole davvero.
+  - **Data futura** (deciso 2026-08-05): le cessazioni **programmate** non sono
+    un caso reale e non si gestiscono. Una data avanti nel tempo è quasi sempre
+    l'anno digitato male, e disattivare su quella base farebbe uscire
+    dall'organigramma una persona che lavora — quindi `attivo` resta com'è, e
+    l'errore lo dichiara la UI: avviso **rosso** sotto il campo (coi giorni di
+    distanza, per rendere evidente il "2027 al posto di 2026") e pill **data da
+    verificare** accanto al cognome. Serviva perché l'errore era altrimenti
+    **muto**: persona in forza, riga non sbiadita, nessun badge *cessato*.
+    Di conseguenza **non serve** il job che scandisce le date: non c'è niente
+    da far scattare.
   Nessuna migration (`persona.data_cessazione` è già dalla 061).
   `tsc --noEmit` + `vite build` verdi. **Da provare in app — checklist in §A.**
 

@@ -644,10 +644,23 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   l'etichetta *cessato*, che era condizionata a `!attivo`.
   Nuova `attivoDopoCessazione(p, precedente)`, regola in un punto solo e usata
   da salvataggio, bottone *Disattiva* e import: data non futura -> fuori forza;
-  data tolta -> rientro; data **futura** -> `attivo` invariato (una cessazione
-  programmata non licenzia nessuno oggi); nessuna data ne' prima ne' ora ->
-  invariato, cosi' salvare la scheda di un disattivato-senza-data (righe
-  anteriori alla 061) non lo rimette in organigramma di nascosto.
+  data tolta -> rientro; data **futura** -> `attivo` invariato; nessuna data
+  ne' prima ne' ora -> invariato, cosi' salvare la scheda di un
+  disattivato-senza-data (righe anteriori alla 061) non lo rimette in
+  organigramma di nascosto.
+  Sulla data futura, **deciso il 2026-08-05**: le cessazioni programmate (fine
+  contratto a termine, preavviso, pensionamento gia' fissato) **non sono un
+  caso reale** in questo dominio e non si gestiscono. Nei dati veri una data
+  avanti nel tempo e' quasi sempre l'anno digitato male, e disattivare su
+  quella base farebbe uscire dall'organigramma una persona che lavora. Il ramo
+  "invariato" esiste dunque per non fare danno, non per supportare la
+  programmazione; e siccome l'errore sarebbe MUTO — la persona resta in forza,
+  la riga non e' sbiadita e non porta il badge *cessato*, quindi chi credeva di
+  averla fatta uscire la ritrova senza segnali — lo dichiara la UI: avviso
+  rosso sotto il campo (con i giorni di distanza, per rendere evidente il
+  "2027 al posto di 2026") e pill **data da verificare** accanto al cognome in
+  elenco. Di conseguenza **non serve** il job che scandisce le date: non c'e'
+  niente da far scattare.
   **E' una deroga consapevole al principio "il dato si chiede, non si deduce"**
   che governa il resto dell'app: qui un campo cambia da solo l'esito di
   conformita'. La deroga regge perche' la deduzione e' l'identita' fra due dati
@@ -662,9 +675,6 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   `toggle()`, che leggeva lo stato salvato e non quello in modifica: scrivere
   la data e premere *Disattiva* senza Salva buttava via la data appena
   digitata.
-  **Limite noto**: la derivazione avviene al salvataggio, non c'e' un job che
-  scandisce le date — una cessazione programmata non scatta da sola il giorno
-  in cui matura. Serve una query periodica se lo si vuole davvero.
 
 - **Mansione e reparto: vocabolario aziendale, non testo libero**
   (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
