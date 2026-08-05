@@ -672,6 +672,23 @@ sedi li accende; gli attributi si leggono dal cliente).
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-05** Risorse Umane: **stesso trattamento al reparto**
+  (`lib/admin/formazione.ts`, `RisorseUmane.tsx`). Stampatello in inserimento +
+  tendina dei reparti già usati, come per la mansione qui sotto — stesso
+  problema (vocabolario aziendale scritto da persone diverse in momenti
+  diversi), stessa soluzione. Anche nel pannello *Import* della schermata.
+  - L'helper è diventato `valoriUsati(valori)` (privato) con due facciate
+    esportate, `mansioniUsate` e `repartiUsati`: sono due vocabolari
+    **separati** e non vanno mescolati. "MANUTENZIONE" può essere
+    legittimamente sia un reparto sia una mansione, ma proporre le mansioni fra
+    i reparti riempirebbe ogni tendina di voci che in quel campo non ci sono
+    mai state.
+  - Il reparto sta **solo in Risorse Umane**: `PersonaForm` (organigramma) non
+    ha quel campo — crea la persona con cognome, nome, mansione e CF, e il
+    reparto lo porta avanti invariato da `persona?.reparto`. Quindi nessuna
+    modifica lì, e nessuna parità da recuperare in campo.
+  `tsc --noEmit` + `vite build` verdi. **Da provare in app.**
+
 - [x] **2026-08-05** Anagrafica persona: **le mansioni già usate si ripropongono**
   (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
   Seguito dello stampatello qui sotto: il maiuscolo toglie una delle grafie

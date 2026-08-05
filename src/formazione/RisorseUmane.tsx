@@ -14,8 +14,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
-  caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona, mansioniUsate,
-  type Persona,
+  caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona,
+  mansioniUsate, repartiUsati, type Persona,
 } from '../lib/admin/formazione';
 import { newId } from '../lib/types';
 import { valido as cfValido, pulisci as cfPulisci } from './codiceFiscale';
@@ -87,16 +87,19 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
 
   const cambiato = () => { ricarica(); onCambia?.(); };
 
-  // Mansioni gia' in uso, proposte a chi inserisce la persona successiva. Si
-  // leggono da TUTTE le persone e non dalle sole visibili: il filtro in alto e'
-  // di chi sta guardando l'elenco adesso, mentre il vocabolario aziendale delle
-  // mansioni comprende anche i cessati e chi la ricerca sta escludendo.
+  // Mansioni e reparti gia' in uso, proposti a chi inserisce la persona
+  // successiva. Si leggono da TUTTE le persone e non dalle sole visibili: il
+  // filtro in alto e' di chi sta guardando l'elenco adesso, mentre il
+  // vocabolario aziendale comprende anche i cessati e chi la ricerca esclude.
   const mansioni = mansioniUsate(persone);
-  // Un solo <datalist> per tutta la tabella: le righe in modifica possono essere
-  // piu' d'una insieme, e un id duplicato nel DOM farebbe agganciare tutte le
-  // input alla prima lista incontrata. `useId` lo tiene distinto anche se un
-  // giorno due schede cliente convivessero nella stessa pagina.
+  const reparti = repartiUsati(persone);
+  // Un solo <datalist> per campo e per tutta la tabella: le righe in modifica
+  // possono essere piu' d'una insieme, e un id duplicato nel DOM farebbe
+  // agganciare tutte le input alla prima lista incontrata. `useId` li tiene
+  // distinti anche se un giorno due schede cliente convivessero nella stessa
+  // pagina.
   const listaMansioni = useId();
+  const listaReparti = useId();
 
   const ago = q.trim().toLowerCase();
   const ruoliDi = (id: string): string[] => ruoli.get(id) ?? [];
@@ -190,13 +193,14 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
           </thead>
           <tbody>
             {agg && (
-              <RigaPersona persona={personaVuota(clienteId)} listaMansioni={listaMansioni}
+              <RigaPersona persona={personaVuota(clienteId)}
+                listaMansioni={listaMansioni} listaReparti={listaReparti}
                 onCambia={() => { setAgg(false); cambiato(); }}
                 onAnnulla={() => setAgg(false)} />
             )}
             {visibili.map((p) => (
               <RigaPersona key={p.id} persona={p} onCambia={cambiato} ruoli={ruoliDi(p.id)}
-                listaMansioni={listaMansioni}
+                listaMansioni={listaMansioni} listaReparti={listaReparti}
                 onLibretto={() => setLibretto((cur) => (cur === p.id ? null : p.id))} />
             ))}
           </tbody>
@@ -208,6 +212,11 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
       {mansioni.length > 0 && (
         <datalist id={listaMansioni}>
           {mansioni.map((m) => <option key={m} value={m} />)}
+        </datalist>
+      )}
+      {reparti.length > 0 && (
+        <datalist id={listaReparti}>
+          {reparti.map((r) => <option key={r} value={r} />)}
         </datalist>
       )}
 
@@ -234,11 +243,14 @@ export function RisorseUmane({ clienteId, clienteNome, onCambia, onConteggio }: 
 
 // ============================ riga persona ============================
 
-function RigaPersona({ persona, onCambia, onAnnulla, onLibretto, ruoli = [], listaMansioni }: {
+function RigaPersona({
+  persona, onCambia, onAnnulla, onLibretto, ruoli = [], listaMansioni, listaReparti,
+}: {
   persona: Persona; onCambia: () => void; onAnnulla?: () => void;
   onLibretto?: () => void; ruoli?: string[];
-  // id del <datalist> con le mansioni gia' usate nell'azienda (vedi sopra).
+  // id dei <datalist> con le mansioni e i reparti gia' usati in azienda (sopra).
   listaMansioni?: string;
+  listaReparti?: string;
 }) {
   const nuova = !persona.id;
   const [modifica, setModifica] = useState(nuova);
@@ -351,8 +363,8 @@ function RigaPersona({ persona, onCambia, onAnnulla, onLibretto, ruoli = [], lis
             </label>
             <label className="bo-field">
               <span>Reparto</span>
-              <input type="text" value={p.reparto ?? ''}
-                onChange={(e) => set({ reparto: e.target.value || null })} />
+              <input type="text" value={p.reparto ?? ''} list={listaReparti}
+                onChange={(e) => set({ reparto: e.target.value.toUpperCase() || null })} />
             </label>
             <label className="bo-field">
               <span>Rischio (override)</span>
@@ -455,7 +467,7 @@ function pianifica(righe: Record<string, unknown>[], esistenti: Persona[], clien
       cognome: cognome ? cognome.toUpperCase() : base.cognome,
       codice_fiscale: cf || base.codice_fiscale,
       mansione: svuota(pick('mansione', 'ruolo', 'qualifica', 'profilo', 'profiloprofessionale'))?.toUpperCase() ?? base.mansione,
-      reparto: svuota(pick('reparto', 'area', 'settore', 'ufficio')) ?? base.reparto,
+      reparto: svuota(pick('reparto', 'area', 'settore', 'ufficio'))?.toUpperCase() ?? base.reparto,
       data_assunzione: isoData(pick('dataassunzione', 'assunzione', 'dataassunz', 'datadiassunzione', 'datainizio')) ?? base.data_assunzione,
       attivo: true,
     };
