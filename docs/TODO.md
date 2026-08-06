@@ -28,13 +28,14 @@ Ripristino del dizionario alias, sequenza in 3 passi:
   sono copiati carattere per carattere. Verificato: 268 identici uno a uno.
 - [x] `mappatura_alias_gestionale.sql` — **fatto**, esito confermato:
   `damappare 0, mappati 237, ignorati 31, totale 268`.
-- [ ] `integrazione_preposti_pregressa.sql` — **NON risulta eseguito**: la
-  sessione si è interrotta prima della conferma. È il passo che marca
-  `pregressa` + `evidenza_incompleta` la riga *INTEGRAZIONE FORMAZIONE
-  PARTICOLARE AGGIUNTIVA PREPOSTI*. Il suo secondo `update` (su `formazione`)
-  toccherà 0 righe, ed è corretto: serve al prossimo import. **Da lanciare.**
-  Verifica: `select pregressa, parziale, evidenza_incompleta from corso_alias
-  where testo_gestionale like 'INTEGRAZIONE%'` → attesi true / false / true.
+- [x] `integrazione_preposti_pregressa.sql` — **fatto 2026-08-06**, esito
+  verificato: *INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI* →
+  `PREPOSTO`, `pregressa true`, `parziale false`, `evidenza_incompleta true`.
+  Le altre 9 righe `INTEGRAZIONE ...` (PLE, specifica lavoratori, moduli 3-4
+  del datore RSPP) restano intatte come previsto: non sono lo stesso caso.
+
+**Dizionario alias completo e allineato allo stato del 2026-07-30.** Nessun
+altro passo di ripristino da fare: l'import formazione può girare.
 
 Da fare prima di rimettere dentro dati veri:
 - [ ] **Chiudere e riaprire la PWA** su ogni dispositivo, back-office compreso:
