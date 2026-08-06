@@ -11,6 +11,48 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ## A · Da fare subito (deploy delle ultime feature)
 
+### DATABASE AZZERATO il 2026-08-05 — stato e ripresa
+
+Eseguito `supabase/scripts/azzera_anagrafiche.sql` (PARTE 2) su richiesta:
+**tabula rasa** di clienti, persone e storico rilievi. Verificato: tutte le
+tabelle a 0. Cancellati: 7 clienti, 181 persone (186 nomine, 384 formazioni,
+4 esoneri), 12 sedi, 65 revisioni organigramma, 1 incarico, 4 sopralluoghi
+(4 checklist, 24 esiti, **0 foto**), 264 azioni, 268 alias.
+La configurazione è intatta e va ricontrollata identica: tecnico 3,
+checklist_template 5, box_catalogo 16, corso_catalogo 40, figura_sicurezza 13.
+
+Ripristino del dizionario alias, sequenza in 3 passi:
+- [x] `ripristina_alias_gestionale.sql` — **fatto**. Reimmette i 268 testi
+  esatti senza bisogno dell'export Excel (che **non c'è più**): sono conservati
+  dentro `mappatura_alias_gestionale.sql`, che li elenca uno per uno, e da lì
+  sono copiati carattere per carattere. Verificato: 268 identici uno a uno.
+- [x] `mappatura_alias_gestionale.sql` — **fatto**, esito confermato:
+  `damappare 0, mappati 237, ignorati 31, totale 268`.
+- [ ] `integrazione_preposti_pregressa.sql` — **NON risulta eseguito**: la
+  sessione si è interrotta prima della conferma. È il passo che marca
+  `pregressa` + `evidenza_incompleta` la riga *INTEGRAZIONE FORMAZIONE
+  PARTICOLARE AGGIUNTIVA PREPOSTI*. Il suo secondo `update` (su `formazione`)
+  toccherà 0 righe, ed è corretto: serve al prossimo import. **Da lanciare.**
+  Verifica: `select pregressa, parziale, evidenza_incompleta from corso_alias
+  where testo_gestionale like 'INTEGRAZIONE%'` → attesi true / false / true.
+
+Da fare prima di rimettere dentro dati veri:
+- [ ] **Chiudere e riaprire la PWA** su ogni dispositivo, back-office compreso:
+  la cache locale (Dexie/IndexedDB) ha ancora i 7 clienti e le 181 persone
+  cancellate, e la outbox può tentare di scrivere verso righe che non esistono.
+- [ ] **NON svuotare gli Storage bucket**: i PDF degli attestati sono rimasti e
+  sono l'unica copia superstite delle 384 formazioni cancellate. Decidere con
+  calma, separatamente.
+- [ ] Ricreare i clienti — vedi la nuova voce in §B sull'import da visura
+  camerale, che nasce proprio da qui. A mano si parte da *Anagrafiche →
+  + Nuovo cliente*; ricordarsi che rischio, livelli antincendio/primo soccorso
+  e numero lavoratori **nessun import li compila**.
+
+**File di origine perduti**: `elencoAnagraficaFormazioni.xlsx` (catalogo corsi
+del gestionale) e presumibilmente `ExportExcel.xlsx` (registro attestati). Il
+primo non serve più — il ripristino non lo usa. Il secondo sì: senza, le 384
+formazioni importate non sono ricostruibili da nessuna parte.
+
 ### Verifiche in app arretrate (scritto 2026-08-05)
 
 Tutto quanto segue è **già su `main`** e non richiede migration né deploy di
@@ -575,6 +617,65 @@ sedi li accende; gli attributi si leggono dal cliente).
   - [ ] **Back-office su phone/tablet** (prossimo step). Tabella Disponibilità
     sfora in orizzontale già su tablet; unica media query a 620px troppo debole;
     max-width 1040px; touch target. Toccare `admin/ui.ts` e le griglie/tabelle.
+
+### Anagrafiche aziendali: import isolato + nuovo cliente da visura camerale
+
+**Concordato 2026-08-05, da fare. Nessuna riga di codice ancora scritta.**
+
+Il problema: oggi l'unico modo di far nascere un cliente da una sorgente esterna
+è l'**Import Werp**, che però è una pipeline a 7 stadi (contratti + documenti +
+attività + anagrafiche → clienti + incarichi + sopralluoghi pianificati). Per
+creare *solo* l'anagrafica aziendale serve un altro ingresso, staccato da quello.
+
+**Decisioni prese** (scelte da Francesco fra le alternative proposte):
+- **Sorgente: PDF caricato.** Si carica la visura come si caricano gli Excel.
+  Serve estrarre il testo nel browser → nuova dipendenza **`pdfjs-dist`**
+  (~350kB). Limite accettato: sulle visure **scansionate** non c'è testo da
+  leggere e non si ricava nulla — va detto in chiaro, non fatto fallire in
+  silenzio. (L'alternativa "incolla il testo", a zero dipendenze, è stata
+  scartata: un passaggio manuale in più per visura.)
+- **Portata: anagrafica + sedi + datore di lavoro.** Non solo i campi cliente:
+  le **unità locali** diventano sedi operative proposte e il **legale
+  rappresentante** diventa una persona con la nomina a *Datore di lavoro*.
+  Quindi una parte dell'organigramma nasce dalla visura — ma sono proposte su
+  dati che hanno effetti normativi, quindi **tutte da confermare esplicitamente**,
+  mai salvate d'ufficio.
+
+**Mappatura visura → campi app** (già verificata sul modello):
+
+| Visura | Campo | Note |
+|---|---|---|
+| Denominazione | `ragione_sociale` | |
+| Codice fiscale / P.IVA | `codice_fiscale`, `partita_iva` | |
+| Sede legale | `indirizzo`, `cap`, `localita`, `provincia` | |
+| ATECO attività prevalente | `codice_ateco` | guida `oreModuloSettore` (RSPP / DL-RSPP) |
+| PEC | `email` | |
+| Unità locali | `sede` operativa | risponde alla domanda "legale = operativa?" |
+| Legale rappresentante | `persona` + `nomina` datore | nome, CF, carica |
+| Numero addetti (visura ordinaria) | `numero_lavoratori` | dato **dichiarato**, non dedotto: legittimo, ma da confermare |
+
+**Quello che la visura NON dà e non va inventato**: `livello_rischio`,
+`livello_antincendio`, `gruppo_primo_soccorso`. Sono i tre campi che decidono le
+ore di formazione specifica e il numero di addetti alle emergenze. Verificato
+2026-08-05 che **nessuno si deriva dall'ATECO** (`formazione.ts:1258`): l'ATECO
+serve solo al macrosettore dei moduli RSPP. Dedurre il rischio dal codice
+attività sarebbe lo stesso errore già corretto sulle ore RLS, vedi
+[[dati-mancanti-si-chiedono]]. **Il cliente da visura nasce incompleto per
+costruzione, e la scheda deve dirlo.**
+
+**Da decidere alla ripresa** (non ancora affrontato):
+- [ ] Se serve **anche** l'import massivo da Excel/CSV, staccato da Werp, per
+  ricreare più clienti da una lista già pronta. Era la terza opzione e non è
+  stata scelta, ma non è stata nemmeno esclusa.
+- [ ] Dove sta l'ingresso: dentro *Anagrafiche* (accanto a "+ Nuovo cliente",
+  visto che crea UN cliente) o come voce di back-office a sé.
+- [ ] Come si presentano i campi proposti: badge "da confermare" per campo
+  (c'è già il pattern `sede.da_confermare`) oppure anteprima dry-run in stile
+  `ImportFormazione` prima di scrivere.
+- [ ] Robustezza del parser: le etichette (`Denominazione:`, `Codice fiscale:`,
+  `Attività prevalente:`) sono stabili fra emittenti diversi, l'impaginazione
+  no. Serve una visura vera su cui tarare — **procurarne una** prima di
+  scrivere il parser.
 
 ### Integrazione gestionale
 
