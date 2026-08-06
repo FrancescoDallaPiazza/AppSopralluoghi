@@ -46,8 +46,17 @@ Da fare prima di rimettere dentro dati veri:
   calma, separatamente.
 - [ ] Ricreare i clienti — vedi la nuova voce in §B sull'import da visura
   camerale, che nasce proprio da qui. A mano si parte da *Anagrafiche →
-  + Nuovo cliente*; ricordarsi che rischio, livelli antincendio/primo soccorso
-  e numero lavoratori **nessun import li compila**.
+  + Nuovo cliente*. Il **rischio** però si propone da solo scegliendo l'ATECO
+  (tabella Allegato IV ASR 2025, vedi la correzione in §B); restano da
+  compilare **livelli antincendio/primo soccorso** e **numero lavoratori**.
+- [ ] **OVERALL GROUP si ricrea con uno script, non a mano** (scoperto
+  2026-08-06): `supabase/migrations/046_import_organigramma_overall_standalone.sql`
+  ricrea il cliente interno (P.IVA 04534450236) con persone, nomine, formazioni
+  ed esoneri — PRADELLA TAZIO su `dl_rspp`, STELLUTI ERIKA e VEDOVA MARTINA coi
+  loro ruoli — e `047_overall_datore_lavoro_nomina.sql` aggiunge la nomina a
+  datore. Entrambi **idempotenti**, dedup su P.IVA e codice fiscale, quindi
+  rieseguibili senza duplicare. L'azzeramento di ieri ha cancellato quelle
+  righe: rilanciarli le riporta indietro complete.
 
 **File di origine perduti**: `elencoAnagraficaFormazioni.xlsx` (catalogo corsi
 del gestionale) e presumibilmente `ExportExcel.xlsx` (registro attestati). Il
@@ -655,14 +664,69 @@ creare *solo* l'anagrafica aziendale serve un altro ingresso, staccato da quello
 | Legale rappresentante | `persona` + `nomina` datore | nome, CF, carica |
 | Numero addetti (visura ordinaria) | `numero_lavoratori` | dato **dichiarato**, non dedotto: legittimo, ma da confermare |
 
-**Quello che la visura NON dà e non va inventato**: `livello_rischio`,
-`livello_antincendio`, `gruppo_primo_soccorso`. Sono i tre campi che decidono le
-ore di formazione specifica e il numero di addetti alle emergenze. Verificato
-2026-08-05 che **nessuno si deriva dall'ATECO** (`formazione.ts:1258`): l'ATECO
-serve solo al macrosettore dei moduli RSPP. Dedurre il rischio dal codice
-attività sarebbe lo stesso errore già corretto sulle ore RLS, vedi
-[[dati-mancanti-si-chiedono]]. **Il cliente da visura nasce incompleto per
-costruzione, e la scheda deve dirlo.**
+**CORREZIONE 2026-08-06 — il `livello_rischio` SI deriva dall'ATECO, e lo fa
+già.** Ieri avevo scritto il contrario guardando solo il motore: è vero che
+`assemblaRiepilogo` legge `cliente.livello_rischio` come campo memorizzato e non
+lo ricalcola, ma **l'anagrafica lo propone da sempre**. `src/formazione/ateco.ts`
+è la tabella **ATECO → livello di rischio dell'Allegato IV ASR 17/04/2025**
+(generata dalla libreria normativa, non trascritta), e `Anagrafiche.tsx:873`
+scegliendo una divisione scrive **sia** `codice_ateco` **sia** `livello_rischio`.
+Non è una deduzione arbitraria: è una tabella di legge. Quindi la visura, dando
+l'ATECO, dà anche il rischio proposto — ed è giusto che lo faccia.
+
+Nota di modello: `codice_ateco` conserva la **divisione a 2 cifre** (`'74'`),
+non il codice completo.
+
+**Quello che la visura NON dà e resta da compilare a mano**: `livello_antincendio`
+e `gruppo_primo_soccorso`. Non discendono dall'ATECO — si scelgono, e l'app
+registra pure il perché (`antincendio_definito_mediante`,
+`primo_soccorso_definito_mediante`). Su questi vale
+[[dati-mancanti-si-chiedono]]: si chiedono, non si inducono.
+**Il cliente da visura nasce comunque incompleto, e la scheda deve dirlo.**
+
+**Visura con più unità locali — impostazione decisa 2026-08-06.** Non c'era una
+visura multi-sede su cui provare (quella campione ne ha **0**), ma il modello
+dell'app detta già la risposta, ed è controintuitiva: **N unità locali non
+diventano N sedi di un cliente, diventano N clienti distinti.** Perché:
+- una sola sede operativa per cliente (`Anagrafiche.tsx:280`, `find` singolare;
+  il bottone di aggiunta sparisce se ce n'è già una) → **un cliente = un
+  organigramma**;
+- decisione già presa per l'import formazione: *"Un'unità = (P.IVA, Sede), e
+  ogni unità va su un cliente distinto"*. Ecodent: due stabilimenti, stessa
+  P.IVA, squadre di emergenza separate (6+5 e 4+3). Fonderli avrebbe fatto
+  contare 10 addetti e dire "coperto" con una sede scoperta;
+- `cliente.partita_iva` **non ha vincolo di unicità** (`040`): condividerla fra
+  clienti è previsto.
+
+Il dato che rende la cosa fattibile è una sezione della visura che vale la pena
+non perdere: oltre alle unità locali, il documento riporta da **fonte INPS** i
+blocchi `Addetti nel comune di <COMUNE> (<PR>)` con dipendenti/indipendenti per
+trimestre e valore medio. Dice **dove stanno le persone e quante**: è
+`numero_lavoratori` per luogo, cioè il campo che decide le 4h o 8h di
+aggiornamento RLS.
+
+Incrocio unità locali × addetti, tre esiti e nessuno silenzioso:
+| caso | proposta |
+|---|---|
+| unità locale **con** addetti | cliente proprio, `numero_lavoratori` precompilato, spunta accesa |
+| unità locale **senza** addetti | proposta **spenta** di default, col motivo scritto |
+| addetti in un comune **senza** unità locale | segnalata, non ignorata |
+
+Il secondo caso è il punto delicato: la visura dice che l'unità locale *esiste*,
+non che ci lavori qualcuno. Un deposito vuoto promosso a cliente si porterebbe
+dietro organigramma, obblighi di squadra di emergenza e scadenze inventate.
+
+Su ogni cliente creato si copiano: ragione sociale col comune in coda per
+distinguerli in tendina (problema noto, c'è già `etichettaCliente`), P.IVA, CF,
+ATECO + rischio proposto, PEC; sede legale in anagrafica; **sede operativa =
+indirizzo dell'unità locale**; `numero_lavoratori` dal blocco addetti di quel
+comune. Il **legale rappresentante si replica su tutti** (stesso datore per
+tutte le unità); le **squadre di emergenza no**, sono per luogo di lavoro.
+
+**Limite da dichiarare subito**: due unità locali nello stesso comune
+condividono un solo blocco addetti e il numero non è divisibile. Proporre il
+totale su una sola e lasciare l'altra vuota con avviso, invece di spartire a
+metà un dato che nessuno ha misurato così.
 
 **Da decidere alla ripresa** (non ancora affrontato):
 - [ ] Se serve **anche** l'import massivo da Excel/CSV, staccato da Werp, per
