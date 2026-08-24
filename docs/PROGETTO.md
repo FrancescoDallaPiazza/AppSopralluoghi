@@ -634,6 +634,24 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
 ---
 
 ## Cronologia
+- **La guida d'uso ha un modo per accorgersi di essere invecchiata**
+  (`docs/USO.md`, `scripts/guida-check.mjs`). `USO.md` era fermo al 23/06 e
+  nessuno se n'era accorto: e' il difetto strutturale di ogni manuale, che non
+  fallisce mai la build. Il rimedio non e' la buona volonta' ma un confronto
+  meccanico: il §13 della guida dichiara, capitolo per capitolo, **quali file
+  sorgente quel capitolo descrive**; `npm run guida:check` prende l'ultimo
+  commit che ha toccato `USO.md` e elenca i commit successivi su quei file.
+  Non giudica se il testo sia sbagliato -- non puo' -- dice dove guardare.
+  Segnala anche i `.tsx` sotto `src/` che nessun capitolo dichiara: una
+  schermata nuova non mappata sarebbe l'unico caso che sfugge al controllo.
+  Il limite e' dichiarato nello script stesso: la metrica e' la distanza
+  dall'ultimo commit della guida, quindi un commit fittizio su `USO.md` azzera
+  l'allarme. E' un attrezzo per chi lavora in buona fede, non una guardia --
+  come `TODO.md`, che nessuno obbliga a essere vero.
+  Divisione dei compiti fra i tre documenti, per non mantenere le stesse cose
+  in due posti: `USO.md` §12 registra **cio' che l'utente vede cambiare**;
+  questa `Cronologia` tiene le **decisioni e i loro perche'**; `TODO.md` tiene
+  cio' che manca.
 - **La data di cessazione governa `attivo`** (`lib/admin/formazione.ts`,
   `RisorseUmane.tsx`, `OrganigrammaView.tsx`). Erano due dati che dicevano la
   stessa cosa con un solo effetto: `attivo` decide chi entra

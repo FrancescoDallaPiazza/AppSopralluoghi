@@ -926,6 +926,38 @@ metà un dato che nessuno ha misurato così.
 
 ## ✅ Fatti di recente
 
+- [x] **2026-08-24** **Guida d'uso riscritta e resa manutenibile**
+  (`docs/USO.md`, `scripts/guida-check.mjs`, `package.json`).
+  `USO.md` era fermo al **23/06**: descriveva una navigazione a tab piatti che
+  non esiste piu' (oggi e' a due livelli per gruppi), non nominava *Risorse
+  Umane*, il libretto, lo scadenzario separato dalle cose da fare, ne' UNO dei
+  cinque ingressi dei dati, e diceva di impostare il livello di rischio a mano
+  quando l'ATECO lo propone da solo. Un manuale sbagliato e' peggio di nessun
+  manuale: chi lo segue cerca bottoni che non ci sono.
+  - Riscritto sull'app di oggi, 13 capitoli. Il nuovo **§3 "Portare dentro i
+    dati: i cinque ingressi"** e' la risposta a "come importo aziende e
+    persone": tabella di cosa crea ciascun ingresso, l'ordine giusto partendo
+    da zero (alias → clienti → persone → formazione), e i due punti che si
+    pagano dopo (il cliente nato da Werp non ha `livello_rischio`; l'import
+    formazione non crea clienti, di proposito).
+  - **`npm run guida:check`**: il §13 mappa capitolo → file sorgente; lo script
+    confronta l'ultimo commit che ha toccato `USO.md` con i commit successivi
+    su quei file e dice **quali capitoli sono arretrati e per colpa di quali
+    commit**. Segnala anche le schermate `.tsx` che nessun capitolo dichiara,
+    perche' una schermata nuova non mappata invecchierebbe senza che il
+    controllo possa accorgersene. `--strict` esce con codice 1 (per la CI).
+  - Il **§12 "Novita'"** e' il registro di cio' che l'utente **vede**; le
+    motivazioni tecniche restano nella `Cronologia` di `PROGETTO.md` e non si
+    duplicano.
+  - **Convenzione**: una modifica che cambia cio' che l'utente vede o fa si
+    chiude aggiornando il capitolo e il §12, **nello stesso commit**. La misura
+    e' la distanza dall'ultimo commit della guida, quindi toccarla a vuoto
+    azzera l'allarme senza aver letto niente: e' un attrezzo per chi lavora in
+    buona fede, non una guardia.
+  - **Da fare al primo commit**: finche' `USO.md` non e' committato, il
+    baseline resta il commit del 23/06 e `guida:check` elenca tutti i 9
+    capitoli. Committandolo, riparte pulito.
+
 - [x] **2026-08-05** Persona: **la data di cessazione disattiva da sola**
   (`lib/admin/formazione.ts`, `RisorseUmane.tsx`, `OrganigrammaView.tsx`).
   Erano due dati che dicevano la stessa cosa e solo uno aveva effetto:
