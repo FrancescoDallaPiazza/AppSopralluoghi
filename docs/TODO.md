@@ -9,6 +9,46 @@ sposta in fondo nella sezione "Fatti di recente".
 
 ---
 
+## 0 · Direzione (deciso 2026-08-26)
+
+**L'app sostituisce il gestionale sullo scadenzario.** Perimetro deciso: **solo lo
+scadenzario**. NON entrano l'erogazione dei corsi (edizioni, iscrizioni, registro
+presenze, emissione attestati), la sorveglianza sanitaria come *processo*
+(protocollo, convocazioni, giudizi di idoneità) né il lato commerciale (preventivi,
+contratti, fatturazione): quelli restano dove sono.
+
+**Transizione: doppio binario a tempo.** L'app diventa la fonte di verità, il
+gestionale resta acceso in sola lettura come archivio storico per un periodo
+definito. Nessun doppio inserimento: si scrive in app.
+
+**Conseguenza sul codice esistente.** Cambia la *direzione del flusso*. Finora il
+gestionale era la fonte e l'app importava; da qui in avanti `formazioneImport`,
+`anagraficheImport`, `werpImport` e il dizionario `corso_alias` degradano da
+**sincronizzazione permanente** a **utensili di migrazione una tantum**. Restano nel
+codice, ma smettono di essere un impegno da tenere allineato al gestionale.
+
+**Stato di partenza, verificato il 2026-08-26.** Dei quattro blocchi dello
+scadenzario ne vive **uno solo**:
+
+- **Formazione** — alimentato dalle righe `azione` del Ramo A, che il motore
+  materializza da sé. Funziona.
+- **Documenti / Autorizzazioni / Sorveglianza sanitaria** — tre viste su un insieme
+  **vuoto**. La tabella `adempimento` esiste dalla `055` con la forma giusta, ma
+  nessuno la scrive: `lib/admin/scadenzario.ts` non ha una sola funzione di
+  scrittura, `admin/Scadenzario.tsx` non modifica adempimenti ("un CPI non si
+  conclude"), e `formazioneImport.ts` la cita solo in un commento per dire dove
+  *andrebbero* le visite mediche. Il modello dati regge già: manca l'ingresso.
+
+Il lavoro sta in quattro filoni, aperti in **B** come `S1`–`S4` e da fare in
+quest'ordine. `S3` può correre in parallelo a `S2`: è quello che dice **quando** si
+spegne il gestionale.
+
+**Prima di `S2`** vanno chiuse le verifiche arretrate della sezione **A** e l'aggancio
+delle formazioni frazionate a C1b: lo storico di tutti i clienti si carica una volta
+sola, e conviene caricarlo su un motore già verificato.
+
+---
+
 ## A · Da fare subito (deploy delle ultime feature)
 
 ### DATABASE AZZERATO il 2026-08-05 — stato e ripresa
@@ -585,77 +625,92 @@ Per attivare in produzione il **feed iCal sottoscrivibile** e la
 
 ## B · Aperti (sviluppi pianificati)
 
-### Sede: modello semplificato (deciso 2026-07-08, rivisto)
+L'ordine è quello di §0: prima i quattro filoni dello scadenzario (`S1`–`S4`),
+poi ciò che li tocca da vicino, poi il resto.
 
-Un solo organigramma per cliente. La sede legale sta nell'anagrafica; si aggiunge
-UNA sola sede operativa solo se la legale non e' nella disponibilita' dell'azienda
-(es. commercialista). L'organigramma vive sulla sede operativa se presente,
-altrimenti sulla legale; gli attributi che lo guidano (rischio/ATECO/PS/antincendio/
-RLS) sono aziendali e si leggono dal CLIENTE. Stato:
+### S1 · Adempimenti: dare voce ai tre blocchi muti
 
-- [x] Schema sede di prima classe (`054`): sede con campi topografici + org +
-  `principale` + `da_confermare`; `persona.sede_id`; sede legale per cliente.
-- [x] Motore (`formazione.ts`): `valutaSede`; `valutaCliente` risolve la
-  sede-organigramma (`sedeOrganigrammaId` = operativa attiva altrimenti legale);
-  gli attributi si leggono dal cliente; `salvaPersona` aggancia alla sede-organigramma.
-- [x] UI: una sola sede operativa (bottone nascosto se gia' presente); testo
-  aggiornato (commercialista); `allineaPersoneOrganigramma` sposta le persone sulla
-  sede-organigramma quando si aggiunge/archivia l'operativa. Selettore multi-sede e
-  copia tra sedi RIMOSSI (non servono con un solo organigramma).
-- [x] La sede operativa si **chiede**, non si deduce (2026-07-31). Nello spazio
-  *Sedi* dell'anagrafica: "La sede legale corrisponde con la sede operativa?" —
-  **Sì** crea la sede operativa copiando i dati della legale, **No** apre il box
-  di inserimento. Prima "nessuna sede operativa" voleva dire due cose diverse
-  (coincidono / non ci ha pensato nessuno) e niente le distingueva: è il motivo
-  per cui due clienti della stessa azienda risultavano identici all'import del
-  gestionale. Rispondendo, il luogo di lavoro è sempre scritto.
-  **`tsc -b` + `vite build` VERIFICATI 2026-08-02 — verdi.**
-- [ ] Fase 4 - scadenzario: opzionale etichetta della sede sulle voci (roll-up
-  multi-sede non serve piu': una sola sede-organigramma per cliente).
-- [ ] Fase 5 - offline: il riepilogo in campo segue la sede-organigramma del cliente
-  del sopralluogo (sola lettura, offline).
+Senza questo il resto non ha senso: oggi Documenti / Autorizzazioni / Sorveglianza
+sono vetrine su una tabella disabitata (vedi §0). Il modello c'è dalla `055`, manca
+solo il modo di scriverci.
 
-Note: colonne org su `sede`, write-through in `salvaCliente`, flag `da_confermare` e
-badge in OrganigrammaView restano ma sono ridondanti/dormienti (nessuna copia tra
-sedi li accende; gli attributi si leggono dal cliente).
+- [ ] **Scritture in `lib/admin/scadenzario.ts`**: `salvaAdempimento` /
+  `eliminaAdempimento`. Il file è di sola lettura per scelta esplicita, ma quella
+  scelta valeva finché la sorgente era l'import.
+- [ ] **UI nella scheda cliente**, accanto all'organigramma — **non** nello
+  scadenzario globale. L'adempimento pende da cliente/sede/persona: lo scadenzario
+  resta una *vista*, e il fatto si registra dove vive. Per la categoria
+  `sorveglianza` il vincolo `adempimento_sorveglianza_chk` impone la persona.
+- [ ] **Rinnovo come per gli attestati**: si registra il fatto nuovo e la scadenza si
+  ricalcola da `periodicita_mesi`. Nessuna data scritta a mano — è la regola che
+  tiene in piedi tutto lo scadenzario, e vale anche ora che l'app diventa la fonte.
+- [ ] **Allegato** su bucket privato, sullo schema di `attestati` (migration `021`):
+  `adempimento.allegato_path` è già previsto.
+- [ ] **Catalogo dei tipi di adempimento** (nuova tabella + migration), con
+  periodicità di default. Oggi `adempimento.tipo` è testo libero (`'CPI'`,
+  `'TERRA'`…): in sei mesi d'uso quotidiano "CPI" e "C.P.I." diventano due scadenze
+  diverse e nessun filtro le riunisce. È lo stesso servizio che `corso_catalogo`
+  rende ai corsi.
+- [ ] **Import una tantum degli adempimenti esistenti** dal gestionale. `import_key`
+  è già sulla tabella con l'unique parziale: l'idempotenza non va inventata.
 
-### Organigramma / formazione
+### S2 · Migrazione dello storico su tutti i clienti
 
-- [ ] **Modello di nomina per figura** (step successivo della revisione scheda
-  organigramma, deciso 2026-07-08). Generare un `.docx` precompilato con dati
-  cliente + persona per ogni figura (atto di nomina), sullo stile dell'export
-  organigramma PDF (Edge Function / PDFBolt o skill docx). Deve valere per tutte
-  le figure con nomina (tutte tranne i Lavoratori); per Datore e Datore delegato
-  ex art. 16 richiamare gli allegati attesi (visura camerale, atto/procura). La
-  parte dati (figura `datore_lavoro_art16` con `nomina.estremi_procura`,
-  evidenze in `nomina_evidenza`) e' gia' pronta lato DB/UI: qui manca solo la
-  generazione documentale.
+Codice già scritto e provato: qui è **esecuzione**, non sviluppo. L'import formazione
+è stato verificato in app il 2026-08-02 su **un cliente solo** (Ecodent: 2 unità,
+127 righe, re-import 0 nuove).
 
-### UX trasversale
+- [ ] Passare **cliente per cliente** con l'anteprima dry-run, nell'ordine
+  anagrafiche → formazione → adempimenti (questi ultimi dopo `S1`). L'ordine non è
+  decorativo: il cliente deve esistere prima delle persone, le persone prima degli
+  attestati.
+- [ ] **Prerequisito per le aziende multi-stabilimento**: compilare la **sede
+  operativa** sui clienti che condividono P.IVA e sede legale. Senza, in tendina
+  compaiono come due voci identiche e nessuna proposta è possibile — già imparato su
+  Ecodent il 2026-07-31.
+- [ ] Tenere il **conto di cosa è entrato**: quanti clienti, quante persone, quanti
+  attestati, quante righe scartate e perché. Serve a `S3`, che senza un punto di
+  partenza non può distinguere un buco di migrazione da una divergenza di modello.
 
-- [ ] **Evidenze pregresse anche in campo (offline)**. Oggi il pannello batch
-  "Evidenze pregresse" (auto-apertura alla scelta "Si, pregressa" + bottone in
-  scheda incaricato) e' **back-office only**: `EvidenzePregresse` /
-  `SezioneRuoloPregresso` caricano l'attestato con `supabase.storage...upload` e
-  scrivono con `salvaFormazione` in diretta (online). Per la parita' campo =
-  back-office serve una versione offline: upload via `attestatoBlob` + outbox
-  ('attestato') e scrittura formazione via adapter, poi passare
-  `onEvidenzePregresse` a `OrganigrammaView` anche da `FormazioneRiepilogo`.
-  In campo, per ora, la pregressa si carica con il "Registra" per-riga
-  (gia' offline-safe via adapter/outbox).
+### S3 · Riscontro col gestionale (è ciò che chiude il doppio binario)
 
-- [ ] **App unica responsive (PC / tablet / phone)**. Approccio scelto:
-  hardening incrementale (non unificazione del guscio), app da campo prima.
-  - [x] **App da campo su schermi grandi** (fatto 2026-06-10). Le tre schermate
-    del tecnico non sono più la strisciolina fissa a 440px:
-    - *I miei sopralluoghi* e *Le mie cose da fare*: il pannello si allarga
-      (760px @≥760, 1100px @≥1140) e le card vanno in griglia 2/3 colonne
-      (`auto-fill minmax(min(100%,300px),1fr)`); riepilogo resta colonna 680px.
-    - *Compilazione*: colonna form comoda 720px @≥760 (footer + sheet allineati);
-      flusso inline invariato (scelta "solo colonna più larga").
-  - [ ] **Back-office su phone/tablet** (prossimo step). Tabella Disponibilità
-    sfora in orizzontale già su tablet; unica media query a 620px troppo debole;
-    max-width 1040px; touch target. Toccare `admin/ui.ts` e le griglie/tabelle.
+`scadenzarioSedi.xlsx` era stato scartato come **sorgente**, e giustamente: è un
+derivato — elenca scadenze già calcolate, senza data del corso né ore, e importarlo
+significherebbe *dedurre* gli attestati invece di leggerli. Ma come **pietra di
+paragone** è esattamente ciò che serve, ed è l'unico uso per cui vada caricato.
+
+- [ ] Caricarlo e **confrontarlo riga per riga** con lo scadenzario dell'app. Tre
+  esiti, tutti informativi: righe che il gestionale ha e l'app no (buco di migrazione
+  o di modello); righe che l'app ha e il gestionale no (di norma un miglioramento —
+  il Ramo A vede i **requisiti scoperti**, non solo gli attestati scaduti); date
+  divergenti sulla stessa riga.
+- [ ] L'esito è un **elenco di divergenze motivate**, non un numero. Ogni riga o si
+  spiega o si corregge.
+- [ ] **Criterio di spegnimento**: il gestionale si spegne quando quell'elenco è vuoto
+  o interamente spiegato — non a scadenza di calendario. Senza questo passo, "doppio
+  binario a tempo" è solo un rinvio con una data sopra.
+
+### S4 · Scadenzario usabile ogni giorno
+
+Quello che il gestionale fa e l'app no. Serve perché venga **aperto**, non perché sia
+completo.
+
+- [ ] **Avvisi in anticipo via email** sulle scadenze in avvicinamento (Edge Function
+  + cron, sullo schema di `notifica-sopralluogo`, con l'idempotenza già vista lì).
+  Oggi le notifiche esistono **solo** per le cose-da-fare dei sopralluoghi. Uno
+  scadenzario che non avvisa è un elenco da andare a guardare, e nessuno lo guarda.
+  Da decidere prima di scrivere: soglie (30/60/90 gg?), destinatario (l'area interna
+  Formazione? il referente del cliente?), un'email cumulativa o una per scadenza.
+- [ ] **Export / stampa per cliente.** Il gestionale ce l'ha — è letteralmente
+  `scadenzarioSedi.xlsx` — ed è metà del motivo per cui lo si apre. Vale anche come
+  consegna al cliente.
+- [ ] **Back-office su tablet e telefono** — vedi *UX trasversale*, dove è già
+  segnato come debole. Da qui in avanti smette di essere una rifinitura: un
+  gestionale usato tutti i giorni non può essere solo da PC.
+- [ ] **RLS a livello DB** quando entra l'ufficio formazione (oggi `staff_full
+  using(true)`, gating solo in-app). È in §C fra le decisioni aperte e ora ha un
+  termine: **prima** che l'app diventi fonte di verità per qualcuno che non sia
+  l'amministratore.
 
 ### Anagrafiche aziendali: import isolato + nuovo cliente da visura camerale
 
@@ -778,12 +833,86 @@ metà un dato che nessuno ha misurato così.
   no. Serve una visura vera su cui tarare — **procurarne una** prima di
   scrivere il parser.
 
+### Organigramma / formazione
+
+- [ ] **Modello di nomina per figura** (step successivo della revisione scheda
+  organigramma, deciso 2026-07-08). Generare un `.docx` precompilato con dati
+  cliente + persona per ogni figura (atto di nomina), sullo stile dell'export
+  organigramma PDF (Edge Function / PDFBolt o skill docx). Deve valere per tutte
+  le figure con nomina (tutte tranne i Lavoratori); per Datore e Datore delegato
+  ex art. 16 richiamare gli allegati attesi (visura camerale, atto/procura). La
+  parte dati (figura `datore_lavoro_art16` con `nomina.estremi_procura`,
+  evidenze in `nomina_evidenza`) e' gia' pronta lato DB/UI: qui manca solo la
+  generazione documentale.
+
+### Sede: modello semplificato (deciso 2026-07-08, rivisto)
+
+Un solo organigramma per cliente. La sede legale sta nell'anagrafica; si aggiunge
+UNA sola sede operativa solo se la legale non e' nella disponibilita' dell'azienda
+(es. commercialista). L'organigramma vive sulla sede operativa se presente,
+altrimenti sulla legale; gli attributi che lo guidano (rischio/ATECO/PS/antincendio/
+RLS) sono aziendali e si leggono dal CLIENTE. Stato:
+
+- [x] Schema sede di prima classe (`054`): sede con campi topografici + org +
+  `principale` + `da_confermare`; `persona.sede_id`; sede legale per cliente.
+- [x] Motore (`formazione.ts`): `valutaSede`; `valutaCliente` risolve la
+  sede-organigramma (`sedeOrganigrammaId` = operativa attiva altrimenti legale);
+  gli attributi si leggono dal cliente; `salvaPersona` aggancia alla sede-organigramma.
+- [x] UI: una sola sede operativa (bottone nascosto se gia' presente); testo
+  aggiornato (commercialista); `allineaPersoneOrganigramma` sposta le persone sulla
+  sede-organigramma quando si aggiunge/archivia l'operativa. Selettore multi-sede e
+  copia tra sedi RIMOSSI (non servono con un solo organigramma).
+- [x] La sede operativa si **chiede**, non si deduce (2026-07-31). Nello spazio
+  *Sedi* dell'anagrafica: "La sede legale corrisponde con la sede operativa?" —
+  **Sì** crea la sede operativa copiando i dati della legale, **No** apre il box
+  di inserimento. Prima "nessuna sede operativa" voleva dire due cose diverse
+  (coincidono / non ci ha pensato nessuno) e niente le distingueva: è il motivo
+  per cui due clienti della stessa azienda risultavano identici all'import del
+  gestionale. Rispondendo, il luogo di lavoro è sempre scritto.
+  **`tsc -b` + `vite build` VERIFICATI 2026-08-02 — verdi.**
+- [ ] Fase 4 - scadenzario: opzionale etichetta della sede sulle voci (roll-up
+  multi-sede non serve piu': una sola sede-organigramma per cliente).
+- [ ] Fase 5 - offline: il riepilogo in campo segue la sede-organigramma del cliente
+  del sopralluogo (sola lettura, offline).
+
+Note: colonne org su `sede`, write-through in `salvaCliente`, flag `da_confermare` e
+badge in OrganigrammaView restano ma sono ridondanti/dormienti (nessuna copia tra
+sedi li accende; gli attributi si leggono dal cliente).
+
+### UX trasversale
+
+- [ ] **Evidenze pregresse anche in campo (offline)**. Oggi il pannello batch
+  "Evidenze pregresse" (auto-apertura alla scelta "Si, pregressa" + bottone in
+  scheda incaricato) e' **back-office only**: `EvidenzePregresse` /
+  `SezioneRuoloPregresso` caricano l'attestato con `supabase.storage...upload` e
+  scrivono con `salvaFormazione` in diretta (online). Per la parita' campo =
+  back-office serve una versione offline: upload via `attestatoBlob` + outbox
+  ('attestato') e scrittura formazione via adapter, poi passare
+  `onEvidenzePregresse` a `OrganigrammaView` anche da `FormazioneRiepilogo`.
+  In campo, per ora, la pregressa si carica con il "Registra" per-riga
+  (gia' offline-safe via adapter/outbox).
+
+- [ ] **App unica responsive (PC / tablet / phone)**. Approccio scelto:
+  hardening incrementale (non unificazione del guscio), app da campo prima.
+  - [x] **App da campo su schermi grandi** (fatto 2026-06-10). Le tre schermate
+    del tecnico non sono più la strisciolina fissa a 440px:
+    - *I miei sopralluoghi* e *Le mie cose da fare*: il pannello si allarga
+      (760px @≥760, 1100px @≥1140) e le card vanno in griglia 2/3 colonne
+      (`auto-fill minmax(min(100%,300px),1fr)`); riepilogo resta colonna 680px.
+    - *Compilazione*: colonna form comoda 720px @≥760 (footer + sheet allineati);
+      flusso inline invariato (scelta "solo colonna più larga").
+  - [ ] **Back-office su phone/tablet** (prossimo step). Tabella Disponibilità
+    sfora in orizzontale già su tablet; unica media query a 620px troppo debole;
+    max-width 1040px; touch target. Toccare `admin/ui.ts` e le griglie/tabelle.
+
 ### Integrazione gestionale
 
-- [ ] **Werp · sincronizzazione**. Campi `incarico.werp_id`,
-  `azione.werp_attivita_id`, `cliente.werp_id` già predisposti, nessuna
-  sincronizzazione attiva. Da chiarire col fornitore il canale (API REST /
-  accesso DB / import-export file). Vedi PROGETTO.md §8.
+- [ ] **Werp · sincronizzazione — superata dalla decisione di §0.** I campi
+  `incarico.werp_id`, `azione.werp_attivita_id`, `cliente.werp_id` restano come
+  tracciabilità della **provenienza** dei dati migrati; nessuna sincronizzazione
+  bidirezionale va più costruita, e non c'è più un canale da chiarire col fornitore
+  (API / DB / file). Se un giorno il lato commerciale (contratti, attività)
+  rientrasse nel perimetro, la voce si riapre — oggi è fuori.
 
 ### Disponibilità tecnici (tab "Disponibilità")
 
