@@ -84,13 +84,15 @@ Da fare prima di rimettere dentro dati veri:
 - [ ] **NON svuotare gli Storage bucket**: i PDF degli attestati sono rimasti e
   sono l'unica copia superstite delle 384 formazioni cancellate. Decidere con
   calma, separatamente.
-- [ ] Ricreare i clienti. Dal 2026-08-26 c'è **Anagrafiche → Import anagrafiche**
-  (vedi "Fatti di recente"): un Excel/CSV con una riga per cliente li rifà tutti
-  in un colpo, e un secondo file rifà le persone di più clienti insieme. A mano
-  resta *Anagrafiche → + Nuovo cliente*. In ogni caso il **rischio** si propone
-  da solo dall'ATECO (tabella Allegato IV ASR 2025); restano da compilare
-  **livelli antincendio/primo soccorso**, che nessun file può dare, e l'import
-  li elenca riga per riga come mancanti.
+- [ ] Ricreare i clienti. **I file veri ci sono tutti** (vedi "Migrazione da
+  Sicurweb" qui sotto): `ElencoSedi (5).xlsx` fa i 618 clienti attivi,
+  `ExportExcelDipendenti.xlsx` le loro persone, e le due chiavi combaciano 448
+  volte su 449. Li legge **Anagrafiche → Import anagrafiche** (dal 2026-08-26),
+  ma prima vanno chiusi i buchi elencati sotto. A mano resta *Anagrafiche → +
+  Nuovo cliente*. Il **rischio** si propone da solo dall'ATECO (tabella Allegato
+  IV ASR 2025), che l'estrazione sedi ha sul 43% delle attive; restano da
+  compilare **livelli antincendio/primo soccorso**, che nessun file può dare, e
+  l'import li elenca riga per riga come mancanti.
 - [ ] **OVERALL GROUP si ricrea con uno script, non a mano** (scoperto
   2026-08-06): `supabase/migrations/046_import_organigramma_overall_standalone.sql`
   ricrea il cliente interno (P.IVA 04534450236) con persone, nomine, formazioni
@@ -103,9 +105,88 @@ Da fare prima di rimettere dentro dati veri:
 **File di origine** — correzione del 2026-08-26: `elencoAnagraficaFormazioni.xlsx`
 **non è perduto**, sta in `docs/c1a/` (272 righe, il catalogo corsi del
 gestionale). Resta vero che non serve più: il ripristino alias non lo usa.
-Perduto è `ExportExcel.xlsx` (registro attestati), e quello sì che pesa: senza,
-le 384 formazioni importate non sono ricostruibili da nessuna parte se non
-ri-esportandolo dal gestionale.
+Non è perduto nemmeno `ExportExcel.xlsx` (seconda correzione del 2026-08-26):
+sta in `~/Downloads`, 4,2 MB, quattro fogli (Fattori di Rischio, Formazione,
+Visite, Ruoli SSL). Il guaio è la data, **24/12/2023**: come registro attestati è
+vecchio di due anni e mezzo e non ricostruisce le 384 formazioni cancellate. Per
+quelle serve `ExportExcelCorsiFatti.xlsx` (06/08/2026, 13350 righe), che c'è.
+
+### Migrazione da Sicurweb: i file veri, provati (2026-08-26)
+
+Il `Report_Qualita_Dati_Migrazione.xlsx` (analisi sull'export del 06/08/2026, 21
+fogli) dice **cosa** si può migrare. Qui sta l'altra metà del riscontro: cosa **il
+nostro codice** fa davvero su quei file. Provato girando `leggiFoglio` /
+`pianificaClienti` / `raggruppaPersone` fuori dall'app, con esbuild e senza
+database: dry-run puro, nessuna scrittura.
+
+**I due file che reggono tutto**, entrambi in `~/Downloads`:
+
+| file | cosa fa | righe |
+|---|---|---|
+| `ElencoSedi (5).xlsx` | i **clienti**: 41 colonne, ATECO e n° dipendenti compresi | 847 sedi, **618 attive** |
+| `ExportExcelDipendenti.xlsx` | le **persone**, con la colonna che dice a quale cliente vanno | 3418, 449 unità |
+
+**Sono le due metà della stessa migrazione**: le unità `(P.IVA, Sede)` del file
+dipendenti trovano corrispondenza esatta in `ElencoSedi` **448 volte su 449**
+(l'unica mancata è una riga vuota). La chiave è identica nei due export.
+
+**L'ATECO c'è** — correzione di una conclusione sbagliata presa lo stesso giorno
+guardando solo l'export dipendenti e lo zip sedi. `ElencoSedi` ha la colonna
+`ATECO` col codice dentro (`(C.25.62) Lavori di meccanica generale`), e
+`risolviAteco` la legge già oggi senza modifiche: **329 voci risolte su 847, zero
+sbagliate**. Sulle sole aziende attive è il **43%** (266 su 618). Da Werp invece
+non è mai arrivato niente: `werpImport.ts:149` una colonna `ateco` la legge, ma
+nell'export è **vuota su 2768 righe**, e nei 14 export precedenti la colonna non
+esiste proprio. I clienti nati dall'import Werp sono nati senza.
+
+Copertura di `ElencoSedi` sulle 618 attive: ATECO 43%, **n° dipendenti 100%**
+(480 con >0, 138 a zero), P.IVA 99%, CF 78%, indirizzo legale 58%, indirizzo
+sito produttivo 37%, datore di lavoro 32%.
+
+**Cosa l'import legge già bene.** `ElencoSedi` è riconosciuto da solo come file
+*clienti*; `ExportExcelDipendenti` come *persone*, con l'header trovato alla riga
+3 sotto il titolo "Risultato Ricerca Dipendenti"; 449 gruppi = le unità del
+modello; 2 sole righe scartate su 3418.
+
+**Cosa si perde, e va sistemato prima di scrivere sul database:**
+
+- [ ] **Indirizzi persi tutti e 847.** Le colonne si chiamano `INDIRIZZO LEGALE`,
+  `CAP LEGALE`, `CITTÀ LEGALE`, `PROVINCIA LEGALE`; il vocabolario conosce
+  `indirizzo`/`cap`/`citta`/`provincia` e non le varianti "legale". Nel dry-run
+  indirizzo, CAP, località e provincia risultano **null su ogni voce**.
+- [ ] **`N° DIPENDENTI` ignorato** → `numero_lavoratori` null su tutti, ed è il
+  campo che decide le 4h o 8h di aggiornamento RLS. Con un'avvertenza: 138 righe
+  attive dichiarano `0`, e zero lavoratori non è un'azienda — trattarlo come
+  **non dichiarato**, non come numero, e lasciarlo fra i mancanti.
+- [ ] **Colonna `ATTIVA` ignorata**: importeremmo **229 ex clienti** in silenzio.
+- [ ] **Nessuna guardia sulla P.IVA**, e il file è peggio del report: fra le sole
+  attive **40 righe hanno `00000000000`**, più `XXXXXXXXX` e 18 P.IVA non a 11
+  cifre. Due danni: il match su cliente esistente prende il primo candidato con
+  quella chiave — e proprio quelle aziende hanno l'indirizzo vuoto (foglio "7.
+  Sedi fittizie"), quindi il tie-break sul luogo non disambigua; e il segnaposto
+  finisce scritto in `cliente.partita_iva`, avvelenando ogni import successivo.
+  Una P.IVA non usabile va trattata come **chiave assente**, e non va scritta.
+- [ ] **`Data di Licenziamento` fuori vocabolario** (lato persone).
+  `data_cessazione` accetta `datacessazione`/`cessazione`/`datafine`/
+  `datadicessazione`, non questa: **tutti i cessati entrerebbero attivi**. Il
+  report (rilievo 9) dice che il gestionale li esclude dagli obblighi apposta —
+  0 su 1016 compaiono nello scadenzario — quindi importarli attivi significa
+  inventare scadenze su gente che non c'è più.
+- [ ] **233 righe senza codice fiscale** (il report ne contava 235). Senza CF la
+  chiave diventa `riga:N`, la persona risulta **sempre nuova**, e riapplicare lo
+  stesso file la duplica: contraddice in pieno la prova di idempotenza qui sotto.
+  Serve un fallback cognome+nome dentro il cliente.
+- [ ] **`Area di Lavoro` non è fra i sinonimi di reparto** (c'è `area`, non
+  `areadilavoro`). Minore: quel campo è vuoto sull'89%.
+
+**Da decidere**: `INDIRIZZO SITO PRODUTTIVO` (37% delle attive) diventa la **sede
+operativa** del cliente, oppure si importa per ora la sola sede legale e la
+operativa si aggiunge dopo? Non è un sinonimo da aggiungere, è il write-through
+di `salvaCliente` alla sede.
+
+**Il buco che resta**: l'ATECO manca sul **57% delle aziende attive** (352 su
+618), e livello antincendio + gruppo primo soccorso mancano sempre e comunque.
+È lì, e solo lì, che serve la visura camerale (§B).
 
 ### Verifiche in app arretrate (scritto 2026-08-05)
 
@@ -828,6 +909,11 @@ metà un dato che nessuno ha misurato così.
   primo soccorso) l'anteprima elenca i mancanti riga per riga.
   Da rivedere per la visura: lì i dati sono *estratti da un PDF*, non digitati
   da qualcuno, e il badge `da_confermare` potrebbe servire **in più**.
+- [x] **Quanto serve davvero la visura** — *misurato 2026-08-26*: serve per
+  l'ATECO di **352 aziende attive su 618** (il 57%). L'altro 43% ce l'ha già
+  `ElencoSedi (5).xlsx` (vedi §A, "Migrazione da Sicurweb"): la visura non è più
+  l'unica strada al livello di rischio, è la strada per la coda lunga. Cambia la
+  priorità, non la specifica.
 - [ ] Robustezza del parser: le etichette (`Denominazione:`, `Codice fiscale:`,
   `Attività prevalente:`) sono stabili fra emittenti diversi, l'impaginazione
   no. Serve una visura vera su cui tarare — **procurarne una** prima di
