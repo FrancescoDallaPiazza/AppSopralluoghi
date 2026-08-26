@@ -14,7 +14,7 @@ fare, `TODO.md`. Qui si dice solo dove si clicca e cosa succede.
 | [0](#0-come-è-tenuta-viva-questa-guida) | Come è tenuta viva questa guida | chi sviluppa |
 | [1](#1-accesso-e-struttura) | Accesso e struttura | tutti |
 | [2](#2-anagrafiche--la-scheda-cliente) | Anagrafiche — la scheda cliente | back-office |
-| [3](#3-portare-dentro-i-dati-i-cinque-ingressi) | **Portare dentro i dati: i cinque ingressi** | back-office |
+| [3](#3-portare-dentro-i-dati-i-sei-ingressi) | **Portare dentro i dati: i sei ingressi** | back-office |
 | [4](#4-risorse-umane--il-personale-del-cliente) | Risorse Umane — il personale | back-office |
 | [5](#5-organigramma-sicurezza) | Organigramma sicurezza | back-office + campo |
 | [6](#6-scadenzario-e-cose-da-fare-non-sono-la-stessa-cosa) | Scadenzario e Cose da fare | back-office |
@@ -73,7 +73,7 @@ una sola sezione non mostrano la seconda riga.
 
 | Gruppo | Sezioni | Cosa ci si fa |
 |---|---|---|
-| **Anagrafiche** | Anagrafiche · Import formazione | chi è il cliente: dati, sedi, persone, organigramma |
+| **Anagrafiche** | Anagrafiche · Import anagrafiche · Import formazione | chi è il cliente: dati, sedi, persone, organigramma |
 | **Pianificazione** | Incarichi · Tecnici · Aree · Template · Capitoli · Disponibilità · Import Werp | cosa facciamo, quando e con chi |
 | **Scadenzario** | — | le scadenze di tutte le ditte |
 | **Cose da fare** | — | le attività nate dal campo |
@@ -81,8 +81,9 @@ una sola sezione non mostrano la seconda riga.
 
 Il criterio della divisione, che spiega dove cercare una cosa: **Anagrafiche**
 scrive dati *dei clienti*, **Regole app** scrive regole valide *per tutti*. Per
-questo *Import formazione* (attestati di persone reali) sta fra le Anagrafiche,
-mentre *Alias corsi* (il dizionario dei nomi dei corsi) sta fra le Regole.
+questo *Import anagrafiche* (aziende e persone) e *Import formazione* (attestati
+di persone reali) stanno fra le Anagrafiche, nell'ordine in cui si usano, mentre
+*Alias corsi* (il dizionario dei nomi dei corsi) sta fra le Regole.
 
 Si esce con **Esci**, in alto a destra.
 
@@ -174,29 +175,32 @@ fra clienti è previsto), organigramma proprio.
 
 ---
 
-## 3. Portare dentro i dati: i cinque ingressi
+## 3. Portare dentro i dati: i sei ingressi
 
 È la domanda più frequente, quindi in chiaro: **non esiste un unico "importa
-anagrafiche"**. Ci sono cinque ingressi, ognuno con una portata diversa, e
-sbagliare ingresso è il modo più veloce per ritrovarsi con dati a metà.
+anagrafiche"** che faccia tutto. Ci sono sei ingressi, ognuno con una portata
+diversa, e sbagliare ingresso è il modo più veloce per ritrovarsi con dati a
+metà.
 
 | # | Ingresso | Dove | Crea clienti | Crea persone | Crea attestati |
 |---|---|---|---|---|---|
 | 1 | **+ Nuovo cliente** / **Copia** | Anagrafiche | ✅ a mano | — | — |
 | 2 | **Import Werp** | Pianificazione → Import Werp | ✅ (+ incarichi e sopralluoghi) | — | — |
-| 3 | **Importa da Excel** | scheda cliente → Risorse Umane | — | ✅ | — |
-| 4 | **Import formazione** | Anagrafiche → Import formazione | ❌ **mai** | ✅ opzionale | ✅ |
-| 5 | **Script SQL** | Supabase → SQL Editor | ✅ | ✅ | ✅ |
+| 3 | **Import anagrafiche** | Anagrafiche → Import anagrafiche | ✅ in blocco | ✅ in blocco | — |
+| 4 | **Importa da Excel** | scheda cliente → Risorse Umane | — | ✅ (un cliente) | — |
+| 5 | **Import formazione** | Anagrafiche → Import formazione | ❌ **mai** | ✅ opzionale | ✅ |
+| 6 | **Script SQL** | Supabase → SQL Editor | ✅ | ✅ | ✅ |
 
 ### L'ordine giusto, partendo da zero
 
 1. **Alias corsi** (§8.3) — prima di tutto. Con alias non mappati l'import
    formazione lascia indietro attestati, e il motore valuta su una storia
    incompleta: rossi falsi.
-2. **I clienti** — ingresso 1, 2 o 5. Devono esistere prima delle persone.
-3. **Le persone** — ingresso 3, oppure direttamente l'ingresso 4, che sa
-   crearle.
-4. **La formazione** — ingresso 4.
+2. **I clienti** — ingresso 1 (uno alla volta), **3** (una lista intera), 2 o 6.
+   Devono esistere prima delle persone.
+3. **Le persone** — ingresso **3** se il file copre più clienti, 4 se è il
+   personale di uno solo, oppure direttamente l'ingresso 5, che sa crearle.
+4. **La formazione** — ingresso 5.
 
 ### 3.1 Cliente a mano (l'ingresso normale)
 
@@ -236,7 +240,56 @@ non duplica.
 > riaperti uno per uno: nel campo ATECO basta premere **Applica** per il
 > rischio, il resto si compila.
 
-### 3.3 Persone da Excel — l'import delle anagrafiche personali
+### 3.3 Import anagrafiche — clienti e persone in blocco
+
+*Anagrafiche → **Import anagrafiche***. È l'ingresso da usare quando bisogna
+ricostruire **più clienti**, o **il personale di più clienti**, da una lista già
+pronta. Un file per volta, Excel o CSV.
+
+**Il tipo di file lo riconosce l'app**, dalle intestazioni: se trova *Cognome*,
+*Mansione* o *Data assunzione* lo legge come elenco di persone; se trova
+*Ragione sociale*, *ATECO* o *Numero lavoratori*, come elenco di aziende. Lo
+scrive sotto al file insieme alle colonne che ha ignorato, e se non riconosce
+niente si ferma dicendo cosa si aspettava. Due bottoni **Scarica modello**
+(clienti / persone) generano i file con le intestazioni giuste.
+
+**Se il file è un elenco di clienti**, per ogni riga l'anteprima dice:
+
+- se è un cliente **nuovo**, **da completare** o **già a posto**;
+- l'**ATECO** riconosciuto e il **livello di rischio** che ne discende (§2.2):
+  non è una deduzione dell'app, è la tabella dell'Allegato IV;
+- **cosa resta da compilare a mano**, riga per riga — tipicamente **livello
+  antincendio** e **gruppo primo soccorso**, che nessun file può dare (§2.3).
+  Un cliente nato da un import è incompleto, e la scheda lo dice invece di
+  lasciarlo scoprire mesi dopo.
+
+Su un cliente che **esiste già** si riempiono **solo i campi vuoti**: quello che
+hai corretto a mano non viene sovrascritto. Ogni riga si può escludere con la
+spunta, e applicare due volte lo stesso file non crea doppioni.
+
+**Due righe con la stessa P.IVA restano due clienti distinti.** È voluto: un
+cliente = un organigramma, e gli addetti alle emergenze si designano per luogo
+di lavoro (§2.4). L'anteprima lo segnala, perché in tendina si assomiglieranno.
+
+**Se il file è un elenco di persone**, le righe si raggruppano per **unità**
+(P.IVA + Sede) e ogni gruppo va abbinato a un cliente:
+
+- l'app **propone** l'abbinamento — P.IVA, ragione sociale, sede riconosciuta —
+  ma **non sceglie d'ufficio** quando è ambiguo: se due gruppi del file finiscono
+  sullo stesso cliente, la proposta cade per tutti e due e decidi tu;
+- se sei **tu** a mandare due gruppi sullo stesso cliente, compare un **avviso
+  rosso**. Può essere giusto (lo stesso stabilimento scritto in due modi), ma se
+  non lo è due unità finiscono in un organigramma solo, con le squadre di
+  emergenza contate insieme;
+- un gruppo **senza cliente viene saltato**: l'import **non crea aziende** per
+  contenerle, perché nascerebbero senza ATECO né livelli di emergenza. Prima i
+  clienti, poi le persone.
+
+Valgono tutte le regole del §3.4 — match sul codice fiscale, MAIUSCOLO, i
+cessati che restano cessati. In più questo file accetta una colonna **Data
+cessazione**, e due righe con lo stesso CF si fondono in una persona sola.
+
+### 3.4 Persone da Excel — l'import delle anagrafiche personali
 
 È **dentro la scheda del cliente**, non nel menù principale:
 *Anagrafiche → apri il cliente → **Risorse Umane** → **Importa da Excel***.
@@ -274,7 +327,7 @@ Regole che conviene conoscere prima di caricare:
   personale non è la prova che il rapporto sia ripreso.
 - Le date si accettano come celle Excel, `gg/mm/aaaa` o `aaaa-mm-gg`.
 
-### 3.4 Import formazione — gli attestati (e, se vuoi, le persone)
+### 3.5 Import formazione — gli attestati (e, se vuoi, le persone)
 
 *Anagrafiche → Import formazione.* Legge l'export **«Ricerca
 Visite/Formazioni»** del gestionale: una riga per attestato, con persona, corso,
@@ -316,7 +369,7 @@ sistemare prima gli alias (§8.3).
 > siano dovute. L'anteprima **segnala l'unità senza cliente e mostra i dati per
 > crearlo a mano**, completo.
 
-### 3.5 Script SQL — quando l'import dall'app non basta
+### 3.6 Script SQL — quando l'import dall'app non basta
 
 Alcune ricostruzioni si fanno da *Supabase → SQL Editor*, non dall'app. Vivono
 in `supabase/migrations/` e `supabase/scripts/`, sono **idempotenti** (dedup su
@@ -326,7 +379,7 @@ Il caso tipico è il cliente interno: `046_import_organigramma_overall_standalon
 ricrea OVERALL GROUP con persone, nomine, formazioni ed esoneri, e
 `047_overall_datore_lavoro_nomina.sql` aggiunge la nomina a datore.
 
-### 3.6 Cosa **non** c'è ancora
+### 3.7 Cosa **non** c'è ancora
 
 **L'import da visura camerale non è implementato.** È il prossimo lavoro
 concordato: caricare il PDF della visura e ricavarne anagrafica, unità locali e
@@ -344,7 +397,7 @@ si censiscono tutti i lavoratori, nel tab Organigramma si nominano solo quelli
 che una figura la ricoprono. Le due viste leggono e scrivono la **stessa**
 tabella: doppioni non se ne creano.
 
-**In testa**: *Importa da Excel* (§3.3) e **+ Aggiungi**.
+**In testa**: *Importa da Excel* (§3.4) e **+ Aggiungi**.
 
 **Filtri** (compaiono quando servono):
 
@@ -674,7 +727,7 @@ fare del giro precedente.
   guardate e decise a mano.
 - **Grafie doppie a DB**: il dedup delle mansioni è case-insensitive, ma
   `SALDATORE` e `ADDETTO SALDATURA` restano due voci. Si accorpano a mano.
-- **Import da visura camerale**: non esiste ancora (§3.6).
+- **Import da visura camerale**: non esiste ancora (§3.7).
 - **Dopo un azzeramento del database**: chiudere e riaprire la PWA su **ogni**
   dispositivo, back-office compreso. La cache locale (IndexedDB) tiene ancora i
   vecchi clienti e la coda può tentare di scrivere verso righe cancellate.
@@ -686,10 +739,24 @@ fare del giro precedente.
 Registro di ciò che si **vede**, dal più recente. Le motivazioni tecniche stanno
 nella `Cronologia` di `PROGETTO.md`.
 
+### 2026-08-26 — Import anagrafiche: clienti e persone in blocco
+- Nuova voce **Anagrafiche → Import anagrafiche** (§3.3). Ricostruisce **più
+  clienti** o **il personale di più clienti** da un solo Excel/CSV: prima si
+  poteva fare solo un cliente alla volta a mano, o dentro la pipeline Werp.
+- Il **tipo di file lo riconosce l'app** dalle intestazioni, e dice cosa ha
+  letto e cosa ha ignorato. Due **modelli scaricabili** (clienti / persone).
+- L'anteprima non scrive niente e, per i clienti, dice riga per riga **cosa
+  resta scoperto** (livello antincendio, gruppo primo soccorso): un cliente nato
+  da un import è incompleto, e ora lo dichiara.
+- Per le persone, l'abbinamento **unità → cliente** si conferma sempre, e due
+  gruppi che finiscono sullo stesso cliente vengono **segnalati**.
+- L'import dentro *Risorse Umane* (§3.4) resta dov'era e legge lo stesso
+  formato: ora i due condividono lo stesso vocabolario di intestazioni.
+
 ### 2026-08-24 — la guida diventa manutenibile
 - Manuale riscritto sull'app di oggi (era fermo al 23/06, prima della
   navigazione a due livelli, di Risorse Umane e di tutti gli import).
-- Nuovo §3, **i cinque ingressi dei dati**, che risponde a «come importo
+- Nuovo §3, **gli ingressi dei dati** (allora cinque), che risponde a «come importo
   aziende e persone».
 - Nuovo `npm run guida:check`: dice quali capitoli sono rimasti indietro
   rispetto al codice (§0 e §13).
@@ -710,7 +777,7 @@ nella `Cronologia` di `PROGETTO.md`.
 - **Libretto formativo per persona** + PDF (§4.3).
 - **Import formazione** dal gestionale: abbinamento unità → cliente sulla sede
   operativa, formazione frazionata segnalata, persone create su richiesta
-  (§3.4).
+  (§3.5).
 - **Alias corsi**: il dizionario dei nomi del gestionale (§8.3).
 - **Sede operativa**: si chiede, non si deduce; la città della sede operativa
   compare in testata alla scheda (§2.4).
@@ -723,7 +790,7 @@ nella `Cronologia` di `PROGETTO.md`.
 - **Scadenzario** separato da **Cose da fare** (§6).
 - **ATECO → livello di rischio** dall'Allegato IV ASR 2025 (§2.2).
 - **Risorse Umane** come anagrafica completa del personale, con import Excel
-  (§4, §3.3).
+  (§4, §3.4).
 - Revisioni versionate del sopralluogo e dell'organigramma.
 
 ---
@@ -741,7 +808,7 @@ altrimenti quella parte di guida invecchia senza che nessuno lo veda.
 |---|---|
 | §1 Accesso e struttura | `src/App.tsx` `src/admin/BackOffice.tsx` `src/Login.tsx` `src/AuthProvider.tsx` `src/ImpostaPassword.tsx` `src/CambiaPassword.tsx` |
 | §2 Anagrafiche | `src/admin/Anagrafiche.tsx` `src/lib/admin/anagrafiche.ts` `src/lib/admin/sedi.ts` `src/formazione/ateco.ts` |
-| §3 Import | `src/admin/ImportWerp.tsx` `src/admin/ImportFormazione.tsx` `src/admin/ImportCatalogo.tsx` `src/lib/admin/werpImport.ts` `src/lib/admin/formazioneImport.ts` `src/lib/admin/catalogoImport.ts` |
+| §3 Import | `src/admin/ImportWerp.tsx` `src/admin/ImportAnagrafiche.tsx` `src/admin/ImportFormazione.tsx` `src/admin/ImportCatalogo.tsx` `src/lib/admin/werpImport.ts` `src/lib/admin/anagraficheImport.ts` `src/lib/admin/formazioneImport.ts` `src/lib/admin/catalogoImport.ts` |
 | §4 Risorse Umane | `src/formazione/RisorseUmane.tsx` `src/formazione/Libretto.tsx` `src/lib/admin/libretto.ts` `src/formazione/codiceFiscale.ts` |
 | §5 Organigramma | `src/formazione/OrganigrammaView.tsx` `src/formazione/Formazione.tsx` `src/lib/admin/formazione.ts` `src/formazione/organigramma-revisioni.ts` `src/formazione/FormazioneRiepilogo.tsx` |
 | §6 Scadenzario e Cose da fare | `src/admin/Scadenzario.tsx` `src/admin/CoseDaFare.tsx` `src/lib/admin/scadenzario.ts` `src/lib/admin/cosedafare.ts` |

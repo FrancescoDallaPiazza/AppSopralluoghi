@@ -10,6 +10,9 @@
 // Mansione, Reparto, Data assunzione), si vede l'anteprima (nuove / aggiornate
 // per CF / scartate) e si applica. Il match con le persone gia' presenti e' sul
 // codice fiscale; le righe senza nome vengono scartate e mostrate.
+// Qui si importa il personale di QUESTO cliente. Per rifarne piu' d'uno con un
+// file solo c'e' Back-office -> Anagrafiche -> Import anagrafiche, che legge lo
+// stesso formato piu' le colonne che dicono a quale cliente va ogni riga.
 
 import { useEffect, useId, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -17,24 +20,14 @@ import {
   caricaPersone, caricaRuoliPerPersona, salvaPersona, eliminaPersona,
   mansioniUsate, repartiUsati, attivoDopoCessazione, oggiISO, type Persona,
 } from '../lib/admin/formazione';
+import {
+  normHeader, leggiCampiPersona, fondiPersona, personaVuota,
+} from '../lib/admin/anagraficheImport';
 import { newId } from '../lib/types';
 import { valido as cfValido, pulisci as cfPulisci } from './codiceFiscale';
 import { LibrettoPersona } from './Libretto';
 
 type RischioPersona = Persona['livello_rischio'];
-
-function personaVuota(clienteId: string): Persona {
-  return {
-    id: '', cliente_id: clienteId, nome: '', cognome: null, codice_fiscale: null,
-    mansione: null, reparto: null, data_assunzione: null, data_cessazione: null,
-    livello_rischio: null, attivo: true, note: null, formazione_pregressa: false,
-  };
-}
-
-const svuota = (s: string): string | null => {
-  const v = s.trim();
-  return v === '' ? null : v;
-};
 
 // ============================ componente ============================
 
@@ -502,25 +495,11 @@ interface PianoImport {
   cfNonValidi: number;
 }
 
-const normHeader = (s: string): string =>
-  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-
-// Data da cella Excel: Date (cellDates), oppure stringa dd/mm/yyyy | yyyy-mm-dd.
-function isoData(v: unknown): string | null {
-  if (v == null || v === '') return null;
-  if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0, 10);
-  const s = String(v).trim();
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return iso[0];
-  const m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
-  if (m) {
-    const d = m[1].padStart(2, '0'), mo = m[2].padStart(2, '0');
-    const y = m[3].length === 2 ? '20' + m[3] : m[3];
-    return `${y}-${mo}-${d}`;
-  }
-  return null;
-}
-
+// Lettura del file e mappatura riga -> persona stanno in
+// `lib/admin/anagraficheImport.ts`, insieme all'import massivo del back-office:
+// il vocabolario delle intestazioni (quali diciture valgono "Mansione", quali
+// "Data assunzione") deve essere UNO. Due elenchi di sinonimi che si separano
+// fanno un file che entra da una porta e viene scartato dall'altra.
 function pianifica(righe: Record<string, unknown>[], esistenti: Persona[], clienteId: string): PianoImport {
   const perCf = new Map<string, Persona>();
   for (const p of esistenti) {
@@ -531,42 +510,19 @@ function pianifica(righe: Record<string, unknown>[], esistenti: Persona[], clien
   let scartate = 0, cfNonValidi = 0, senzaCf = 0;
 
   for (const r of righe) {
-    // mappa header -> valore, tollerante ad accenti/spazi/maiuscole
-    const col: Record<string, string> = {};
-    for (const k of Object.keys(r)) col[normHeader(k)] = String(r[k] ?? '').trim();
-    const pick = (...keys: string[]) => { for (const k of keys) if (col[k]) return col[k]; return ''; };
+    // intestazioni normalizzate (accenti, spazi, maiuscole) come nel foglio
+    const col: Record<string, unknown> = {};
+    for (const k of Object.keys(r)) col[normHeader(k)] = r[k];
 
-    const cognome = pick('cognome');
-    let nome = pick('nome');
-    if (!nome) nome = pick('nominativo', 'dipendente', 'cognomeenome', 'nomecognome', 'nominativocompleto');
-    if (!nome.trim()) { scartate++; continue; }
+    const campi = leggiCampiPersona(col);
+    if (!campi) { scartate++; continue; }
+    if (campi.cf && !cfValido(campi.cf)) cfNonValidi++;
 
-    const cfRaw = pick('codicefiscale', 'cf', 'cfiscale', 'c');
-    const cf = cfRaw ? cfPulisci(cfRaw) : '';
-    if (cf && !cfValido(cf)) cfNonValidi++;
-
-    const esist = cf ? perCf.get(cf) : undefined;
-    const base: Persona = esist
-      ? { ...esist }
-      : { ...personaVuota(clienteId), id: newId() };
-
-    const p: Persona = {
-      ...base,
-      nome: nome.toUpperCase(),
-      cognome: cognome ? cognome.toUpperCase() : base.cognome,
-      codice_fiscale: cf || base.codice_fiscale,
-      mansione: svuota(pick('mansione', 'ruolo', 'qualifica', 'profilo', 'profiloprofessionale'))?.toUpperCase() ?? base.mansione,
-      reparto: svuota(pick('reparto', 'area', 'settore', 'ufficio'))?.toUpperCase() ?? base.reparto,
-      data_assunzione: isoData(pick('dataassunzione', 'assunzione', 'dataassunz', 'datadiassunzione', 'datainizio')) ?? base.data_assunzione,
-      // `attivo: true` secco riportava in forza chi era cessato: il file non ha
-      // una colonna di cessazione, quindi non dice nulla sul punto, e comparire
-      // in un elenco di personale non e' la prova che il rapporto sia ripreso.
-      // Chi ha una data di cessazione la conserva, e la regola decide.
-      attivo: attivoDopoCessazione({ ...base, attivo: true }, base),
-    };
-
-    const chiave = cf || `riga:${senzaCf++}`;
-    out.set(chiave, p);
+    const esist = campi.cf ? perCf.get(campi.cf) : undefined;
+    const chiave = campi.cf || `riga:${senzaCf++}`;
+    const base: Persona = out.get(chiave)
+      ?? (esist ? { ...esist } : { ...personaVuota(clienteId), id: newId() });
+    out.set(chiave, fondiPersona(campi, base));
   }
 
   const persone = [...out.values()];

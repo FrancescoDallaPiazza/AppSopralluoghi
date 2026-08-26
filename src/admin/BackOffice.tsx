@@ -27,12 +27,13 @@ import ImportWerp from './ImportWerp';
 import ImportCatalogo from './ImportCatalogo';
 import AliasCorsi from './AliasCorsi';
 import ImportFormazione from './ImportFormazione';
+import ImportAnagrafiche from './ImportAnagrafiche';
 
 type Sezione =
   | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
   | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare'
   | 'scadenzario' | 'importwerp' | 'importcatalogo' | 'aliascorsi'
-  | 'importformazione';
+  | 'importformazione' | 'importanagrafiche';
 
 interface Gruppo {
   key: string;
@@ -45,9 +46,12 @@ const GRUPPI: Gruppo[] = [
     key: 'anagrafiche', label: 'Anagrafiche',
     sezioni: [
       { k: 'anagrafiche', label: 'Anagrafiche' },
-      // Sta qui e non fra le "Regole app": scrive dati dei clienti (persone e
-      // attestati), non regole. Il dizionario alias che usa sta invece la',
-      // perche' quello e' una regola valida per tutti.
+      // I due import stanno qui e non fra le "Regole app": scrivono dati dei
+      // clienti (aziende, persone, attestati), non regole. Il dizionario alias
+      // che il secondo usa sta invece la', perche' quello e' una regola valida
+      // per tutti. L'ordine e' quello in cui si lavora partendo da zero:
+      // prima le aziende e le persone, poi la formazione che ci si appoggia.
+      { k: 'importanagrafiche', label: 'Import anagrafiche' },
       { k: 'importformazione', label: 'Import formazione' },
     ],
   },
@@ -145,6 +149,7 @@ export default function BackOffice({
         {sezione === 'importcatalogo' && <ImportCatalogo />}
         {sezione === 'aliascorsi' && <AliasCorsi />}
         {sezione === 'importformazione' && <ImportFormazione />}
+        {sezione === 'importanagrafiche' && <ImportAnagrafiche />}
       </main>
     </div>
   );

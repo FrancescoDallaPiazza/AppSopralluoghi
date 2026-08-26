@@ -44,11 +44,13 @@ Da fare prima di rimettere dentro dati veri:
 - [ ] **NON svuotare gli Storage bucket**: i PDF degli attestati sono rimasti e
   sono l'unica copia superstite delle 384 formazioni cancellate. Decidere con
   calma, separatamente.
-- [ ] Ricreare i clienti — vedi la nuova voce in §B sull'import da visura
-  camerale, che nasce proprio da qui. A mano si parte da *Anagrafiche →
-  + Nuovo cliente*. Il **rischio** però si propone da solo scegliendo l'ATECO
-  (tabella Allegato IV ASR 2025, vedi la correzione in §B); restano da
-  compilare **livelli antincendio/primo soccorso** e **numero lavoratori**.
+- [ ] Ricreare i clienti. Dal 2026-08-26 c'è **Anagrafiche → Import anagrafiche**
+  (vedi "Fatti di recente"): un Excel/CSV con una riga per cliente li rifà tutti
+  in un colpo, e un secondo file rifà le persone di più clienti insieme. A mano
+  resta *Anagrafiche → + Nuovo cliente*. In ogni caso il **rischio** si propone
+  da solo dall'ATECO (tabella Allegato IV ASR 2025); restano da compilare
+  **livelli antincendio/primo soccorso**, che nessun file può dare, e l'import
+  li elenca riga per riga come mancanti.
 - [ ] **OVERALL GROUP si ricrea con uno script, non a mano** (scoperto
   2026-08-06): `supabase/migrations/046_import_organigramma_overall_standalone.sql`
   ricrea il cliente interno (P.IVA 04534450236) con persone, nomine, formazioni
@@ -58,10 +60,12 @@ Da fare prima di rimettere dentro dati veri:
   rieseguibili senza duplicare. L'azzeramento di ieri ha cancellato quelle
   righe: rilanciarli le riporta indietro complete.
 
-**File di origine perduti**: `elencoAnagraficaFormazioni.xlsx` (catalogo corsi
-del gestionale) e presumibilmente `ExportExcel.xlsx` (registro attestati). Il
-primo non serve più — il ripristino non lo usa. Il secondo sì: senza, le 384
-formazioni importate non sono ricostruibili da nessuna parte.
+**File di origine** — correzione del 2026-08-26: `elencoAnagraficaFormazioni.xlsx`
+**non è perduto**, sta in `docs/c1a/` (272 righe, il catalogo corsi del
+gestionale). Resta vero che non serve più: il ripristino alias non lo usa.
+Perduto è `ExportExcel.xlsx` (registro attestati), e quello sì che pesa: senza,
+le 384 formazioni importate non sono ricostruibili da nessuna parte se non
+ri-esportandolo dal gestionale.
 
 ### Verifiche in app arretrate (scritto 2026-08-05)
 
@@ -69,6 +73,31 @@ Tutto quanto segue è **già su `main`** e non richiede migration né deploy di
 Edge Function: è solo Canale 1, con `tsc --noEmit` + `vite build` verdi. Manca
 la prova sull'app vera. Raggruppate qui perché sono lavoro di una sessione sola
 davanti al cliente giusto, non tre cose diverse.
+
+**Import anagrafiche** (2026-08-26) — il codice è su `main`, `tsc` + `vite build`
+verdi, e la logica di raggruppamento/abbinamento è provata a tavolino su file
+costruiti apposta. Manca la prova sull'app vera, che è anche l'occasione per
+rifare i clienti azzerati:
+
+- [ ] *Anagrafiche → Import anagrafiche → **Scarica modello clienti***,
+  compilarlo con i clienti veri e ricaricarlo: l'anteprima deve dire **nuovi**,
+  l'ATECO riconosciuto col rischio che ne discende, e i **mancanti** riga per
+  riga. Poi *Applica*, e **riapplicare lo stesso file**: la seconda volta deve
+  dire *già a posto* e non scrivere niente.
+- [ ] Ricaricare il file dopo aver **corretto a mano** un campo in anagrafica:
+  quel campo **non** deve tornare al valore del file.
+- [ ] **Modello persone** con almeno due clienti diversi nello stesso file:
+  ogni gruppo deve proporre il suo cliente, e i conteggi *nuove/aggiornate*
+  devono cambiare quando si sposta l'abbinamento in tendina.
+- [ ] Mandare **a mano** due gruppi sullo stesso cliente → deve comparire
+  l'avviso rosso di collisione su **entrambe** le card.
+- [ ] Caricare un file di **persone** quando il loro cliente non esiste ancora:
+  il gruppo deve restare senza cliente e l'import non deve crearlo.
+- [ ] Caricare il file **sbagliato** (persone dove ci vogliono clienti): deve
+  essere letto come persone e non come clienti, senza scrivere nulla.
+- [ ] Verificare che l'import dentro *Risorse Umane* (rifattorizzato sullo
+  stesso vocabolario) legga ancora i file di prima: è l'unica regressione
+  possibile di questo lavoro.
 
 **Mansione e reparto** (`fbfe2a3`, `6b7ee0b`, `9262bcb` — 2026-08-05):
 
@@ -728,15 +757,22 @@ condividono un solo blocco addetti e il numero non è divisibile. Proporre il
 totale su una sola e lasciare l'altra vuota con avviso, invece di spartire a
 metà un dato che nessuno ha misurato così.
 
-**Da decidere alla ripresa** (non ancora affrontato):
-- [ ] Se serve **anche** l'import massivo da Excel/CSV, staccato da Werp, per
-  ricreare più clienti da una lista già pronta. Era la terza opzione e non è
-  stata scelta, ma non è stata nemmeno esclusa.
-- [ ] Dove sta l'ingresso: dentro *Anagrafiche* (accanto a "+ Nuovo cliente",
-  visto che crea UN cliente) o come voce di back-office a sé.
-- [ ] Come si presentano i campi proposti: badge "da confermare" per campo
-  (c'è già il pattern `sede.da_confermare`) oppure anteprima dry-run in stile
-  `ImportFormazione` prima di scrivere.
+**Da decidere alla ripresa**:
+- [x] **Import massivo da Excel/CSV, staccato da Werp** — *fatto 2026-08-26*.
+  Era la terza opzione, non scelta ma nemmeno esclusa: è diventata la prima a
+  esistere, perché il database azzerato la rendeva urgente e non dipende da una
+  visura vera su cui tarare un parser. Vedi "Fatti di recente".
+- [x] **Dove sta l'ingresso** — *deciso 2026-08-26*: voce di back-office a sé,
+  gruppo *Anagrafiche*, fra *Anagrafiche* e *Import formazione*, nell'ordine in
+  cui si usano. Non accanto a "+ Nuovo cliente": è un import massivo e sta con
+  gli altri import. Vale anche per la visura, quando si farà.
+- [x] **Come si presentano i campi proposti** — *deciso 2026-08-26*: **anteprima
+  dry-run** in stile `ImportFormazione`, non badge per campo. Il badge dice "non
+  fidarti" DOPO aver scritto; l'anteprima lo dice prima, ed è l'unico momento in
+  cui costa poco cambiare idea. Sui campi che il file non ha (antincendio,
+  primo soccorso) l'anteprima elenca i mancanti riga per riga.
+  Da rivedere per la visura: lì i dati sono *estratti da un PDF*, non digitati
+  da qualcuno, e il badge `da_confermare` potrebbe servire **in più**.
 - [ ] Robustezza del parser: le etichette (`Denominazione:`, `Codice fiscale:`,
   `Attività prevalente:`) sono stabili fra emittenti diversi, l'impaginazione
   no. Serve una visura vera su cui tarare — **procurarne una** prima di
@@ -925,6 +961,51 @@ metà un dato che nessuno ha misurato così.
 ---
 
 ## ✅ Fatti di recente
+
+- [x] **2026-08-26** **Import anagrafiche: clienti e risorse umane in blocco**
+  (`lib/admin/anagraficheImport.ts`, `admin/ImportAnagrafiche.tsx`,
+  `BackOffice.tsx`, `RisorseUmane.tsx`, `docs/USO.md`).
+  Mancava l'ingresso per rifare **più clienti** da una lista già pronta: Werp li
+  crea ma dentro una pipeline a 7 stadi (contratti + incarichi + sopralluoghi),
+  l'import formazione per scelta non li crea, e le persone si importavano **un
+  cliente alla volta** dalla scheda. Col database azzerato il 05/08 quella
+  strada valeva sette ripartenze.
+  - **Un file per volta e il tipo lo riconosce l'app**, dalle intestazioni:
+    *Cognome / Mansione / Data assunzione* → persone, *Ragione sociale / ATECO /
+    Numero lavoratori* → aziende. Dice anche quali colonne ha ignorato. Chi
+    carica il file sbagliato lo scopre subito, non dopo aver scritto.
+  - **Dry-run**, come gli altri import: `pianifica*` non tocca niente, `applica*`
+    scrive per upsert su id. Riapplicare lo stesso file non duplica (provato:
+    seconda passata → 0 nuovi, 0 aggiornati, 4 invariati).
+  - **Merge non distruttivo** sui clienti che esistono già (filosofia C di
+    `werpImport`): si riempiono **solo i campi vuoti**. Un file non sa cosa è
+    stato corretto a mano dopo.
+  - **ATECO → livello di rischio** dalla tabella dell'Allegato IV
+    (`formazione/ateco.ts`), la stessa dell'anagrafica: non è una deduzione, è
+    una tabella di legge. Quello che il file **non** può dare — livello
+    antincendio e gruppo primo soccorso — resta elencato **riga per riga** come
+    mancante: vale [[dati-mancanti-si-chiedono]], e un cliente nato da un import
+    è incompleto per definizione.
+  - **Persone raggruppate per unità** (P.IVA + Sede) e ogni gruppo è abbinato a
+    un cliente **da confermare**. Tre cautele, tutte verificate a tavolino
+    (`raggruppaPersone` è puro apposta, separato dalla riconciliazione che legge
+    dal DB — stessa struttura di `raggruppaUnita`/`riconciliaUnita`):
+    la sede si confronta **prima** con la sede *operativa* (la legale è identica
+    su tutti i clienti della stessa azienda: non separa niente); se due gruppi
+    puntano allo stesso cliente la proposta **cade per entrambi**; e se è
+    l'operatore a farlo a mano, compare un **avviso rosso** — può essere
+    legittimo, ma se non lo è due unità finiscono in un organigramma solo.
+  - **Un gruppo senza cliente viene saltato**, non crea l'azienda: nascerebbe
+    senza ATECO né livelli di emergenza. Stessa scelta già fatta per C1b.
+  - **Numeri di riga veri**: il foglio si legge con `blankrows: true` e le righe
+    vuote si saltano dopo. Contandole prima, "riga 6 scartata" mandava a
+    guardare la riga sbagliata di Excel.
+  - **Un solo vocabolario di intestazioni**: `RisorseUmane` non ha più il suo
+    elenco di sinonimi né la sua mappatura riga→persona, usa
+    `leggiCampiPersona`/`fondiPersona`. Due elenchi che divergono fanno un file
+    che entra da una porta e viene scartato dall'altra.
+  - Guida aggiornata nello stesso commit (§1, §3 — ora **sei** ingressi —, §3.3
+    nuovo, §4, §12, §13), come vuole la convenzione di `USO.md`.
 
 - [x] **2026-08-24** **Guida d'uso riscritta e resa manutenibile**
   (`docs/USO.md`, `scripts/guida-check.mjs`, `package.json`).
