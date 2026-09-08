@@ -49,6 +49,82 @@ sola, e conviene caricarlo su un motore già verificato.
 
 ---
 
+## 0-bis · Scorporo dei sopralluoghi (studio 2026-09-08)
+
+**Perché.** L'app è nata per i sopralluoghi e si è allargata. Misura al commit
+`f398cf4`: formazione 8.876 righe (36%), sopralluogo puro 9.410 (38%), back-office
+4.409, piattaforma 1.881. Il percorso da campo non si tocca dal **14 luglio**,
+mentre `admin/` e `formazione/` hanno commit fino al 26 agosto: due terzi dello
+sforzo recente è finito fuori dal motivo per cui l'app esiste.
+
+Studio completo (confine, contratti, sequenza):
+<https://claude.ai/code/artifact/68c2361e-aac4-4bfc-9b31-7eb92819720a>
+
+### Deciso
+
+- [x] **In campo l'organigramma è di sola lettura.** Il tecnico vede lo stato
+  formativo e segnala le carenze; non crea più persone, nomine, attestati ed
+  esoneri offline. È la decisione che sblocca tutto il resto: finché quelle
+  quattro tabelle stavano nella stessa `outbox` di `esito_voce` e `foto`,
+  separare i database significava riconciliare due code.
+
+### Raccomandato dallo studio, da confermare
+
+- [ ] **Potatura del repo attuale, non un repo nuovo.** Ciò che resta dopo il
+  taglio *è* già l'app dei sopralluoghi (46% del codice). Un repo nuovo
+  ricopierebbe quel codice e imporrebbe doppia manutenzione su un'app in uso.
+- [ ] **Due database, anagrafe replicata verso AppFormazione.** L'altra app
+  dichiara già di non possedere clienti, sedi, persone e ruoli sicurezza
+  ("replicati dal gestionale HSE") e li ha già in sola lettura per i suoi
+  operatori: il ruolo di quel gestionale lo prende AppSopralluoghi, e le sue
+  policy non cambiano di una riga.
+- [ ] **Le dodici colonne di `cliente`/`sede` si dividono per natura.** Restano
+  in anagrafe i fatti (`codice_ateco` **+ annata da aggiungere**,
+  `numero_lavoratori`, `rls_territoriale`, i due `*_definito_mediante`); vanno
+  ad AppFormazione i verdetti (`livello_rischio`, `livello_antincendio`,
+  `gruppo_primo_soccorso`), che sono derivati dalla norma e non vanno calcolati
+  da due motori.
+- [ ] **Emendare la Direzione qui sopra**, dividendo lo scadenzario: i
+  sopralluoghi sostituiscono il gestionale su documenti, autorizzazioni e
+  sorveglianza sanitaria; **AppFormazione lo sostituisce sulla formazione**.
+  Conseguenza immediata: `S2` e `S3` vanno sospesi sulla parte formativa —
+  rifanno cliente per cliente un confronto che in AppFormazione è già chiuso al
+  100% su 4.860 righe.
+
+### Da chiudere prima del taglio
+
+- [ ] **Cache voci rotta sui template composti.** `caricaVoci()` scrive
+  `voci:<templateId>` solo `if (voci.length)`, ma nei box le voci hanno
+  `template_id NULL`: la cache non si scrive mai, nemmeno dal prefetch. Aprire
+  **offline** per la prima volta un sopralluogo con template composto fallisce.
+- [ ] **Il report non conosce i componenti.** `genera-report/report-data.ts`
+  filtra `voce_template` per `template_id` e ignora `esito_voce.componente_id`:
+  le risposte ripetute per componente escono appiattite.
+- [ ] **Drain `runSync` fail-fast.** Un errore su una riga interrompe l'intero
+  ciclo e si ritenta identico: una riga storta blocca per sempre la coda. Serve
+  dead-letter per operazione, backoff, e una schermata che dica cosa si è rotto.
+- [ ] **Colonna `tecnico.cognome` inesistente.** `lib/auth.ts` e
+  `lib/admin/tecnici.ts` la leggono e la scrivono, ma nessuna migrazione la
+  crea. Da sanare prima della separazione.
+- [ ] **Doppia verità cliente/sede (migrazione 054).** Rischio, antincendio,
+  primo soccorso e ATECO sono duplicati su entrambe. Il fatto appartiene alla
+  **sede**; sul cliente resti il derivato della sede principale.
+- [ ] **`updated_at` per riga**, altrimenti l'ultimo che sincronizza sovrascrive
+  in silenzio le modifiche dell'ufficio.
+
+### Prerequisiti dei link fra le app
+
+- [ ] **Router con URL.** Oggi la navigazione è stato React annidato: un deep
+  link non ha una controparte a cui arrivare né un posto da cui tornare.
+- [ ] **Chiave cliente condivisa.** Le due app importano lo stesso export
+  Sicurweb con chiavi diverse (480 per ragione sociale normalizzata contro
+  618/449 per P.IVA + sede). Va riconciliata **prima** dei contratti: è l'unica
+  cosa che, sbagliata adesso, non si ripara dopo.
+- [ ] **SSO.** Due Auth Supabase distinte e due tabelle di ruoli indipendenti:
+  senza, ogni link fra le app è un login.
+
+---
+
 ## A · Da fare subito (deploy delle ultime feature)
 
 ### DATABASE AZZERATO il 2026-08-05 — stato e ripresa
