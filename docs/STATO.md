@@ -23,6 +23,8 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | La schermata della quarantena | aperto | — |
 | **D2** · il report non conosce i componenti | aperto | — |
 | Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
+| Importare le persone: 3.420 scritte | **fatto 9.09** | `af8d945` |
+| Paginazione delle letture (PostgREST tronca a 1000) | chiuso su `persona` | `af8d945` |
 | L'ATECO mancante sul 57% delle attive | aperto, aspetta la Fase 1 | — |
 
 ## Dettaglio di quello che è cambiato oggi
@@ -71,8 +73,27 @@ altro: senza API, quella cosa la sa solo se la riga se la porta scritta.
   avanti lo stato del database si dichiara solo dopo averlo guardato.
 - **Le 230 righe scartate sono la prova sul campo del filtro `ATTIVA`**: in
   produzione, con i dati veri, gli ex clienti non entrano più.
-- **Resta aperto: le persone.** Lo stato del database sulle persone non è stato
-  misurato. È lì che si sposta la Fase 0.
+**Le persone sono dentro: 3.420 scritte** il 9 settembre, dall'export
+`ExportExcel (5)` (ricerca dipendenti riesportata quel giorno, 3.502 righe,
+intestazioni alla riga 3, 450 gruppi, 12 senza cliente, 2 righe scartate).
+
+Ci sono voluti tre tentativi, e i primi due hanno trovato un difetto che c'era
+da sempre. `riconciliaPersone` rileggeva le persone già in archivio **senza
+paginare**, e PostgREST tronca a 1000 righe: con 3.400 persone dentro, quelle
+oltre la millesima risultavano assenti e l'import provava a ricrearle. Finché
+nessuno scriveva la provenienza, il risultato erano **doppioni creati in
+silenzio**; da quando `import_key` si scrive, la scrittura si ferma con
+`duplicate key value violates unique constraint uq_persona_import`. L'errore
+era il sintomo, non la malattia — ed è comparso al primo import su un database
+davvero pieno.
+
+**Da verificare, conseguenza dei due tentativi falliti:** possono aver creato
+doppioni prima di fermarsi, per le persone che allora erano invisibili. Si
+riconosce ricaricando lo stesso file: se i gruppi dicono «nuove: 0», non ce ne
+sono.
+
+**Stessa forma, ancora aperto:** `caricaClientiPerImport` non pagina. Oggi non
+rompe perché i clienti sono 619, sotto la soglia.
 - **L'ATECO mancante aspetta il raccordo a monte** (`formazione-81-utils-src`),
   che è dell'altra corsia. È l'unico punto in cui questa aspetta quella: una visura
   di oggi porta un codice ATECO 2025, e senza raccordo scriverebbe un livello di
