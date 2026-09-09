@@ -71,6 +71,16 @@ const normNome = (s: unknown): string =>
 export const pivaUsabile = (s: string | null | undefined): boolean =>
   !!s && /^\d{11}$/.test(s) && !/^(\d){10}$/.test(s);
 
+// Provenienza della persona (mig. 055). L'indice unique e' GLOBALE, non per
+// cliente: il codice fiscale da solo non basterebbe, perche' la stessa persona
+// puo' stare sull'organigramma di due clienti diversi ed e' legittimo che siano
+// due schede. Quindi il cliente entra nella chiave.
+const chiaveImportPersona = (clienteId: string, cf: string, cognome: string, nome: string): string | null => {
+  if (cf) return `anag:${clienteId}:${cf}`;
+  const k = chiaveNome(cognome, nome);
+  return k ? `anag:${clienteId}:n:${k}` : null;
+};
+
 // Chiave di ripiego per una persona senza codice fiscale, dentro UN cliente.
 // Vuota quando non c'e' abbastanza per distinguere.
 const chiaveNome = (cognome: string | null | undefined, nome: string | null | undefined): string => {
@@ -697,9 +707,16 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
       const base: Persona = gia
         ? gia.persona
         : (esist ? { ...esist } : { ...personaVuota(gr.cliente_id), id: newId() });
+      const persona = fondiPersona(campi, base);
+      // Da dove viene. Si scrive solo se non c'e' gia': una scheda che porta
+      // gia' una provenienza (un altro import, un'altra sorgente) non viene
+      // riscritta, perche' quella e' la sua origine e questa e' solo una
+      // rilettura.
+      const ik = chiaveImportPersona(gr.cliente_id, campi.cf, campi.cognome, campi.nome);
+      if (ik && !persona.import_key) persona.import_key = ik;
       perRiga.set(chiaveRiga, {
         riga: r.n,
-        persona: fondiPersona(campi, base),
+        persona,
         nuova: !esist,
         cfNonValido: !!campi.cf && !cfValido(campi.cf),
       });
@@ -749,6 +766,7 @@ export function personaVuota(clienteId: string): Persona {
     id: '', cliente_id: clienteId, nome: '', cognome: null, codice_fiscale: null,
     mansione: null, reparto: null, data_assunzione: null, data_cessazione: null,
     livello_rischio: null, attivo: true, note: null, formazione_pregressa: false,
+    import_key: null,
   };
 }
 

@@ -82,6 +82,11 @@ export interface Persona {
   formazione_pregressa: boolean;
   // Nasce da una copia di un'altra sede: va rivista/confermata (mig. 054).
   da_confermare?: boolean;
+  // Da dove viene questa persona (mig. 055). Null = inserita a mano.
+  // La colonna e l'indice unique parziale esistevano dalla 055, ma nessuno
+  // scriveva il campo: le persone create da un import non erano marcate, e
+  // l'unico appiglio per riconoscerle restava `created_at`.
+  import_key?: string | null;
 }
 
 export interface Nomina {
@@ -1367,6 +1372,9 @@ export async function salvaPersona(p: Persona): Promise<Persona> {
     attivo: p.attivo,
     note: vuotoNull(p.note),
     formazione_pregressa: p.formazione_pregressa,
+    // Si riscrive cio' che la persona gia' porta: le schede lette dal database
+    // lo riportano indietro, quindi una modifica dalla UI non lo cancella.
+    import_key: p.import_key ?? null,
   };
   const { data, error } = await supabase.from('persona').upsert(row).select().single();
   if (error) throw error;
