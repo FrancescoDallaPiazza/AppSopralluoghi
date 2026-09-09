@@ -93,19 +93,33 @@ Studio completo (confine, contratti, sequenza):
 
 ### Da chiudere prima del taglio
 
-- [ ] **Cache voci rotta sui template composti.** `caricaVoci()` scrive
-  `voci:<templateId>` solo `if (voci.length)`, ma nei box le voci hanno
-  `template_id NULL`: la cache non si scrive mai, nemmeno dal prefetch. Aprire
-  **offline** per la prima volta un sopralluogo con template composto fallisce.
+- [x] **Cache voci rotta sui template composti** — **fatto 2026-09-09**
+  (`af0aefb` + `bcc3a31`). Era una riga: la chiave si scrive anche con
+  l'elenco vuoto, perche' per un template composto zero voci piatte e' la
+  risposta giusta. Correzione alla diagnosi: le voci dei box **erano** in
+  cache, in IndexedDB (`lib/box.ts:38-43`); il difetto era solo la guardia.
+  Nel commento resta il nesso con le RLS: quando saranno strette, "zero righe
+  senza errore" diventa possibile e andra' distinto prima di scrivere.
 - [ ] **Il report non conosce i componenti.** `genera-report/report-data.ts`
   filtra `voce_template` per `template_id` e ignora `esito_voce.componente_id`:
-  le risposte ripetute per componente escono appiattite.
-- [ ] **Drain `runSync` fail-fast.** Un errore su una riga interrompe l'intero
-  ciclo e si ritenta identico: una riga storta blocca per sempre la coda. Serve
-  dead-letter per operazione, backoff, e una schermata che dica cosa si è rotto.
-- [ ] **Colonna `tecnico.cognome` inesistente.** `lib/auth.ts` e
-  `lib/admin/tecnici.ts` la leggono e la scrivono, ma nessuna migrazione la
-  crea. Da sanare prima della separazione.
+  le risposte ripetute per componente escono appiattite. **Peggio di come era
+  scritto** (verifica 2026-09-09): per un template composto `vociById` resta
+  vuota, quindi `etichettaValore` stampa la **chiave grezza** invece
+  dell'etichetta. E' in Edge Function: richiede un deploy, non solo un push.
+- [x] **Drain `runSync` fail-fast** — **fatto 2026-09-09** (`33e5838`). Ogni
+  operazione ha il suo try/catch e l'errore viene classificato: rete, 5xx,
+  408/429/401 e SQLSTATE 08/40/53/57/58 restano ritentabili (ci si ferma in
+  ordine, e si riprende dopo 30s invece che a ogni tocco); vincoli, dati,
+  sintassi e permessi escono dalla coda e vanno in **quarantena**
+  (`db.quarantena`, Dexie v7). Sistemate anche le foto perse in silenzio
+  quando il blob non c'e' piu'. **Resta**: la schermata che elenca la
+  quarantena e permette di ritentare o scartare.
+- [x] **Colonna `tecnico.cognome` inesistente** — **fatto 2026-09-09**
+  (`af0aefb`). Migrazione `063_tecnico_cognome.sql`, idempotente: in
+  produzione la colonna era gia' stata aggiunta a mano, quindi non cambia
+  nulla li'. Serviva alla **riproducibilita'**: su un ambiente ricreato dalle
+  migrazioni il login era rotto per tutti, con un messaggio che diceva "sei
+  offline" mentre eri online.
 - [ ] **Doppia verità cliente/sede (migrazione 054).** Rischio, antincendio,
   primo soccorso e ATECO sono duplicati su entrambe. Il fatto appartiene alla
   **sede**; sul cliente resti il derivato della sede principale.
