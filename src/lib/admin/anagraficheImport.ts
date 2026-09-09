@@ -646,10 +646,22 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
   const ids = [...new Set(gruppi.map((g) => g.cliente_id).filter((x): x is string => !!x))];
   const perCliente = new Map<string, Persona[]>();
   if (ids.length > 0) {
-    const { data, error } = await supabase.from('persona').select('*').in('cliente_id', ids);
-    if (error) throw error;
-    for (const p of (data ?? []) as Persona[]) {
-      const l = perCliente.get(p.cliente_id); if (l) l.push(p); else perCliente.set(p.cliente_id, [p]);
+    // SI PAGINA, e non e' un dettaglio. PostgREST tronca a 1000 righe di
+    // default: con piu' di mille persone in archivio, quelle oltre la soglia
+    // risultavano ASSENTI e l'import provava a ricrearle. Prima dava doppioni
+    // in silenzio; da quando ogni persona porta la provenienza, lo ferma
+    // l'indice unique della migrazione 055 - ed e' cosi' che il difetto e'
+    // venuto fuori, al primo import su un database davvero pieno.
+    const PAGINA = 1000;
+    for (let da = 0; ; da += PAGINA) {
+      const { data, error } = await supabase.from('persona').select('*')
+        .in('cliente_id', ids).order('id', { ascending: true }).range(da, da + PAGINA - 1);
+      if (error) throw error;
+      const blocco = (data ?? []) as Persona[];
+      for (const p of blocco) {
+        const l = perCliente.get(p.cliente_id); if (l) l.push(p); else perCliente.set(p.cliente_id, [p]);
+      }
+      if (blocco.length < PAGINA) break;
     }
   }
 
