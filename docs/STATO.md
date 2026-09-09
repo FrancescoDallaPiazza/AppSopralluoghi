@@ -24,8 +24,9 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | **D2** · il report non conosce i componenti | aperto | — |
 | Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
 | Importare le persone: 3.420 scritte | **fatto 9.09** | `af8d945` |
-| Paginazione delle letture (PostgREST tronca a 1000) | chiuso su `persona` | `af8d945` |
+| Paginazione delle letture (PostgREST tronca a 1000) | **chiuso** su `persona`, `cliente`, `incarico`, `sede` | `af8d945`, `e82169d` |
 | L'ATECO mancante sul 57% delle attive | aperto, **non aspetta più**: il raccordo è a monte | `0237eaf` (nella libreria) |
+| Le divisioni 30, 86, 87 (32 codici senza classe) | **decisa in Fase 2**: valgono `alto`, marcato come deduzione. Entra dal generatore, non a mano | `b555d67` (in AppOverall) |
 
 ## Dettaglio di quello che è cambiato oggi
 
@@ -186,8 +187,24 @@ Per rendere quella verifica possibile è stato aggiunto il totale
 «N nuove · M aggiornate» in cima al riepilogo (`0c431b6`): prima il dato esisteva
 solo dentro ogni gruppo, e i gruppi sono 450.
 
-**Stessa forma, ancora aperto:** `caricaClientiPerImport` non pagina. Oggi non
-rompe perché i clienti sono 619, sotto la soglia.
+**Stessa forma, e adesso chiuso** (`e82169d`): `caricaClientiPerImport` non
+paginava. Oggi non rompeva perché i clienti sono 619, sotto la soglia — ma il
+difetto non stava in quella funzione: delegava a `caricaClienti`, che ha **tre**
+letture non paginate (`cliente`, `incarico`, `sede`), e l'altra metà del carico
+dell'import — `caricaClientiScelta`, chiamata nello stesso `Promise.all` — ne
+aveva altre due. Cinque query, un difetto solo, e gli incarichi passano il
+migliaio prima dei clienti.
+
+Ora c'è `leggiTutte` in `src/lib/supabase.ts`, un posto solo: prende una
+funzione-costruttrice (un builder PostgREST si consuma quando lo si attende) e
+sposta la finestra finché una pagina torna corta. **Ogni query paginata ordina
+anche per `id`**: senza un ordine stabile, fra una pagina e l'altra la stessa
+riga compare due volte e un'altra in nessuna.
+
+Di passaggio: l'import non carica più incarichi e sedi (servivano ai conteggi
+della lista, a lui no), e gli errori su `incarico` e `sede` ora si propagano
+invece di essere ingoiati — erano gli unici due punti del modulo a scartare
+l'errore, e il risultato era «0 incarichi» su un cliente che ne ha.
 - **L'ATECO mancante non aspetta più**: il raccordo è stato consegnato a monte,
   nella libreria (`formazione-81-utils-src`, `0237eaf`). Non le 6.742 righe — le
   **eccezioni**, i 9 codici su 1.290 dove prendere le prime due cifre sbaglia, più
@@ -200,8 +217,12 @@ rompe perché i clienti sono 619, sotto la soglia.
   `codice_ateco` **e** `livello_rischio` nella stessa patch senza conferma: è lì che
   un codice 2025 diventa una classe sbagliata in anagrafica, ed è da sistemare prima
   della campagna, non dopo.
-  Restano fuori **32 codici** che non hanno classe finché la scheda 5 di AppOverall
-  non decide sulle divisioni 30, 86 e 87.
+  I **32 codici** delle divisioni 30, 86 e 87 non sono più senza classe: la scheda
+  5 è stata decisa la sera del 9.09 (`b555d67` in AppOverall) — valgono `alto`, con
+  la citazione della Gazzetta 2011 e **la deduzione marcata separatamente dal
+  valore**. Anche questo entra dal generatore: `ateco.ts` **si rigenera, non si
+  corregge a mano**, e l'avviso che il generatore è pronto arriva da AppFormazione.
+  Non anticipare a mano nessuna delle due cose.
 - **Cosa dobbiamo all'altra corsia:** niente.
 
 ## Come sapere cosa ha fatto l'altra corsia
