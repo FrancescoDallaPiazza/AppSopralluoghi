@@ -116,6 +116,12 @@ export default function ImportAnagrafiche() {
   const daScrivereP = useMemo(
     () => pianoP?.gruppi.reduce((s, g) => s + (g.cliente_id ? g.voci.length : 0), 0) ?? 0, [pianoP]);
   const gruppiSenzaCliente = useMemo(
+  // Totale nuove/aggiornate. Il dato c'era solo dentro ogni gruppo, e i gruppi
+  // sono centinaia: per sapere se un import CREA o AGGIORNA bisognava scorrerli
+  // tutti. E' il numero che dice se una seconda passata sullo stesso file e'
+  // innocua - se le nuove sono zero, non si stanno facendo doppioni.
+  const nuoveP = (pianoP?.gruppi ?? []).reduce((n, g) => n + (g.cliente_id ? g.nuove : 0), 0);
+  const aggiornateP = (pianoP?.gruppi ?? []).reduce((n, g) => n + (g.cliente_id ? g.aggiornate : 0), 0);
     () => pianoP?.gruppi.filter((g) => !g.cliente_id).length ?? 0, [pianoP]);
 
   return (
@@ -254,6 +260,7 @@ export default function ImportAnagrafiche() {
                 <div className="bo-meta">
                   <span><b>{pianoP.gruppi.length}</b> gruppi (azienda + sede)</span>
                   <span><b>{daScrivereP}</b> persone da scrivere</span>
+                  <span><b>{nuoveP}</b> nuove · <b>{aggiornateP}</b> aggiornate</span>
                   {gruppiSenzaCliente > 0 && (
                     <span style={{ color: 'var(--no)' }}><b>{gruppiSenzaCliente}</b> gruppi senza cliente</span>
                   )}
