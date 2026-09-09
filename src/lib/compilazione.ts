@@ -118,7 +118,12 @@ async function caricaVoci(templateId: string): Promise<VoceTemplate[]> {
       .order('ordine', { ascending: true });
     if (error) throw error;
     const voci = (data ?? []) as unknown as VoceTemplate[];
-    if (voci.length) scriviCacheVoci(templateId, voci);
+    // Si scrive SEMPRE, anche l'elenco vuoto: un template composto non ha voci
+    // piatte (stanno nei box, con template_id null) e zero righe e' la risposta
+    // giusta, non un errore. Con la guardia sulla lunghezza la chiave non si
+    // scriveva mai, nemmeno dalla prefetch, e la prima apertura offline di un
+    // giro con template composto finiva in schermata di errore.
+    scriviCacheVoci(templateId, voci);
     return voci;
   } catch {
     const cache = leggiCacheVoci(templateId);

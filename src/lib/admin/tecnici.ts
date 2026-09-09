@@ -9,7 +9,7 @@
 //  * tecnico.user_id è UNIQUE e nullable → empty string va salvata come NULL,
 //    e due tecnici non possono condividere lo stesso user_id.
 //  * ruolo ∈ {tecnico, admin} (migration 006).
-//  * cognome è nullable nel DB (migration 010) per retrocompatibilità; il form
+//  * cognome è nullable nel DB (migration 063) per retrocompatibilità; il form
 //    lo richiede per i nuovi/aggiornati.
 //  * capienza_ore_settimana è numeric(5,1) → ammette i decimali (es. 37.5).
 //  * tecnico è referenziato da sopralluogo.tecnico_id e azione con ON DELETE
