@@ -19,6 +19,7 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | **D4** · `tecnico.cognome`, la migrazione mai scritta | chiuso | `af0aefb` |
 | **D3** · quarantena della coda offline | chiuso | `33e5838` |
 | **I sette buchi dell'import** | chiuso | `0d0c8a0` |
+| Provenienza: `import_key` sulle persone | chiuso | `98082cd` |
 | La schermata della quarantena | aperto | — |
 | **D2** · il report non conosce i componenti | aperto | — |
 | Ricreare i clienti: le 618 anagrafiche | **fermo, manca il file** | — |
@@ -35,6 +36,13 @@ invece di duplicarle, 6 restano `riga:N` perché omonime.
 Le riparazioni **lato clienti** — colonne `LEGALE`, filtro `ATTIVA`,
 `N. DIPENDENTI` — sono scritte ma **non riprovate sui dati**: `ElencoSedi (5).xlsx`
 non è più in `~/Downloads`.
+
+**La provenienza delle persone** (`98082cd`): `persona.import_key` esisteva dalla
+migrazione `055` con il suo indice unique, ma nessuno la scriveva. Ora l'import
+anagrafiche la scrive come `anag:<cliente>:<cf>` — col cliente dentro, perché
+l'indice è globale e la stessa persona può stare su due organigrammi. È il primo
+mattone di ciò che permette a un sistema di sapere cosa ha già ricevuto da un
+altro: senza API, quella cosa la sa solo se la riga se la porta scritta.
 
 ## Cosa blocca, e chi lo tiene
 
