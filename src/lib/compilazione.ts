@@ -123,6 +123,14 @@ async function caricaVoci(templateId: string): Promise<VoceTemplate[]> {
     // giusta, non un errore. Con la guardia sulla lunghezza la chiave non si
     // scriveva mai, nemmeno dalla prefetch, e la prima apertura offline di un
     // giro con template composto finiva in schermata di errore.
+    //
+    // ATTENZIONE quando si stringeranno le RLS. Oggi e' sicuro perche' le policy
+    // sono tutte using (true): una lettura negata non puo' tornare zero righe
+    // senza errore, quindi [] significa davvero "questo template non ha voci
+    // piatte". Con una policy che nega, "zero righe e nessun errore" diventa una
+    // risposta possibile, e qui verrebbe messa in cache come checklist vuota, in
+    // silenzio. Allora servira' distinguere i due casi (conteggio atteso, oppure
+    // una verifica esplicita del permesso) prima di scrivere.
     scriviCacheVoci(templateId, voci);
     return voci;
   } catch {
