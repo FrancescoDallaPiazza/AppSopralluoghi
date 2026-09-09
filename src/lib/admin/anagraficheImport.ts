@@ -653,9 +653,19 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     }
   }
 
+  // Chiavi di provenienza gia' assegnate in QUESTO piano. Serve perche' due
+  // gruppi possono finire sullo stesso cliente (due sedi, un organigramma) e
+  // portare la stessa persona: due schede nuove con la stessa chiave le
+  // rifiuterebbe il database (indice uq_persona_import).
+  const ikUsate = new Set<string>();
+
   for (const gr of gruppi) {
     if (!gr.cliente_id) continue;
     const esistenti = perCliente.get(gr.cliente_id) ?? [];
+    // Chi e' gia' stato scritto da un import precedente si riconosce dalla
+    // provenienza, prima ancora che dal codice fiscale.
+    const perImport = new Map<string, Persona>();
+    for (const p of esistenti) if (p.import_key) perImport.set(p.import_key, p);
     const perCf = new Map<string, Persona>();
     for (const p of esistenti) if (p.codice_fiscale) perCf.set(cfPulisci(p.codice_fiscale), p);
 
@@ -687,7 +697,12 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     for (const r of gr.righe) {
       const campi = leggiCampiPersona(r.col);
       if (!campi) continue;
-      let esist = campi.cf ? perCf.get(campi.cf) : undefined;
+      const ik = chiaveImportPersona(gr.cliente_id, campi.cf, campi.cognome, campi.nome);
+      // L'ordine conta: prima la provenienza, poi il codice fiscale. Senza,
+      // una seconda passata dopo un import interrotto a meta' non riconosce
+      // chi era gia' stato scritto, gli assegna un id nuovo con la stessa
+      // chiave, e il database la rifiuta invece di aggiornarlo.
+      let esist = (ik ? perImport.get(ik) : undefined) ?? (campi.cf ? perCf.get(campi.cf) : undefined);
       let chiaveRiga: string;
       if (campi.cf) {
         chiaveRiga = campi.cf;
@@ -712,8 +727,8 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
       // gia' una provenienza (un altro import, un'altra sorgente) non viene
       // riscritta, perche' quella e' la sua origine e questa e' solo una
       // rilettura.
-      const ik = chiaveImportPersona(gr.cliente_id, campi.cf, campi.cognome, campi.nome);
-      if (ik && !persona.import_key) persona.import_key = ik;
+      if (ik && !persona.import_key && !ikUsate.has(ik)) persona.import_key = ik;
+      if (persona.import_key) ikUsate.add(persona.import_key);
       perRiga.set(chiaveRiga, {
         riga: r.n,
         persona,
