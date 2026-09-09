@@ -116,13 +116,15 @@ export default function ImportAnagrafiche() {
   const daScrivereP = useMemo(
     () => pianoP?.gruppi.reduce((s, g) => s + (g.cliente_id ? g.voci.length : 0), 0) ?? 0, [pianoP]);
   const gruppiSenzaCliente = useMemo(
+    () => pianoP?.gruppi.filter((g) => !g.cliente_id).length ?? 0, [pianoP]);
   // Totale nuove/aggiornate. Il dato c'era solo dentro ogni gruppo, e i gruppi
   // sono centinaia: per sapere se un import CREA o AGGIORNA bisognava scorrerli
   // tutti. E' il numero che dice se una seconda passata sullo stesso file e'
-  // innocua - se le nuove sono zero, non si stanno facendo doppioni.
-  const nuoveP = (pianoP?.gruppi ?? []).reduce((n, g) => n + (g.cliente_id ? g.nuove : 0), 0);
-  const aggiornateP = (pianoP?.gruppi ?? []).reduce((n, g) => n + (g.cliente_id ? g.aggiornate : 0), 0);
-    () => pianoP?.gruppi.filter((g) => !g.cliente_id).length ?? 0, [pianoP]);
+  // innocua: se le nuove sono zero, non si stanno facendo doppioni.
+  const nuoveP = useMemo(
+    () => pianoP?.gruppi.reduce((n, g) => n + (g.cliente_id ? g.nuove : 0), 0) ?? 0, [pianoP]);
+  const aggiornateP = useMemo(
+    () => pianoP?.gruppi.reduce((n, g) => n + (g.cliente_id ? g.aggiornate : 0), 0) ?? 0, [pianoP]);
 
   return (
     <div>
