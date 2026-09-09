@@ -258,7 +258,8 @@ modello; 2 sole righe scartate su 3418.
   `indirizzo`/`cap`/`citta`/`provincia` e non le varianti "legale". Nel dry-run
   indirizzo, CAP, località e provincia risultano **null su ogni voce**.
   **FATTO 2026-09-09** (`0d0c8a0`): aggiunti i sinonimi `indirizzolegale`,
-  `caplegale`, `cittalegale`, `provincialegale`. Non verificato sul file: non e' piu' in Downloads.
+  `caplegale`, `cittalegale`, `provincialegale`. Verificato su `ElencoSedi.xlsx`:
+  361 indirizzi, 361 CAP, 362 localita', 359 province sulle 619 attive (prima: 0).
 - [x] **`N° DIPENDENTI` ignorato** → `numero_lavoratori` null su tutti, ed è il
   campo che decide le 4h o 8h di aggiornamento RLS. Con un'avvertenza: 138 righe
   attive dichiarano `0`, e zero lavoratori non è un'azienda — trattarlo come
