@@ -251,34 +251,49 @@ modello; 2 sole righe scartate su 3418.
 
 **Cosa si perde, e va sistemato prima di scrivere sul database:**
 
-- [ ] **Indirizzi persi tutti e 847.** Le colonne si chiamano `INDIRIZZO LEGALE`,
+- [x] **Indirizzi persi tutti e 847.** Le colonne si chiamano `INDIRIZZO LEGALE`,
   `CAP LEGALE`, `CITTÀ LEGALE`, `PROVINCIA LEGALE`; il vocabolario conosce
   `indirizzo`/`cap`/`citta`/`provincia` e non le varianti "legale". Nel dry-run
   indirizzo, CAP, località e provincia risultano **null su ogni voce**.
-- [ ] **`N° DIPENDENTI` ignorato** → `numero_lavoratori` null su tutti, ed è il
+  **FATTO 2026-09-09** (`0d0c8a0`): aggiunti i sinonimi `indirizzolegale`,
+  `caplegale`, `cittalegale`, `provincialegale`. Non verificato sul file: non e' piu' in Downloads.
+- [x] **`N° DIPENDENTI` ignorato** → `numero_lavoratori` null su tutti, ed è il
   campo che decide le 4h o 8h di aggiornamento RLS. Con un'avvertenza: 138 righe
   attive dichiarano `0`, e zero lavoratori non è un'azienda — trattarlo come
   **non dichiarato**, non come numero, e lasciarlo fra i mancanti.
-- [ ] **Colonna `ATTIVA` ignorata**: importeremmo **229 ex clienti** in silenzio.
-- [ ] **Nessuna guardia sulla P.IVA**, e il file è peggio del report: fra le sole
+  **FATTO 2026-09-09**: sinonimo `ndipendenti`. Lo zero resta "non dichiarato"
+  perche' `numeroIntero` lo scarta gia'.
+- [x] **Colonna `ATTIVA` ignorata**: importeremmo **229 ex clienti** in silenzio.
+  **FATTO 2026-09-09**: le righe non attive si scartano dichiarandolo. Se la
+  colonna manca (altri export) non si filtra niente.
+- [x] **Nessuna guardia sulla P.IVA**, e il file è peggio del report: fra le sole
   attive **40 righe hanno `00000000000`**, più `XXXXXXXXX` e 18 P.IVA non a 11
   cifre. Due danni: il match su cliente esistente prende il primo candidato con
   quella chiave — e proprio quelle aziende hanno l'indirizzo vuoto (foglio "7.
   Sedi fittizie"), quindi il tie-break sul luogo non disambigua; e il segnaposto
   finisce scritto in `cliente.partita_iva`, avvelenando ogni import successivo.
   Una P.IVA non usabile va trattata come **chiave assente**, e non va scritta.
-- [ ] **`Data di Licenziamento` fuori vocabolario** (lato persone).
+  **FATTO 2026-09-09**: `pivaUsabile` - 11 cifre, non tutte uguali. Non usabile
+  = chiave assente: non aggancia e non si scrive. Stessa guardia sul lato
+  persone. Verificato sull'export dipendenti: 95 valori su 3416 scartati.
+- [x] **`Data di Licenziamento` fuori vocabolario** (lato persone).
   `data_cessazione` accetta `datacessazione`/`cessazione`/`datafine`/
   `datadicessazione`, non questa: **tutti i cessati entrerebbero attivi**. Il
   report (rilievo 9) dice che il gestionale li esclude dagli obblighi apposta —
   0 su 1016 compaiono nello scadenzario — quindi importarli attivi significa
   inventare scadenze su gente che non c'è più.
-- [ ] **233 righe senza codice fiscale** (il report ne contava 235). Senza CF la
+  **FATTO 2026-09-09**: sinonimo `datadilicenziamento`. Verificato: la colonna
+  ora aggancia, 4 righe la valorizzano (prima 0).
+- [x] **233 righe senza codice fiscale** (il report ne contava 235). Senza CF la
   chiave diventa `riga:N`, la persona risulta **sempre nuova**, e riapplicare lo
   stesso file la duplica: contraddice in pieno la prova di idempotenza qui sotto.
   Serve un fallback cognome+nome dentro il cliente.
-- [ ] **`Area di Lavoro` non è fra i sinonimi di reparto** (c'è `area`, non
+  **FATTO 2026-09-09**: ripiego su cognome+nome dentro il cliente, solo se il
+  nome non e' ambiguo. Verificato: 235 senza CF, 227 con nome univoco
+  agganciate, 6 omonime che restano `riga:N`.
+- [x] **`Area di Lavoro` non è fra i sinonimi di reparto** (c'è `area`, non
   `areadilavoro`). Minore: quel campo è vuoto sull'89%.
+  **FATTO 2026-09-09**: sinonimo `areadilavoro`. Verificato: aggancia.
 
 **Da decidere**: `INDIRIZZO SITO PRODUTTIVO` (37% delle attive) diventa la **sede
 operativa** del cliente, oppure si importa per ora la sola sede legale e la
