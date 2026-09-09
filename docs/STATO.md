@@ -86,8 +86,35 @@ agganciando solo per codice fiscale **perderebbe l'organigramma della sicurezza
 per intero e in silenzio**: RLS, RSPP, due preposti, quattro antincendio, quattro
 primo soccorso.
 
-In totale sparirebbero 18 incarichi: 3 RSPP, 1 RLS, 2 preposti, 5 antincendio,
-5 primo soccorso, 1 emergenze, 1 responsabile emergenze.
+In totale sparirebbero **19 incarichi**, e uno di questi è l'intero dato di un
+ruolo:
+
+| ruolo | persi | su | |
+|---|---:|---:|---|
+| Addetti primo soccorso | 5 | 85 | |
+| Addetti antincendio | 5 | 79 | |
+| RSPP | 3 | 31 | |
+| Preposto | 2 | 25 | |
+| RLS | 1 | 10 | |
+| Addetti emergenze | 1 | 71 | |
+| Responsabile emergenze | 1 | 35 | |
+| **Addetti Servizio Prevenzione e Protezione** | **1** | **1** | **tutto il dato** |
+
+L'unica riga ASPP dell'export è anche una delle dodici senza codice fiscale:
+agganciando per codice fiscale non si perde «anche un ASPP», si perde il **100%**
+di quel ruolo, e nessun conteggio lo segnalerebbe.
+
+Le date di incarico vanno dal **13.05.2001 al 27.12.2022**.
+
+*Seconda nota di metodo, peggiore della prima.* Le colonne dei ruoli le avevo
+cercate con un'espressione inventata da me (`rspp|rls|preposto|antincendio|primo
+soccorso|emergenz`), e ne mancavano **due su nove**: `Addetti Servizio Prevenzione
+e Protezione` e `Dirigente`. La prima l'ha vista l'altra corsia; la seconda è
+saltata fuori solo elencando **tutte** le colonne del foglio invece di cercarne
+alcune. `Dirigente` sono 2 righe e non cambia il conto dei persi, ma è una figura
+del D.Lgs 81/08 con un obbligo formativo suo: sarebbe entrata nell'import
+mancante, senza che nessuno la cercasse. **Le colonne di un export si enumerano,
+non si indovinano.**
 
 **Tutte e dodici hanno cognome e nome**, quindi il ripiego che l'import già usa
 per le 227 persone senza codice fiscale le recupera — ma va acceso
