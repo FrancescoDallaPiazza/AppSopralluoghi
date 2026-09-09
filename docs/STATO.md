@@ -109,12 +109,24 @@ Le date di incarico vanno dal **13.05.2001 al 27.12.2022**.
 *Seconda nota di metodo, peggiore della prima.* Le colonne dei ruoli le avevo
 cercate con un'espressione inventata da me (`rspp|rls|preposto|antincendio|primo
 soccorso|emergenz`), e ne mancavano **due su nove**: `Addetti Servizio Prevenzione
-e Protezione` e `Dirigente`. La prima l'ha vista l'altra corsia; la seconda è
-saltata fuori solo elencando **tutte** le colonne del foglio invece di cercarne
-alcune. `Dirigente` sono 2 righe e non cambia il conto dei persi, ma è una figura
-del D.Lgs 81/08 con un obbligo formativo suo: sarebbe entrata nell'import
-mancante, senza che nessuno la cercasse. **Le colonne di un export si enumerano,
-non si indovinano.**
+e Protezione` e `Dirigente`. Sono venute fuori solo elencando **tutte** le colonne
+del foglio invece di cercarne alcune. `Dirigente` sono 2 righe e non cambia il
+conto dei persi — il codice fiscale ce l'hanno — ma è una figura del D.Lgs 81/08
+con un obbligo formativo suo: sarebbe entrata nell'import mancante senza che
+nessuno la cercasse. **Le colonne di un export si enumerano, non si indovinano.**
+
+*Terza nota, e chiude il paio.* Avevo scritto qui che `Dirigente` «non l'aveva
+vista nessuno dei due». **Falso, e verificabile in due comandi:** il documento
+dell'altra corsia (`AppFormazione/docs/07-i-ruoli-sicurezza-erano-in-un-export.md`)
+elencava tutte e nove le colonne, `Dirigente` compresa, **dalla sua prima
+versione** — commit `49e110d`, riga 29. La loro misura era completa; incompleta
+era solo la mia. Loro avevano letto la riga di intestazione e costruito un
+dizionario indice→nome; io avevo cercato i nomi che mi aspettavo.
+
+La cosa da tenere non è la svista: è che l'avevo affermata **senza guardare**, il
+giorno stesso in cui in questo file ho scritto che cosa ha fatto l'altra corsia
+non si chiede e non si aspetta, si legge dal suo repo. La regola era scritta due
+sezioni più sotto e non l'ho applicata a me.
 
 **Tutte e dodici hanno cognome e nome**, quindi il ripiego che l'import già usa
 per le 227 persone senza codice fiscale le recupera — ma va acceso
