@@ -26,7 +26,8 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | Importare le persone: 3.420 scritte | **fatto 9.09** | `af8d945` |
 | Paginazione delle letture (PostgREST tronca a 1000) | **chiuso** su `persona`, `cliente`, `incarico`, `sede` | `af8d945`, `e82169d` |
 | L'ATECO mancante sul 57% delle attive | aperto, **non aspetta più**: il raccordo è a monte | `0237eaf` (nella libreria) |
-| Le divisioni 30, 86, 87 (32 codici senza classe) | **decisa in Fase 2**: valgono `alto`, marcato come deduzione. Entra dal generatore, non a mano | `b555d67` (in AppOverall) |
+| Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
+| `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
 
 ## Dettaglio di quello che è cambiato oggi
 
@@ -220,9 +221,29 @@ l'errore, e il risultato era «0 incarichi» su un cliente che ne ha.
   I **32 codici** delle divisioni 30, 86 e 87 non sono più senza classe: la scheda
   5 è stata decisa la sera del 9.09 (`b555d67` in AppOverall) — valgono `alto`, con
   la citazione della Gazzetta 2011 e **la deduzione marcata separatamente dal
-  valore**. Anche questo entra dal generatore: `ateco.ts` **si rigenera, non si
-  corregge a mano**, e l'avviso che il generatore è pronto arriva da AppFormazione.
-  Non anticipare a mano nessuna delle due cose.
+  valore**. L'avviso da AppFormazione è arrivato la sera stessa (`736699e` nella
+  libreria) e **la rigenerazione è fatta** (`3a68c13`).
+
+**La rigenerazione di `ateco.ts`, e cosa NON ha cambiato.** Nessun livello: le 88
+divisioni vecchie e le 88 nuove combaciano su sezione, livello e descrizione. La
+30, la 86 e la 87 erano già `alto` **anche prima** — quello che mancava era dire
+da dove venisse. È la provenienza a essere nuova, non il valore; e i 32 codici
+sbloccati sono codici **ATECO 2025** che il raccordo risolve nella libreria, non
+righe di questa tabella.
+
+Il file dichiarava da sempre «generati dalla libreria, nessuna trascrizione
+manuale», ma **come** si generassero non era scritto da nessuna parte: era un
+gesto a memoria, che è indistinguibile da una trascrizione a mano. Ora
+`node scripts/genera-ateco.mjs [percorso-libreria]` riscrive
+`src/formazione/atecoDati.ts` (generato, con scritto di non toccarlo) e `--check`
+dice solo se siamo indietro. `ateco.ts` resta la logica: i consumatori non
+cambiano una riga. `fonte` e `dedotto` restano **due campi**, e l'anagrafica li
+mostra sulle tre divisioni — se in ispezione la risposta è «l'ha messo il
+programma», la decisione non ha retto.
+
+La libreria non è una dipendenza npm e non è clonata qui: `gh repo clone
+FrancescoDallaPiazza/formazione-81-utils-src` accanto al repo, oppure il percorso
+si passa allo script.
 - **Cosa dobbiamo all'altra corsia:** niente.
 
 ## Come sapere cosa ha fatto l'altra corsia
