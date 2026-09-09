@@ -61,6 +61,23 @@ export const normHeader = (s: string): string =>
 const normNome = (s: unknown): string =>
   S(s).replace(/\s+/g, ' ').toUpperCase().replace(/\.+$/, '').trim();
 
+// Una P.IVA e' usabile solo se sono 11 cifre e non e' un segnaposto (tutte
+// cifre uguali). Fra le sole aziende attive di ElencoSedi, 00000000000 compare
+// 40 volte, piu' XXXXXXXXX e 18 valori non a 11 cifre. Una P.IVA non usabile
+// va trattata come CHIAVE ASSENTE: non aggancia un cliente esistente - il
+// match prenderebbe il primo candidato con quella chiave, e proprio quelle
+// aziende hanno l'indirizzo vuoto, quindi il ripiego sul luogo non disambigua
+// - e non si scrive, perche' avvelenerebbe ogni import successivo.
+export const pivaUsabile = (s: string | null | undefined): boolean =>
+  !!s && /^\d{11}$/.test(s) && !/^(\d){10}$/.test(s);
+
+// Chiave di ripiego per una persona senza codice fiscale, dentro UN cliente.
+// Vuota quando non c'e' abbastanza per distinguere.
+const chiaveNome = (cognome: string | null | undefined, nome: string | null | undefined): string => {
+  const k = `${normNome(cognome ?? '')}|${normNome(nome ?? '')}`;
+  return k === '|' ? '' : k;
+};
+
 // La colonna CF degli export gestionali contiene indifferentemente la P.IVA
 // (11 cifre) o il codice fiscale (16 caratteri). Stessa regola di werpImport.
 function pivaCf(v: string): { piva: string | null; codf: string | null } {
@@ -119,14 +136,25 @@ const COL_CLIENTE: Record<string, string[]> = {
   codice_fiscale: ['codicefiscale', 'cfiscale', 'cfazienda'],
   cf_ambiguo: ['cf'],           // colonna degli export gestionali: P.IVA oppure CF
   codice_ateco: ['codiceateco', 'ateco', 'attivitaprevalente', 'atecoprevalente'],
-  indirizzo: ['indirizzo', 'via', 'sedelegale', 'indirizzosedelegale'],
-  cap: ['cap'],
-  localita: ['localita', 'citta', 'comune', 'paese'],
-  provincia: ['provincia', 'prov', 'pr', 'siglaprovincia'],
+  // Le varianti "LEGALE" sono quelle di ElencoSedi: senza, l'indirizzo si
+  // perdeva su tutte e 847 le righe. Il SITO PRODUTTIVO non e' un sinonimo
+  // della sede legale: e' la sede operativa, e finche' non e' deciso come
+  // trattarla resta fuori apposta.
+  indirizzo: ['indirizzo', 'via', 'sedelegale', 'indirizzosedelegale', 'indirizzolegale'],
+  cap: ['cap', 'caplegale'],
+  localita: ['localita', 'citta', 'comune', 'paese', 'cittalegale', 'comunelegale', 'localitalegale'],
+  provincia: ['provincia', 'prov', 'pr', 'siglaprovincia', 'provincialegale'],
   email: ['email', 'mail', 'pec', 'indirizzopec', 'emailpec'],
   telefono: ['telefono', 'tel', 'telefono1', 'cellulare'],
   referente: ['referente', 'contatto', 'referentetecnico'],
-  numero_lavoratori: ['numerolavoratori', 'nlavoratori', 'lavoratori', 'dipendenti', 'addetti', 'numeroaddetti', 'numerodipendenti'],
+  // 'ndipendenti' e' "N. DIPENDENTI" dopo normHeader. Lo zero non e' un
+  // numero di lavoratori: 138 righe attive lo dichiarano, e un'azienda con
+  // zero lavoratori non esiste. numeroIntero lo tratta gia' come assente,
+  // quindi resta fra i mancanti invece di diventare un dato.
+  numero_lavoratori: ['numerolavoratori', 'nlavoratori', 'lavoratori', 'dipendenti', 'addetti', 'numeroaddetti', 'numerodipendenti', 'ndipendenti'],
+  // Dice se il cliente e' ancora tale. Su ElencoSedi, 229 righe su 847 non lo
+  // sono: senza questa colonna entrerebbero in silenzio, con le loro scadenze.
+  attiva: ['attiva', 'attivo', 'clienteattivo', 'stato'],
 };
 
 const COL_PERSONA: Record<string, string[]> = {
@@ -134,9 +162,13 @@ const COL_PERSONA: Record<string, string[]> = {
   nome: ['nome', 'nominativo', 'dipendente', 'cognomeenome', 'nomecognome', 'nominativocompleto'],
   codice_fiscale: ['codicefiscale', 'cf', 'cfiscale'],
   mansione: ['mansione', 'ruolo', 'qualifica', 'profilo', 'profiloprofessionale'],
-  reparto: ['reparto', 'area', 'settore', 'ufficio'],
+  reparto: ['reparto', 'area', 'settore', 'ufficio', 'areadilavoro'],
   data_assunzione: ['dataassunzione', 'assunzione', 'dataassunz', 'datadiassunzione', 'datainizio'],
-  data_cessazione: ['datacessazione', 'cessazione', 'datafine', 'datadicessazione'],
+  // "Data di Licenziamento" e' come la chiama l'export dipendenti. Senza
+  // questo sinonimo TUTTI i cessati entravano attivi, e il gestionale li
+  // esclude dagli obblighi apposta: importarli attivi inventa scadenze su
+  // gente che non c'e' piu'.
+  data_cessazione: ['datacessazione', 'cessazione', 'datafine', 'datadicessazione', 'datadilicenziamento', 'datalicenziamento', 'licenziamento'],
   // colonne che dicono A QUALE CLIENTE va la persona
   cliente_piva: ['partitaiva', 'piva', 'pi'],
   cliente_nome: ['ragionesociale', 'societa', 'azienda', 'cliente', 'denominazione'],
@@ -300,7 +332,17 @@ export function pianificaClienti(f: Foglio, esistenti: Cliente[]): PianoClienti 
     const nome = testo(r.col, COL_CLIENTE.ragione_sociale!);
     if (!nome) { scartate.push({ riga: r.n, motivo: 'senza ragione sociale' }); continue; }
 
-    let piva = testo(r.col, COL_CLIENTE.partita_iva!).replace(/\s/g, '').toUpperCase() || null;
+    // Ex clienti: si scartano qui, non si importano "spenti". La colonna puo'
+    // mancare (altri export): in quel caso non si filtra niente.
+    const attiva = normHeader(testo(r.col, COL_CLIENTE.attiva!));
+    if (attiva && ['no', 'n', '0', 'false', 'falso', 'inattiva', 'inattivo', 'cessata', 'cessato'].includes(attiva)) {
+      scartate.push({ riga: r.n, motivo: "non e' piu' un cliente (colonna ATTIVA)" });
+      continue;
+    }
+
+    const pivaGrezza = testo(r.col, COL_CLIENTE.partita_iva!).replace(/\s/g, '').toUpperCase() || null;
+    let piva = pivaUsabile(pivaGrezza) ? pivaGrezza : null;
+    const pivaScartata = pivaGrezza && !piva ? pivaGrezza : null;
     let codf = testo(r.col, COL_CLIENTE.codice_fiscale!).replace(/\s/g, '').toUpperCase() || null;
     if (!piva || !codf) {
       const amb = pivaCf(testo(r.col, COL_CLIENTE.cf_ambiguo!));
@@ -374,10 +416,15 @@ export function pianificaClienti(f: Foglio, esistenti: Cliente[]): PianoClienti 
     // Omonimie dentro il file: due righe con la stessa P.IVA sono due unita', e
     // restano due clienti. Va detto, perche' in tendina si assomiglieranno.
     let nota: string | null = null;
+    if (pivaScartata) {
+      nota = `P.IVA "${pivaScartata}" non utilizzabile: ignorata come chiave e non scritta`;
+      mancanti.push('P.IVA');
+    }
     const chiaveFile = piva ?? codf ?? normNome(nome);
     const prima = vistiInFile.get(chiaveFile);
     if (prima != null) {
-      nota = `stessa P.IVA/denominazione della riga ${prima}: resta un cliente distinto (un cliente = un organigramma)`;
+      const dup = `stessa P.IVA/denominazione della riga ${prima}: resta un cliente distinto (un cliente = un organigramma)`;
+      nota = nota ? `${nota}. ${dup}` : dup;
     } else {
       vistiInFile.set(chiaveFile, r.n);
     }
@@ -476,7 +523,10 @@ export function raggruppaPersone(
     const cognome = testo(r.col, COL_PERSONA.cognome!);
     if (!nome && !cognome) { scartate.push({ riga: r.n, motivo: "senza nome ne' cognome" }); continue; }
 
-    const piva = testo(r.col, COL_PERSONA.cliente_piva!).replace(/\s/g, '').toUpperCase() || null;
+    const pivaGrezza = testo(r.col, COL_PERSONA.cliente_piva!).replace(/\s/g, '').toUpperCase() || null;
+    // Stessa guardia del lato clienti: un segnaposto aggancerebbe le persone
+    // al primo cliente con quella chiave, cioe' all'organigramma sbagliato.
+    const piva = pivaUsabile(pivaGrezza) ? pivaGrezza : null;
     const soc = testo(r.col, COL_PERSONA.cliente_nome!);
     const sede = vuotoNull(testo(r.col, COL_PERSONA.cliente_sede!));
     // Chiave = (P.IVA o denominazione) + sede: e' l'UNITA', non la societa'.
@@ -599,6 +649,27 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     const perCf = new Map<string, Persona>();
     for (const p of esistenti) if (p.codice_fiscale) perCf.set(cfPulisci(p.codice_fiscale), p);
 
+    // RIPIEGO PER CHI NON HA IL CODICE FISCALE. Nell'export dipendenti sono
+    // 233 righe su 3418: senza CF la chiave diventava "riga:N", la persona
+    // risultava SEMPRE nuova, e riapplicare lo stesso file la duplicava.
+    // Il nome vale come chiave solo quando non e' ambiguo: se due persone
+    // dello stesso cliente si chiamano uguale, o se il file ripete lo stesso
+    // nome senza CF, si torna a "riga:N". Meglio un doppione che si vede di
+    // due persone fuse per sbaglio, che non si vede piu'.
+    const perNomePersona = new Map<string, Persona | null>();   // null = omonimi, inutilizzabile
+    for (const p of esistenti) {
+      const k = chiaveNome(p.cognome, p.nome);
+      if (!k) continue;
+      perNomePersona.set(k, perNomePersona.has(k) ? null : p);
+    }
+    const nomiSenzaCfNelFile = new Map<string, number>();
+    for (const r of gr.righe) {
+      const c = leggiCampiPersona(r.col);
+      if (!c || c.cf) continue;
+      const k = chiaveNome(c.cognome, c.nome);
+      if (k) nomiSenzaCfNelFile.set(k, (nomiSenzaCfNelFile.get(k) ?? 0) + 1);
+    }
+
     // Dentro il gruppo il CF e' la chiave: due righe con lo stesso CF sono la
     // stessa persona e si fondono, non diventano due schede.
     const perRiga = new Map<string, VocePersona>();
@@ -606,8 +677,22 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     for (const r of gr.righe) {
       const campi = leggiCampiPersona(r.col);
       if (!campi) continue;
-      const esist = campi.cf ? perCf.get(campi.cf) : undefined;
-      const chiaveRiga = campi.cf || `riga:${senzaCf++}`;
+      let esist = campi.cf ? perCf.get(campi.cf) : undefined;
+      let chiaveRiga: string;
+      if (campi.cf) {
+        chiaveRiga = campi.cf;
+      } else {
+        const k = chiaveNome(campi.cognome, campi.nome);
+        const candidato = k ? perNomePersona.get(k) : undefined;
+        const unicoNelFile = k ? (nomiSenzaCfNelFile.get(k) ?? 0) === 1 : false;
+        if (k && unicoNelFile && candidato !== null) {
+          chiaveRiga = `nome:${k}`;
+          if (candidato) esist = candidato;
+        } else {
+          chiaveRiga = `riga:${senzaCf}`;
+        }
+        senzaCf++;
+      }
       const gia = perRiga.get(chiaveRiga);
       const base: Persona = gia
         ? gia.persona
