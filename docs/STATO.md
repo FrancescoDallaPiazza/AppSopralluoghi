@@ -241,9 +241,11 @@ cambiano una riga. `fonte` e `dedotto` restano **due campi**, e l'anagrafica li
 mostra sulle tre divisioni — se in ispezione la risposta è «l'ha messo il
 programma», la decisione non ha retto.
 
-La libreria non è una dipendenza npm e non è clonata qui: `gh repo clone
-FrancescoDallaPiazza/formazione-81-utils-src` accanto al repo, oppure il percorso
-si passa allo script.
+La libreria non è una dipendenza npm ma un repo a parte, ed è **clonata accanto a
+questo** dal 9 settembre (`../formazione-81-utils-src`, portata giù da
+AppFormazione per scrivere `736699e`): lo script la trova da solo, `node
+scripts/genera-ateco.mjs --check` gira senza argomenti. Se un giorno non c'è, lo
+script lo dice e ricorda il comando per clonarla.
 - **Cosa dobbiamo all'altra corsia:** niente.
 
 ## Come sapere cosa ha fatto l'altra corsia
