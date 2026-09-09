@@ -39,6 +39,19 @@ export interface OutboxOp {
   id?: string;                 // per kind 'delete': id della riga da cancellare
 }
 
+// Un'operazione che il server ha RIFIUTATO in modo definitivo (violazione di
+// vincolo, colonna sconosciuta, permesso negato) e che quindi non ha senso
+// ritentare: verrebbe respinta identica a ogni giro, bloccando tutto cio' che
+// le sta dietro. Si toglie dalla coda e si mette qui, dove resta visibile e
+// recuperabile invece di sparire.
+export interface OpBloccata {
+  qid?: number;                // auto-increment
+  op: OutboxOp;                // l'operazione originale, com'era in coda
+  motivo: string;              // messaggio leggibile
+  codice?: string;             // SQLSTATE o codice HTTP, quando c'e'
+  quando: string;              // ISO
+}
+
 export interface FotoBlob {
   id: string;                  // = foto.id
   blob: Blob;
@@ -90,6 +103,7 @@ class LocalDB extends Dexie {
   azioni!: Table<Azione, string>;
   contesto!: Table<ContestoSopralluogo, string>;
   outbox!: Table<OutboxOp, number>;
+  quarantena!: Table<OpBloccata, number>;
   // organigramma & formazione (cache locale per consultazione/modifica offline)
   persone!: Table<Persona, string>;
   nomine!: Table<Nomina, string>;
@@ -167,10 +181,23 @@ class LocalDB extends Dexie {
     this.version(6).stores({
       clienteMeta: 'id',
     });
+    // v7: quarantena delle operazioni respinte in modo definitivo. Prima un
+    // solo rifiuto (409 su vincolo, colonna sconosciuta) fermava il drenaggio
+    // per sempre e in silenzio: tutto cio' che stava dietro non saliva piu'.
+    this.version(7).stores({
+      quarantena: '++qid, quando',
+    });
   }
 }
 
 export const db = new LocalDB();
+
+// Sposta un'operazione dalla coda alla quarantena: esce dal drenaggio (cosi'
+// il resto della coda riparte) ma non viene persa.
+export async function mettiInQuarantena(op: OutboxOp, motivo: string, codice?: string) {
+  await db.quarantena.add({ op, motivo, codice, quando: new Date().toISOString() });
+  if (op.seq != null) await db.outbox.delete(op.seq);
+}
 
 // Accoda una riga da sincronizzare (e la salva anche localmente).
 export async function enqueueRow(

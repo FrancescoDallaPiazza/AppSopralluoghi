@@ -4,7 +4,7 @@
 // (gli id sono generati lato client, quindi niente conflitti di chiave).
 
 import { supabase, FOTO_BUCKET, ATTESTATI_BUCKET, estensioneAttestato, contentTypeAttestato, pathAttestato } from './supabase';
-import { db, enqueueRow, enqueueDelete, type OutboxOp, type OrganigrammaConferma, type ClienteMeta } from './db';
+import { db, enqueueRow, enqueueDelete, mettiInQuarantena, type OutboxOp, type OrganigrammaConferma, type ClienteMeta } from './db';
 import { newId, type EsitoVoce, type Foto, type Azione } from './types';
 import type {
   Persona, Nomina, Formazione, Esonero,
@@ -379,52 +379,139 @@ export async function caricaOrganigrammaLocale(clienteId: string): Promise<Organ
 }
 
 // ---------- Drain della coda ----------
+
+// Un rifiuto che non ha senso ritentare, sollevato da noi (non dal server):
+// per esempio il file di una foto che in locale non c'e' piu'.
+class RifiutoDefinitivo extends Error {
+  codice?: string;
+  constructor(motivo: string, codice?: string) { super(motivo); this.codice = codice; }
+}
+
+// Rete persa o 5xx si ritentano: la stessa operazione, piu' tardi, riesce.
+// Un rifiuto di merito - vincolo violato, colonna che non esiste, permesso
+// negato - no: si ripresenta identico a ogni giro. Distinguere i due casi e'
+// tutta la differenza fra "riprovo dopo" e "coda ferma per sempre".
+type Diagnosi = { definitivo: boolean; motivo: string; codice?: string };
+
+// Classi SQLSTATE che valgono "riprova": connessione, serializzazione,
+// risorse esaurite, intervento dell'operatore. Tutto il resto (22 dati,
+// 23 vincoli, 42 sintassi/permessi...) e' di merito.
+const SQLSTATE_RITENTABILI = ['08', '40', '53', '57', '58'];
+
+function diagnostica(err: unknown): Diagnosi {
+  if (err instanceof RifiutoDefinitivo) {
+    return { definitivo: true, motivo: err.message, codice: err.codice };
+  }
+  const e = err as { code?: string; message?: string; status?: number; statusCode?: number | string };
+  const motivo = (e?.message || String(err)).slice(0, 300);
+  const grezzo = e?.code ?? e?.statusCode ?? e?.status;
+  const codice = grezzo == null ? undefined : String(grezzo);
+
+  // Nessun codice: quasi sempre "Failed to fetch", cioe' rete. Si ritenta.
+  if (!codice) return { definitivo: false, motivo };
+
+  // SQLSTATE Postgres, che PostgREST riporta tale e quale.
+  if (/^[0-9A-Z]{5}$/.test(codice)) {
+    return { definitivo: !SQLSTATE_RITENTABILI.includes(codice.slice(0, 2)), motivo, codice };
+  }
+  // Codici PostgREST. PGRST301 = JWT scaduto: dopo il refresh riesce.
+  if (codice.startsWith('PGRST')) return { definitivo: codice !== 'PGRST301', motivo, codice };
+
+  // HTTP (Storage): 5xx, 408, 429 e 401 si ritentano; gli altri 4xx no.
+  const n = Number(codice);
+  if (Number.isFinite(n)) {
+    const ritentabile = n >= 500 || n === 408 || n === 429 || n === 401;
+    return { definitivo: !ritentabile, motivo, codice };
+  }
+  return { definitivo: false, motivo, codice };
+}
+
+// Esegue UNA operazione. Ritorna l'eventuale pulizia locale da fare DOPO che
+// l'operazione e' uscita dalla coda: se si cancellasse il blob prima, una
+// interruzione nel mezzo lascerebbe in coda un'operazione senza il suo file,
+// indistinguibile da un file andato perso davvero.
+async function eseguiOp(op: OutboxOp): Promise<(() => Promise<void>) | null> {
+  if (op.kind === 'photo' && op.fotoId) {
+    const fb = await db.fotoBlob.get(op.fotoId);
+    const foto = await db.foto.get(op.fotoId);
+    if (!foto) throw new RifiutoDefinitivo('Scatto assente in locale: non caricato.', 'LOCALE_MANCANTE');
+    if (!fb) throw new RifiutoDefinitivo("File dello scatto non più disponibile in locale: non caricato.", 'LOCALE_MANCANTE');
+    const up = await supabase.storage.from(FOTO_BUCKET)
+      .upload(foto.url, fb.blob, { upsert: true, contentType: 'image/jpeg' });
+    if (up.error) throw up.error;
+    const row = await supabase.from('foto').upsert(foto);
+    if (row.error) throw row.error;
+    return () => db.fotoBlob.delete(op.fotoId!);   // blob salito: libera spazio
+  }
+  if (op.kind === 'attestato' && op.attestatoId) {
+    const ab = await db.attestatoBlob.get(op.attestatoId);
+    if (!ab) throw new RifiutoDefinitivo("File dell'attestato non più disponibile in locale: non caricato.", 'LOCALE_MANCANTE');
+    const up = await supabase.storage.from(ATTESTATI_BUCKET)
+      .upload(ab.path, ab.blob, { upsert: true, contentType: ab.contentType });
+    if (up.error) throw up.error;
+    return () => db.attestatoBlob.delete(op.attestatoId!);
+  }
+  if (op.kind === 'row' && op.table && op.payload) {
+    const row = await supabase.from(op.table).upsert(op.payload);
+    if (row.error) throw row.error;
+    return null;
+  }
+  if (op.kind === 'delete' && op.table && op.id) {
+    const row = await supabase.from(op.table).delete().eq('id', op.id);
+    if (row.error) throw row.error;
+    return null;
+  }
+  return null;
+}
+
 let inFlight = false;
+// Il drenaggio e' richiamato a ogni salvataggio: senza questa pausa, con la
+// rete assente si tenta una volta per ogni tocco sullo schermo.
+const PAUSA_MS = 30_000;
+let prossimoTentativo = 0;
 
 export async function runSync(): Promise<void> {
   if (inFlight || !navigator.onLine) return;
+  if (Date.now() < prossimoTentativo) return;
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
 
   inFlight = true;
   try {
     // Svuota in ordine di inserimento (seq crescente).
-    let ops = await db.outbox.orderBy('seq').toArray();
+    const ops = await db.outbox.orderBy('seq').toArray();
     for (const op of ops) {
-      if (op.kind === 'photo' && op.fotoId) {
-        const fb = await db.fotoBlob.get(op.fotoId);
-        const foto = await db.foto.get(op.fotoId);
-        if (fb && foto) {
-          const up = await supabase.storage.from(FOTO_BUCKET)
-            .upload(foto.url, fb.blob, { upsert: true, contentType: 'image/jpeg' });
-          if (up.error) throw up.error;
-          const row = await supabase.from('foto').upsert(foto);
-          if (row.error) throw row.error;
-          await db.fotoBlob.delete(op.fotoId); // blob salito: libera spazio locale
+      let pulizia: (() => Promise<void>) | null = null;
+      try {
+        pulizia = await eseguiOp(op);
+      } catch (err) {
+        const d = diagnostica(err);
+        if (!d.definitivo) {
+          // Ritentabile: ci si ferma QUI, in ordine, e si riprende dopo.
+          console.warn('sync interrotta, riprovo più tardi:', err);
+          prossimoTentativo = Date.now() + PAUSA_MS;
+          return;
         }
-      } else if (op.kind === 'attestato' && op.attestatoId) {
-        const ab = await db.attestatoBlob.get(op.attestatoId);
-        if (ab) {
-          const up = await supabase.storage.from(ATTESTATI_BUCKET)
-            .upload(ab.path, ab.blob, { upsert: true, contentType: ab.contentType });
-          if (up.error) throw up.error;
-          await db.attestatoBlob.delete(op.attestatoId); // blob salito: libera spazio locale
-        }
-      } else if (op.kind === 'row' && op.table && op.payload) {
-        const row = await supabase.from(op.table).upsert(op.payload);
-        if (row.error) throw row.error;
-      } else if (op.kind === 'delete' && op.table && op.id) {
-        const row = await supabase.from(op.table).delete().eq('id', op.id);
-        if (row.error) throw row.error;
+        // Definitivo: fuori dalla coda, ma non perso. Prima bastava una riga
+        // cosi' per congelare in silenzio tutto quello che le stava dietro -
+        // gli esiti e le foto di un'intera giornata.
+        console.warn('operazione respinta, messa in quarantena:', d.codice ?? '-', d.motivo);
+        await mettiInQuarantena(op, d.motivo, d.codice);
+        continue;
       }
       await db.outbox.delete(op.seq!);
+      if (pulizia) await pulizia();
     }
-  } catch (err) {
-    // Errore (rete persa, 5xx): si lascia la coda intatta e si riprova dopo.
-    console.warn('sync interrotta, riprovo più tardi:', err);
+    prossimoTentativo = 0;
   } finally {
     inFlight = false;
   }
+}
+
+// Quante operazioni sono ferme in quarantena: e' il numero che spiega perche'
+// qualcosa non e' arrivato in ufficio.
+export function contaQuarantena(): Promise<number> {
+  return db.quarantena.count();
 }
 
 // Riprende automaticamente al ritorno della connettività.

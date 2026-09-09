@@ -120,6 +120,9 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   const [aree, setAree] = useState<AreaInterna[]>([]);
   const [tecnici, setTecnici] = useState<TecnicoAssegnabile[]>([]);
   const [inCoda, setInCoda] = useState(0);
+  // Operazioni che il server ha respinto in modo definitivo: restano ferme
+  // finche' non le si guarda. Prima non le vedeva nessuno.
+  const [bloccate, setBloccate] = useState(0);
   const [online, setOnline] = useState(navigator.onLine);
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
   const [sheet, setSheet] = useState<null | 'prev' | 'form'>(null);
@@ -246,7 +249,8 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
     const su = () => setOnline(true); const giu = () => setOnline(false);
     window.addEventListener('online', su); window.addEventListener('offline', giu);
     const sub = liveQuery(() => db.outbox.count()).subscribe({ next: setInCoda });
-    return () => { window.removeEventListener('online', su); window.removeEventListener('offline', giu); sub.unsubscribe(); };
+    const subQ = liveQuery(() => db.quarantena.count()).subscribe({ next: setBloccate });
+    return () => { window.removeEventListener('online', su); window.removeEventListener('offline', giu); sub.unsubscribe(); subQ.unsubscribe(); };
   }, []);
 
   // aree interne (per assegnare le cose da fare a una funzione: Formazione,
@@ -430,6 +434,11 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             </div>
             <div className={'sync ' + (online ? 'online' : 'offline')}>
               <span className="dot" />{online ? (inCoda ? `${inCoda} in coda` : 'Online') : `Offline · ${inCoda}`}
+              {bloccate > 0 && (
+                <span className="bloccate" title="Operazioni respinte dal server: non saliranno da sole. Segnalale all'ufficio.">
+                  · {bloccate} bloccate
+                </span>
+              )}
             </div>
           </div>
           <div className="progress-wrap">
@@ -619,6 +628,8 @@ const CSS = `
 .compila .sync{flex-shrink:0; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; padding:6px 9px; border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); white-space:nowrap;}
 .compila .sync .dot{width:7px;height:7px;border-radius:50%;}
 .compila .sync.offline .dot{background:var(--hi);} .compila .sync.online .dot{background:#39d98a;}
+/* Operazioni respinte: non salgono da sole, quindi si vedono. */
+.compila .sync .bloccate{color:var(--hi); font-weight:700;}
 .compila .progress-wrap{margin-top:11px;}
 .compila .progress-meta{display:flex; justify-content:space-between; font-size:11px; color:#c7cad0; margin-bottom:5px; font-weight:500;}
 .compila .progress-meta b{color:#fff; font-weight:700;}
