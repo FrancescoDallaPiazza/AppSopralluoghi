@@ -67,12 +67,37 @@ spunta: 85 addetti primo soccorso, 79 antincendio, 71 emergenze, 35 responsabili
 emergenze, 31 RSPP, 25 preposti, 10 RLS. Il ROADMAP diceva da mesi che i ruoli
 non erano in nessun export: era falso.
 
-**Misurato da questa parte: sono 141 persone distinte, e 141 su 141 hanno il
-codice fiscale fra le 3.420 appena importate.** Aggancio perfetto.
-
 Il foglio non ha la P.IVA, e per l'anagrafica sarebbe un problema. Per le nomine
 **non lo è**: la chiave che serve non è quella del cliente, è quella della
-persona — e il codice fiscale c'è su tutte.
+persona.
+
+**Ma il codice fiscale NON c'è su tutte, e questa è la cosa da non dimenticare
+quando si scriverà l'import delle nomine.** Misurato:
+
+| | |
+|---|---:|
+| righe con almeno un ruolo | **153** |
+| con codice fiscale (tutti distinti, zero doppioni) | 141 |
+| **senza codice fiscale** | **12** |
+
+E le dodici non sono sparse: **dieci sono QUALIFT S.P.A.**, una FALEGNAMERIA MAST
+S.N.C., una GRAFICHE DUEGI. QUALIFT è un cliente attivo in `ElencoSedi`, e
+agganciando solo per codice fiscale **perderebbe l'organigramma della sicurezza
+per intero e in silenzio**: RLS, RSPP, due preposti, quattro antincendio, quattro
+primo soccorso.
+
+In totale sparirebbero 18 incarichi: 3 RSPP, 1 RLS, 2 preposti, 5 antincendio,
+5 primo soccorso, 1 emergenze, 1 responsabile emergenze.
+
+**Tutte e dodici hanno cognome e nome**, quindi il ripiego che l'import già usa
+per le 227 persone senza codice fiscale le recupera — ma va acceso
+deliberatamente anche su questa strada, non dato per scontato.
+
+*Nota di metodo, perché l'errore è istruttivo.* La prima misura fatta qui diceva
+«141 su 141, aggancio perfetto»: contava solo le righe che il codice fiscale ce
+l'avevano, quindi le altre erano sparite dal conteggio stesso. È la stessa forma
+del difetto della paginazione trovato poche ore prima — **un'assenza che si
+presenta come un insieme completo**. L'ha vista l'altra corsia, misurando contro.
 
 Perché conta: oggi l'import crea nomine con la sola figura `lavoratore`, e il
 motore ricava i requisiti dalle **nomine**, non dagli attestati. Un attestato RLS
