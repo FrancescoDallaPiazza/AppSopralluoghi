@@ -22,7 +22,7 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | Provenienza: `import_key` sulle persone | chiuso | `98082cd` |
 | La schermata della quarantena | aperto | — |
 | **D2** · il report non conosce i componenti | aperto | — |
-| Ricreare i clienti: le 619 anagrafiche attive | **pronto, da eseguire** | — |
+| Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
 | L'ATECO mancante sul 57% delle attive | aperto, aspetta la Fase 1 | — |
 
 ## Dettaglio di quello che è cambiato oggi
@@ -59,10 +59,20 @@ altro: senza API, quella cosa la sa solo se la riga se la porta scritta.
 
 ## Cosa blocca, e chi lo tiene
 
-- **Le 619 anagrafiche non sono ancora rientrate.** Il file c'è (rimesso in
-  `~/Downloads` il 9 settembre alle 12:02) e il dry-run è passato: non manca più
-  niente di tecnico. Manca l'esecuzione dall'app, che scrive sul database vero.
-  È la cosa che tiene ferma l'uscita della Fase 0, e quindi la Fase 4.
+- **I clienti NON sono da rifare: ci sono già.** Misurato il 9 settembre
+  sull'app vera, anteprima dell'import di `ElencoSedi.xlsx`: **0 nuovi, 1 da
+  completare, 618 già a posto, 230 righe scartate**. I conti tornano col file
+  (619 attive + 230 ex clienti = 849 righe). «Già a posto» significa che hanno
+  anche indirizzo e numero dipendenti: se mancassero, il file glieli darebbe e
+  risulterebbero da completare.
+- **Correzione a una cosa ripetuta tutto il giorno.** Il TODO diceva «tabula
+  rasa dal 5 agosto» e questo file lo ripeteva: **è falso**. Era un documento,
+  non una misura, e nessuno l'aveva verificato contro il database. Da qui in
+  avanti lo stato del database si dichiara solo dopo averlo guardato.
+- **Le 230 righe scartate sono la prova sul campo del filtro `ATTIVA`**: in
+  produzione, con i dati veri, gli ex clienti non entrano più.
+- **Resta aperto: le persone.** Lo stato del database sulle persone non è stato
+  misurato. È lì che si sposta la Fase 0.
 - **L'ATECO mancante aspetta il raccordo a monte** (`formazione-81-utils-src`),
   che è dell'altra corsia. È l'unico punto in cui questa aspetta quella: una visura
   di oggi porta un codice ATECO 2025, e senza raccordo scriverebbe un livello di

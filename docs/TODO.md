@@ -156,6 +156,13 @@ Studio completo (confine, contratti, sequenza):
 
 ### DATABASE AZZERATO il 2026-08-05 — stato e ripresa
 
+> **ATTENZIONE, 2026-09-09: questa sezione non descrive piu' la realta'.**
+> L'anteprima dell'import sull'app vera dice **0 nuovi, 1 da completare, 618
+> gia' a posto, 230 scartate**: i 619 clienti attivi di `ElencoSedi` sono
+> gia' dentro, completi di indirizzo e numero dipendenti. Quello che segue e'
+> il racconto dell'azzeramento, non lo stato di oggi. Lo stato sta in
+> `docs/STATO.md`, ed e' misurato.
+
 Eseguito `supabase/scripts/azzera_anagrafiche.sql` (PARTE 2) su richiesta:
 **tabula rasa** di clienti, persone e storico rilievi. Verificato: tutte le
 tabelle a 0. Cancellati: 7 clienti, 181 persone (186 nomine, 384 formazioni,
