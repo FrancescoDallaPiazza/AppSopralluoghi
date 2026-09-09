@@ -87,10 +87,14 @@ silenzio**; da quando `import_key` si scrive, la scrittura si ferma con
 era il sintomo, non la malattia — ed è comparso al primo import su un database
 davvero pieno.
 
-**Da verificare, conseguenza dei due tentativi falliti:** possono aver creato
-doppioni prima di fermarsi, per le persone che allora erano invisibili. Si
-riconosce ricaricando lo stesso file: se i gruppi dicono «nuove: 0», non ce ne
-sono.
+**Verificato, e pulito.** Ricaricando lo stesso file dopo l'import riuscito:
+**0 nuove · 3.420 aggiornate**. Due cose insieme: i tentativi falliti non hanno
+lasciato doppioni, e l'import è **idempotente** — ripassare lo stesso file non
+crea più niente. È la prova che la provenienza (`import_key`) fa il suo mestiere.
+
+Per rendere quella verifica possibile è stato aggiunto il totale
+«N nuove · M aggiornate» in cima al riepilogo (`0c431b6`): prima il dato esisteva
+solo dentro ogni gruppo, e i gruppi sono 450.
 
 **Stessa forma, ancora aperto:** `caricaClientiPerImport` non pagina. Oggi non
 rompe perché i clienti sono 619, sotto la soglia.
