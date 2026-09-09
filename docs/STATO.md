@@ -25,7 +25,7 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
 | Importare le persone: 3.420 scritte | **fatto 9.09** | `af8d945` |
 | Paginazione delle letture (PostgREST tronca a 1000) | chiuso su `persona` | `af8d945` |
-| L'ATECO mancante sul 57% delle attive | aperto, aspetta la Fase 1 | — |
+| L'ATECO mancante sul 57% delle attive | aperto, **non aspetta più**: il raccordo è a monte | `0237eaf` (nella libreria) |
 
 ## Dettaglio di quello che è cambiato oggi
 
@@ -188,11 +188,20 @@ solo dentro ogni gruppo, e i gruppi sono 450.
 
 **Stessa forma, ancora aperto:** `caricaClientiPerImport` non pagina. Oggi non
 rompe perché i clienti sono 619, sotto la soglia.
-- **L'ATECO mancante aspetta il raccordo a monte** (`formazione-81-utils-src`),
-  che è dell'altra corsia. È l'unico punto in cui questa aspetta quella: una visura
-  di oggi porta un codice ATECO 2025, e senza raccordo scriverebbe un livello di
-  rischio sbagliato senza segnale. L'import dei due Excel invece non è a rischio,
-  perché quei file portano codici 2007.
+- **L'ATECO mancante non aspetta più**: il raccordo è stato consegnato a monte,
+  nella libreria (`formazione-81-utils-src`, `0237eaf`). Non le 6.742 righe — le
+  **eccezioni**, i 9 codici su 1.290 dove prendere le prime due cifre sbaglia, più
+  21 ambigui che ora vengono *segnalati* invece che risolti in silenzio. Era
+  l'unico punto in cui questa corsia aspettava quella, e la campagna di riempimento
+  può partire.
+  **Due condizioni, però.** `ateco.ts` va **rigenerato, non corretto a mano**: sotto
+  la decisione 7 la libreria è il generatore unico e una patch a valle sarebbe la
+  quinta copia. E il percorso a mano (`Anagrafiche.tsx:866` → `:873`) scrive oggi
+  `codice_ateco` **e** `livello_rischio` nella stessa patch senza conferma: è lì che
+  un codice 2025 diventa una classe sbagliata in anagrafica, ed è da sistemare prima
+  della campagna, non dopo.
+  Restano fuori **32 codici** che non hanno classe finché la scheda 5 di AppOverall
+  non decide sulle divisioni 30, 86 e 87.
 - **Cosa dobbiamo all'altra corsia:** niente.
 
 ## Come sapere cosa ha fatto l'altra corsia
