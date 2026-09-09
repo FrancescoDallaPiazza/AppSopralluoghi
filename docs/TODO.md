@@ -7,6 +7,14 @@ modello dati, workflow di rilascio) vedi `PROGETTO.md`.
 Convenzione: una riga = una cosa da fare. Si fa, si barra (`- [x]`), e si
 sposta in fondo nella sezione "Fatti di recente".
 
+> **Programma dei lavori:** https://claude.ai/code/artifact/8116d53d-6944-4ce0-a9c0-29a1e072d763
+> Questo repo esegue la **Fase 0 — tenere a galla la barca**.
+> *Attende dall'altra corsia:* il raccordo ATECO a monte, prima di riempire
+> l'ATECO mancante dalle visure (non prima dell'import dei due Excel, che
+> portano codici 2007). *Le deve:* niente.
+>
+> Il diario per giornata sta in `docs/diario/`.
+
 ---
 
 ## 0 · Direzione (deciso 2026-08-26)
