@@ -59,6 +59,32 @@ l'indice è globale e la stessa persona può stare su due organigrammi. È il pr
 mattone di ciò che permette a un sistema di sapere cosa ha già ricevuto da un
 altro: senza API, quella cosa la sa solo se la riga se la porta scritta.
 
+## Aperto, e appena diventato possibile: i ruoli sicurezza
+
+L'altra corsia ha trovato che il foglio **«Ruoli SSL»** di `ExportExcel (4).xlsx`
+contiene davvero i ruoli sicurezza, **con la data dell'incarico** e non una
+spunta: 85 addetti primo soccorso, 79 antincendio, 71 emergenze, 35 responsabili
+emergenze, 31 RSPP, 25 preposti, 10 RLS. Il ROADMAP diceva da mesi che i ruoli
+non erano in nessun export: era falso.
+
+**Misurato da questa parte: sono 141 persone distinte, e 141 su 141 hanno il
+codice fiscale fra le 3.420 appena importate.** Aggancio perfetto.
+
+Il foglio non ha la P.IVA, e per l'anagrafica sarebbe un problema. Per le nomine
+**non lo è**: la chiave che serve non è quella del cliente, è quella della
+persona — e il codice fiscale c'è su tutte.
+
+Perché conta: oggi l'import crea nomine con la sola figura `lavoratore`, e il
+motore ricava i requisiti dalle **nomine**, non dagli attestati. Un attestato RLS
+o antincendio importato esiste come riga ma è **muto** finché la persona non è
+nominata in quel ruolo. Queste 141 nomine accenderebbero esattamente quelle
+scadenze.
+
+Con un ridimensionamento onesto, che viene dall'altra corsia: solo **65 società
+su 480** hanno almeno un ruolo registrato, e nessun incarico è successivo al
+2022. Dieci RLS su 480 aziende non è la realtà: è quello che qualcuno ha scritto
+nel gestionale. Non è una raccolta fatta, è un punto di partenza.
+
 ## Cosa blocca, e chi lo tiene
 
 - **I clienti NON sono da rifare: ci sono già.** Misurato il 9 settembre
