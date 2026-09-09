@@ -59,7 +59,9 @@ altro: senza API, quella cosa la sa solo se la riga se la porta scritta.
 
 ## Cosa blocca, e chi lo tiene
 
-- **Le 618 anagrafiche non rientrano senza `ElencoSedi (5).xlsx`.** Il file manca.
+- **Le 619 anagrafiche non sono ancora rientrate.** Il file c'è (rimesso in
+  `~/Downloads` il 9 settembre alle 12:02) e il dry-run è passato: non manca più
+  niente di tecnico. Manca l'esecuzione dall'app, che scrive sul database vero.
   È la cosa che tiene ferma l'uscita della Fase 0, e quindi la Fase 4.
 - **L'ATECO mancante aspetta il raccordo a monte** (`formazione-81-utils-src`),
   che è dell'altra corsia. È l'unico punto in cui questa aspetta quella: una visura
