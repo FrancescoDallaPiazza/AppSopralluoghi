@@ -924,7 +924,18 @@ function CampoAteco({
         {/* testo descrittivo, ora sulla stessa riga del codice */}
         <div style={{ flex: '2 1 260px', fontSize: 12.5, color: 'var(--ink-soft)', paddingBottom: 4 }}>
           {ris ? (
-            <>Div. {ris.divisione} (sez. {ris.sezione}) · {ris.descrizione}</>
+            <>
+              Div. {ris.divisione} (sez. {ris.sezione}) · {ris.descrizione}
+              {/* Su 30, 86 e 87 il livello NON si legge nel testo vigente: viene
+                  dalla fonte primaria del 2011 piu' una deduzione. Chi guarda
+                  questa schermata deve poterlo dire — in ispezione «l'ha messo
+                  il programma» non regge. Decisione 5 di AppOverall, 9.09.2026. */}
+              {ris.dedotto && (
+                <div style={{ marginTop: 3, color: 'var(--hi-dark)' }} title={ris.fonte}>
+                  ⚠ Livello <b>dedotto</b>, non letto dall'Accordo vigente — {ris.fonte}
+                </div>
+              )}
+            </>
           ) : testo.trim() ? (
             <span style={{ color: 'var(--faint)' }}>Divisione non classificata nell'Allegato IV — verifica il codice.</span>
           ) : (
