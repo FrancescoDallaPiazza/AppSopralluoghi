@@ -18,6 +18,36 @@ export const supabase = createClient(
   },
 );
 
+// ====================== LETTURE CHE NON SI TRONCANO ======================
+//
+// PostgREST tronca a 1000 righe di default, e una lettura troncata NON si
+// annuncia: torna un array piu' corto che si presenta come completo. E' il
+// difetto che ha rotto l'import delle persone (af8d945) — le righe oltre la
+// millesima risultavano ASSENTI e l'import provava a ricrearle.
+//
+// `leggiTutte` prende una FUNZIONE che costruisce la query, non una query:
+// un builder PostgREST si consuma quando lo si attende, e ne serve uno nuovo a
+// ogni giro. Sposta la finestra finche' una pagina torna corta.
+//
+// L'ORDINAMENTO E' OBBLIGATORIO nella query passata, e deve essere stabile
+// (in coda `id`, se la prima chiave ammette pari): senza, fra una pagina e
+// l'altra la stessa riga puo' comparire due volte e un'altra in nessuna.
+export const PAGINA_POSTGREST = 1000;
+
+export async function leggiTutte<T>(
+  query: (da: number, a: number) => PromiseLike<{ data: unknown; error: unknown }>,
+): Promise<T[]> {
+  const tutte: T[] = [];
+  for (let da = 0; ; da += PAGINA_POSTGREST) {
+    const { data, error } = await query(da, da + PAGINA_POSTGREST - 1);
+    if (error) throw error;
+    const blocco = (data ?? []) as T[];
+    tutte.push(...blocco);
+    if (blocco.length < PAGINA_POSTGREST) break;
+  }
+  return tutte;
+}
+
 export const FOTO_BUCKET = 'foto-sopralluoghi';
 
 // Bucket PRIVATO degli attestati di formazione (PDF/immagini), migration 021.

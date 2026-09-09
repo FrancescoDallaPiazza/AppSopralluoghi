@@ -34,7 +34,7 @@
 
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabase';
-import { caricaClienti, clienteVuoto, salvaCliente } from './anagrafiche';
+import { caricaClientiTutti, clienteVuoto, salvaCliente } from './anagrafiche';
 import { salvaPersona, attivoDopoCessazione, type Persona } from './formazione';
 // Tendina e abbinamento riusano il vocabolario dell'import formazione: li' e'
 // gia' risolto il caso che qui si ripresenterebbe uguale - due clienti della
@@ -838,7 +838,14 @@ export function fondiPersona(c: CampiPersona, base: Persona): Persona {
 // I due piani vogliono due viste diverse degli stessi clienti: quello dei
 // CLIENTI ha bisogno del record intero (ci si fonde sopra), quello delle
 // PERSONE solo di cio' che serve a riconoscerli in tendina.
+//
+// Legge da `caricaClientiTutti`, che PAGINA, e non piu' da `caricaClienti`:
+// era la stessa forma del difetto pagato con af8d945 — oltre la millesima riga
+// PostgREST tronca senza dirlo, l'import non vedeva quei clienti e li ricreava.
+// Oggi sono 619 e non rompe; il costo di chiuderlo adesso e' questa riga.
+// Di passaggio si risparmiano due letture (incarichi e sedi) che servivano
+// solo ai conteggi della lista, e all'import non servono.
 export async function caricaClientiPerImport(): Promise<Cliente[]> {
-  return (await caricaClienti()).map((r) => r.cliente);
+  return caricaClientiTutti();
 }
 export { caricaClientiScelta, etichettaCliente, type ClienteScelta };

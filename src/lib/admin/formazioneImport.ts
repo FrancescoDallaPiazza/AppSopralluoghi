@@ -35,7 +35,7 @@
 // cliente e mostra i dati da usare per crearlo a mano, completo.
 
 import * as XLSX from 'xlsx';
-import { supabase } from '../supabase';
+import { supabase, leggiTutte } from '../supabase';
 import { normalizzaTestoGestionale, type CorsoAlias } from './aliasCorsi';
 import { salvaPersona, type Persona, type CorsoCatalogo } from './formazione';
 import { newId } from '../types';
@@ -399,26 +399,31 @@ export function proponiAbbinamenti(
   return out;
 }
 
+// Paginata come la gemella `caricaClientiTutti`: e' l'altra meta' del carico
+// dell'import anagrafiche (`Promise.all` in ImportAnagrafiche.tsx), e una
+// tendina troncata a mille perde clienti in silenzio esattamente come li
+// perdeva la lista.
 export async function caricaClientiScelta(): Promise<ClienteScelta[]> {
-  const { data, error } = await supabase
+  const clienti = await leggiTutte<Omit<ClienteScelta, 'operativa'>>((da, a) => supabase
     .from('cliente')
     .select('id, ragione_sociale, partita_iva, localita, cap')
     .eq('attivo', true)
-    .order('ragione_sociale');
-  if (error) throw error;
-  const clienti = (data ?? []) as Omit<ClienteScelta, 'operativa'>[];
+    .order('ragione_sociale').order('id', { ascending: true })
+    .range(da, a));
 
   // Sedi operative attive (`principale = false`): una per cliente nel modello a
   // un solo organigramma. Query separata e non join annidata: PostgREST la
   // renderebbe come array da appiattire comunque, e cosi' resta leggibile.
-  const { data: sedi, error: errSedi } = await supabase
-    .from('sede')
-    .select('cliente_id, localita, cap')
-    .eq('attivo', true)
-    .eq('principale', false);
-  if (errSedi) throw errSedi;
+  const sedi = await leggiTutte<{ cliente_id: string; localita: string | null; cap: string | null }>(
+    (da, a) => supabase
+      .from('sede')
+      .select('cliente_id, localita, cap')
+      .eq('attivo', true)
+      .eq('principale', false)
+      .order('id', { ascending: true }).range(da, a),
+  );
   const perCliente = new Map<string, Luogo>();
-  for (const s of (sedi ?? []) as { cliente_id: string; localita: string | null; cap: string | null }[]) {
+  for (const s of sedi) {
     if (!perCliente.has(s.cliente_id)) perCliente.set(s.cliente_id, { localita: s.localita, cap: s.cap });
   }
   return clienti.map((c) => ({ ...c, operativa: perCliente.get(c.id) ?? null }));

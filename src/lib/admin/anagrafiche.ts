@@ -13,7 +13,7 @@
 //    sopralluogo con ON DELETE RESTRICT → l'eliminazione è consentita solo se
 //    non ci sono figli (altrimenti si archivia/sospende).
 
-import { supabase } from '../supabase';
+import { supabase, leggiTutte } from '../supabase';
 import { dateDaCadenza } from './calendario';
 import {
   newId, type Cliente, type Incarico, type IncaricoStato,
@@ -45,32 +45,46 @@ export interface ClienteRiga {
   sede_operativa: { nome: string; localita: string | null } | null;
 }
 
-export async function caricaClienti(): Promise<ClienteRiga[]> {
-  const { data: cli, error } = await supabase
+// Tutti i clienti, senza i conteggi: e' cio' che serve a chi ci si fonde sopra
+// (l'import) e la base della lista. Paginata — vedi `leggiTutte`.
+export async function caricaClientiTutti(): Promise<Cliente[]> {
+  return leggiTutte<Cliente>((da, a) => supabase
     .from('cliente')
     .select(COLONNE_CLIENTE)
-    .order('ragione_sociale', { ascending: true });
-  if (error) throw error;
+    .order('ragione_sociale', { ascending: true })
+    .order('id', { ascending: true })
+    .range(da, a));
+}
 
-  const { data: inc } = await supabase
-    .from('incarico').select('cliente_id, stato');
+export async function caricaClienti(): Promise<ClienteRiga[]> {
+  const cli = await caricaClientiTutti();
+
+  // Anche queste due si paginano: gli incarichi superano il migliaio prima dei
+  // clienti, e un conteggio che perde le righe oltre la soglia non sbaglia di
+  // poco — mostra "0 incarichi" su un cliente che ne ha.
+  const inc = await leggiTutte<{ cliente_id: string; stato: IncaricoStato }>((da, a) => supabase
+    .from('incarico').select('cliente_id, stato')
+    .order('id', { ascending: true }).range(da, a));
   const tot = new Map<string, number>();
   const att = new Map<string, number>();
-  for (const r of (inc ?? []) as { cliente_id: string; stato: IncaricoStato }[]) {
+  for (const r of inc) {
     tot.set(r.cliente_id, (tot.get(r.cliente_id) ?? 0) + 1);
     if (r.stato === 'attivo') att.set(r.cliente_id, (att.get(r.cliente_id) ?? 0) + 1);
   }
 
   // Sede operativa attiva (non principale) per cliente, se presente.
-  const { data: sedi } = await supabase
-    .from('sede').select('cliente_id, nome, localita')
-    .eq('principale', false).eq('attivo', true);
+  const sedi = await leggiTutte<{ cliente_id: string; nome: string; localita: string | null }>(
+    (da, a) => supabase
+      .from('sede').select('cliente_id, nome, localita')
+      .eq('principale', false).eq('attivo', true)
+      .order('id', { ascending: true }).range(da, a),
+  );
   const oper = new Map<string, { nome: string; localita: string | null }>();
-  for (const s of (sedi ?? []) as { cliente_id: string; nome: string; localita: string | null }[]) {
+  for (const s of sedi) {
     if (!oper.has(s.cliente_id)) oper.set(s.cliente_id, { nome: s.nome, localita: s.localita });
   }
 
-  return (cli ?? []).map((c: any): ClienteRiga => ({
+  return cli.map((c: any): ClienteRiga => ({
     cliente: c as Cliente,
     n_incarichi: tot.get(c.id) ?? 0,
     n_incarichi_attivi: att.get(c.id) ?? 0,
