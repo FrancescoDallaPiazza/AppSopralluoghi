@@ -16,7 +16,9 @@ sposta in fondo nella sezione "Fatti di recente".
 > l'ATECO mancante dalle visure (non prima dell'import dei due Excel, che
 > portano codici 2007). *Le deve:* niente.
 >
-> Il diario per giornata sta in `docs/diario/`.
+> Lo stato di questa corsia sta in `docs/STATO.md`, il diario per giornata in
+> `docs/diario/`. Per sapere cosa ha fatto l'altra corsia si legge il suo repo,
+> non si chiede: `git -C ../AppFormazione log --oneline --since=...`.
 
 ---
 
