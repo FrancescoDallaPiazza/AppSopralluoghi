@@ -7,7 +7,10 @@ modello dati, workflow di rilascio) vedi `PROGETTO.md`.
 Convenzione: una riga = una cosa da fare. Si fa, si barra (`- [x]`), e si
 sposta in fondo nella sezione "Fatti di recente".
 
-> **Programma dei lavori:** https://claude.ai/code/artifact/8116d53d-6944-4ce0-a9c0-29a1e072d763
+> **Programma dei lavori.** Testo canonico: `AppFormazione/docs/PROGRAMMA.md`.
+> Pagina condivisibile (sua resa):
+> https://claude.ai/code/artifact/8116d53d-6944-4ce0-a9c0-29a1e072d763
+> Qui c'è un puntatore, non una copia: le correzioni si fanno là.
 > Questo repo esegue la **Fase 0 — tenere a galla la barca**.
 > *Attende dall'altra corsia:* il raccordo ATECO a monte, prima di riempire
 > l'ATECO mancante dalle visure (non prima dell'import dei due Excel, che
