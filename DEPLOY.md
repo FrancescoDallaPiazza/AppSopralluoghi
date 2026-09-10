@@ -20,15 +20,29 @@ e la serve a un URL pubblico, installabile su telefono.
    **https://app-sopralluoghi.vercel.app** — è lì che si fa login.
 
    Il trattino conta: fino al 10 settembre 2026 questa riga diceva
-   `appsopralluoghi.vercel.app` (senza), che risponde `DEPLOYMENT_NOT_FOUND`.
-   Era un indirizzo scritto a memoria, non verificato. Quello giusto non è stato
-   indovinato: viene dai deployment che GitHub registra, ed è stato provato —
-   `gh api repos/<owner>/<repo>/deployments/<id>/statuses` dà l'`environment_url`
-   del deploy, e da lì il nome del progetto (`app-sopralluoghi`).
+   `appsopralluoghi.vercel.app` (senza), che risponde `DEPLOYMENT_NOT_FOUND` —
+   un indirizzo scritto a memoria e mai provato.
 
-   Lo stesso comando risponde alla domanda che di solito segue («ma il push è
-   davvero online?»): il campo `sha` del deployment dice **quale commit** è in
-   produzione, senza doverlo dedurre dall'ora.
+   **Come si ritrova, se un giorno serve di nuovo.** Il dato non è sul disco:
+   sta su GitHub, che registra i deploy.
+
+   ```
+   gh api repos/<owner>/<repo>/deployments --jq '.[0] | {id, sha, created_at}'
+   gh api repos/<owner>/<repo>/deployments/<id>/statuses --jq '.[0].environment_url'
+   ```
+
+   Attenzione a cosa dà e a cosa non dà, perché la differenza è tutta qui:
+
+   | il comando dà | con quanta certezza |
+   |---|---|
+   | `sha`: **quale commit** è in produzione | **certo**, è il dato che serve per «il push è online?» |
+   | `environment_url` | **certo**, ma è l'URL di *quel singolo deploy*, con l'hash dentro (`app-sopralluoghi-m7syhik29-…`), non l'alias stabile |
+   | l'alias stabile (`app-sopralluoghi.vercel.app`) | **dedotto** dal nome del progetto che si legge in quella stringa |
+
+   L'ultima riga è una deduzione, quindi **si prova**, non si scrive e basta:
+   `curl -s -o /dev/null -w "%{http_code}" -L <url>`. Qui ha dato 200 e la
+   variante senza trattino 404 — cioè fidandosi del solo nome si aveva ragione
+   per caso. È esattamente l'errore che questa riga aveva già fatto una volta.
 
 ## Aggiornamenti
 A ogni `git push origin main` Vercel ribuilda e pubblica da solo. Il service
