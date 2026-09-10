@@ -117,6 +117,19 @@ fuori dall'import, e adesso con la prova invece che col sospetto.
   distingua e nessun altro foglio lo incrocia. Non scrivo «coerente»: scrivo che
   non lo so.
 
+  **Aggiornamento del 10 settembre, sera** — reso guardabile invece che descritto,
+  in [`c1a/fattori-di-rischio-campione.md`](c1a/fattori-di-rischio-campione.md):
+  dieci righe anonime scelte per essere diverse, senza nome, cognome, codice
+  fiscale né data di nascita. Le celle contengono **solo `X`** (un unico valore
+  distinto in tutto il foglio), nessuna colonna somiglia a un livello, e la
+  copertura è di **162 righe su 3.501** in **39 società su 480**. Il fatto che
+  decide: 122 righe condividono l'insieme dei fattori con un'altra, e **112 di
+  quelle stanno nella stessa società ma solo 45 hanno la stessa mansione** — due
+  righe della stessa azienda hanno gli stessi quindici fattori essendo una
+  «ADDETTO CANTIERE - INSTALLATORE» e l'altra «ADDETTO ALLA PROGRAMMAZIONE».
+  Sembra una griglia di azienda o reparto, **non** una valutazione per mansione.
+  Il riscontro esterno continua a non esistere: resta scritto.
+
 ### Le domande per Francesco, che sono tre e non una
 
 1. `Visite`: la sorveglianza sanitaria entra nel perimetro o resta fuori
