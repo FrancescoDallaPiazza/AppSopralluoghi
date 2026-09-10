@@ -69,17 +69,28 @@ stesso blocco anagrafico (`Società`, `Sede`, `Cognome`, `Nome`, `C.F.`, …
 
 | | | | |
 |---|---:|---|---:|
-| Visita Medica annuale | **671** | Visita medica quinquennale | 24 |
-| Visita Medica Biennale | **107** | Visita Trimestrale | 3 |
-| Esame Audiometrico | 3 | Visita medica quadriennale | 3 |
-| Esame Elettrocardiografico | 2 | Visita Oculistica biennale | 2 |
-| Esame Spirometrico | 2 | Visita oculistica quinquennale | 1 |
+| Visita Medica annuale | **670** | Visita medica quinquennale | 23 |
+| Visita Medica Biennale | **106** | Visita Trimestrale | 2 |
+| Esame Audiometrico | 2 | Visita medica quadriennale | 2 |
+| Esame Elettrocardiografico | 1 | Visita Oculistica biennale | 1 |
+| Esame Spirometrico | 1 | Visita oculistica quinquennale | **0** |
 
 Ogni voce è una **coppia**: colonna col nome = data della visita, colonna senza
 nome accanto = **scadenza**. Verificato sui valori (21.11.2025 → 21.11.2026 per
 l'annuale), non dedotto dal nome.
 
-Sono **818 visite con scadenza** che oggi non entrano da nessuna parte. Il codice
+**CORREZIONE del 10 settembre, sera: sono 808, non 818.** Il foglio ha **due**
+righe di intestazione — la riga 1 porta `Ultima Esecuzione` e `Prossima Scadenza
+(1 anno)` — e leggendo i dati dalla riga 1 ogni conteggio era gonfiato di
+esattamente uno, dieci colonne e dieci di troppo. `Visita oculistica
+quinquennale` ha **zero** righe: gli accertamenti con dati sono nove, non dieci.
+Misura completa in
+[`c1a/sorveglianza-sanitaria-scadenze.md`](c1a/sorveglianza-sanitaria-scadenze.md),
+dove c'è anche la risposta che serviva allo schema: **la scadenza si deriva** —
+796 coppie su 796 coincidono esattamente con `data + intervallo`, zero
+deviazioni, e nessuna riga porta una scadenza senza la data.
+
+Sono **808 accertamenti con scadenza** che oggi non entrano da nessuna parte. Il codice
 il dominio lo conosce già — `formazioneImport.ts:13` scarta le visite dicendo che
 «il loro posto è `adempimento` categoria sorveglianza» — ma quel posto non è mai
 stato riempito, e la sorveglianza sanitaria (art. 41 D.Lgs 81/08) ha scadenze
