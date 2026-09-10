@@ -100,3 +100,25 @@ Quale delle due note deve stare nel catalogo nuovo:
 
 Non riconcilio e non scelgo: chi ha ragione fra un file e un database è una
 decisione, non un merge. Segnalata ad AppOverall.
+
+## Come è stata decisa: nessuna delle due
+
+*Aggiornamento, deciso da AppOverall (`eee7de2`).* La nota nel catalogo nuovo non
+dice né 049 né 050:
+
+> «DEPRECATO nel 2026, dalla migrazione del campo che ha reso `DATORE_LAVORO` il
+> prerequisito: nel repo è la 049, ma il database la registra come 050, il numero
+> che il file aveva quando fu applicata.»
+
+La ragione è che **entrambe le risposte secche sbagliano allo stesso modo**: un
+numero di migrazione è un puntatore che scade. `050` manda a cercare un file che
+non esiste più; `049` è verificabile oggi e diventerà opaco quando questo repo
+sarà archiviato. La terza forma resta leggibile in entrambi i casi, e chi un
+giorno trovasse `050` in un vecchio database capisce perché invece di pensare a
+un errore.
+
+**Nota per il prossimo confronto — cioè per me.** Questo è **il solo campo** in
+cui il catalogo nuovo si discosta deliberatamente da entrambe le fonti. Rifacendo
+il confronto con lo stesso metodo, `DL_RSPP_BASE` risulterà divergente da capo:
+non è una regressione ed è **atteso**. Se un giorno divergesse qualcos'altro,
+quella sì che è una notizia.
