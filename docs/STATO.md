@@ -29,6 +29,52 @@ Ultimo aggiornamento: **10 settembre 2026**.
 | Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
 | `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
 
+## Il database, guardato: non c'è niente da azzerare
+
+Misurato il **10 settembre 2026** nell'SQL Editor, progetto Supabase
+`AppSopralluoghi` (ref `pvbwcfrgatkqashstxjc`, `main` PRODUCTION), con soli
+`count(*)`:
+
+| | | | |
+|---|---:|---|---:|
+| `cliente` | **619** | `nomina` | **0** |
+| `sede` | **619** | `formazione` | **0** |
+| `persona` | **3.419** | `esonero` | **0** |
+| — di cui marcate `anag:` | **3.419** | `adempimento` | **0** |
+| — senza marcatura | **0** | `azione` | **0** |
+| `corso_alias` | 268 | `incarico` · `sopralluogo` · `esito_voce` · `foto` | **0** |
+
+Config intatta: `tecnico` 3, `corso_catalogo` 40, `figura_sicurezza` 13.
+
+**Tutte le tabelle che `azzera_anagrafiche.sql` prende di mira sono già a zero.**
+Il database è già nello stato che l'azzeramento doveva produrre — perché
+l'azzeramento **è stato eseguito il 5 agosto** (`TODO.md:157`), e la nota che lo
+dava per ancora da fare era la *decisione* del 3 agosto, presa due giorni prima
+che venisse eseguita.
+
+Quindi lanciarlo oggi non pulirebbe dati di prova: **cancellerebbe le anagrafiche
+buone** — i 619 clienti con i 361 indirizzi e l'ATECO su 267, le 619 sedi, le
+3.419 persone. Il piano Supabase è **free**, quindi nessun backup automatico:
+sarebbe definitivo.
+
+*La regola che ne esce, e che questo file già enunciava in altra forma:* uno
+script distruttivo non si lancia perché il suo nome descrive l'intenzione, si
+lancia dopo aver contato le righe che colpisce. La PARTE 1 di quello script esiste
+apposta ed è sola lettura. Qui ha impedito un danno, non ha confermato un piano.
+
+*E la variante nuova, che è la mia:* una nota che dice «verrà fatto» va confrontata
+con la data in cui è stata fatta. Avevo consigliato «azzera prima di importare le
+nomine» leggendo come impegno futuro una decisione già eseguita cinque settimane
+prima. Non è stato un errore di misura — è stato non misurare affatto.
+
+**Conseguenza sull'import dei ruoli sicurezza:** l'ostacolo dell'azzeramento non
+esiste. Resta la trappola vera, che è un'altra e sta a monte — vedi
+`AppFormazione/docs/07-i-ruoli-sicurezza-erano-in-un-export.md`: una colonna su
+sette è mappata male, la «RSPP» contiene in realtà `datore_lavoro_rspp` (art. 34,
+il datore che assume l'incarico in proprio), e la sovrapposizione fra chi ha il
+corso professionale (14) e chi risultava nominato (28) era **zero**. Una nomina
+che punta al ruolo sbagliato è peggio di una nomina mancante.
+
 ## La quarantena adesso si vede, e si può toccare
 
 `D3` aveva chiuso il pezzo difficile: un'operazione respinta in modo definitivo
