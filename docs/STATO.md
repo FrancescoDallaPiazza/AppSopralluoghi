@@ -20,7 +20,7 @@ Ultimo aggiornamento: **10 settembre 2026**.
 | **D3** · quarantena della coda offline | chiuso | `33e5838` |
 | **I sette buchi dell'import** | chiuso | `0d0c8a0` |
 | Provenienza: `import_key` sulle persone | chiuso | `98082cd` |
-| La schermata della quarantena | chiuso | `__HASH__` |
+| La schermata della quarantena | chiuso | `69767fa` |
 | **D2** · il report non conosce i componenti | aperto | — |
 | Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
 | Importare le persone: 3.420 scritte | **fatto 9.09** | `af8d945` |
