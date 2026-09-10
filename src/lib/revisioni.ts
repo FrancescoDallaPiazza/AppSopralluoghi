@@ -9,7 +9,7 @@
 // accodato come ogni altra riga; la riapertura aggiorna il sopralluogo in locale
 // e in coda. La storia delle revisioni si rilegge dal server (online).
 
-import { db, enqueueRow, enqueueDelete, type OutboxOp } from './db';
+import { db, enqueueRow, enqueueDelete, annullaQuarantenaPer, type OutboxOp } from './db';
 import { supabase } from './supabase';
 import { runSync, rimuoviEsito } from './sync';
 import { toBaseSopralluogo } from './sopralluoghi';
@@ -127,6 +127,7 @@ async function annullaUpsertInCoda(table: NonNullable<OutboxOp['table']>, id: st
       await db.outbox.delete(o.seq);
     }
   }
+  await annullaQuarantenaPer({ table, id });
 }
 
 // Annulla la revisione aperta da apriRevisione: ripristina lo stato dallo

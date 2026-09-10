@@ -199,6 +199,64 @@ export async function mettiInQuarantena(op: OutboxOp, motivo: string, codice?: s
   if (op.seq != null) await db.outbox.delete(op.seq);
 }
 
+// Le operazioni ferme, la piu' recente prima. E' l'elenco che sta dietro al
+// numero di contaQuarantena: quel numero dice che qualcosa non e' arrivato in
+// ufficio, questo elenco dice che cosa.
+export function elencoQuarantena(): Promise<OpBloccata[]> {
+  return db.quarantena.orderBy('quando').reverse().toArray();
+}
+
+// Toglie per sempre un'operazione dalla quarantena. Non c'e' un ripensamento
+// dopo: chi la chiama ha deciso che quel lavoro non deve (o non puo' piu')
+// arrivare in ufficio.
+export async function scartaDaQuarantena(qid: number) {
+  await db.quarantena.delete(qid);
+}
+
+// Rimette un'operazione in coda COM'ERA. Il seq originale e' perso e non si
+// recupera: tutto quello che le stava dietro e' gia' passato, quindi rientra in
+// fondo, con un seq nuovo. Due conseguenze che chi chiama deve conoscere:
+//  * se la causa del rifiuto e' ancora lato server, al prossimo giro
+//    l'operazione torna qui identica - il ritentativo non cambia il payload;
+//  * un upsert che rientra dopo il delete della stessa riga la RICREA lato
+//    server. Per questo chi cancella una riga scarta anche la sua copia in
+//    quarantena (vedi annullaQuarantenaPer).
+export async function rimettiInCoda(qid: number) {
+  await db.transaction('rw', db.quarantena, db.outbox, async () => {
+    const q = await db.quarantena.get(qid);
+    if (!q) return;
+    const { seq: _seq, ...op } = q.op;
+    await db.outbox.add(op as OutboxOp);
+    await db.quarantena.delete(qid);
+  });
+}
+
+// Scarta dalla quarantena le operazioni che riguardano una riga (upsert per id),
+// una foto o un allegato attestato (upload per id del blob).
+//
+// Perche' esiste: le cinque funzioni che annullano un'operazione ancora pendente
+// (rimuoviFoto, rimuoviEsito, rimuoviRiga, eliminaFormazione,
+// annullaUpsertInCoda) guardavano la sola coda. Ma un'operazione respinta non
+// sta piu' in coda: sta qui. Finche' la quarantena si poteva solo leggere la
+// copia dimenticata era inerte; da quando si puo' ritentare a mano, e' in grado
+// di ricreare lato server una riga cancellata nel frattempo. Chi annulla
+// un'operazione annulla anche la sua copia in quarantena.
+export async function annullaQuarantenaPer(
+  sel: { table: NonNullable<OutboxOp['table']>; id: string }
+     | { fotoId: string }
+     | { attestatoId: string },
+) {
+  for (const q of await db.quarantena.toArray()) {
+    const o = q.op;
+    const colpita =
+      'fotoId' in sel ? o.kind === 'photo' && o.fotoId === sel.fotoId
+      : 'attestatoId' in sel ? o.kind === 'attestato' && o.attestatoId === sel.attestatoId
+      : o.kind === 'row' && o.table === sel.table
+        && (o.payload as { id?: string } | undefined)?.id === sel.id;
+    if (colpita && q.qid != null) await db.quarantena.delete(q.qid);
+  }
+}
+
 // Accoda una riga da sincronizzare (e la salva anche localmente).
 export async function enqueueRow(
   table: NonNullable<OutboxOp['table']>,

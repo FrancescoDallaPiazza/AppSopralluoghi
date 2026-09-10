@@ -4,7 +4,7 @@
 // (gli id sono generati lato client, quindi niente conflitti di chiave).
 
 import { supabase, FOTO_BUCKET, ATTESTATI_BUCKET, estensioneAttestato, contentTypeAttestato, pathAttestato } from './supabase';
-import { db, enqueueRow, enqueueDelete, mettiInQuarantena, type OutboxOp, type OrganigrammaConferma, type ClienteMeta } from './db';
+import { db, enqueueRow, enqueueDelete, mettiInQuarantena, annullaQuarantenaPer, type OutboxOp, type OrganigrammaConferma, type ClienteMeta } from './db';
 import { newId, type EsitoVoce, type Foto, type Azione } from './types';
 import type {
   Persona, Nomina, Formazione, Esonero,
@@ -56,6 +56,7 @@ export async function rimuoviFoto(fotoId: string) {
   await db.fotoBlob.delete(fotoId);
   const ops = await db.outbox.where('kind').equals('photo').toArray();
   for (const o of ops) if (o.fotoId === fotoId && o.seq != null) await db.outbox.delete(o.seq);
+  await annullaQuarantenaPer({ fotoId });   // anche la copia respinta, se c'e'
   // TODO (slice 2): se già sincronizzata, accodare delete su storage + riga foto.
 }
 
@@ -81,6 +82,7 @@ export async function rimuoviEsito(esitoId: string) {
       await db.outbox.delete(o.seq);
     }
   }
+  await annullaQuarantenaPer({ table: 'esito_voce', id: esitoId });
 
   await enqueueDelete('esito_voce', esitoId);
   void runSync();
@@ -248,6 +250,7 @@ async function rimuoviRiga(
       await db.outbox.delete(o.seq);
     }
   }
+  await annullaQuarantenaPer({ table, id });
   await enqueueDelete(table, id);
   void runSync();
 }
@@ -262,6 +265,7 @@ export async function eliminaFormazione(id: string) {
     const ops = await db.outbox.where('kind').equals('attestato').toArray();
     for (const b of blobs) {
       for (const o of ops) if (o.attestatoId === b.id && o.seq != null) await db.outbox.delete(o.seq);
+      await annullaQuarantenaPer({ attestatoId: b.id });
       await db.attestatoBlob.delete(b.id);
     }
   }

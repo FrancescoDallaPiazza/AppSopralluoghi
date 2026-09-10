@@ -9,7 +9,7 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **9 settembre 2026**.
+Ultimo aggiornamento: **10 settembre 2026**.
 
 ---
 
@@ -20,7 +20,7 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | **D3** · quarantena della coda offline | chiuso | `33e5838` |
 | **I sette buchi dell'import** | chiuso | `0d0c8a0` |
 | Provenienza: `import_key` sulle persone | chiuso | `98082cd` |
-| La schermata della quarantena | aperto | — |
+| La schermata della quarantena | chiuso | `__HASH__` |
 | **D2** · il report non conosce i componenti | aperto | — |
 | Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
 | Importare le persone: 3.420 scritte | **fatto 9.09** | `af8d945` |
@@ -29,7 +29,62 @@ Ultimo aggiornamento: **9 settembre 2026**.
 | Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
 | `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
 
-## Dettaglio di quello che è cambiato oggi
+## La quarantena adesso si vede, e si può toccare
+
+`D3` aveva chiuso il pezzo difficile: un'operazione respinta in modo definitivo
+esce dalla coda invece di congelare per sempre tutto ciò che le sta dietro. Ma
+`contaQuarantena()` non era chiamato da nessuna parte: il numero che spiega
+perché qualcosa non è arrivato in ufficio esisteva e non lo leggeva nessuno.
+
+**Chi la guarda, e perché decide il resto.** La quarantena è una tabella Dexie,
+cioè IndexedDB, cioè **il dispositivo**. Il back-office non la vede e non la
+vedrà: non è una vista che manca, è un posto dove non arriva. Quindi chi legge
+quell'elenco è il tecnico, in campo, spesso senza rete — e una schermata di sola
+lettura l'avrebbe mandato a telefonare in ufficio per ogni riga. La decisione di
+Francesco: **vedere, scartare, ritentare**.
+
+- **Ritenta** rimette l'operazione in coda **com'era**, e il testo sotto l'elenco
+  lo dice: se la causa del rifiuto è ancora lato server, al prossimo giro
+  l'operazione torna in quarantena identica. Serve quando la causa è stata
+  rimossa in ufficio — ed è il caso vero di questo progetto: il `409` del 9
+  settembre si è sistemato cancellando righe via SQL, e dopo quella correzione il
+  ritentativo passa. Un bottone che promettesse di riparare sarebbe peggio di
+  nessun bottone.
+- **Scarta** cancella per sempre, in due tocchi. Serve per i casi morti:
+  `LOCALE_MANCANTE`, il file di una foto o di un attestato che in locale non c'è
+  più. Su quelli **Ritenta non compare**, perché nessun ritentativo potrà mai
+  riuscire.
+
+**Il difetto che il bottone Ritenta ha fatto emergere, e che è chiuso con lui.**
+Cinque funzioni annullano un'operazione ancora pendente quando si cancella ciò a
+cui si riferisce — `rimuoviFoto`, `rimuoviEsito`, `rimuoviRiga`,
+`eliminaFormazione`, `annullaUpsertInCoda`. Tutte e cinque guardavano **la sola
+coda**. Ma un'operazione respinta non sta più in coda: sta in quarantena, dove
+nessuna delle cinque la cercava. Finché la quarantena si poteva solo leggere
+quella copia dimenticata era inerte; **con Ritenta diventava in grado di
+ricreare lato server una riga cancellata nel frattempo** — cancelli un rilievo,
+il delete sale, poi ritenti l'upsert respinto e il rilievo torna. Ora c'è
+`annullaQuarantenaPer` in `db.ts`, chiamata da tutti e cinque i punti: chi annulla
+un'operazione annulla anche la sua copia in quarantena. È la stessa forma dei
+difetti di agosto — **un posto in più dove la stessa regola non era applicata**.
+
+**Dove si entra.** Due vie, entrambe solo quando c'è qualcosa da vedere: la voce
+«Non arrivate in ufficio (N)» nel menu account, con un pallino rosso sul bottone
+perché nessuno apre un menu per cercare un problema che non sa di avere; e il
+contatore «· N bloccate» già presente nell'intestazione della compilazione, che
+adesso è un bottone e apre lo stesso elenco. Quella seconda via conta: durante un
+giro il menu account non c'è, e chi è dentro a un giro è esattamente chi sta
+producendo le operazioni che si bloccano.
+
+**Cosa non è verificato.** `npm run build` è verde (`tsc -b` compreso), ma
+l'elenco **non è ancora stato visto con una riga dentro**: per farlo serve
+provocare un rifiuto definitivo su un'app collegata, e in questo repo non c'è
+attrezzatura di test — la verifica, qui, si fa sui dati veri. Il modo più breve
+per esercitarlo è la console del browser sull'app collegata:
+`await db.quarantena.add({op:{kind:'row',table:'esito_voce',payload:{id:'x'}},motivo:'prova',codice:'23505',quando:new Date().toISOString()})`,
+poi Scarta per ripulire.
+
+## Dettaglio di quello che è cambiato il 9 settembre
 
 **I sette buchi dell'import** (`0d0c8a0`) sono chiusi tutti. Sei su sette sono
 verificati sull'export vero: `Data di Licenziamento` e `Area di Lavoro` ora

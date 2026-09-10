@@ -20,6 +20,7 @@ import type { Azione, VoceTemplate, AreaInterna, Sede } from './lib/types';
 import { renderVoce, I, type ContestoVoci, type Resp, type Bozza, type BozzaScad } from './vociRender';
 import { useCompilazioneVoci } from './lib/useCompilazioneVoci';
 import { annullaRevisione } from './lib/revisioni';
+import Quarantena from './Quarantena';
 
 // ---------- helpers ----------
 const isoPiuMesi = (mesi: number) => {
@@ -123,6 +124,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   // Operazioni che il server ha respinto in modo definitivo: restano ferme
   // finche' non le si guarda. Prima non le vedeva nessuno.
   const [bloccate, setBloccate] = useState(0);
+  // ...e il contatore adesso si apre: il menu account, l'altra via per arrivare
+  // alla quarantena, durante la compilazione non c'e'. Chi e' dentro a un giro
+  // e' esattamente chi sta producendo le operazioni che si bloccano.
+  const [vediBloccate, setVediBloccate] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [salvataggio, setSalvataggio] = useState<'idle' | 'corso' | 'fatto' | 'errore'>('idle');
   const [sheet, setSheet] = useState<null | 'prev' | 'form'>(null);
@@ -424,6 +429,7 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
   return (
     <div className="compila">
       <style>{CSS}</style>
+      {vediBloccate && <Quarantena onChiudi={() => setVediBloccate(false)} />}
       <div className="phone">
         <header>
           <div className="h-top">
@@ -435,9 +441,10 @@ export default function Compilazione({ sopralluogo, tecnicoId, onChiudi }: Props
             <div className={'sync ' + (online ? 'online' : 'offline')}>
               <span className="dot" />{online ? (inCoda ? `${inCoda} in coda` : 'Online') : `Offline · ${inCoda}`}
               {bloccate > 0 && (
-                <span className="bloccate" title="Operazioni respinte dal server: non saliranno da sole. Segnalale all'ufficio.">
+                <button type="button" className="bloccate" onClick={() => setVediBloccate(true)}
+                  title="Operazioni respinte dal server: non saliranno da sole. Tocca per vederle.">
                   · {bloccate} bloccate
-                </span>
+                </button>
               )}
             </div>
           </div>
@@ -629,7 +636,8 @@ const CSS = `
 .compila .sync .dot{width:7px;height:7px;border-radius:50%;}
 .compila .sync.offline .dot{background:var(--hi);} .compila .sync.online .dot{background:#39d98a;}
 /* Operazioni respinte: non salgono da sole, quindi si vedono. */
-.compila .sync .bloccate{color:var(--hi); font-weight:700;}
+.compila .sync .bloccate{color:var(--hi); font-weight:700; border:none; background:none;
+  padding:0 0 0 1px; font:inherit; cursor:pointer; text-decoration:underline;}
 .compila .progress-wrap{margin-top:11px;}
 .compila .progress-meta{display:flex; justify-content:space-between; font-size:11px; color:#c7cad0; margin-bottom:5px; font-weight:500;}
 .compila .progress-meta b{color:#fff; font-weight:700;}
