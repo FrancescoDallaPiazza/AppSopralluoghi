@@ -76,13 +76,44 @@ adesso è un bottone e apre lo stesso elenco. Quella seconda via conta: durante 
 giro il menu account non c'è, e chi è dentro a un giro è esattamente chi sta
 producendo le operazioni che si bloccano.
 
-**Cosa non è verificato.** `npm run build` è verde (`tsc -b` compreso), ma
-l'elenco **non è ancora stato visto con una riga dentro**: per farlo serve
-provocare un rifiuto definitivo su un'app collegata, e in questo repo non c'è
-attrezzatura di test — la verifica, qui, si fa sui dati veri. Il modo più breve
-per esercitarlo è la console del browser sull'app collegata:
-`await db.quarantena.add({op:{kind:'row',table:'esito_voce',payload:{id:'x'}},motivo:'prova',codice:'23505',quando:new Date().toISOString()})`,
-poi Scarta per ripulire.
+**Verificato in browser, e ha trovato un sesto punto.** Il 10 settembre, con un
+ponteggio temporaneo (una pagina Vite che monta la sola `Quarantena` fuori
+dall'autenticazione, con righe finte in Dexie e accanto il contenuto vero di
+`outbox` e `quarantena`): nessuna credenziale, nessun dato reale, il client
+Supabase non viene mai chiamato. Il ponteggio è stato tolto subito dopo, non è
+in nessun commit.
+
+Cosa si è visto davvero, non dedotto:
+
+| prova | esito |
+|---|---|
+| l'elenco con tre righe di tipo diverso (upsert, allegato, cancellazione) | rende, con i nomi in italiano — «Rilievo», «Allegato attestato», «Nomina» |
+| `LOCALE_MANCANTE` | **Ritenta non compare**: resta il solo Scarta |
+| `Ritenta` su un upsert respinto | quarantena 6→5, e in coda compare `seq 1 · row esito_voce`: l'operazione si **sposta**, non si duplica |
+| `Scarta` | chiede conferma in due tocchi, poi toglie la riga senza accodare nulla |
+
+E la prova che conta, quella sull'annullamento: seminata in quarantena una copia
+respinta di `esito_voce/X`, chiamato `rimuoviEsito('X')` — cioè il percorso vero,
+non una simulazione — la copia **sparisce** e il delete resta accodato. Senza la
+correzione sarebbe rimasta lì, pronta a farsi ritentare e a ricreare la riga.
+
+**Il sesto punto, che leggendo non avevo visto.** La correzione era stata
+applicata a cinque funzioni, trovate cercandole. Provandole una per una in
+browser, `rimuoviAzione` (`sync.ts:107`) è risultata **ancora scoperta**: stessa
+identica forma delle altre — scandisce la coda, non la quarantena — e la mia
+ricerca l'aveva mancata. Ora sono sei, e l'elenco non è più frutto di una
+ricerca ma di `grep -rn "db.outbox.delete\|outbox.where('kind')"`, che li
+enumera tutti: cinque annullamenti in `sync.ts` (`rimuoviFoto`, `rimuoviEsito`,
+`rimuoviAzione`, `rimuoviRiga`, `eliminaFormazione`), uno in `revisioni.ts`
+(`annullaUpsertInCoda`), più il drenaggio stesso, che non è un annullamento.
+Tutti e cinque quelli di `sync.ts` sono stati riprovati dopo la correzione:
+prima 1, dopo 0.
+
+*È la terza volta che questo repo scrive la stessa nota.* Le colonne di un
+export si enumerano invece di indovinarle; le letture non paginate erano cinque
+e non una; i punti che annullano un'operazione sono sei e ne avevo letti cinque.
+La differenza, stavolta, è che a trovarlo non è stata una rilettura: è stato
+farlo girare.
 
 ## Dettaglio di quello che è cambiato il 9 settembre
 

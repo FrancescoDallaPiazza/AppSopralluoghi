@@ -112,6 +112,7 @@ export async function rimuoviAzione(azioneId: string) {
       await db.outbox.delete(o.seq);
     }
   }
+  await annullaQuarantenaPer({ table: 'azione', id: azioneId });
   await enqueueDelete('azione', azioneId);
 }
 
