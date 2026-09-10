@@ -4,7 +4,7 @@
 stata scritta da nessuna parte.** Misurato il 10 settembre 2026 su
 `ExportExcel (4).xlsx` (in `~/Downloads`), leggendo il file, non ricordandolo.
 
-## Primo fatto: i fogli sono quattro, e l'import ne legge uno
+## Primo fatto: i fogli sono quattro, e nessun import apre questo file
 
 | indice | foglio | righe |
 |---:|---|---:|
@@ -13,8 +13,13 @@ stata scritta da nessuna parte.** Misurato il 10 settembre 2026 su
 | 2 | `Visite` | 3.503 |
 | 3 | **`Ruoli SSL`** | 3.503 |
 
-`formazioneImport.ts:190` fa `wb.Sheets[wb.SheetNames[0]]`: legge **solo
-`Fattori di Rischio`**. Gli altri tre non li apre nessuno.
+**CORREZIONE al 10 settembre 2026, sera.** Qui era scritto che
+`formazioneImport.ts:190` legge `SheetNames[0]` e quindi «legge solo Fattori di
+Rischio». **Falso, e per la ragione peggiore: avevo confrontato il codice con il
+file sbagliato.** Sono tre export diversi del gestionale, e questo non è quello
+che l'import apre — vedi la tabella «quale import legge quale file» in
+`docs/STATO.md`. La verità è più semplice e più grave: **`ExportExcel (4).xlsx`
+non lo legge nessun import.** Non tre fogli su quattro: tutti e quattro.
 
 ## Le 47 colonne di «Ruoli SSL»
 
@@ -81,10 +86,13 @@ va inventata col giorno dell'import.
 
 ## Terzo fatto, ed è quello che capovolge la diagnosi
 
-La colonna **32 `Ruoli SSL`** — che nessun documento aveva mai citato — è un
-**elenco testuale** dei ruoli della persona, separati da virgola
+La colonna **32 `Ruoli SSL`** è un **elenco testuale** dei ruoli della persona, separati da virgola
 («Addetti Primo Soccorso, Addetti Antincendio»). Vale su 153 righe, esattamente
 il numero di righe con almeno un ruolo.
+
+*Correzione: avevo scritto che nessun documento l'aveva mai citata. Falso —
+`AppFormazione/docs/07-…` la elenca, come «due colonne di testo che riassumono».
+Nuovo è averla usata come **riscontro**, non averla trovata.*
 
 Serve come riscontro indipendente sulla mappatura delle nove colonne. Eseguito:
 

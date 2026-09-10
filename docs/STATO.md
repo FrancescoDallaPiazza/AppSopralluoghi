@@ -29,6 +29,106 @@ Ultimo aggiornamento: **10 settembre 2026**.
 | Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
 | `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
 
+## I quattro fogli, e quale import legge quale file
+
+Enumerazione del 10 settembre 2026, aprendo i file. **Nessuna scrittura da
+nessuna parte**: l'import dei ruoli è in pausa per decisione di Francesco.
+
+### Prima una correzione, perché l'errore era mio e istruttivo
+
+Avevo scritto che «l'import legge `SheetNames[0]`, quindi legge solo *Fattori di
+Rischio*». **Falso**, e non per una svista di lettura: avevo confrontato il
+**codice** con il **file sbagliato**. Sono tre export distinti del gestionale, e
+`SheetNames[0]` è corretto per ciascuno dei due che gli import aprono davvero,
+perché **quei due hanno un foglio solo**.
+
+| chi legge | file | fogli | foglio letto |
+|---|---|---:|---|
+| `formazioneImport.ts:190` | `ExportExcel.xlsx` — «Elenco Visite/Formazioni» | **1** | `Sheet0` |
+| `anagraficheImport.ts:246` | `ExportExcel (5).xlsx` — «Risultato Ricerca Dipendenti» | **1** | `Sheet0` |
+| **nessuno** | **`ExportExcel (4).xlsx`** | **4** | — |
+
+La verità è più semplice e più grave di quella che avevo scritto: **`ExportExcel
+(4).xlsx` non lo apre nessun import.** Non tre fogli su quattro — tutti e quattro.
+È il file che contiene i ruoli sicurezza, i fattori di rischio e le visite mediche.
+
+### I quattro fogli
+
+Tutti hanno **3.501-3.502 righe** e condividono le **colonne 0-37**, cioè lo
+stesso blocco anagrafico (`Società`, `Sede`, `Cognome`, `Nome`, `C.F.`, …
+`Ruoli SSL`, `Mansione Safety`). Cambia solo ciò che viene dopo.
+
+| idx | foglio | colonne | proprie | cosa contiene | entra oggi? |
+|---:|---|---:|---:|---|---|
+| 0 | `Fattori di Rischio` | 117 | 79 | il rischio per persona: `Agenti chimici` 121, `Posture Incongrue` 144, `Rumore` 94, `Movimentazione manuale dei carichi` 99, `Amianto` 12 | **no** |
+| 1 | `Formazione` | 387 | ~349 | matrice attestati, una colonna per corso | **no** (gli attestati entrano da un altro file) |
+| 2 | `Visite` | 58 | 10 | **sorveglianza sanitaria** — vedi sotto | **no** |
+| 3 | `Ruoli SSL` | 47 | 9 | i ruoli con la data dell'incarico | **no** (in pausa) |
+
+### `Visite` è sorveglianza sanitaria, e il piano non nomina questo dominio
+
+| | | | |
+|---|---:|---|---:|
+| Visita Medica annuale | **671** | Visita medica quinquennale | 24 |
+| Visita Medica Biennale | **107** | Visita Trimestrale | 3 |
+| Esame Audiometrico | 3 | Visita medica quadriennale | 3 |
+| Esame Elettrocardiografico | 2 | Visita Oculistica biennale | 2 |
+| Esame Spirometrico | 2 | Visita oculistica quinquennale | 1 |
+
+Ogni voce è una **coppia**: colonna col nome = data della visita, colonna senza
+nome accanto = **scadenza**. Verificato sui valori (21.11.2025 → 21.11.2026 per
+l'annuale), non dedotto dal nome.
+
+Sono **818 visite con scadenza** che oggi non entrano da nessuna parte. Il codice
+il dominio lo conosce già — `formazioneImport.ts:13` scarta le visite dicendo che
+«il loro posto è `adempimento` categoria sorveglianza» — ma quel posto non è mai
+stato riempito, e la sorveglianza sanitaria (art. 41 D.Lgs 81/08) ha scadenze
+proprie esattamente come la formazione.
+
+`Fattori di Rischio` **non** è una coppia data/scadenza: la colonna porta un
+testo e quella accanto è vuota. È una marcatura di presenza, non un evento datato.
+
+### Il riscontro sull'RSPP, fatto qui e non preso per buono
+
+`AppFormazione` aveva concluso che la colonna `RSPP` contiene in realtà il datore
+di lavoro che assume l'incarico in proprio (art. 34). **Verificato su questo
+workbook**, incrociando `Ruoli SSL` con `Formazione`:
+
+| | |
+|---|---:|
+| marcati `RSPP` nel foglio ruoli | 31 → **28** con codice fiscale + 3 senza |
+| di quei 28, quanti hanno un corso **da datore** (art. 34) | **26** |
+| di quei 28, quanti hanno un **modulo professionale** A/B/C (art. 32) | **0** |
+| persone nel file con i moduli professionali | 12 |
+| di quelle 12, quante sono marcate `RSPP` nel foglio ruoli | **0** |
+
+**Disgiunzione perfetta, nei due versi.** Non è un caso e non è un errore di
+lettura: il gestionale usa l'etichetta «RSPP» per l'art. 34. La colonna 45 resta
+fuori dall'import, e adesso con la prova invece che col sospetto.
+
+### A9 applicata a me stesso: cosa è verificato e cosa no
+
+- **Verificato con riscontro esterno al foglio:** la mappatura dei nove ruoli
+  (contro la colonna 32) e la natura dell'`RSPP` (contro il foglio `Formazione`).
+- **Verificato sui valori:** le coppie data/scadenza di `Visite`.
+- **NON verificabile da qui, e va detto così:** cosa intenda chi compila il
+  gestionale quando riempie `Fattori di Rischio` — se sia il rischio *valutato*
+  della mansione o un'annotazione libera. Nel file non c'è nulla che lo
+  distingua e nessun altro foglio lo incrocia. Non scrivo «coerente»: scrivo che
+  non lo so.
+
+### Le domande per Francesco, che sono tre e non una
+
+1. `Visite`: la sorveglianza sanitaria entra nel perimetro o resta fuori
+   deliberatamente? Sono 818 scadenze reali già raccolte.
+2. `Fattori di Rischio`: quelle 79 colonne sono il rischio valutato per persona?
+   Se sì, è il dato che oggi manca per sapere quante ore di formazione specifica
+   siano dovute — `livello_rischio` nullo è citato in `formazioneImport.ts:31`
+   come ciò che blocca il motore.
+3. `RSPP`: chi compila il gestionale sa che quella colonna raccoglie l'art. 34?
+   La domanda non è se noi la leggiamo bene — quello è dimostrato — ma se il
+   gestionale debba continuare a chiamarla così.
+
 ## Il database, guardato: non c'è niente da azzerare
 
 Misurato il **10 settembre 2026** nell'SQL Editor, progetto Supabase
