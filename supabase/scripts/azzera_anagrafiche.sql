@@ -164,9 +164,23 @@ commit;
 --
 -- 2. LE APP IN CAMPO HANNO UNA COPIA LOCALE (Dexie/IndexedDB). Finche' non
 --    si sincronizzano continuano a mostrare clienti e persone che sul server
---    non esistono piu', e la loro outbox potrebbe tentare di riscrivere righe
---    verso clienti cancellati. Su ogni dispositivo installato: chiudere e
---    riaprire la PWA, e se restano dati fantasma svuotare i dati del sito.
+--    non esistono piu', e la loro outbox tentera' di riscrivere righe verso
+--    clienti cancellati. Su ogni dispositivo installato: chiudere e riaprire
+--    la PWA, e se restano dati fantasma svuotare i dati del sito.
+--
+--    COSA E' CAMBIATO IL 10 SETTEMBRE 2026, e cambia cosa ti aspetti di vedere:
+--    quelle riscritture falliscono per violazione di foreign key (SQLSTATE 23503).
+--    Fino al 9 settembre un solo fallimento cosi' congelava la coda per sempre e
+--    IN SILENZIO: tutto cio' che stava dietro non saliva piu'. Adesso l'operazione
+--    esce dalla coda e finisce in QUARANTENA (`69767fa`), quindi:
+--      * il resto della coda riparte da solo, e questo e' il miglioramento;
+--      * il tecnico vede «N bloccate» e puo' aprirle dal menu account o dal
+--        contatore in cima alla compilazione;
+--      * quelle righe puntano a clienti che non esistono piu': vanno SCARTATE,
+--        non ritentate. Ritentarle le fa respingere identiche.
+--    Svuotare i dati del sito resta comunque la via piu' pulita: toglie in un
+--    colpo la cache, la coda e la quarantena. La quarantena rende il problema
+--    visibile, non lo rende inutile da ripulire.
 --
 -- 3. Il catalogo corsi, le figure e i template sono intatti: ricreando un
 --    cliente, l'organigramma e i requisiti funzionano subito.
