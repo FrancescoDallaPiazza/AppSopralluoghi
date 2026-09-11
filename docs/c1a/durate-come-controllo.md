@@ -19,12 +19,23 @@ confrontate con `ore` o `ore_aggiornamento` del catalogo.
 - **0 titoli dell'export sono fuori dal dizionario.** Il dizionario copre l'export
   per intero — ed è un risultato che vale la pena dire.
 
-**Il limite, dichiarato perché A10 lo impone.** Il dizionario qui è **simulato dai
-file del repo** (`ripristina_alias_gestionale.sql` + `mappatura_alias_gestionale.sql`),
-non letto dal database: l'editor SQL ha smesso di accettare input a metà lavoro.
-La simulazione riproduce **tre aggregati indipendenti** che AppOverall ha letto dal
-database — **237 mappati, 98 aggiornamenti, 7 parziali** — e su quei tre coincide.
-Non è una verifica riga per riga.
+**Il limite è stato tolto l'11 settembre, sera.** Qui c'era scritto che il
+dizionario era *simulato dai file del repo* e non letto dal database, con la
+riserva A10 «i file dicono». La riserva **non serve più**, e la catena si chiude
+in due passaggi verificati:
+
+1. **la mia simulazione = il seed di AppOverall.** Confronto riga per riga fra
+   `ripristina_alias_gestionale.sql` + `mappatura_alias_gestionale.sql` (questo
+   repo) e `supabase/seed/corso_alias.sql` (AppOverall): **268 righe da entrambe
+   le parti, 0 solo di qua, 0 solo di là, 0 diverse**, e somma delle impronte
+   identica (`579750125159`);
+2. **il seed = il database vivo.** Verificato da AppOverall (`f94ff83`) su undici
+   valori indipendenti — 268 righe, somma impronte, 31 ignorati, 98 aggiornamenti,
+   7 parziali, 2 pregresse, 1 evidenza incompleta, 1 con note, 39 codici distinti,
+   e le due somme delle lunghezze.
+
+Quindi il dizionario usato qui **è** quello in produzione. L'analisi che segue è
+verificata, non simulata.
 
 ## Le quattro righe segnalate: tutte e quattro hanno risposta
 

@@ -29,6 +29,52 @@ Ultimo aggiornamento: **10 settembre 2026**.
 | Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
 | `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
 
+## Il dizionario del gestionale: verificato, e la lezione sta nella query
+
+**11 settembre 2026.** I 268 alias del gestionale — giudizi presi a mano, uno per
+uno — sono **identici in tre posti**: gli script di questo repo, il seed di
+AppOverall, e il database in produzione.
+
+| confronto | esito |
+|---|---|
+| simulazione dai file di questo repo ↔ seed di AppOverall | **268 = 268**, 0 solo di qua, 0 solo di là, **0 diverse** |
+| seed di AppOverall ↔ database vivo | **11 valori su 11 identici** (`f94ff83`) |
+
+Era l'ultima riserva della `0004`: il seed diceva di sé «resta da confermare
+contro il database vivo, gli script ricostruiscono ciò che è stato eseguito, non
+ciò che qualcuno può aver deciso dall'interfaccia dopo». Adesso è confermato.
+
+### E la lezione, che è mia e vale più del risultato
+
+La query che avevo scritto per il confronto era **sbagliata**, e avrebbe prodotto
+un allarme falso. Era:
+
+```sql
+md5(string_agg(... , chr(10) order by testo_gestionale))
+```
+
+**Un digest su un'aggregazione ordinata non confronta due sistemi.** L'`order by`
+di PostgreSQL segue la *collation* del database; il mio ordinamento in Python segue
+i codepoint. Sulle stesse identiche 268 righe i due ordini differiscono in **71
+posizioni**, e la stessa tabella produce **tre hash diversi** a seconda di chi la
+ordina. Il primo esito è stato «hash diverso» — cioè, letto di corsa, *«qualcuno ha
+ritoccato a mano 268 giudizi»*.
+
+La forma giusta è **un'impronta per riga sommata** — la somma è commutativa,
+quindi l'ordine non entra — **accompagnata da conteggi per campo**, che dicono
+*dove* sta la differenza invece di dire solo che c'è.
+
+*La mia query non era sbagliata in assoluto:* per confrontare il database **con se
+stesso nel tempo** va benissimo, perché l'ordinamento è lo stesso. Era sbagliata
+per confrontarlo con **un'altra implementazione**. È una distinzione che non avevo
+fatto.
+
+**Ed è la seconda volta nella stessa giornata** che un'accusa di deriva poggiava su
+un confronto mai verificato: la prima erano i 40 codici del catalogo, dove «40 hash
+su 40 divergono» era `4.0` contro `4`. Stesso schema, due volte, in due direzioni
+diverse — e in entrambi i casi la notizia falsa era **più interessante** di quella
+vera, che è il motivo per cui conviene diffidarne.
+
 ## I quattro fogli, e quale import legge quale file
 
 Enumerazione del 10 settembre 2026, aprendo i file. **Nessuna scrittura da
