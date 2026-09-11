@@ -140,7 +140,9 @@ stati scaricati — sta nella riga in fondo, che dichiara **la data dei dati**:
 non dell'estrazione è dimostrato: i quattro file dentro
 `ExportExcelCorsiScadenze.zip` hanno timestamp interno **03/09/2026 13:11** e
 dichiarano in fondo `06/08/2026` — un file non può essere stato prodotto prima di
-esistere. Quindi **riscaricare non allinea**: allinea l'estrazione, non i dati.
+esistere. Quindi per **quei tre file** riscaricare non avrebbe allineato niente:
+avrebbe allineato l'estrazione, non i dati. *Che non valga per tutti i report e'
+spiegato sotto — il controesempio e' arrivato lo stesso pomeriggio.*
 
 ### Quanto del 31 è tempo e non divergenza: dodici su trentuno
 
@@ -161,18 +163,51 @@ conferma: nove del 2019, una del 2020, una del 2021, una del 2025 e sette del
 2026 anteriori ad agosto. Un'esecuzione del 2019 assente dallo scadenzario di
 agosto 2026 non è un problema di fotografie.
 
-### E non è riverificabile
+### Riverificabile o no: dipende dal report, e l'avevo scritto troppo largo
 
-Rifare il confronto su due file della stessa data **non è possibile**: la data
-dichiarata è quella dei dati a monte, e il gestionale aggiorna i due insiemi con
-la propria cadenza. Nessuno può allinearli scaricandoli insieme.
+> **Corretto due ore dopo averlo scritto, l'11 settembre sera.** Qui c'era:
+> «rifare il confronto su due file della stessa data **non è possibile** […]
+> nessuno può allinearli scaricandoli insieme». **Era troppo forte, e un
+> controesempio è arrivato lo stesso giorno.**
+>
+> Alle 15:23 Francesco ha scaricato due export nuovi, e in fondo dichiarano
+> `Dati aggiornati al` **11/09/2026 15:23** — cioè l'istante dello scaricamento.
+> Per *quei* report la data dichiarata coincide con l'estrazione, e riscaricare
+> allinea eccome.
+>
+> Lo zip resta valido come prova **per i tre file del 3 settembre** — prodotti il
+> 03/09 e dichiarati 06/08, e un file non può nascere prima di esistere — ma non
+> è una legge del gestionale: **dipende dal report**. Due ipotesi, e da qui non
+> se ne può scegliere una: report diversi leggono sorgenti diverse (una viva, una
+> un datamart fermo al 06/08), oppure quei tre venivano da un export schedulato
+> in zip e questi sono a richiesta.
 
-Quindi **resta dichiarato e non riverificato**, che è l'unica strada e non la più
-comoda. Per l'import la conseguenza è più larga del 31: **tre file letti insieme
-con tre date diverse producono uno stato che non è mai esistito in nessun
-momento.** L'import dovrà registrare la data dichiarata di ogni file da cui
-legge — la fotografia accanto al dato che ne viene, come `ateco_origine` accanto
-a `codice_ateco`.
+**E ciò che cade è la frase, non la colonna — anzi la rende più necessaria.** Se
+la freschezza dipende dal *report* e non dal *momento*, non esiste nessuna regola
+che permetta di dedurla: l'unico modo di saperla è **leggerla da ogni file e
+conservarla**. Una regola che non esiste è il caso in cui un dato va letto sempre.
+
+Per l'import la conseguenza è più larga del 31: **tre file letti insieme con tre
+date diverse producono uno stato che non è mai esistito in nessun momento.**
+L'import deve registrare la data dichiarata di ogni file da cui legge — la
+fotografia accanto al dato che ne viene, come `ateco_origine` accanto a
+`codice_ateco`. E il formato non è uno solo: `Dati aggiornati al 11/09/2026
+15:23` ha l'ora, `Report aggiornato al 09/09/2026` no. Stesso gestionale, stesso
+giorno, due forme.
+
+### E il 31 è superato da un file che non sapevamo esistesse
+
+Lo stesso pomeriggio è saltato fuori che l'export delle **visite fatte** esiste
+(`ExportExcel (6).xlsx`, 1.383 visite dal 2016 al 2026). Rispetto al foglio è un
+**superinsieme stretto**: 800 coppie in comune, **zero** solo nel foglio, **250**
+solo nel nuovo — e 167 persone hanno più di una visita dello stesso tipo, fino a
+otto annuali consecutive.
+
+Quindi questa riconciliazione **resta valida su ciò che confrontava**, ma non è
+più la base su cui si scrive l'import: il foglio `Visite` comprimeva la storia in
+una sola «Ultima Esecuzione», e il file nuovo la porta per intero. Il 31 andrà
+riguardato lì, con due file che si possono riscaricare lo stesso giorno — e per
+questi due, adesso lo sappiamo, riscaricare serve.
 
 E serve anche nel verso opposto, che è la metà più utile: due export scaricati a
 un mese di distanza **possono portare la stessa data dichiarata**, e allora sono
