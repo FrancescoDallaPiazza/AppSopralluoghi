@@ -48,10 +48,20 @@ verificata, non simulata.
 
 **I due valori del sito ci sono entrambi, mescolati sotto un codice solo.** Il
 catalogo ha `ore_aggiornamento = 4` e non può esprimere una durata che dipende
-dalla dimensione dell'azienda: le 31 righe a 8 ore **non sono un errore del
-gestionale**, sono le aziende oltre i 50 lavoratori. Oggi risulterebbero
-divergenti, e domani — quando il motore calcolerà l'aggiornamento RLS — sarebbero
-valutate contro 4 ore invece che 8.
+dalla dimensione dell'azienda. Oggi le 31 righe a 8 ore risulterebbero divergenti,
+e domani — quando il motore calcolerà l'aggiornamento RLS — sarebbero valutate
+contro 4 ore invece che 8.
+
+> **Corretto l'11 settembre 2026, sera.** Qui c'era scritto che le 31 righe a 8 ore
+> «non sono un errore del gestionale, sono le aziende oltre i 50 lavoratori».
+> La prima metà è vera e verificabile — il gestionale ha **due titoli distinti**,
+> `Aggiornamento R.L.S. 4 ore` e `Aggiornamento R.L.S. 8 ore`, quindi chi ha
+> registrato ha scelto. **La seconda metà era una lettura, non una misura**, ed è
+> stata citata altrove come se fosse un conteggio. Misurata la sera dell'11 settembre
+> ([`dimensione-e-le-31-righe.md`](dimensione-e-le-31-righe.md)): le 31 righe
+> vengono da **quattro aziende**, tre delle quali sopra i 50 — **25 righe su 31**.
+> Le altre 6 sono di KOSME SPA, che in anagrafica ne ha 11. Il controllo regge
+> nell'altro verso: delle 128 righe a 4 ore, solo 4 vengono da aziende sopra i 50.
 
 ### 2. Primo soccorso — nessun difetto, e la periodicità è giusta
 
