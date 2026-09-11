@@ -211,7 +211,19 @@ giorno, due forme.
 ### E il 31 è superato da un file che non sapevamo esistesse
 
 Lo stesso pomeriggio è saltato fuori che l'export delle **visite fatte** esiste
-(`ExportExcel (6).xlsx`, 1.383 visite dal 2016 al 2026). Rispetto al foglio è un
+(1.383 visite dal 2016 al 2026).
+
+> **I due file nuovi sono stati rinominati** l'11 settembre, perché `ExportExcel
+> (6)` e `(7)` si confondevano con `ExportExcel (4)`, che è tutt'altro:
+>
+> | come è arrivato | come si chiama | cos'è |
+> |---|---|---|
+> | `ExportExcel (6).xlsx` | **`ExportExcelVisiteFatte.xlsx`** | le visite eseguite, con lo storico |
+> | `ExportExcel (7).xlsx` | **`ExportExcelVisiteScadute.xlsx`** | lo scadenzario filtrato sulle scadenze maturate |
+>
+> Il secondo **non** si chiama «Pianificate», che era il nome proposto prima di
+> misurarlo: `PIANIFICATA` è l'etichetta di 8 righe su 319, e vuol dire un'altra
+> cosa — vedi il punto 8. Rispetto al foglio è un
 **superinsieme stretto**: 800 coppie in comune, **zero** solo nel foglio, **250**
 solo nel nuovo — e 167 persone hanno più di una visita dello stesso tipo, fino a
 otto annuali consecutive.
@@ -229,7 +241,7 @@ si perde e qualcuno si astiene da un paragone che era legittimo.
 
 ## 7. Le nove non erano richiami anticipati: sette erano la fotografia vecchia
 
-Rifatto l'11 settembre 2026, sera, contro `ExportExcel (6).xlsx` — l'export delle
+Rifatto l'11 settembre 2026, sera, contro `ExportExcelVisiteFatte.xlsx` — l'export delle
 visite **fatte**, che il punto 6 racconta come è saltato fuori. **Sola lettura.**
 
 > **Il punto 3 di questo documento è sbagliato**, e va letto con questa sezione
@@ -239,7 +251,7 @@ visite **fatte**, che il punto 6 racconta come è saltato fuori. **Sola lettura.
 
 ### Il conto, rifatto con lo storico invece che con l'ultima esecuzione
 
-Il foglio `Visite` portava **una sola** data per persona e tipo. Il `(6)` porta
+Il foglio `Visite` portava **una sola** data per persona e tipo. `VisiteFatte` porta
 tutte. Su 793 coppie dello scadenzario che hanno almeno un'esecuzione:
 
 | | |
@@ -295,7 +307,7 @@ In tutte e due la dichiarata è calcolata sulla **penultima** anche al netto del
 taglio: l'esecuzione più recente era già avvenuta il 6 agosto, e la scadenza non
 ne teneva conto. Due letture, e i dati non le separano:
 
-- **ritardo di registrazione** — il `(6)` porta la data in cui la visita è stata
+- **ritardo di registrazione** — `VisiteFatte` porta la data in cui la visita è stata
   *fatta*, non quella in cui è stata *inserita*; se l'inserimento è avvenuto dopo
   il 6 agosto, lo scadenzario è coerente;
 - **richiamo anticipato vero** — quello che credevo fossero tutte e nove.
@@ -331,13 +343,13 @@ che non lo è sono le persone da rivedere prima». Va riscritto così:
 
 ## 8. `PIANIFICATA` sono le persone senza storico
 
-Dieci righe nel vecchio scadenzario, otto nel `(7)`, **tutte e dieci della stessa
+Dieci righe nel vecchio scadenzario, otto in `VisiteScadute`, **tutte e dieci della stessa
 società** (Rittal RCS). Nove con data **31.12.2025** — una data tonda di fine
 anno, non il risultato di un calcolo — e una 08.04.2026.
 
-**Nessuna delle dieci ha una sola esecuzione nel `(6)`.** Zero storico.
+**Nessuna delle dieci ha una sola esecuzione in `VisiteFatte`.** Zero storico.
 
-Quindi `PIANIFICATA` non marca un appuntamento fissato, e il `(7)` non è
+Quindi `PIANIFICATA` non marca un appuntamento fissato, e `VisiteScadute` non è
 un'agenda: marca **le righe che non derivano da un'esecuzione**. Sono le scadenze
 delle persone mai visitate, con una data messa a mano o dedotta dall'assunzione.
 
@@ -345,19 +357,19 @@ delle persone mai visitate, con una data messa a mano o dedotta dall'assunzione.
 dietro** — cioè il caso in cui una scadenza calcolata non è diversa: è
 impossibile.
 
-## 9. E il `(7)` è il vecchio scadenzario filtrato sullo scaduto
+## 9. E `VisiteScadute` è il vecchio scadenzario filtrato sullo scaduto
 
 Non è un sottoinsieme arbitrario e non è un file nuovo: **stesse 35 colonne nello
 stesso ordine**, Stato compreso. È lo stesso report a due date, con un filtro.
 
 | | |
 |---|---:|
-| coppie rimaste nel `(7)` con data **passata** | **315 su 315** |
+| coppie rimaste in `VisiteScadute` con data **passata** | **315 su 315** |
 | coppie rimaste con data futura | **0** |
 | coppie uscite con data **futura** | **477 su 489** |
-| data massima nel vecchio · nel `(7)` | 13.07.2031 · 10.09.2026 |
+| data massima nel vecchio · in `VisiteScadute` | 13.07.2031 · 10.09.2026 |
 
-Il `(7)` è «le scadenze già maturate e non ancora evase»; il vecchio è lo
+`VisiteScadute` è «le scadenze già maturate e non ancora evase»; il vecchio è lo
 scadenzario intero, futuro compreso. **Sono complementari nel tempo, non
 alternativi** — e per riempire una scadenza dichiarata serve il vecchio, perché è
 l'unico che copra anche ciò che deve ancora scadere.
