@@ -20,7 +20,7 @@ import {
 } from '../types';
 
 const COLONNE_CLIENTE =
-  'id, werp_id, ragione_sociale, partita_iva, codice_fiscale, codice_ateco, ' +
+  'id, werp_id, ragione_sociale, partita_iva, codice_fiscale, codice_ateco, ateco_origine, ' +
   'livello_rischio, numero_lavoratori, livello_antincendio, antincendio_definito_mediante, gruppo_primo_soccorso, primo_soccorso_definito_mediante, ' +
   'referente, telefono, email, referente_amm, telefono_amm, email_amm, ' +
   'referente_commerciale, canale_commerciale, ' +
@@ -120,6 +120,9 @@ export async function salvaCliente(c: Cliente): Promise<void> {
     partita_iva: vuotoNull(c.partita_iva),
     codice_fiscale: vuotoNull(c.codice_fiscale),
     codice_ateco: vuotoNull(c.codice_ateco),
+    // Verbatim: non si ripulisce (mig. 065). Serve proprio perche' e' diversa
+    // dal derivato - e' cio' che rende dicibile lo stato "incerto".
+    ateco_origine: c.ateco_origine,
     livello_rischio: c.livello_rischio,
     numero_lavoratori: c.numero_lavoratori,
     livello_antincendio: c.livello_antincendio,
@@ -185,7 +188,7 @@ export async function eliminaCliente(id: string): Promise<void> {
 export function clienteVuoto(): Cliente {
   return {
     id: newId(), werp_id: null, ragione_sociale: '',
-    partita_iva: null, codice_fiscale: null, codice_ateco: null,
+    partita_iva: null, codice_fiscale: null, codice_ateco: null, ateco_origine: null,
     livello_rischio: null, numero_lavoratori: null,
     livello_antincendio: null, antincendio_definito_mediante: null,
     gruppo_primo_soccorso: null, primo_soccorso_definito_mediante: null,

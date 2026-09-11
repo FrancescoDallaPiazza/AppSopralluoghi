@@ -13,7 +13,7 @@ import {
 } from '../lib/admin/sedi';
 import type { Cliente, Sede } from '../lib/types';
 import {
-  risolviAteco, cercaAteco, ETICHETTA_RISCHIO,
+  risolviAteco, cercaAteco, ETICHETTA_RISCHIO, classificaAteco,
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
@@ -374,6 +374,7 @@ function SchedaCliente({
         </div>
         <CampoAteco
           codice={cliente.codice_ateco}
+          origine={cliente.ateco_origine}
           livello={cliente.livello_rischio}
           onPatch={patch}
         />
@@ -855,9 +856,12 @@ function SediCliente({ cliente, sedi, onCambia }: {
 // dell'organigramma. Digitando un codice a mano, il livello viene proposto
 // (bottone "Applica") senza sovrascrivere un valore gia' scelto.
 function CampoAteco({
-  codice, livello, onPatch,
+  codice, origine, livello, onPatch,
 }: {
   codice: string | null;
+  // La cella da cui il codice e' stato derivato (mig. 065). Serve a dire se
+  // quella divisione sia affidabile: il codice da solo non lo puo' dire.
+  origine: string | null;
   livello: RischioAteco | null;
   onPatch: (p: Partial<Cliente>) => void;
 }) {
@@ -865,6 +869,11 @@ function CampoAteco({
   const testo = codice ?? '';
   const ris = risolviAteco(testo);
   const suggerimenti = useMemo(() => cercaAteco(testo), [testo]);
+  // I tre stati dell'ATECO. Il terzo - "ho una divisione e potrebbe essere
+  // quella sbagliata" - esiste solo confrontando il codice con la cella, ed e'
+  // invisibile guardando l'archivio: in tabella '37' sta scritto come ogni
+  // altra divisione giusta.
+  const esito = useMemo(() => classificaAteco(codice, origine), [codice, origine]);
 
   const coloreRischio = (l: RischioAteco) =>
     l === 'basso' ? 'var(--ok)' : l === 'alto' ? 'var(--no)' : 'var(--hi-dark)';
@@ -960,6 +969,45 @@ function CampoAteco({
           </button>
         </div>
       </div>
+
+      {/* LA CELLA D'ORIGINE. Si mostra solo quando c'e' e quando dice qualcosa
+          che il codice da solo non direbbe: se la conferma, tacere e' giusto —
+          ripetere il dato non aggiunge niente e toglie attenzione al caso che
+          conta. Quando invece la smentisce, questa e' l'unica schermata in cui
+          un'impresa edile archiviata come "gestione reti fognarie" si vede. */}
+      {esito.stato === 'incerto' && (
+        <div style={{
+          marginTop: 8, padding: '8px 10px', borderRadius: 8,
+          background: 'var(--hi)', border: '1px solid var(--hi-dark)', fontSize: 12,
+        }}>
+          <b style={{ color: 'var(--hi-dark)' }}>⚠ La divisione potrebbe essere un'altra.</b>{' '}
+          {esito.motivi.includes('piu_divisioni')
+            ? 'Il dato di origine porta più di un codice, su divisioni diverse: è stato preso il primo che compare nel testo, che non è un criterio.'
+            : 'Nel dato di origine il codice non è in testa: è stato preso il primo gruppo di cifre, che potrebbe non essere il codice.'}
+          {esito.alternative.length > 0 && (
+            <> Alternative lette nella stessa cella:{' '}
+              {esito.alternative.map((d, i) => (
+                <span key={d.divisione}>
+                  {i > 0 && ', '}
+                  <b>{d.divisione}</b> ({d.descrizione} — <span style={{ color: coloreRischio(d.livello) }}>{ETICHETTA_RISCHIO[d.livello]}</span>)
+                </span>
+              ))}.
+            </>
+          )}
+          <div style={{ marginTop: 5, color: 'var(--ink-soft)' }}>
+            Quale sia l'attività prevalente non si deduce dal dato: si legge in visura o si chiede al cliente.
+          </div>
+          <div style={{ marginTop: 5, fontFamily: 'ui-monospace, monospace', fontSize: 11, whiteSpace: 'pre-wrap', color: 'var(--ink)' }}>
+            {esito.cella}
+          </div>
+        </div>
+      )}
+      {esito.stato === 'ignoto' && esito.motivo === 'cella_senza_codice' && (
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-soft)' }}>
+          Il dato di origine c'è ma non contiene nessun codice, solo una descrizione:{' '}
+          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11 }}>«{esito.cella}»</span>
+        </div>
+      )}
 
       <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--ink-soft)' }}>
         Livello di rischio impostato:{' '}

@@ -52,7 +52,15 @@ export interface Cliente {
   // Anagrafica fiscale (migration 040): mostrati nel blocco "Ragione sociale".
   partita_iva: string | null;
   codice_fiscale: string | null;
+  // DIVISIONE ATECO a due cifre, DERIVATA da `ateco_origine`: e' il valore in
+  // uso (livello di rischio, ore del modulo di settore).
   codice_ateco: string | null;
+  // La cella da cui quella divisione e' stata derivata, verbatim (migration
+  // 065). Non e' ridondanza: il derivato da solo non sa dire se sia
+  // affidabile, e i tre stati dell'ATECO - noto / ignoto / INCERTO - si
+  // distinguono solo confrontando i due campi. Vedi `classificaAteco()`.
+  // Null = cella non conservata: noto ma non verificabile.
+  ateco_origine: string | null;
   // Livello di rischio (colonna da migration 015): proposto in anagrafica dal
   // codice ATECO (Allegato IV ASR 2025) e sovrascrivibile dall'organigramma.
   livello_rischio: 'basso' | 'medio' | 'alto' | null;

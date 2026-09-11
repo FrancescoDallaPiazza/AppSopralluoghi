@@ -23,6 +23,7 @@ import {
 import { supabase, MAX_ATTESTATO_BYTES, urlFirmatoAttestato } from '../lib/supabase';
 import { db, type OrganigrammaConferma } from '../lib/db';
 import { newId } from '../lib/types';
+import { classificaAteco } from './ateco';
 import OrganigrammaView, { type OrganigrammaAdapter } from './OrganigrammaView';
 
 const RK_KEY = (clienteId: string) => 'formazione:rischio:' + clienteId;
@@ -93,7 +94,7 @@ export default function FormazioneRiepilogo({ clienteId, sopralluogoId, tecnicoI
         rlsTerritoriale: o.rls_territoriale,
         livAntincendio: o.livello_antincendio,
         gruppoPS: o.gruppo_primo_soccorso,
-        atecoCliente: o.codice_ateco,
+        atecoCliente: classificaAteco(o.codice_ateco, o.ateco_origine),
       },
     );
     setOrg(o);

@@ -404,6 +404,12 @@ export function pianificaClienti(f: Foglio, esistenti: Cliente[]): PianoClienti 
     const atecoTesto = testo(r.col, COL_CLIENTE.codice_ateco!);
     const ateco = risolviAteco(atecoTesto);
     let atecoNonRisolto: string | null = null;
+    // La CELLA D'ORIGINE si conserva sempre, anche quando non se ne ricava
+    // niente. E' la sola cosa che permetta poi di distinguere «non e' dovuto»
+    // da «non lo so» e da «ho una divisione e potrebbe essere quella sbagliata»
+    // (mig. 065): il codice derivato, da solo, non lo dice. Verbatim, senza
+    // ripulirla - serve proprio perche' e' diversa dal derivato.
+    if (atecoTesto) set('ateco_origine', atecoTesto);
     if (ateco) {
       set('codice_ateco', ateco.divisione);
       if (cliente.livello_rischio == null) {

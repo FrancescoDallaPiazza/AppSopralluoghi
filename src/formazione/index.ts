@@ -25,5 +25,5 @@ export { OrganigrammaCliente, default as CatalogoFormazione } from './Formazione
 export { RisorseUmane } from './RisorseUmane';
 
 // Tabella ATECO -> rischio e helper, usati dalla scheda cliente.
-export { risolviAteco, cercaAteco, ETICHETTA_RISCHIO } from './ateco';
-export type { AtecoDivisione, RischioAteco } from './ateco';
+export { risolviAteco, cercaAteco, ETICHETTA_RISCHIO, classificaAteco, moduloSettore } from './ateco';
+export type { AtecoDivisione, RischioAteco, EsitoAteco, MotivoIncerto, MotivoIgnoto } from './ateco';

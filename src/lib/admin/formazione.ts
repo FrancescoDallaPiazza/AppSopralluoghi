@@ -17,7 +17,7 @@
 import { supabase } from '../supabase';
 import { newId } from '../types';
 import { applicaCreditiAllegatoIII } from '../../formazione/creditiAllegatoIII';
-import { oreModuloSettore } from '../../formazione/ateco';
+import { classificaAteco, moduloSettore, type EsitoAteco } from '../../formazione/ateco';
 
 // ============================ TIPI ============================
 
@@ -769,7 +769,7 @@ export function statoAggiornamentoDopoEsonero(
   return { stato: 'da_verificare', scadenza: null, data_completamento: null, dettaglio: 'aggiornamento periodico dovuto: registrare l\u2019ultimo attestato di aggiornamento', formazione_id: null, allegato_url: null, ore };
 }
 
-export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null, atecoCliente: string | null = null, nomineConEvidenza?: Set<string>): PersonaValutata {
+export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: LivelloRischio | null, atecoCliente: EsitoAteco | null = null, nomineConEvidenza?: Set<string>): PersonaValutata {
   const byCodice = new Map(cat.corsi.map((c) => [c.codice, c]));
   const figureCodici = d.nomine.filter((n) => n.attiva).map((n) => n.figura_codice);
   const figureSet = new Set(figureCodici);
@@ -855,13 +855,32 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     // ore: caso LAV_SPEC -> espanse per rischio
     let ore = corso?.ore ?? null;
     if (r.corso_codice === 'LAV_SPEC') ore = rischio ? ORE_SPECIFICA[rischio] : null;
-    // moduli di settore DL-RSPP / RSPP: ore espanse dall'ATECO del cliente. Se
-    // l'ATECO non e' tra i settori speciali (o non e' noto) il modulo NON si
-    // applica: si salta il requisito (niente falso "mancante").
+    // Moduli di settore DL-RSPP / RSPP: le ore si espandono dall'ATECO del
+    // cliente, e i casi sono TRE, non due.
+    //
+    //   dovuto           il settore e' speciale: si emette il requisito con le
+    //                    sue ore, come qualunque altro;
+    //   non_dovuto       la divisione non e' fra quelle speciali: si salta, ed
+    //                    e' GIUSTO saltare - un requisito qui sarebbe un falso
+    //                    "mancante" su un obbligo che non esiste;
+    //   non_calcolabile  l'ATECO non c'e', o c'e' ma la cella d'origine dice che
+    //                    potrebbe essere un altro. Qui NON si salta: si emette
+    //                    una riga `da_verificare` che dice di non sapere.
+    //
+    // Fino all'11 settembre 2026 il secondo e il terzo caso erano lo stesso
+    // `null` e finivano nello stesso `continue`. Il risultato non era un buco
+    // visibile nello scadenzario: era una riga IN MENO, cioe' un silenzio
+    // indistinguibile da "tutto a posto". Su 619 clienti, 358 (il 57,8%) stanno
+    // nel terzo caso — e per un'impresa edile che risulta in divisione 37 per un
+    // CAP finito nella cella, le 16 ore di modulo settore non venivano chieste
+    // mai e nessuno poteva accorgersene.
+    let settoreIncerto: string | null = null;
     if (r.corso_codice === 'DL_RSPP_SETTORE' || r.corso_codice === 'RSPP_MOD_B_SETTORE') {
-      const oreSettore = oreModuloSettore(atecoCliente, r.corso_codice === 'DL_RSPP_SETTORE' ? 'dl_rspp' : 'rspp');
-      if (oreSettore == null) continue;
-      ore = oreSettore;
+      const tipo = r.corso_codice === 'DL_RSPP_SETTORE' ? 'dl_rspp' : 'rspp';
+      const m = moduloSettore(atecoCliente ?? { stato: 'ignoto', cella: null, motivo: 'nessuna_cella' }, tipo);
+      if (m.esito === 'non_dovuto') continue;
+      if (m.esito === 'dovuto') ore = m.ore;
+      else { ore = null; settoreIncerto = m.perche; }
     }
 
     // promemoria esoneri ammessi per questo corso
@@ -950,6 +969,15 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         } else {
           stato = 'in_scadenza'; dettaglio = 'Prima formazione entro il ' + dataIT(SCAD_PRIMA_DATORE);
         }
+      } else if (settoreIncerto) {
+        // Modulo di settore che non sappiamo se sia dovuto. NON e' 'critico':
+        // dire "mai svolto" affermerebbe che il corso serve, e non lo sappiamo.
+        // NON e' l'assenza della riga: quella direbbe che il corso non serve, e
+        // non lo sappiamo nemmeno. E' esattamente una riga che dichiara di non
+        // sapere, con dentro la ragione e cosa la risolve.
+        stato = 'da_verificare';
+        dettaglio = 'Modulo di settore: non determinabile perche’ ' + settoreIncerto
+          + '. Si risolve compilando l’ATECO del cliente, non registrando un attestato.';
       } else if (d.persona.formazione_pregressa && !CATEGORIE_NO_PREGRESSA.has(categoria)) {
         // Persona con formazione pregressa (regime ante ASR 2025): non "mai svolto"
         // ma "da verificare", finche' non si recupera/registra l'attestato.
@@ -1191,7 +1219,7 @@ export function assemblaRiepilogo(
     rlsTerritoriale?: boolean;
     livAntincendio?: LivelloAntincendio | null;
     gruppoPS?: GruppoPrimoSoccorso | null;
-    atecoCliente?: string | null;
+    atecoCliente?: EsitoAteco | null;
   },
 ): RiepilogoCliente {
   const atecoCliente = opts?.atecoCliente ?? null;
@@ -1256,18 +1284,25 @@ export async function caricaDatiOrganigramma(
   rlsTerritoriale: boolean;
   livAntincendio: LivelloAntincendio | null;
   gruppoPS: GruppoPrimoSoccorso | null;
-  ateco: string | null;
+  ateco: EsitoAteco;
   dati: DatiOrganigramma;
 }> {
   const cli = await supabase.from('cliente')
-    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco')
+    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco, ateco_origine')
     .eq('id', clienteId).single();
   if (cli.error) throw cli.error;
   const rischio = (cli.data?.livello_rischio ?? null) as LivelloRischio | null;
   const rlsTerritoriale = (cli.data?.rls_territoriale ?? false) as boolean;
   const livAntincendio = (cli.data?.livello_antincendio ?? null) as LivelloAntincendio | null;
   const gruppoPS = (cli.data?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null;
-  const ateco = (cli.data?.codice_ateco ?? null) as string | null;
+  // L'ATECO si porta CLASSIFICATO, non grezzo: il motore deve poter
+  // distinguere "non dovuto" da "non lo so", e la divisione da sola non lo
+  // dice. Il confronto con la cella d'origine e' l'unico posto in cui lo
+  // stato "incerto" esiste (mig. 065).
+  const ateco = classificaAteco(
+    (cli.data?.codice_ateco ?? null) as string | null,
+    (cli.data?.ateco_origine ?? null) as string | null,
+  );
 
   const persone = await caricaPersone(clienteId);
   const ids = persone.map((p) => p.id);
@@ -1297,7 +1332,7 @@ export async function caricaDatiOrganigrammaSede(
   rlsTerritoriale: boolean;
   livAntincendio: LivelloAntincendio | null;
   gruppoPS: GruppoPrimoSoccorso | null;
-  ateco: string | null;
+  ateco: EsitoAteco;
   dati: DatiOrganigramma;
 }> {
   const sed = await supabase.from('sede').select('cliente_id').eq('id', sedeId).single();
@@ -1307,14 +1342,21 @@ export async function caricaDatiOrganigrammaSede(
   // sono AZIENDALI: si leggono dal cliente (anagrafica), non dalla sede. La sede
   // fornisce solo l'inquadramento (indirizzo) e il raggruppamento delle persone.
   const cli = await supabase.from('cliente')
-    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco')
+    .select('livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco, ateco_origine')
     .eq('id', clienteId).single();
   if (cli.error) throw cli.error;
   const rischio = (cli.data?.livello_rischio ?? null) as LivelloRischio | null;
   const rlsTerritoriale = (cli.data?.rls_territoriale ?? false) as boolean;
   const livAntincendio = (cli.data?.livello_antincendio ?? null) as LivelloAntincendio | null;
   const gruppoPS = (cli.data?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null;
-  const ateco = (cli.data?.codice_ateco ?? null) as string | null;
+  // L'ATECO si porta CLASSIFICATO, non grezzo: il motore deve poter
+  // distinguere "non dovuto" da "non lo so", e la divisione da sola non lo
+  // dice. Il confronto con la cella d'origine e' l'unico posto in cui lo
+  // stato "incerto" esiste (mig. 065).
+  const ateco = classificaAteco(
+    (cli.data?.codice_ateco ?? null) as string | null,
+    (cli.data?.ateco_origine ?? null) as string | null,
+  );
 
   const persone = await caricaPersonePerSede(sedeId);
   const ids = persone.map((p) => p.id);

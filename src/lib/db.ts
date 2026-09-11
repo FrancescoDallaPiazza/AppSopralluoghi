@@ -91,6 +91,11 @@ export interface ClienteMeta {
   // del percorso DL-RSPP / RSPP anche in campo (parita' con il back-office).
   // Campo non indicizzato: nessun bump di versione Dexie necessario.
   codice_ateco: string | null;
+  // La cella d'origine dell'ATECO (mig. 065): serve anche in campo, perche'
+  // senza di essa il motore non puo' distinguere "modulo non dovuto" da
+  // "divisione non nota" e la valutazione offline non sarebbe pari a quella
+  // del back-office. Campo non indicizzato: nessun bump di versione Dexie.
+  ateco_origine: string | null;
 }
 
 class LocalDB extends Dexie {

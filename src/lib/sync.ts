@@ -311,7 +311,7 @@ export async function prefetchOrganigramma(clienteId: string): Promise<void> {
 
   // Meta del cliente per l'organigramma (parita' di valutazione con il back-office).
   const cli = await supabase.from('cliente')
-    .select('id, livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco')
+    .select('id, livello_rischio, rls_territoriale, livello_antincendio, gruppo_primo_soccorso, codice_ateco, ateco_origine')
     .eq('id', clienteId).single();
   if (!cli.error && cli.data) {
     await db.clienteMeta.put({
@@ -321,6 +321,7 @@ export async function prefetchOrganigramma(clienteId: string): Promise<void> {
       livello_antincendio: (cli.data.livello_antincendio ?? null) as string | null,
       gruppo_primo_soccorso: (cli.data.gruppo_primo_soccorso ?? null) as string | null,
       codice_ateco: (cli.data.codice_ateco ?? null) as string | null,
+      ateco_origine: (cli.data.ateco_origine ?? null) as string | null,
     });
   }
 
@@ -360,6 +361,7 @@ export interface OrganigrammaLocale {
   livello_antincendio: LivelloAntincendio | null;
   gruppo_primo_soccorso: GruppoPrimoSoccorso | null;
   codice_ateco: string | null;
+  ateco_origine: string | null;
 }
 
 export async function caricaOrganigrammaLocale(clienteId: string): Promise<OrganigrammaLocale> {
@@ -380,6 +382,7 @@ export async function caricaOrganigrammaLocale(clienteId: string): Promise<Organ
     livello_antincendio: (meta?.livello_antincendio ?? null) as LivelloAntincendio | null,
     gruppo_primo_soccorso: (meta?.gruppo_primo_soccorso ?? null) as GruppoPrimoSoccorso | null,
     codice_ateco: (meta?.codice_ateco ?? null) as string | null,
+    ateco_origine: (meta?.ateco_origine ?? null) as string | null,
   };
 }
 
