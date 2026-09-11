@@ -41,6 +41,13 @@ le 62 sono un sottoinsieme stretto delle 63.
 
 ## 3. E qui la cosa che conta: le nove date che non tornano
 
+> **QUESTA SEZIONE E' STATA SMENTITA IN PARTE — leggere il punto 7.** La
+> conclusione qui sotto («tutte e nove sono richiami anticipati del medico
+> competente») regge per **due** casi su nove: gli altri sette sono aritmetica
+> su una fotografia piu' vecchia, e si vedono solo aprendo lo storico delle
+> visite, che quel giorno non sapevo di avere. Il conteggio resta giusto; la
+> spiegazione no.
+
 Dove la stessa coppia sta in entrambi e ha entrambe le date:
 
 | | |
@@ -111,6 +118,12 @@ entrambi.** Confidenza **alta**, e le tre ragioni sono indipendenti fra loro:
 **Quale sia la fonte primaria:** il **foglio**, confidenza **alta**. Porta
 l'esecuzione, che è il fatto accaduto; lo scadenzario porta una conseguenza. E il
 foglio copre il perimetro più largo.
+
+> **Rivisto al punto 7.** Il paragrafo qui sotto poggia sui nove richiami
+> anticipati, che sono due. La scadenza **è derivabile nel 99,7%** dei casi; la
+> colonna serve ancora, ma per due righe ambigue e per i casi in cui derivare e'
+> **impossibile** (11 coppie senza esecuzione, 10 righe `PIANIFICATA`) — non per
+> nove atti clinici.
 
 **Cosa cambia nello schema della `0005`,** e qui la confidenza è **media** perché
 è una decisione e non una misura: la scadenza **non può essere solo calcolata**.
@@ -213,3 +226,145 @@ E serve anche nel verso opposto, che è la metà più utile: due export scaricat
 un mese di distanza **possono portare la stessa data dichiarata**, e allora sono
 lo stesso istante e si possono confrontare. Senza quella colonna, quell'informazione
 si perde e qualcuno si astiene da un paragone che era legittimo.
+
+## 7. Le nove non erano richiami anticipati: sette erano la fotografia vecchia
+
+Rifatto l'11 settembre 2026, sera, contro `ExportExcel (6).xlsx` — l'export delle
+visite **fatte**, che il punto 6 racconta come è saltato fuori. **Sola lettura.**
+
+> **Il punto 3 di questo documento è sbagliato**, e va letto con questa sezione
+> accanto. Avevo scritto: «tutte e nove sono richiami anticipati del medico
+> competente, il caso clinicamente più importante che esista in sorveglianza
+> sanitaria». **Sette non lo sono.**
+
+### Il conto, rifatto con lo storico invece che con l'ultima esecuzione
+
+Il foglio `Visite` portava **una sola** data per persona e tipo. Il `(6)` porta
+tutte. Su 793 coppie dello scadenzario che hanno almeno un'esecuzione:
+
+| | |
+|---|---:|
+| scadenza dichiarata = **ultima** esecuzione + periodicità | **784** |
+| divergenti | **9** |
+
+Le nove sono le stesse di prima. Ma con lo storico si vede **perché**: in sette
+casi la dichiarata è esattamente **penultima + periodicità**, e l'esecuzione più
+recente è **posteriore al 06/08/2026** — cioè alla data dei dati dello
+scadenzario, che quella visita non poteva conoscere.
+
+Rifatto il conto usando «l'ultima esecuzione **nota al 06/08/2026**»:
+
+| | |
+|---|---:|
+| spiegate dalla fotografia vecchia | **7** |
+| non spiegate | **2** |
+
+| persona | società | storico | dichiarata |
+|---|---|---|---|
+| Narsello Michele | Rittal RCS | 21.11.2025 · **31.08.2026** | 21.11.2026 = 21.11.2025 + 12m |
+| Tempesta Isabel | Rittal RCS | 11.11.2025 · **26.08.2026** | 11.11.2026 = +12m sulla prima |
+| D'Alessandro Gianluca | Rittal RCS | 21.10.2025 · 12.05.2026 · **31.08.2026** | 12.05.2027 = +12m sulla seconda |
+| Apanzaritei Ovidiu | FOOD & SWEET | 26.09.2023 · **25.08.2026** | 26.09.2024 = +12m sulla prima |
+| Bassotto Simone | FOOD & SWEET | 26.10.2023 · **25.08.2026** | 26.10.2025 = +24m sulla prima |
+| Bhouri Khalifa (annuale) | FOOD & SWEET | 03.06.2026 · **25.08.2026** | 03.06.2027 = +12m sulla prima |
+| Bhouri Khalifa (trimestrale) | FOOD & SWEET | 03.06.2026 · **25.08.2026** | 03.09.2026 = +3m sulla prima |
+
+In grassetto le esecuzioni che lo scadenzario non poteva vedere.
+
+### E anche la direzione si spiega da sé
+
+Avevo trovato molto convincente che **tutte e nove fossero più vicine e nessuna
+più lontana**, e avevo scritto che «una differenza casuale andrebbe nei due
+sensi». È vero, e infatti non era casuale — ma la causa non era clinica:
+
+> una scadenza calcolata su un'esecuzione **più vecchia** cade **prima**. Non è
+> una scelta del medico competente, è una sottrazione.
+
+La direzione unanime, che sembrava la prova della tesi, era la firma di un'altra
+causa. Un dato che va tutto nello stesso verso ha *una* spiegazione sistematica —
+e la prima che viene in mente non è necessariamente quella giusta.
+
+### Le due che restano, e restano ambigue
+
+| persona | società | storico | dichiarata |
+|---|---|---|---|
+| MANARA DAVIDE | BP CHIMICA | 23.02.2022 · 25.07.2025 · 26.06.2026 | 25.07.2026 |
+| PORRINI SERENA | Rittal RCS | 14.10.2025 · 27.07.2026 | 14.10.2026 |
+
+In tutte e due la dichiarata è calcolata sulla **penultima** anche al netto del
+taglio: l'esecuzione più recente era già avvenuta il 6 agosto, e la scadenza non
+ne teneva conto. Due letture, e i dati non le separano:
+
+- **ritardo di registrazione** — il `(6)` porta la data in cui la visita è stata
+  *fatta*, non quella in cui è stata *inserita*; se l'inserimento è avvenuto dopo
+  il 6 agosto, lo scadenzario è coerente;
+- **richiamo anticipato vero** — quello che credevo fossero tutte e nove.
+
+**Restano ambigue, e due è il numero giusto da portarsi dietro.**
+
+### Lo stesso errore, due volte sullo stesso dato
+
+Il punto 4 di questo documento racconta che avevo verificato la scadenza contro
+la formula che la produce, e che «un risultato che non poteva non tornare non è
+una verifica». La correzione era giusta e **non è bastata**: subito dopo ho
+concluso sui nove **senza aprire lo storico**, che era l'altra rilevazione, a un
+metro di distanza, e che quel giorno non sapevo di avere.
+
+La prima volta la fonte indipendente c'era e non l'ho aperta. La seconda non
+sapevo che esistesse — ma non l'ho nemmeno cercata, e la domanda «esiste un
+export delle visite fatte?» costava dieci secondi di menu a qualcuno che poteva
+guardarlo.
+
+### Cosa cambia per lo schema
+
+Il punto 5 diceva: «la scadenza **non può essere solo calcolata**, e le 9 volte
+che non lo è sono le persone da rivedere prima». Va riscritto così:
+
+- la scadenza **è derivabile** nel **99,7%** dei casi — 784 su 793 con l'ultima
+  esecuzione, **791 su 793** usando l'ultima nota alla data del file;
+- una colonna `scadenza_dichiarata` **serve ancora, ma per due righe**, non per
+  nove, e come registrazione di un'ambiguità e non di un atto clinico;
+- e serve **davvero** dove derivare è **impossibile**, non solo impreciso: le
+  **11** coppie dello scadenzario senza nessuna esecuzione, e le **10** righe
+  marcate `PIANIFICATA` — che sono lo stesso fenomeno visto dall'altra parte, e
+  che il punto 8 racconta.
+
+## 8. `PIANIFICATA` sono le persone senza storico
+
+Dieci righe nel vecchio scadenzario, otto nel `(7)`, **tutte e dieci della stessa
+società** (Rittal RCS). Nove con data **31.12.2025** — una data tonda di fine
+anno, non il risultato di un calcolo — e una 08.04.2026.
+
+**Nessuna delle dieci ha una sola esecuzione nel `(6)`.** Zero storico.
+
+Quindi `PIANIFICATA` non marca un appuntamento fissato, e il `(7)` non è
+un'agenda: marca **le righe che non derivano da un'esecuzione**. Sono le scadenze
+delle persone mai visitate, con una data messa a mano o dedotta dall'assunzione.
+
+È l'unico posto dello scadenzario dove una scadenza esiste **senza un fatto
+dietro** — cioè il caso in cui una scadenza calcolata non è diversa: è
+impossibile.
+
+## 9. E il `(7)` è il vecchio scadenzario filtrato sullo scaduto
+
+Non è un sottoinsieme arbitrario e non è un file nuovo: **stesse 35 colonne nello
+stesso ordine**, Stato compreso. È lo stesso report a due date, con un filtro.
+
+| | |
+|---|---:|
+| coppie rimaste nel `(7)` con data **passata** | **315 su 315** |
+| coppie rimaste con data futura | **0** |
+| coppie uscite con data **futura** | **477 su 489** |
+| data massima nel vecchio · nel `(7)` | 13.07.2031 · 10.09.2026 |
+
+Il `(7)` è «le scadenze già maturate e non ancora evase»; il vecchio è lo
+scadenzario intero, futuro compreso. **Sono complementari nel tempo, non
+alternativi** — e per riempire una scadenza dichiarata serve il vecchio, perché è
+l'unico che copra anche ciò che deve ancora scadere.
+
+*Il residuo che non si spiega:* delle 12 uscite con data passata, 2 hanno la
+visita rifatta dopo la scadenza (giustamente uscite) e 2 sono `PIANIFICATA`
+rimosse. **Le altre 8 non le spiega nessuna delle ipotesi guardate** — scadenza
+passata, persona cessata, società fuori perimetro. Otto su 489, dichiarate non
+spiegate invece di attribuite a una quarta ipotesi inventata per chiudere il
+conto.
