@@ -1,0 +1,39 @@
+-- 066_azione_chiave_livello_cliente.sql
+--
+-- SOLO UN COMMENTO. La colonna `azione.origine_requisito_key` (mig. 056) ora
+-- porta DUE forme di chiave, e il suo commento ne descriveva una sola.
+--
+-- Fino a oggi:
+--     persona_id:corso_codice          una prima formazione da erogare
+-- Da oggi anche:
+--     cliente-ateco:<cliente_id>       un dato dell'AZIENDA che manca e che
+--                                      blocca un calcolo formativo
+--
+-- PERCHE' LA SECONDA STA NELLA STESSA COLONNA e non in una sua. Non e' per
+-- risparmiare una colonna: e' perche' quella colonna e' gia' RICONCILIATA.
+-- `backfillAzioniEsoneri` cancella come orfana ogni azione del cliente la cui
+-- chiave non e' piu' fra le attese, e questa azione deve sparire esattamente
+-- cosi': da sola, quando la cella ATECO arriva, senza che nessuno la spunti.
+-- Una colonna nuova avrebbe richiesto di riscrivere quella riconciliazione, e
+-- la chiusura automatica e' il requisito principale di questa riga.
+--
+-- PERCHE' IL PREFISSO. Chi legge la chiave deve poter distinguere le due forme
+-- senza provarci: davanti ai due punti c'e' un uuid di PERSONA nella prima e un
+-- id di CLIENTE nella seconda. Cercare il secondo nella tabella `persona` non
+-- da' un errore - non trova niente - e una riga comparirebbe senza discente e
+-- senza corso, con un danno silenzioso invece che rumoroso. Il prefisso
+-- `cliente-ateco:` non e' decorativo: e' cio' che rende il caso riconoscibile
+-- prima di sbagliare. Lettori aggiornati: src/lib/admin/cosedafare.ts e
+-- src/lib/admin/scadenzario.ts.
+--
+-- E PERCHE' UNA MIGRAZIONE PER UN COMMENTO. Perche' l'11 settembre 2026 un
+-- commento di schema falso - il "la stringa esatta esportata" della 055 - ha
+-- fatto progettare a un'altra corsia una riparazione nel posto sbagliato. Un
+-- commento di schema e' un'affermazione, e vale di piu' dove c'e' meno codice
+-- accanto a smentirlo. Questa colonna e' letta da tre file diversi: lasciarne
+-- il commento a meta' sarebbe stato ripetere lo stesso errore due giorni dopo.
+--
+-- Idempotente (comment on ... is sovrascrive), ASCII-only.
+
+comment on column azione.origine_requisito_key is
+  'Chiave naturale dell''azione, in due forme. (1) "persona_id:corso_codice" - scadenza formativa senza attestato ne'' esonero, cioe'' una prima formazione da erogare (mig. 056). (2) "cliente-ateco:<cliente_id>" - azione di LIVELLO CLIENTE: un dato dell''azienda che manca e che impedisce un calcolo formativo (oggi: l''ATECO, senza il quale il modulo di settore del percorso RSPP / datore-RSPP non e'' determinabile). La seconda forma non ha discente ne'' corso: chi legge la chiave deve controllare il prefisso prima di cercare un uuid di persona davanti ai due punti. Entrambe le forme sono DERIVATE e riconciliate a ogni valutazione: l''azione nasce quando e'' attesa e viene cancellata come orfana quando non lo e'' piu''. Nessuna delle due si chiude a mano. Null su tutte le altre azioni.';

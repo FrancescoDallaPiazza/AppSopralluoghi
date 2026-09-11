@@ -204,6 +204,13 @@ export interface RequisitoValutato {
   esonero_id: string | null;
   allegato_url: string | null; // path attestato nel bucket privato (se presente)
   promemoria: EsoneroAmmesso[]; // possibili esoneri da mostrare in campo
+  // Valorizzato SOLO sui moduli di settore che non si e' potuto calcolare
+  // perche' l'ATECO del cliente non e' determinato (assente, o presente ma
+  // smentito dalla cella d'origine - vedi `classificaAteco`). Porta la ragione
+  // in chiaro. E' la marcatura che permette allo scadenzario di distinguere
+  // questa riga da ogni altro `da_verificare`: qui non manca un attestato,
+  // manca un dato dell'AZIENDA, e si chiude in un altro posto.
+  atecoNonDeterminato: string | null;
 }
 
 // Modulo formativo condizionato (es. cantieri): non e' un obbligo della figura
@@ -902,6 +909,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
       if (eson.scadenza) {
         const { stato: st, dettaglio: dt } = statoDaScadenza(eson.scadenza, eson.data_riconoscimento ?? eson.scadenza);
         requisiti.push({
+          atecoNonDeterminato: settoreIncerto,
           figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
           categoria, ore, obbligatorio: r.obbligatorio,
           stato: st === 'conforme' ? 'esonerato' : st, scadenza: eson.scadenza,
@@ -920,6 +928,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         const agg = statoAggiornamentoDopoEsonero(corso, { corso_codice: r.corso_codice, per_categoria: r.per_categoria, categoria }, d.formazioni, byCodice, dataPartenza);
         if (agg) {
           requisiti.push({
+            atecoNonDeterminato: settoreIncerto,
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore: agg.ore, obbligatorio: r.obbligatorio,
             stato: agg.stato, scadenza: agg.scadenza, data_completamento: agg.data_completamento,
@@ -930,6 +939,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         } else {
           // Corso senza aggiornamento periodico: l'esonero copre tutto.
           requisiti.push({
+            atecoNonDeterminato: settoreIncerto,
             figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: corsoNome,
             categoria, ore, obbligatorio: r.obbligatorio, stato: 'esonerato', scadenza: null,
             data_completamento: null, frazionata: [],
@@ -999,6 +1009,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
         categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza,
         data_completamento: f?.data_completamento ?? null, frazionata: spezzoni.progresso,
         dettaglio, formazione_id: f?.id ?? null, esonero_id: null, allegato_url: f?.allegato_url ?? null, promemoria,
+        atecoNonDeterminato: settoreIncerto,
       });
       continue;
     }
@@ -1022,6 +1033,7 @@ export function valutaPersona(d: DatiPersona, cat: Catalogo, rischioCliente: Liv
     // quelle ore sembrino perdute.
     const dettaglioMostrato = noteSpezzoni ? dettaglioBase + ' \u00b7 ' + noteSpezzoni : dettaglioBase;
     requisiti.push({
+      atecoNonDeterminato: settoreIncerto,
       figura_codici: r.figure, corso_codice: r.corso_codice, corso_nome: nomeMostrato,
       categoria, ore, obbligatorio: r.obbligatorio, stato, scadenza: scad,
       data_completamento: f.data_completamento, frazionata: spezzoni.progresso,
@@ -1588,6 +1600,15 @@ export function azioneScadenzaEsonero(
 // `backfillAzioniEsoneri`, quindi `proponiCoseDaFare` NON deve riproporlo: la
 // stessa mancanza comparirebbe due volte, una automatica e una a mano, e
 // chiuderne una lascerebbe l'altra aperta.
+// Prefisso della chiave naturale delle azioni di LIVELLO CLIENTE, cioe' quelle
+// che non hanno un discente e non si chiudono con un attestato. Sta nella stessa
+// colonna delle chiavi `persona_id:corso_codice` (mig. 056) perche' cosi' eredita
+// la stessa riconciliazione - creata quando attesa, cancellata come orfana quando
+// non lo e' piu' - ed e' quella riconciliazione a farla sparire da sola. Il
+// prefisso e' cio' che permette a chi legge di distinguere le due forme senza
+// tentare di leggere un uuid di persona dove c'e' un id di cliente.
+export const CHIAVE_ATECO_CLIENTE = 'cliente-ateco:';
+
 export const gapSenzaData = (r: RequisitoValutato): boolean =>
   !r.scadenza && r.stato === 'critico' && !r.formazione_id && !r.esonero_id;
 
@@ -1656,6 +1677,61 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
         });
       }
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // AZIONE DI LIVELLO CLIENTE: l'ATECO che manca e che sta bloccando qualcosa.
+  // ---------------------------------------------------------------------
+  //
+  // A CHI E' INTESTATA. Non a una persona - non c'e' un discente e non si
+  // chiude con un attestato - ma nemmeno al nulla: va all'AREA INTERNA
+  // Formazione, come tutte le altre righe dello scadenzario formativo, con
+  // `responsabile_cliente_id` a dire di quale cliente si parla. Il lavoro e'
+  // nostro (una visura, una telefonata), non del cliente. Se l'area interna non
+  // esiste, `base()` ripiega sul cliente: per questa riga il ripiego regge, il
+  // proprio ATECO il cliente lo sa meglio di chiunque.
+  //
+  // QUANDO SPARISCE. Da sola, e senza che nessuno la spunti: la riga e' ATTESA
+  // solo finche' esiste un requisito con `atecoNonDeterminato`. Appena la cella
+  // arriva, `moduloSettore` risponde `dovuto` o `non_dovuto`, il requisito non
+  // porta piu' quella marcatura, l'azione non e' piu' fra le attese e la
+  // cancellazione degli orfani a chiave requisito (sotto) la rimuove. Non e'
+  // una chiusura manuale: e' una riga derivata, e quindi non si riapre al
+  // prossimo import ne' sopravvive a un ATECO corretto a mano.
+  //
+  // PERCHE' NON E' LA CAMPAGNA DI RIEMPIMENTO, che resta rinviata. Non nasce
+  // dai 357 clienti senza ATECO: nasce solo dove quell'assenza sta davvero
+  // bloccando un calcolo, cioe' dove qualcuno E' NOMINATO in un ruolo che
+  // richiede il modulo di settore. Oggi, con `nomina` a zero righe, sono ZERO
+  // clienti. Al primo import delle nomine sarebbero quattro (AUTOFFICINA
+  // MORARI, DETROIT SERVICE, GRAFICHE DUEGI, QUALIFT). Non e' un elenco di
+  // clienti da sistemare - e' un buco che si e' fatto sentire, su un cliente
+  // alla volta. Non puo' diventare una campagna perche' non e' guidata dal
+  // campo vuoto: e' guidata dall'organigramma.
+  const bloccoAteco = riep.persone
+    .flatMap((pv) => pv.requisiti)
+    .map((r) => r.atecoNonDeterminato)
+    .find((x): x is string => !!x);
+  if (bloccoAteco) {
+    const key = CHIAVE_ATECO_CLIENTE + clienteId;
+    perChiave.push({
+      key,
+      az: {
+        tipo: 'azione_correttiva', origine_esito_id: null, sopralluogo_origine_id: null,
+        origine_formazione_id: null, origine_esonero_id: null, origine_requisito_key: key,
+        responsabile_cliente_id: clienteId,
+        // Nessuna data, e non se ne inventa una: non c'e' un termine di legge
+        // per compilare un campo. La vista NON la promuove a "SUBITO" (vedi
+        // `scadenzario.ts`): non e' un lavoro in ritardo, e' un dato che manca.
+        data_scadenza: null,
+        descrizione: 'ATECO del cliente da determinare - ' + bloccoAteco
+          + '. Finche’ manca, il modulo di settore del percorso RSPP / datore-RSPP'
+          + ' non si puo’ calcolare e resta "da verificare" per chi e’ nominato in quei ruoli.',
+        ...(areaId
+          ? { responsabile_tipo: 'risorsa_interna', responsabile_area_id: areaId }
+          : { responsabile_tipo: 'cliente' }),
+      },
+    });
   }
 
   // Risolve chiave naturale -> azione.id, cosi' l'upsert resta sulla primary key

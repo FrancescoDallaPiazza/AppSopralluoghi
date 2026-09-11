@@ -19,7 +19,7 @@
 // Esce 1 se un caso non si comporta come descritto.
 
 import { build } from 'esbuild';
-import { readFileSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -141,6 +141,20 @@ const senza = moduloSettore(classificaAteco(null, null), 'dl_rspp');
 const nonDov = moduloSettore(classificaAteco('56', '(I.56.10.11) Ristorazione;'), 'dl_rspp');
 dice(senza.esito !== nonDov.esito,
   '«non lo so» (' + senza.esito + ') e «non dovuto» (' + nonDov.esito + ') sono esiti diversi');
+
+// L'invariante dell'azione di livello cliente: la ragione per cui nasce deve
+// SPARIRE da sola quando l'ATECO arriva. Non e' una chiusura manuale - la riga
+// e' derivata - e questo controllo tiene ferma quella promessa.
+console.log('\nl\u2019azione di livello cliente si chiude da sola');
+const prima = moduloSettore(classificaAteco(null, null), 'dl_rspp');
+const dopo = moduloSettore(classificaAteco('41', '(F.41.20.00) Costruzione di edifici;'), 'dl_rspp');
+dice(prima.esito === 'non_calcolabile', 'senza ATECO la ragione c\u2019e\u2019 (' + prima.esito + ')');
+dice(dopo.esito !== 'non_calcolabile', 'con l\u2019ATECO la ragione non c\u2019e\u2019 piu\u2019 (' + dopo.esito + ')');
+// E il caso opposto, che e' cio' che impedisce alla riga di diventare una
+// campagna: un cliente il cui ATECO e' noto e non speciale NON la produce. La
+// riga non nasce dal campo vuoto - nasce da un calcolo che si e' fermato.
+const nonSpeciale = moduloSettore(classificaAteco('56', '(I.56.10.11) Ristorazione;'), 'dl_rspp');
+dice(nonSpeciale.esito === 'non_dovuto', 'un ATECO noto e non speciale non produce nessuna ragione (' + nonSpeciale.esito + ')');
 
 console.log('\n' + (falliti ? falliti + ' controlli falliti' : 'tutti i controlli passati'));
 process.exit(falliti ? 1 : 0);

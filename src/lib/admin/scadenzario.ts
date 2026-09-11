@@ -24,6 +24,7 @@
 
 import { supabase } from '../supabase';
 import { caricaAzioniAdmin } from './cosedafare';
+import { CHIAVE_ATECO_CLIENTE } from './formazione';
 import type { Adempimento, AdempimentoCategoria, Azione } from '../types';
 
 const uno = <T,>(v: T | T[] | null | undefined): T | undefined =>
@@ -86,6 +87,15 @@ export async function caricaScadenzario(clienteId?: string): Promise<RigaScadenz
   return clienteId ? tutte.filter((r) => r.cliente_id === clienteId) : tutte;
 }
 
+// Riga di LIVELLO CLIENTE: non ha un discente e non si chiude con un attestato
+// (oggi: l'ATECO mancante che blocca il calcolo del modulo di settore). Si
+// riconosce dal prefisso della chiave naturale, non dall'assenza del nome della
+// persona: "senza persona" capita anche per altre ragioni, e dedurlo da li'
+// sarebbe una regola che il giorno dopo cattura la riga sbagliata.
+const rigaLivelloCliente = (r: { azione?: Azione | null }): boolean =>
+  !!(r.azione as { origine_requisito_key?: string | null } | null | undefined)
+    ?.origine_requisito_key?.startsWith(CHIAVE_ATECO_CLIENTE);
+
 // Ramo A: le azioni gia' materializzate dal motore, prese dal caricatore
 // condiviso e rimappate sulla forma dello scadenzario.
 async function caricaScadenzeFormative(): Promise<RigaScadenzario[]> {
@@ -102,7 +112,15 @@ async function caricaScadenzeFormative(): Promise<RigaScadenzario[]> {
       // mai erogato: le scadenze vere una data ce l'hanno sempre (dall'attestato
       // o dalla norma). Vale sia per le righe automatiche del motore sia per i
       // gap generati a mano dal pannello dell'organigramma.
-      subito: r.data === null && !r.conclusa,
+      //
+      // ECCEZIONE: le righe di LIVELLO CLIENTE (l'ATECO che manca e blocca il
+      // modulo di settore). Anche quelle non hanno data, ma per la ragione
+      // opposta - non e' un corso in ritardo, e' un dato che manca, e nessun
+      // termine di legge dice entro quando compilarlo. Promuoverle a "SUBITO"
+      // le metterebbe in cima allo scadenzario davanti a formazione davvero
+      // dovuta: e' la stessa distinzione che la riga sotto fa per gli
+      // adempimenti senza data.
+      subito: r.data === null && !r.conclusa && !rigaLivelloCliente(r),
       scaduta: r.scaduta,
       conclusa: r.conclusa,
       cliente_id: r.cliente_id,

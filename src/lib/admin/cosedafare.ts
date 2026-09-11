@@ -27,6 +27,7 @@
 
 import { supabase } from '../supabase';
 import { newId, type Azione, type AzioneStato, type AzioneTipo, type AzionePriorita } from '../types';
+import { CHIAVE_ATECO_CLIENTE } from './formazione';
 
 const COLONNE_AZIONE = [
   'id', 'tipo', 'origine_esito_id', 'sopralluogo_origine_id', 'descrizione',
@@ -162,9 +163,13 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
   // Scadenze senza attestato (origine_requisito_key = persona_id:corso_codice):
   // discente e corso non arrivano da nessun join, perche' non c'e' una riga di
   // formazione dietro. Si leggono dalla chiave.
+  // Le chiavi di LIVELLO CLIENTE (prefisso `cliente-ateco:`) vivono nella stessa
+  // colonna ma non hanno un discente: davanti ai due punti c'e' un id di
+  // cliente, non di persona. Cercarle in `persona` non troverebbe niente - il
+  // danno sarebbe silenzioso e non un errore - quindi si escludono qui.
   const chiaviReq = ((data ?? []) as { origine_requisito_key?: string | null }[])
     .map((r) => r.origine_requisito_key ?? null)
-    .filter((k): k is string => !!k);
+    .filter((k): k is string => !!k && !k.startsWith(CHIAVE_ATECO_CLIENTE));
   const personeReq = new Map<string, { nome: string | null; cognome: string | null; cliente_id: string | null }>();
   if (chiaviReq.length) {
     const ids = [...new Set(chiaviReq.map((k) => k.slice(0, k.indexOf(':'))))];
@@ -185,7 +190,11 @@ async function caricaAzioni(): Promise<CosaDaFareAdmin[]> {
     const fPers = uno<any>(uno<any>(r.f_orig)?.persona);
     const ePers = uno<any>(uno<any>(r.e_orig)?.persona);
     // Prima formazione da erogare: nessun join, tutto dalla chiave naturale.
-    const reqKey: string | null = r.origine_requisito_key ?? null;
+    const reqKeyGrezza: string | null = r.origine_requisito_key ?? null;
+    // Riga di livello cliente: nessun discente, nessun corso. Non e' una
+    // formazione da erogare, e' un dato dell'azienda che manca.
+    const livelloCliente = !!reqKeyGrezza && reqKeyGrezza.startsWith(CHIAVE_ATECO_CLIENTE);
+    const reqKey: string | null = livelloCliente ? null : reqKeyGrezza;
     const reqPers = reqKey ? personeReq.get(reqKey.slice(0, reqKey.indexOf(':'))) : undefined;
     const reqCorso = reqKey ? reqKey.slice(reqKey.indexOf(':') + 1) : null;
 
