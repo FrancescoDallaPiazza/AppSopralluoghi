@@ -80,7 +80,30 @@ parte.
 
 La correzione è al commento, non ai dati. `055` è caricata e non si tocca: va fatta
 con un `comment on column` in una migrazione nuova, con il testo che dice cosa c'è
-davvero. **Non l'ho scritta**: è una scrittura e non era assegnata.
+davvero.
+
+> **Fatta.** `supabase/migrations/064_corso_alias_commento_chiave.sql` — solo
+> commenti, nessuna colonna e nessun dato. Dice che `testo_gestionale` è una
+> **chiave normalizzata**, nomina la funzione che la produce, riporta i tre numeri
+> (57 / 196 / 15) e rimanda al file dei testi d'origine. Verificata ASCII-only e
+> con `pglast`: due `CommentStmt`, niente altro.
+
+## I 268 testi d'origine, conservati
+
+`docs/c1a/alias-testi-origine.json` — estratti l'11 settembre dall'export datato
+`30/07/2026 17:04`. Per ogni corso: `testo_origine` **verbatim** (case, spazi
+doppi, spazi in coda e il ritorno a capo come li emette il gestionale), la
+`chiave` che `corso_alias` contiene, le quattro colonne del catalogo (durata,
+periodicità, tipologia, categoria), l'esito del confronto e le anomalie di
+spaziatura.
+
+È JSON apposta: un TSV o un CSV non possono portare un titolo che contiene un a
+capo senza perderlo o senza inventarsi una convenzione di escape. In testa ci sono
+i conteggi e lo `sha256` dei 268 testi in ordine di riga
+(`9742ecef39efb97d…`), così chi lo rilegge sa se sta guardando la stessa estrazione.
+
+Serve a rispondere senza riaprire l'Excel alla domanda che ha fatto perdere un giro
+a una corsia: **«il gestionale scrive davvero due spazi lì?»**
 
 ## Quello che si perde davvero, ed è la stessa lezione di sempre
 
