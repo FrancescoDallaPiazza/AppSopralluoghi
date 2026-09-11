@@ -186,20 +186,56 @@ query** invece che riaprendo l'export.
 
 ---
 
-## Un dettaglio che nessuno ha ancora nominato, e vale 81 righe
+## Le 81 righe e la traduzione: non va scritta, va letta
 
 Il dizionario `0007` risolve a **`datore_lavoro_rspp`**. Il nostro codice figura
 è **`dl_rspp`** (`figura_sicurezza`, migrazione 015; `dl_rspp` è anche ciò che
-`DL_RSPP_SETTORE` richiede nella `049`).
+`DL_RSPP_SETTORE` richiede nella `049`). Sono **81 righe**, cioè il numero che
+quella migrazione esiste per non sbagliare.
 
-Sono **81 righe**, cioè il numero che quella migrazione esiste per non sbagliare.
-Una traduzione al confine ci vuole, e va **scritta una volta sola e in un posto
-solo** — non ripetuta in due `if`. Gli altri codici combaciano (`rspp`, `aspp`,
-`rls`, `preposto`, `dirigente`, `addetto_antincendio`, `addetto_primo_soccorso`);
-`datore_lavoro_art16`, che dalla loro parte resta aperto, dalla nostra esiste come
-`datore_lavoro` — e **non vanno confusi**: l'art. 16 è il delegato, il nostro
-`datore_lavoro` è il datore. Finché quella domanda di diritto non ha risposta,
-l'import **non deve tradurlo**.
+> **Correzione, stessa giornata.** Qui era scritto che «una traduzione al confine
+> ci vuole». **Esiste già**, e scriverne una seconda sarebbe stato il difetto che
+> quella tabella è nata per impedire: `ruolo_sicurezza_alias` (AppOverall `0002`)
+> porta la riga `('sopralluoghi', 'dl_rspp', 'datore_lavoro_rspp')`, e il suo
+> commento dice perché — *«se la mappa è in uno switch, qualcuno ci mette il caso
+> mancante a mano, ed è così che `dl_rspp` è diventato `rspp` su 26 righe»*.
+> L'import **legge quella mappa**, non ne scrive una.
+
+Due cose da sapere per usarla, verificate sul file e non assunte:
+
+- **la mappa è scritta nel verso `codice_esterno` → loro**, e a noi serve il verso
+  opposto. Si può leggere all'indietro perché è **iniettiva**: 13 righe per il
+  sistema `sopralluoghi`, 12 destinazioni distinte;
+- **la tredicesima non ha destinazione.** `operatore_attrezzatura` mappa su
+  `null`, e il commento della colonna dice che `null` non significa «non ancora
+  tradotto» ma **«conosciuto e non traducibile da solo»**. All'indietro non ha
+  entrata — irrilevante qui, perché fra le 29 forme delle mansioni non c'è
+  nessuna attrezzatura, ma da sapere prima che qualcuno concluda che la mappa è
+  rotta.
+
+### E una cosa che avevo scritto al contrario
+
+Avevo scritto che `datore_lavoro_art16` «dalla nostra parte esiste come
+`datore_lavoro`». **È falso, e nel verso peggiore.**
+
+`datore_lavoro_art16` **è una nostra figura a sé**, aggiunta dalla migrazione
+`053` come tredicesima (*«Datore di lavoro delegato (ex art. 16)»*), con i suoi
+`estremi_procura` e la sua evidenza — visura camerale più atto notarile. E la
+mappa della `0002` la tratta esattamente così: `datore_lavoro` e
+`datore_lavoro_art16` mappano **ciascuna su se stessa**, separate.
+
+Chi avesse scritto l'import leggendo la mia riga avrebbe tradotto il delegato nel
+datore, che è precisamente la confusione contro cui la riga stessa metteva in
+guardia. **La mappa è più affidabile della mia memoria**, ed è il secondo
+argomento per leggerla invece di riscriverla.
+
+*Una differenza fra le due corsie che vale segnalare:* dalla loro parte la
+domanda «al delegato dell'art. 16 spettano gli obblighi del datore o quelli del
+dirigente?» è **aperta** e aspetta una lettura della norma. Dalla nostra, la `053`
+**ha già preso posizione** — `datore_lavoro_art16` richiede `DATORE_LAVORO`, con
+la nota *«il delegato assume gli obblighi del datore, formazione inclusa»*. Non è
+una contraddizione da sanare di corsa: è che una delle due corsie ha deciso e
+l'altra no, e conviene saperlo prima che i due modelli si incontrino.
 
 ---
 
