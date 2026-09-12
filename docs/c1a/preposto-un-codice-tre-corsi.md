@@ -4,6 +4,37 @@ Esempi chiesti da AppOverall dopo che Francesco ha domandato «sei sicuro? fammi
 esempi». **La risposta è no**, e i titoli lo dicono in modo netto.
 Anonimo: nessun nome, nessun codice fiscale, solo date e titoli verbatim.
 
+> ## ⚠ DUE AVVERTENZE AGGIUNTE IL 12 SETTEMBRE 2026, prima di riusare questo file
+>
+> **1. Questo documento si contraddice sulle righe «- BIENNALE», e va ricontato
+> sull'export prima di poggiarci un ragionamento.**
+>
+> | dove, qui sotto | dice |
+> |---|---|
+> | «Le 30 righe da 12 ore prima dell'ASR» | «**tutte e trenta**», e **due date sole**: 5 il 20.05.2024, 25 il 05.09.2024 |
+> | la tabella «sette titoli sotto un codice» | «**31**» righe, intervallo **2024-05 → 2025-12** |
+> | «Cosa non decido» | «`is_aggiornamento = false` su tutte e **31**» |
+>
+> 30 contro 31, e due date contro un intervallo che arriva a dicembre 2025. **Non
+> è un refuso innocuo**: la frase che regge il ragionamento è *«non è una
+> popolazione diffusa nel tempo: sono due aule»*, e AppOverall la sta usando per
+> decidere **a chi** rivolgere la domanda. Se la 31ª riga è a dicembre 2025, due
+> aule non sono.
+>
+> Non si riconta da qui — l'export non è su questa macchina. Chi ce l'ha lo
+> guardi **prima**, non dopo.
+>
+> **2. Le 12 ore hanno una spiegazione alternativa che qui non era considerata.**
+> L'Accordo dichiara durate **minime**, quindi un corso più lungo del minimo può
+> essere semplicemente più lungo — non per forza un corso *diverso*. Segnalato da
+> AppOverall il 12 settembre, e indebolisce la riga «tre corsi iniziali distinti»
+> qui sotto **nella parte che poggia sulle ore**: quella che poggia sui **titoli**
+> — tre testi verbatim differenti — regge lo stesso, e così pure il fatto che il
+> corso da 8 ore sia stato erogato senza interruzione dal 2011 al 2026.
+>
+> *Le due avvertenze stanno qui e non solo in `STATO.md` perché questo file viene
+> letto da solo: un avviso che vive altrove non protegge chi apre il documento.*
+
 ## La domanda che veniva prima di tutte: cos'è quella data
 
 **Una sola colonna, e si chiama `Data`.** Le altre tre che contengono «data» sono
