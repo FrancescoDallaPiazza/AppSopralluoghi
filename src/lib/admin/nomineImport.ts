@@ -153,14 +153,34 @@ export const COLONNE_RUOLO: ColonnaRuolo[] = [
 //    decidere niente. E' documentazione della regola, non un suo ingresso. Chi un
 //    giorno volesse farla decidere davvero deve saperlo prima, non scoprirlo.
 //
-// 2. DIVERGE DA APPOVERALL, e la traduzione perde. Da noi sono cinque
-//    (titolare_socio, socio, non_titolare, esterno, non_dichiarato), da loro sei:
-//    tengono separati `datore` - la frase lo dice con quelle parole, "Datore di
-//    Lavoro", "DL" - e `titolare`, che lo dice per via del titolo. Il nostro
-//    `titolare_socio` li fonde e NON SA TORNARE INDIETRO. Non e' un difetto da
-//    riparare qui: la nostra tabella e' caricata e la loro no, e il posto dove si
-//    decide e' la loro `0010`. E' un fatto da non riscoprire quando i due modelli
-//    si incontrano.
+// 2. DIVERGE DA APPOVERALL, e la traduzione perde UNA COSA SOLA. Da noi sono
+//    cinque (titolare_socio, socio, non_titolare, esterno, non_dichiarato), da
+//    loro sei: tengono separati `datore` - la frase lo dice con quelle parole,
+//    "Datore di Lavoro", "DL" - e `titolare`, che lo dice per via del titolo. Il
+//    nostro `titolare_socio` li fonde, e quella distinzione non sa tornare
+//    indietro. Non si ripara qui: la nostra tabella e' caricata e la loro no.
+//
+//    MA IL NOME E' PESSIMO E HA GIA' INGANNATO UN LETTORE, quindi va detto qui.
+//    `titolare_socio` SEMBRA fondere `titolare` con `socio`, e se lo facesse
+//    sarebbe grave: da loro ('rspp','titolare') risolve e ('rspp','socio') NON
+//    HA RIGA, cioe' si astiene apposta - fonderli vorrebbe dire risolvere righe
+//    che l'astensione esiste per proteggere, proprio sul confine art. 34 / art.
+//    32 che e' gia' costato 26 nomine sbagliate.
+//
+//    NON E' QUELLO CHE FA. Misurato sul seme il 12 settembre 2026, nessuna
+//    combinazione (posizione, ruolo) fa tutte e due le cose:
+//
+//        socio          + rspp   ->  si astiene 2 su 2, risolve 0
+//        non_dichiarato + rspp   ->  si astiene 2 su 2, risolve 0
+//        titolare_socio + rspp   ->  risolve 14 su 14  (dl_rspp)
+//        titolare_socio + datore_lavoro / aspp -> risolve 6 su 6
+//
+//    `socio` E' UN VALORE SUO E SI ASTIENE, esattamente come da loro; le sette
+//    righe non risolte vengono da li' e da `non_dichiarato`. Quel che
+//    `titolare_socio` fonde sono i loro DUE valori che risolvono allo stesso
+//    modo, quindi la perdita e' di PROVENIENZA dell'asserzione - come si e'
+//    saputo che e' il datore - non di esito. Il confine dell'astensione e'
+//    intatto.
 export async function caricaDizionarioRuoli(): Promise<Dizionario> {
   const testi = await leggiTutte<{ chiave: string; varianti: string[]; posizione: string; note: string | null }>(
     (da, a) => supabase.from('ruolo_testo').select('chiave, varianti, posizione, note').order('chiave').range(da, a));

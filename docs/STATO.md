@@ -729,10 +729,37 @@ fa sugli esiti e sulle chiavi, mai sui totali di riga.**
 
 **Una divergenza vera c'è, ed è `posizione`: cinque da noi, sei da loro.** Loro
 tengono separati `datore` — la frase lo dice con quelle parole — e `titolare`, che
-lo dice per via del titolo; il nostro `titolare_socio` li **fonde e non sa tornare
-indietro**. Non si ripara qui: la nostra tabella è caricata e la loro no, e il
-posto dove si decide è la loro `0010`. Va saputo prima che i due modelli si
-incontrino, non dopo.
+lo dice per via del titolo; il nostro `titolare_socio` li **fonde**, e quella
+distinzione non sa tornare indietro. Non si ripara qui: la nostra tabella è
+caricata e la loro no, e il posto dove si decide è la loro `0010`.
+
+**E qui il nome ha fatto danno, quindi va scritto prima della prossima persona che
+lo legge.** `titolare_socio` *sembra* fondere `titolare` con `socio`, e AppOverall
+l'ha letto così — concludendo che fonde un valore che **risolve** con uno che **si
+astiene apposta**, cioè che sarebbe ambiguo esattamente sul confine art. 34 /
+art. 32. Sarebbe stato grave, e sarebbe finito nel loro programma come la prima
+riga da leggere alla migrazione.
+
+**Misurato sul seme, non è così.** Nessuna combinazione `(posizione, ruolo)` fa
+tutte e due le cose:
+
+| posizione | ruolo | esito |
+|---|---|---|
+| `socio` | `rspp` | **si astiene 2 su 2** |
+| `non_dichiarato` | `rspp` | **si astiene 2 su 2** |
+| `titolare_socio` | `rspp` | risolve **14 su 14** → `dl_rspp` |
+| `titolare_socio` | `datore_lavoro` · `aspp` | risolve **6 su 6** |
+
+`socio` **è un valore suo e si astiene**, come da loro; le sette righe non risolte
+vengono da lì e da `non_dichiarato`. Quel che `titolare_socio` fonde sono i loro
+**due valori che risolvono allo stesso modo** — quindi si perde la *provenienza*
+dell'asserzione (come si è saputo che è il datore), non l'*esito*. **Il confine
+dell'astensione è intatto.**
+
+> Terza volta in una giornata che un numero o un nome fa vedere una divergenza che
+> non c'è. Le prime due erano totali; questa è **un'etichetta**, e il rimedio non è
+> lo stesso — un totale si confronta meglio, un nome va cambiato o spiegato. Qui è
+> spiegato, perché la tabella è caricata.
 
 *E una cosa su `posizione` che riguarda solo noi:* la `068` la descrive come «il
 meccanismo che fa risolvere `RSPP/titolare` in `dl_rspp`», ed è vero di come il
