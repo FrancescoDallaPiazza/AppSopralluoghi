@@ -293,6 +293,27 @@ function indicizzaPersone(
 // l'identita' di una persona in questo archivio e' la coppia (cliente, nome).
 // Fuori da li' due omonimi non si distinguono, e il sistema si ferma invece di
 // scegliere.
+//
+// QUANTO PESI SULLA META' DEDOTTA, misurato il 12 settembre 2026 sul foglio
+// "Ruoli SSL" di ExportExcel.xlsx (24/12/2023, l'unico export di quella famiglia
+// su questa macchina). Il "12 su 153" delle colonne NON si estende alla mansione,
+// e non si estende in meglio:
+//
+//     righe con un ruolo nelle COLONNE ..... 204   senza CF:  16   (7,8%)
+//     righe con un ruolo nella MANSIONE .....  74   senza CF:  47   (63,5%)
+//     unione ............................... 275   senza CF:  63
+//
+// OTTO VOLTE PEGGIO. Agganciando solo per codice fiscale, dalla meta' DEDOTTA
+// dell'organigramma si perderebbero quasi due righe su tre - cioe' il ripiego non
+// e' un rammendo per pochi casi: e' cio' che regge la meta' del lavoro che questo
+// import esiste per fare.
+//
+// DUE RISERVE, perche' il numero non venga usato per quello che non e'. E' la
+// fotografia del 2023, non quella del 2026 su cui poggiano il 153 e il 160. E il
+// dizionario e' stato costruito SULL'export del 2026: applicato al 2023 riconosce
+// solo le forme che gia' conosce, quindi 74 e' un limite INFERIORE e le righe con
+// un ruolo scritto in una forma nuova non sono contate. La proporzione vale per
+// cio' che il dizionario vede.
 function risolviPersona(
   cf: string, cognome: string, nome: string, idx: IndicePersone, ripetutiNelFile: Set<string>,
 ): { id: string; nome: string } | { errore: string } {

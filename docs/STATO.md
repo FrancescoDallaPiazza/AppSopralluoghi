@@ -716,6 +716,29 @@ un'altra domanda.
 E il ripiego cognome+nome è **acceso**, con le due guardie dell'import anagrafiche
 e non una in meno. Senza, si perdevano 19 incarichi e il **100%** dell'unico ASPP.
 
+**E pesa molto più di così sulla metà dedotta — misurato il 12 settembre, sera.**
+Avevo scritto che il «12 su 153» delle colonne **non si estende** alle righe col
+ruolo nella mansione, e che quella misura non c'era. Ora c'è, sul foglio
+`Ruoli SSL` di `ExportExcel.xlsx` (24/12/2023, l'unico export di quella famiglia
+su questa macchina):
+
+| | righe | senza CF | |
+|---|---:|---:|---:|
+| ruolo nelle **colonne** | 204 | 16 | 7,8% |
+| ruolo nella **mansione** | 74 | **47** | **63,5%** |
+| unione | 275 | 63 | |
+
+**Otto volte peggio.** Non si estendeva, e non si estendeva *in meglio*:
+agganciando solo per codice fiscale, dalla metà **dedotta** dell'organigramma si
+perderebbero quasi **due righe su tre**. Il ripiego non è un rammendo per pochi
+casi — è ciò che regge metà del lavoro che questo import esiste per fare.
+
+*Due riserve, perché il numero non venga usato per quello che non è:* è la
+fotografia del **2023**, non quella del 2026 su cui poggiano il 153 e il 160; e il
+dizionario è stato costruito **sull'export del 2026**, quindi applicato al 2023
+riconosce solo le forme che già conosce — **74 è un limite inferiore**, e la
+proporzione vale per ciò che il dizionario vede.
+
 ### Due cose sul dizionario, sapute confrontandolo con il loro
 
 **Il 34 contro 32 non era una divergenza, e per poco non diventava un allarme.**
