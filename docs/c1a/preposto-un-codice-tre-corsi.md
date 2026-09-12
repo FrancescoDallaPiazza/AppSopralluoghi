@@ -123,3 +123,22 @@ regime ASR indica il ciclo di aggiornamento) non lo stabilisco da qui: 12 ore no
 corrispondono alle 6 dell'aggiornamento biennale, quindi l'ipotesi non torna sulle
 ore. **Serve chi ha erogato quei due corsi del 2024** — sono due aule, e chi le ha
 tenute sa cos'erano.
+
+> **Correzione del 12 settembre 2026: l'argomento qui sopra non regge, ed era
+> mio.** Avevo scartato l'ipotesi confrontando le 12 ore con le **6**
+> dell'aggiornamento biennale. Ma l'art. 37 c. 7-ter (dal 2021) non prescrive un
+> *aggiornamento*: dice che le formazioni del preposto «devono essere **ripetute**
+> con cadenza almeno biennale», e **ripetere è rifare il corso intero**, non farne
+> una versione corta. Le 6 ore non c'entrano, quindi il confronto che avevo fatto
+> non escludeva niente. *(Argomento di AppOverall.)*
+>
+> **Resta però un problema di durata, nell'altro verso:** nel 2024 il corso da
+> ripetere era quello da **8** ore — il «senza suffisso», erogato senza
+> interruzione dal 2011 al 2026 — e una ripetizione ne avrebbe fatte 8, non 12.
+> Quindi l'ipotesi «biennale preso alla lettera» spiega la **marcatura**
+> (`is_aggiornamento = false` è giusto per una ripetizione) e **non** spiega la
+> **durata**.
+>
+> Netto: l'ipotesi è **viva e parziale**, non esclusa come scritto qui sopra. E
+> la domanda a chi c'era serve ancora — a meno che l'avvertenza 1 in testa al file
+> non cambi chi sia «chi c'era».
