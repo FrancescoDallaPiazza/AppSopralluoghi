@@ -241,9 +241,24 @@ function trovaHeader(griglia: unknown[][]): number {
   return miglior;
 }
 
-export async function leggiFoglio(file: File): Promise<Foglio> {
+// `nomeFoglio` seleziona il foglio per NOME. Senza, si legge il primo - che e'
+// il comportamento di sempre e resta quello di ogni chiamante esistente.
+//
+// PERCHE' IL PARAMETRO ESISTE, e vale la pena scriverlo qui. Il 10 settembre
+// 2026 e' costato mezza giornata scoprire che `ExportExcel (4).xlsx` ha QUATTRO
+// fogli e che nessun import ne apriva piu' del primo: i ruoli di sicurezza sono
+// nel quarto, e per il codice non esistevano. Leggere sempre `SheetNames[0]` non
+// da' errore su un file a piu' fogli - da' un risultato, e il risultato e'
+// silenziosamente parziale. Chi sa quale foglio gli serve lo chiede per nome, e
+// se non c'e' se lo sente dire con l'elenco di quelli che ci sono.
+export async function leggiFoglio(file: File, nomeFoglio?: string): Promise<Foglio> {
   const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
-  const ws = wb.Sheets[wb.SheetNames[0]!];
+  const nome = nomeFoglio ?? wb.SheetNames[0];
+  if (nomeFoglio && !wb.SheetNames.includes(nomeFoglio)) {
+    throw new Error(
+      `Il file non ha un foglio "${nomeFoglio}". Fogli presenti: ${wb.SheetNames.join(', ') || '(nessuno)'}.`);
+  }
+  const ws = nome ? wb.Sheets[nome] : undefined;
   if (!ws) throw new Error('Il file non contiene fogli leggibili.');
   // `blankrows: true` di proposito: le righe vuote si saltano piu' sotto, ma
   // devono restare nel conteggio. Il numero di riga che l'anteprima stampa e'

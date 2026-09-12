@@ -28,12 +28,13 @@ import ImportCatalogo from './ImportCatalogo';
 import AliasCorsi from './AliasCorsi';
 import ImportFormazione from './ImportFormazione';
 import ImportAnagrafiche from './ImportAnagrafiche';
+import ImportNomine from './ImportNomine';
 
 type Sezione =
   | 'anagrafiche' | 'tecnici' | 'aree' | 'template' | 'capitoli'
   | 'pianificazione' | 'disponibilita' | 'formazione' | 'cosedafare'
   | 'scadenzario' | 'importwerp' | 'importcatalogo' | 'aliascorsi'
-  | 'importformazione' | 'importanagrafiche';
+  | 'importformazione' | 'importanagrafiche' | 'importnomine';
 
 interface Gruppo {
   key: string;
@@ -52,6 +53,7 @@ const GRUPPI: Gruppo[] = [
       // per tutti. L'ordine e' quello in cui si lavora partendo da zero:
       // prima le aziende e le persone, poi la formazione che ci si appoggia.
       { k: 'importanagrafiche', label: 'Import anagrafiche' },
+      { k: 'importnomine', label: 'Import nomine' },
       { k: 'importformazione', label: 'Import formazione' },
     ],
   },
@@ -150,6 +152,7 @@ export default function BackOffice({
         {sezione === 'aliascorsi' && <AliasCorsi />}
         {sezione === 'importformazione' && <ImportFormazione />}
         {sezione === 'importanagrafiche' && <ImportAnagrafiche />}
+        {sezione === 'importnomine' && <ImportNomine />}
       </main>
     </div>
   );

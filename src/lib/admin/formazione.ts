@@ -1609,6 +1609,15 @@ export function azioneScadenzaEsonero(
 // tentare di leggere un uuid di persona dove c'e' un id di cliente.
 export const CHIAVE_ATECO_CLIENTE = 'cliente-ateco:';
 
+// Terza forma di chiave nella stessa colonna: una persona il cui ruolo di
+// sicurezza e' SCRITTO da qualche parte e non e' mappabile. Sta qui accanto alle
+// altre due perche' il lettore di quella colonna deve poterle distinguere tutte
+// e tre senza provarci: davanti ai due punti c'e' un uuid di PERSONA nella
+// prima e nella terza, un id di CLIENTE nella seconda.
+// La scrive l'import delle nomine (nomineImport.ts); qui la si protegge dalla
+// spazzata degli orfani finche' quella persona non ha una nomina.
+export const CHIAVE_NOMINA_FORMA = 'nomina-forma:';
+
 export const gapSenzaData = (r: RequisitoValutato): boolean =>
   !r.scadenza && r.stato === 'critico' && !r.formazione_id && !r.esonero_id;
 
@@ -1753,6 +1762,47 @@ export async function backfillAzioniEsoneri(clienteId: string, riep?: RiepilogoC
   if (attese.size) {
     const { error } = await supabase.from('azione').upsert([...attese.values()]);
     if (error) throw error;
+  }
+
+  // ---------------------------------------------------------------------
+  // Le azioni "ruolo di sicurezza da chiarire" (nomina-forma:<persona_id>)
+  // ---------------------------------------------------------------------
+  //
+  // Queste NON le scrive questa funzione: le scrive l'import delle nomine,
+  // perche' la loro fonte e' un foglio Excel e qui non c'e'. Ma devono passare
+  // di qui lo stesso, ed e' il motivo per cui questo blocco esiste: la spazzata
+  // degli orfani qui sotto cancella OGNI azione del cliente con una
+  // `origine_requisito_key` che non sia fra le attese. Senza questo blocco, le
+  // righe "il sistema non ha capito questo ruolo" sparirebbero al primo
+  // ricalcolo dello scadenzario - in silenzio, che e' esattamente cio' che sono
+  // state create per non fare.
+  //
+  // LA CONDIZIONE DI SOPRAVVIVENZA e' quella del progetto: finche' quella
+  // persona non ha NESSUNA nomina. Appena ce l'ha - messa a mano, o creata da un
+  // import successivo con un dizionario aggiornato - la riga esce dalle attese e
+  // la spazzata la chiude DA SOLA. Nessuna spunta, e nessuna riga che si riapre.
+  //
+  // Si rileggono invece di ricostruirle perche' non sono ricostruibili: il testo
+  // che non e' stato capito vive nella descrizione dell'azione, non in una
+  // tabella che si possa rivalutare. E' una differenza vera rispetto alle altre
+  // due forme di chiave, e va saputa.
+  const { data: azFormaRaw } = await supabase
+    .from('azione').select('id, origine_requisito_key')
+    .eq('responsabile_cliente_id', clienteId)
+    .like('origine_requisito_key', CHIAVE_NOMINA_FORMA + '%');
+  const azForma = (azFormaRaw ?? []) as { id: string; origine_requisito_key: string }[];
+  if (azForma.length) {
+    const persForma = [...new Set(azForma.map((a) => a.origine_requisito_key.slice(CHIAVE_NOMINA_FORMA.length)))];
+    const { data: nomForma } = await supabase
+      .from('nomina').select('persona_id').in('persona_id', persForma);
+    const conNomina = new Set(((nomForma ?? []) as { persona_id: string }[]).map((n) => n.persona_id));
+    for (const a of azForma) {
+      const pid = a.origine_requisito_key.slice(CHIAVE_NOMINA_FORMA.length);
+      // Solo protette, non riscritte: l'upsert delle attese e' gia' passato, e
+      // riscriverle sovrascriverebbe una descrizione che qualcuno puo' aver
+      // corretto a mano.
+      if (!conNomina.has(pid)) attese.set(a.id, { id: a.id });
+    }
   }
 
   // Delete orfani: azioni collegate a formazioni/esoneri delle persone del cliente,

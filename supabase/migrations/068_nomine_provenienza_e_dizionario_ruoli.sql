@@ -50,7 +50,17 @@
 -- datore E che fa l'RSPP. Sono due fatti, e una frase che asserisce due cose
 -- produce due righe. Per questo le tabelle sono due: 27 CHIAVI (da 29 grafie
 -- verbatim, perche' RSPP/TITOLARE ne ha tre che differiscono solo per le
--- maiuscole) e 34 ASSERZIONI.
+-- maiuscole) e 32 ASSERZIONI - le 27 chiavi piu' le cinque frasi che ne
+-- asseriscono due.
+--
+-- CORREZIONE del 12 settembre 2026. Qui c'era scritto 34, e 34 erano le RIGHE
+-- LETTERALI dell'insert: la coppia ('RSPP/TITOLARE', 'rspp') compariva tre
+-- volte. Le due in piu' non scrivevano niente - `on conflict do nothing` le
+-- scarta - quindi il database era gia' giusto e questa correzione non cambia un
+-- dato: cambia il numero che qualcuno conterebbe per accorgersi di una
+-- divergenza. Una tabella che esiste per essere CONTATA non puo' dichiarare un
+-- totale che non e' il suo. Le due righe doppie sono tolte, e adesso
+-- `npm run ruoli:check` verifica anche questo.
 --
 -- E LA POSIZIONE E' PROPRIETA' DEL TESTO, non della singola asserzione: descrive
 -- la persona - titolare, socio, non titolare, esterno - e vale su tutte le righe
@@ -113,7 +123,7 @@ comment on column nomina.origine_testo is
   'La mansione VERBATIM da cui la nomina e'' stata dedotta, quando origine = "mansione". Serve per la stessa ragione di cliente.ateco_origine: il derivato da solo non sa dire se sia affidabile, e senza il testo l''unico modo di rivedere una nomina e'' riaprire un Excel. Conserva anche cio'' che il dizionario non traduce - "RSPP ESTERNO", "RSPP- NO TITOLARE", "DIRETTORE TECNICO, RSPP E COMMERCIALE" - che sono informazioni vere che nessun codice di figura trattiene. Null quando origine non e'' "mansione".';
 
 -- ---------------------------------------------------------------------
--- Il dizionario: 27 chiavi da 29 grafie, 34 asserzioni
+-- Il dizionario: 27 chiavi da 29 grafie, 32 asserzioni
 -- ---------------------------------------------------------------------
 
 create table if not exists ruolo_testo (
@@ -183,10 +193,8 @@ on conflict (chiave) do nothing;
 
 insert into ruolo_testo_figura (chiave, ruolo_asserito, figura_codice) values
   ('ADD. ANTINCENDIO', 'addetto_antincendio', 'addetto_antincendio'),
-  ('RSPP/TITOLARE', 'rspp', 'dl_rspp'),
   ('DATORE DI LAVORO', 'datore_lavoro', 'datore_lavoro'),
   ('RSPP- TITOLARE', 'rspp', 'dl_rspp'),
-  ('RSPP/TITOLARE', 'rspp', 'dl_rspp'),
   ('RSPP - DATORI DI LAVORO', 'datore_lavoro', 'datore_lavoro'),
   ('RSPP - DATORI DI LAVORO', 'rspp', 'dl_rspp'),
   ('PREPOSTO', 'preposto', 'preposto'),
