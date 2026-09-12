@@ -27,6 +27,16 @@ regola resta quella scritta in testa — si aggiorna **a chiusura di ogni task**
 non a fine giornata — e nemmeno «a fine giornata» sarebbe bastato qui, perché la
 giornata è finita su una macchina e il file si legge su un'altra.
 
+**E il 10 e l'11 non hanno un diario, apposta.** Erano stati scritti, e sono stati
+**ritirati** lo stesso giorno: un diario è il resoconto di quello che una sessione
+ha *visto*, e quelle due giornate questa postazione non le ha viste — qui sono
+arrivate col `pull`. Ricostruirle dai commit e metterle in mezzo a testimonianze
+dirette le avrebbe fatte **cambiare di grado senza cambiare d'aspetto**. Il loro
+contenuto sta qui sotto, dove una ricostruzione è il modo normale di scrivere; la
+regola e l'elenco delle giornate senza diario stanno in
+[`diario/README.md`](diario/README.md). *Stessa scelta, per la stessa giornata,
+nella corsia `AppFormazione`.*
+
 ---
 
 | voce della Fase 0 | stato | commit |
