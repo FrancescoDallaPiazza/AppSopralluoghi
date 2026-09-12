@@ -737,8 +737,13 @@ caricata e la loro no, e il posto dove si decide è la loro `0010`.
 lo legge.** `titolare_socio` *sembra* fondere `titolare` con `socio`, e AppOverall
 l'ha letto così — concludendo che fonde un valore che **risolve** con uno che **si
 astiene apposta**, cioè che sarebbe ambiguo esattamente sul confine art. 34 /
-art. 32. Sarebbe stato grave, e sarebbe finito nel loro programma come la prima
-riga da leggere alla migrazione.
+art. 32.
+
+*Ritirata la sera stessa, e non è mai arrivata in un file:* viveva in un messaggio,
+è stata fermata in un'ora, e la loro `0010` non si è mossa — le sei posizioni
+erano già caricate per un'altra ragione, che la misura qui sotto **conferma**.
+Resta scritta perché il nome che l'ha prodotta è ancora quello, e la prossima
+persona lo leggerà allo stesso modo.
 
 **Misurato sul seme, non è così.** Nessuna combinazione `(posizione, ruolo)` fa
 tutte e due le cose:
