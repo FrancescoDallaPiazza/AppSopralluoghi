@@ -914,10 +914,25 @@ AppOverall ha già in cima alla lista per l'Area Formazione, adesso porta una pr
 
 Quattro cose che quella misura **non** dice, in
 [`docs/c1a/biennale-i-clienti-e-le-date.md`](c1a/biennale-i-clienti-e-le-date.md):
-non risolve il 30 contro 31 (altro file), non conferma che siano le righe da 12
-ore (**quell'export non ha nessuna colonna di ore** — verificato), non spiega
-perché i conteggi siano 14 e 26 invece di 5 e 25, e non estende la lettura di
-`Data` agli altri file.
+non risolve il 30 contro 31 (altro file), non spiega perché i conteggi siano 14 e
+26 invece di 5 e 25, e non estende la lettura di `Data` agli altri file.
+
+**Una delle quattro riserve è caduta la sera stessa, ed era la più grossa.**
+Avevo scritto che la misura «non conferma che siano le righe da 12 ore, perché
+quell'export non ha una colonna di ore». Non le serve: **le 12 ore sono un
+attributo del titolo**, dichiarato nel catalogo del gestionale (`righe.json`) —
+`… PREPOSTI` 8h, `… PREPOSTI - BIENNALE` **12h**, `… PREPOSTI_BIENNALE` 8h,
+`CORSO DI FORMAZIONE PER PREPOSTI` 12h.
+
+Quindi «le righe da 12 ore con quel titolo» è una **tautologia**: ogni riga con
+quel titolo è da 12 ore. Il filtro non seleziona niente in più del titolo, e la
+differenza fra 54 e 30/31 non è di ore — è di export.
+
+**E lo stesso catalogo dà una seconda gamba alla lettura di `Data`:** per quel
+titolo dichiara periodicità **2 anni**, che è esattamente lo scarto osservato fra
+le due fonti. Due vie indipendenti allo stesso due — le date osservate e la regola
+a catalogo — e la lettura «`Data` = scadenza» non poggia più su una sola
+coincidenza.
 
 ## Cosa blocca, e chi lo tiene
 

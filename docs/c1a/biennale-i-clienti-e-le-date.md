@@ -73,9 +73,34 @@ perché scavalcare l'Accordo partendo dal 2021 è un'altra affermazione.
 **a) Non risolve il 30 contro 31.** Quel conteggio è sull'export del 2026, questo
 è un altro file: 54 righe qui non si confrontano con 31 là.
 
-**b) Non conferma che siano le righe da 12 ore.** *Questo export non ha nessuna
-colonna di ore o durata* — verificato, non assunto. Il filtro «12 ore» del
-documento originale viene da un'altra fonte, e qui non è riproducibile.
+**b) ~~Non conferma che siano le righe da 12 ore.~~ RITIRATA la sera stessa: non
+serve confermarlo, perché le 12 ore sono un attributo del TITOLO.**
+
+Questo export non ha nessuna colonna di ore — verificato — e **non le serve**. La
+durata sta nel **catalogo del gestionale** (`righe.json`, 268 voci, le stesse dei
+268 `corso_alias`), che la dichiara per titolo:
+
+| titolo a catalogo | durata | periodicità |
+|---|---:|---|
+| `FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI` | **8** | 2 anni |
+| `FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI - BIENNALE` | **12** | 2 anni |
+| `FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI_BIENNALE` | **8** | 2 anni |
+| `CORSO DI FORMAZIONE PER PREPOSTI` | **12** | 2 anni |
+
+**Quindi «le righe da 12 ore con il titolo - BIENNALE» è una tautologia**: *ogni*
+riga con quel titolo è una riga da 12 ore, perché le ore vengono dal titolo. Il
+filtro «12 ore» non seleziona niente in più del titolo, e la differenza fra 54 qui
+e 30/31 là **non è una differenza di ore**: è una differenza di export.
+
+*(E conferma la trappola già nota: trattino = 12, underscore = 8. Sta nel catalogo
+del gestionale, non è una nostra lettura.)*
+
+**E c'è una seconda gamba per il §2, che non avevo.** Il catalogo dichiara per
+quel titolo una periodicità di **2 anni** — esattamente lo scarto osservato fra le
+date del documento del preposto e quelle di questo export. Due fonti indipendenti
+che danno lo stesso due: le date osservate, e la regola dichiarata a catalogo. La
+lettura «`Data` = erogazione + periodicità = scadenza» non poggia più solo su una
+coincidenza.
 
 **c) I conteggi delle due aule non combaciano: 14 e 26 qui, 5 e 25 là.** Sul
 secondo la differenza è di uno; sul primo è di nove, e non la spiego. Può essere
