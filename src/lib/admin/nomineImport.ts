@@ -107,15 +107,28 @@ export const COLONNE_RUOLO: ColonnaRuolo[] = [
       + 'A/B/C professionali e’ zero. Mandarle a "rspp" darebbe il percorso sbagliato. '
       + 'Serve sapere chi compila il gestionale.' },
 
-  // Non c'e' una figura per questa colonna, e le due candidate non si
-  // equivalgono: `addetto_antincendio` si chiama "Addetto antincendio /
-  // gestione emergenze" - il che la rende PLAUSIBILE, non certa. 71 righe sono
-  // troppe per deciderlo qui.
+  // QUESTA NON E' UNA DEDUZIONE RIFIUTATA: E' UNA DEDUZIONE SMENTITA, e la
+  // differenza conta perche' una riga cosi' non si riapre fra un mese.
+  //
+  // La tentazione c'era, ed era forte: `addetto_antincendio` si chiama "Addetto
+  // antincendio / gestione emergenze" e l'art. 46 tratta incendio ed evacuazione
+  // insieme. Ma il gestionale le tiene distinte E I DATI GLI DANNO RAGIONE -
+  // misurato da AppFormazione l'11 settembre 2026
+  // (AppFormazione/docs/07-i-ruoli-sicurezza-erano-in-un-export.md, verificato
+  // il 12 leggendo il file, non il riassunto):
+  //
+  //     24 delle 71 righe hanno EMERGENZE SENZA ANTINCENDIO
+  //     delle 47 che hanno entrambe, solo 32 portano la STESSA DATA
+  //
+  // Quindi collassarle sarebbe falso su 24 righe, e sulle altre 15 obbligherebbe
+  // a scegliere quale data dell'incarico tenere. Resta fuori perche' la misura lo
+  // dice, non perche' nessuno se la sia sentita.
   { intestazione: 'Addetti Emergenze ed Evacuazione',
     chiave: normHeader('Addetti Emergenze ed Evacuazione'), figura: null,
-    perche: 'Nessuna figura corrisponde. `addetto_antincendio` si chiama "Addetto antincendio / '
-      + 'gestione emergenze" e potrebbe essere la stessa cosa, ma "potrebbe" non basta su 71 righe: '
-      + 'la domanda va all’Area Formazione.' },
+    perche: 'Non e’ addetto_antincendio, ed e’ MISURATO: 24 delle 71 righe hanno emergenze '
+      + 'senza antincendio, e delle 47 che hanno entrambe solo 32 portano la stessa data. '
+      + 'Collassarle sarebbe falso su 24 righe e costringerebbe a scegliere una data sulle altre. '
+      + 'Nessuna delle tredici figure corrisponde: ne servirebbe una nuova.' },
 
   // Un RESPONSABILE non e' un ADDETTO, e nessuna figura del D.Lgs 81/08 nel
   // nostro elenco corrisponde. Qui la deduzione sarebbe piu' azzardata della
@@ -129,6 +142,25 @@ export const COLONNE_RUOLO: ColonnaRuolo[] = [
 // ---------------------------------------------------------------------------
 // [2] IL DIZIONARIO, LETTO DAL DATABASE
 // ---------------------------------------------------------------------------
+//
+// DUE COSE SU `posizione`, sapute il 12 settembre 2026 e scritte qui perche' e'
+// il punto in cui il dizionario entra nel codice.
+//
+// 1. OGGI NON ENTRA NELLA RISOLUZIONE. La 068 la descrive come "il meccanismo che
+//    fa risolvere RSPP/titolare in dl_rspp invece che in rspp", ed e' vero di come
+//    il seme e' stato COSTRUITO - non di come viene LETTO: la destinazione e' gia'
+//    incisa in `ruolo_testo_figura`, e questo modulo non guarda `posizione` per
+//    decidere niente. E' documentazione della regola, non un suo ingresso. Chi un
+//    giorno volesse farla decidere davvero deve saperlo prima, non scoprirlo.
+//
+// 2. DIVERGE DA APPOVERALL, e la traduzione perde. Da noi sono cinque
+//    (titolare_socio, socio, non_titolare, esterno, non_dichiarato), da loro sei:
+//    tengono separati `datore` - la frase lo dice con quelle parole, "Datore di
+//    Lavoro", "DL" - e `titolare`, che lo dice per via del titolo. Il nostro
+//    `titolare_socio` li fonde e NON SA TORNARE INDIETRO. Non e' un difetto da
+//    riparare qui: la nostra tabella e' caricata e la loro no, e il posto dove si
+//    decide e' la loro `0010`. E' un fatto da non riscoprire quando i due modelli
+//    si incontrano.
 export async function caricaDizionarioRuoli(): Promise<Dizionario> {
   const testi = await leggiTutte<{ chiave: string; varianti: string[]; posizione: string; note: string | null }>(
     (da, a) => supabase.from('ruolo_testo').select('chiave, varianti, posizione, note').order('chiave').range(da, a));

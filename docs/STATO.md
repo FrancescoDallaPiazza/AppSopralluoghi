@@ -684,15 +684,61 @@ Delle nove colonne di ruolo ne entrano **sei**. Restano fuori:
 | colonna | righe | perché |
 |---|---:|---|
 | `RSPP` | 31 | il gestionale ci mette anche il datore dell'art. 34 — mandarle a `rspp` darebbe il percorso del professionista invece di quello del datore |
-| `Addetti Emergenze ed Evacuazione` | 71 | `addetto_antincendio` si chiama «Addetto antincendio / gestione emergenze» e **potrebbe** essere la stessa cosa. «Potrebbe» non basta su 71 righe |
+| `Addetti Emergenze ed Evacuazione` | 71 | **non è `addetto_antincendio`, ed è misurato**: 24 delle 71 hanno emergenze *senza* antincendio, e delle 47 che hanno entrambe solo 32 portano la stessa data. Collassarle sarebbe falso su 24 righe e imporrebbe di scegliere una data sulle altre |
 | `Responsabile Emergenze` | 35 | un responsabile non è un addetto, e nessuna delle tredici figure corrisponde |
 
 Sono **elencate nell'anteprima con il loro perché**: una colonna esclusa e non
 nominata è indistinguibile da una dimenticata, ed è già successo due volte su
 questo stesso file.
 
+**E le tre non stanno fuori per la stessa ragione — la distinzione è di
+AppOverall e la tengo, perché cambia cosa succederà a queste righe.**
+
+- `RSPP` è fuori per un **fatto dimostrato**: quella colonna contiene anche il
+  datore dell'art. 34, e la prova sta negli attestati. Non c'è una domanda aperta,
+  c'è una domanda a monte — *chi compila il gestionale*.
+- `Addetti Emergenze ed Evacuazione` è fuori per una **deduzione smentita dai
+  dati**, misurati da AppFormazione l'11 settembre e verificati qui il 12 leggendo
+  il loro file (`AppFormazione/docs/07-…`), non il riassunto. Non è «non ho voluto
+  dedurre»: è «la deduzione è falsa su 24 righe». *Una riga che dice questo non si
+  riapre fra un mese.*
+- `Responsabile Emergenze` è fuori per un **argomento**, non per una misura: un
+  responsabile non è un addetto, e nessuna delle tredici figure corrisponde. È
+  l'unica delle tre che regge da sola senza dati dietro.
+
+Le prime due **non** sono una domanda per l'Area Formazione: sono chiuse. Quel
+che resta aperto è semmai se serva una **figura nuova** per le emergenze, che è
+un'altra domanda.
+
+**Decisione di Francesco, 12 settembre sera:** le tre restano fuori, e l'import
+**lo esegue lui** dal back-office. Questa sessione non lo fa girare.
+
 E il ripiego cognome+nome è **acceso**, con le due guardie dell'import anagrafiche
 e non una in meno. Senza, si perdevano 19 incarichi e il **100%** dell'unico ASPP.
+
+### Due cose sul dizionario, sapute confrontandolo con il loro
+
+**Il 34 contro 32 non era una divergenza, e per poco non diventava un allarme.**
+Le due tabelle contano **grane diverse**: la loro `ruolo_testo` ha per chiave il
+*testo verbatim* (34 asserzioni su 29 grafie), la nostra la *chiave normalizzata*
+con le grafie dentro `varianti[]` (32 su 27). Collassando le loro per chiave
+vengono 32 — **dicono la stessa cosa**. Quindi la correzione qui sopra è giusta
+per la nostra tabella e il loro 34 è giusto per la loro, e la regola che ne esce è
+scritta in testa a `ruoli-testo-check.mjs`: **il confronto fra i due dizionari si
+fa sugli esiti e sulle chiavi, mai sui totali di riga.**
+
+**Una divergenza vera c'è, ed è `posizione`: cinque da noi, sei da loro.** Loro
+tengono separati `datore` — la frase lo dice con quelle parole — e `titolare`, che
+lo dice per via del titolo; il nostro `titolare_socio` li **fonde e non sa tornare
+indietro**. Non si ripara qui: la nostra tabella è caricata e la loro no, e il
+posto dove si decide è la loro `0010`. Va saputo prima che i due modelli si
+incontrino, non dopo.
+
+*E una cosa su `posizione` che riguarda solo noi:* la `068` la descrive come «il
+meccanismo che fa risolvere `RSPP/titolare` in `dl_rspp`», ed è vero di come il
+seme è stato **costruito**, non di come viene **letto** — la destinazione è già
+incisa in `ruolo_testo_figura`, e l'import non guarda `posizione` per decidere
+niente. Oggi è documentazione della regola, non un suo ingresso.
 
 ### Cosa non è verificato
 
