@@ -806,6 +806,65 @@ invece di doverla credere.
 **Non è stato eseguito**: su questa macchina non c'è `.env.local`. Senza
 credenziali si ferma e lo dice, invece di stampare uno zero.
 
+## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
+
+Segnalato da AppOverall con una fonte, e **verificato qui nel codice** invece che
+accettato: c'è un punto in cui un attestato del 2011 viene confrontato con
+un'attesa del 2025, ed è `formazioneImport.ts:527`.
+
+```ts
+else if (dovute != null && r.ore != null && r.ore < dovute) out.oreInsufficienti.push(v);
+```
+
+`dovute` viene da `corso_catalogo`, che porta **l'attesa di oggi**. Nessuna
+finestra temporale, nessun confronto con la data dell'attestato.
+
+**La norma dice che quel confronto non va fatto.** ASR 2025, Parte VII pag. 112:
+*«per i preposti sono fatti salvi i percorsi formativi effettuati in vigenza
+dell'accordo del 21 dicembre 2011, per i quali è riconosciuto **credito formativo
+totale**»*. Sono **276 righe da 8 ore** — contro un'attesa di 12 — e la stessa
+clausola vale due sezioni sopra per **lavoratori e dirigenti**.
+
+**Ma la portata è più piccola di come suonava, e va detto.** Non è il motore che
+dichiara scoperto un requisito: è **l'anteprima dell'import** che mette la riga in
+un elenco «da guardare». L'attestato entra comunque. L'unico altro confronto sulle
+ore (`componiSpezzoni`, `:660`) tocca solo gli **spezzoni** — righe `parziale` —
+e lì la soglia è il senso stesso del meccanismo.
+
+Quindi **oggi non produce un dato falso: produce rumore**. E 276 voci false in una
+lista «da guardare» insegnano a non guardarla, che è il modo in cui un avviso
+diventa peggio del proprio silenzio.
+
+**Non è riparato, e non per prudenza:** il dato per farlo non c'è. Servirebbe la
+**validità temporale sul catalogo** (scheda 12), che qui non abbiamo. È annotato
+alla riga, con la citazione e con la regola: *quando la validità temporale arriva,
+è quella riga a doverla consumare* — confronto contro l'attesa in vigore **alla
+data dell'attestato**, e nessun confronto dove la norma riconosce credito totale.
+
+## Le 30 righe «PREPOSTI - BIENNALE»: la risposta c'era, e il mio documento non torna con sé
+
+AppOverall ha chiesto come sia valorizzato `is_aggiornamento` su quelle righe.
+**La misura esiste dall'11 settembre** (`c15feab`,
+`docs/c1a/preposto-un-codice-tre-corsi.md`) e la risposta è
+**`is_aggiornamento = false`** — sono marcate **iniziali**.
+
+Ma rileggendolo per rispondere, **quel documento si contraddice su due punti**, e
+nessuno dei due è cosmetico:
+
+| dove | dice |
+|---|---|
+| sezione di dettaglio | «**Tutte e trenta**», e due date sole: 5 il 20.05.2024, 25 il 05.09.2024 |
+| tabella riassuntiva | «**31**» righe, con intervallo **2024-05 → 2025-12** |
+| «cosa non decido» | «`is_aggiornamento = false` su tutte e **31**» |
+
+**30 contro 31, e due date contro un intervallo che arriva a dicembre 2025.** Non
+è un dettaglio: la frase che regge tutto il ragionamento è *«non è una popolazione
+diffusa nel tempo: sono due aule»*. Se la 31ª riga è a dicembre 2025, **non sono
+due aule**, e l'argomento cambia.
+
+Non lo posso risolvere: l'export non è su questa macchina. Va ricontato da chi ce
+l'ha, **prima** che «due aule» entri in un ragionamento come premessa.
+
 ## Cosa blocca, e chi lo tiene
 
 - **I clienti NON sono da rifare: ci sono già.** Misurato il 9 settembre

@@ -524,6 +524,29 @@ export function riconciliaUnita(
     if (v.parziale) out.spezzoni.push(v);
     // Uno spezzone ha per definizione meno ore di quelle dovute: segnalarlo due
     // volte direbbe due problemi dove ce n'e' uno, e quello vero e' l'altro.
+    //
+    // QUESTO CONFRONTO NON HA UNA FINESTRA TEMPORALE, ed e' un limite noto dal
+    // 12 settembre 2026. `dovute` viene da `corso_catalogo`, che porta l'attesa
+    // DI OGGI: un attestato del 2011 finisce confrontato con un'attesa del 2025.
+    //
+    // Per il PREPOSTO la norma dice che quel confronto non va fatto: ASR 2025,
+    // Parte VII pag. 112 - "per i preposti sono fatti salvi i percorsi formativi
+    // effettuati in vigenza dell'accordo del 21 dicembre 2011, per i quali e'
+    // riconosciuto CREDITO FORMATIVO TOTALE". Sono 276 righe da 8 ore che qui
+    // verrebbero elencate come "da guardare" contro un'attesa di 12, e la stessa
+    // clausola vale due sezioni sopra per lavoratori e dirigenti.
+    //
+    // NON E' UN VERDETTO, ed e' la ragione per cui oggi non si rompe niente: la
+    // riga entra comunque in `out.nuove`, questa lista e' solo un elenco da
+    // rivedere. Ma 276 voci false in una lista "da guardare" insegnano a non
+    // guardarla, che e' il modo in cui un avviso diventa peggio del suo silenzio.
+    //
+    // NON SI RIPARA QUI E ADESSO perche' il dato per farlo non c'e': servirebbe
+    // la validita' temporale sul catalogo (scheda 12), che oggi non abbiamo -
+    // AppOverall la sta mettendo nella sua `0014`. QUANDO ARRIVA, E' QUESTA LA
+    // RIGA CHE DEVE CONSUMARLA: il confronto va fatto contro l'attesa in vigore
+    // ALLA DATA dell'attestato, e dove la norma riconosce credito totale non va
+    // fatto affatto.
     else if (dovute != null && r.ore != null && r.ore < dovute) out.oreInsufficienti.push(v);
   }
 
