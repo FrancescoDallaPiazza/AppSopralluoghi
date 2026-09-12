@@ -1,108 +1,105 @@
 # Le durate come controllo: cosa dice l'export sui 40 codici
 
-Misura dell'11 settembre 2026. Terza gamba del riscontro sul catalogo: il sito
+Misura dell'11 settembre 2026. ~~Terza gamba del riscontro sul catalogo: il sito
 dice cosa l'accordo **prevede**, il catalogo cosa ci **aspettiamo**, l'export cosa
-è **stato erogato**. **Sola lettura.**
+è **stato erogato**.~~ **Sola lettura.**
 
-> # ⚠ LA TERZA GAMBA NON REGGE COME FORMULATA — 12 settembre 2026
+**Quella riga è falsa, e il blocco qui sotto dice perché.** Questo documento
+confronta **il catalogo del gestionale con il nostro**: l'export non dice cosa è
+stato erogato, dice sotto quale **voce** una riga è stata registrata.
+
+> # ⚠ LA TERZA GAMBA NON ESISTE — 12 settembre 2026
 >
-> **Il gestionale ha riscritto le ore dello storico.** Parole di Francesco,
-> guardando le due aule del preposto del 2024: *«erano tutte formazioni da 8 ore
-> per completo e 6 per agg. È scritto 12 perché il gestionale ha aggiornato
-> d'imperio tutte le formazioni fatte con le nuove ore dell'ASR25»*.
+> *Questo blocco sostituisce una prima avvertenza scritta un'ora prima, che diceva
+> «la terza gamba non regge come formulata» e attribuiva la cosa a una riscrittura
+> del gestionale. Era **troppo generosa**: la riscrittura non ha distrutto una
+> prova, ha fatto vedere che **non c'era**.*
 >
-> Quindi **la colonna ore dell'export non dice cosa è stato erogato**: per una
-> parte delle righe dice cosa il catalogo assegna **oggi**, scritto all'indietro
-> sullo storico. La premessa in testa a questo documento era un'assunzione che
-> nessuno aveva dichiarato — né qui, né negli altri due repo.
+> ## Il fatto
 >
-> ## Cosa questo fa alle conclusioni qui sotto: le INVERTE
+> **La colonna `ore` dell'export riproduce la durata della voce di catalogo sotto
+> cui la riga è registrata.** Non misura le ore erogate. Dentro un titolo la
+> varianza è **zero**.
 >
-> Il metodo di questo documento è *confrontare le ore dell'export con quelle del
-> catalogo*. Se una parte dello storico è stata riscritta **con le ore del
-> catalogo**, allora:
+> Segnalato da AppFormazione via AppOverall, e **verificato qui** su `righe.json`
+> (le 268 voci del gestionale, che questo repo ha). Le sette voci del preposto:
 >
-> | esito | vale ancora? |
+>     r210  8   FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI
+>     r211 12   FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI - BIENNALE
+>     r212  8   FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI_BIENNALE
+>     r151 12   CORSO DI FORMAZIONE PER PREPOSTI
+>     r143  6   CORSO DI AGGIORNAMENTO PER PREPOSTI
+>     r91   6   AGGIORNAMENTO LAVORATORI PREPOSTI
+>     r220  3   INTEGRAZIONE FORMAZIONE PARTICOLARE AGGIUNTIVA PREPOSTI
+>
+> ## La controprova, su un codice che nessuno aveva citato
+>
+> Il preposto lo avevano già guardato loro. Ho rifatto la verifica su
+> **`DL_RSPP_BASE`**, dove questo documento riporta la distribuzione più ricca —
+> e ogni valore corrisponde a **un titolo distinto del catalogo del gestionale**:
+>
+> | «reale» qui sotto | titolo di catalogo | durata |
+> |---|---|---:|
+> | agg **6** × 76 | `AGGIORNAMENTO R.S.P.P. DATORE DI LAVORO RISCHIO BASSO` | 6 |
+> | agg **10** × 23 | `… RISCHIO MEDIO` | 10 |
+> | agg **14** × 36 | `… RISCHIO ALTO` | 14 |
+> | agg **8** × 26 | `AGGIORNAMENTO DATORE DI LAVORO CHE SVOLGE I COMPITI DI RSPP` | 8 |
+> | iniz **16** × 103 | `R.S.P.P. DATORE DI LAVORO RISCHIO BASSO` | 16 |
+> | iniz **32** × 23 | `… RISCHIO MEDIO` | 32 |
+> | iniz **48** × 33 | `… RISCHIO ALTO` | 48 |
+> | iniz **8** × 4 | `CORSO PER DATORE DI LAVORO … MODULO C` | 8 |
+> | iniz **24** × 3 | `INTEGRAZIONE … MODULO 3 E 4 - RISCHIO ALTO` | 24 |
+>
+> **Nove su nove, zero non spiegati.** Non era una distribuzione di ore erogate:
+> era una distribuzione di **titoli**.
+>
+> ## Cosa questo documento misura davvero
+>
+> **Catalogo contro catalogo**: le 268 voci del gestionale contro i nostri 40
+> codici. Le 13.348 righe non danno 13.348 osservazioni — ne danno **al massimo
+> 268**, replicate.
+>
+> | esito | cosa vale |
 > |---|---|
-> | **divergenza** (l'export dice un numero ≠ catalogo) | **SÌ.** Una riga che porta un valore del regime vecchio **non può** essere stata riscritta a quello nuovo: è genuina |
-> | **conformità** (l'export dice = catalogo) | **NO.** È esattamente ciò che la riscrittura fabbrica, e dalle ore non si distingue da una conformità vera |
+> | **conformità** (export = catalogo) | **niente.** Non è fragile: è **vuota**. Le due curatele hanno lo stesso numero, e questo lo dice due volte |
+> | **divergenza** (export ≠ catalogo) | **vale**, ma dice un'altra cosa da quella che credevo: non «qualcuno ha erogato una durata diversa», ma **«i due cataloghi non concordano su quel corso»** |
 >
-> **Quindi questo documento va letto al contrario di come è scritto:** le sue
-> *anomalie* sono il risultato solido, le sue *conferme* non sono più prove.
+> È l'uso che di fatto ne è stato fatto bene: il carrello combinato a 16 ore è
+> **una voce che il gestionale ha e noi no**. Non era un'osservazione sull'erogato.
 >
-> ## Le tre conseguenze che vanno nominate, non lasciate dedurre
+> ## Le tre conseguenze
 >
-> **1. La riga «100% conforme» della tabella finale è quella da non usare.** Ci
-> stanno dentro `PONTEGGI`, `PREPOSTO` agg, `LAV_GEN`, gli antincendio, i primo
-> soccorso e nove codici attrezzature. Nessuno di quei «conforme» è più una prova.
+> **1. La riga «100% conforme» della tabella finale non dice niente.** Ci stanno
+> `PONTEGGI`, `PREPOSTO` agg, `LAV_GEN`, antincendio, primo soccorso e nove codici
+> attrezzature.
 >
-> **E una decisione ci poggia sopra, in un altro repo:** AppFormazione ha esteso
-> `ponteggi_art136` avendo letto `PONTEGGI` in quella riga («verde, e l'estensione
-> costa una riga»). Quel verde non è più un verde — non è diventato rosso, è
-> diventato **muto**. Va rivisto da chi l'ha preso, e non da qui.
+> **Ma i ponteggi restano in piedi su una gamba nuova**, e non passa da qui: le
+> voci del gestionale che li nominano sono **tre e senza varianti** — 28 ore
+> (`r5`, `r228`), 4 di aggiornamento (`r41`), tutte a 4 anni — quindi tre curatele
+> indipendenti danno 28 e 4. E l'Allegato XXI non è toccato dall'ASR 2025: non
+> c'era nessuna ora nuova con cui riscriverli. *Verificato anche questo su
+> `righe.json`.*
 >
-> **2. La mia lettura del `PREPOSTO` qui sotto è sbagliata.** Scrivevo *«le 8 ore
-> sono il regime precedente all'ASR, le 12 quello nuovo: due regimi sotto un
-> codice, separati nel tempo»*. Francesco dice che le 12 **erano 8**. Non erano due
-> regimi: era un regime solo e una riscrittura. La riga della tabella finale «due
-> regimi nel tempo» cade con lei.
+> **2. La mia lettura del `PREPOSTO` è falsificata.** Scrivevo «le 8 ore sono il
+> regime precedente all'ASR, le 12 quello nuovo: due regimi separati nel tempo».
+> Sono **due voci di catalogo diverse**, e Francesco conferma che quelle aule erano
+> da 8. Cade con lei la riga «due regimi nel tempo» della tabella finale.
 >
-> **3. Quello che sopravvive, e non per fortuna.** Le anomalie che portano valori
-> che **il catalogo non ha** non possono venire da una riscrittura verso il
-> catalogo: `DIRIGENTE` 16 contro 12, `RLS` agg 8 contro 4, `DL_RSPP_BASE` agg 10
-> e 14 contro 6, le seconde durate delle attrezzature (`CARRELLO` 16,
-> `ESCAVATORI` 16, `GRU TORRE` 14), `LAV_SPEC` iniziale. Restano genuine.
+> **3. `DL_RSPP_BASE` e `RLS` «catalogo sotto-specificato» restano veri**, con il
+> significato corretto: il gestionale ha più titoli dove noi abbiamo un codice
+> solo. Era già ciò che il testo diceva — ma lo diceva per la ragione sbagliata.
 >
-> E resta il **controllo negativo sull'RLS**, perché confrontava *proporzioni nel
-> tempo* e non *valori* — un controllo costruito per non dipendere dal numero
-> sopravvive a un numero riscritto.
+> ## Il confine dell'evidenza, scritto una volta per tutte
 >
-> ## Cosa NON fare adesso
+> **Nessuna fonte nei tre repo può dire se un corso da 28 ore sia stato erogato in
+> 28 ore.** L'export dice **sotto quale voce** è stato registrato; solo l'attestato
+> dice cosa è stato fatto. Se un giorno serve saperlo, la strada non è una query —
+> è un **campione di attestati**.
 >
-> **Non rifare misure sulle ore dell'export** finché non si sa quali righe sono
-> state toccate. Non è una lettura da rifare meglio: è una **domanda al
-> gestionale** — quando è stato fatto quell'aggiornamento, su quali corsi, se resta
-> traccia del valore precedente. Va nella stessa lista della colonna `Data`, e
-> **prima** di quella: la `Data` rende incerta una finestra, le ore rendono incerta
-> **ogni misura di durata fatta finora**.
->
-> *Perché questa è peggio della colonna `Data`: di quella era scritto da giorni che
-> non si sapeva cosa contenesse. Delle ore nessuno aveva mai scritto che fosse
-> un'assunzione — e un'assunzione non dichiarata è indistinguibile da un fatto
-> misurato, per chiunque la legga dopo.*
-
-## Metodo, e il suo limite dichiarato
-
-13.348 righe di `ExportExcelCorsiFatti.xlsx`, agganciate ai 40 codici tramite il
-dizionario `corso_alias`, poi raggruppate per *(codice, iniziale/aggiornamento)* e
-confrontate con `ore` o `ore_aggiornamento` del catalogo.
-
-- gli **aggiornamenti** sono distinti dagli iniziali con `is_aggiornamento`, non
-  dal titolo, come richiesto;
-- i **7 parziali** sono esclusi: hanno meno ore per definizione e non sono
-  divergenze;
-- **461 righe** hanno un alias senza codice (i 31 alias non mappati) e restano
-  fuori;
-- **0 titoli dell'export sono fuori dal dizionario.** Il dizionario copre l'export
-  per intero — ed è un risultato che vale la pena dire.
-
-**Il limite è stato tolto l'11 settembre, sera.** Qui c'era scritto che il
-dizionario era *simulato dai file del repo* e non letto dal database, con la
-riserva A10 «i file dicono». La riserva **non serve più**, e la catena si chiude
-in due passaggi verificati:
-
-1. **la mia simulazione = il seed di AppOverall.** Confronto riga per riga fra
-   `ripristina_alias_gestionale.sql` + `mappatura_alias_gestionale.sql` (questo
-   repo) e `supabase/seed/corso_alias.sql` (AppOverall): **268 righe da entrambe
-   le parti, 0 solo di qua, 0 solo di là, 0 diverse**, e somma delle impronte
-   identica (`579750125159`);
-2. **il seed = il database vivo.** Verificato da AppOverall (`f94ff83`) su undici
-   valori indipendenti — 268 righe, somma impronte, 31 ignorati, 98 aggiornamenti,
-   7 parziali, 2 pregresse, 1 evidenza incompleta, 1 con note, 39 codici distinti,
-   e le due somme delle lunghezze.
-
-Quindi il dizionario usato qui **è** quello in produzione. L'analisi che segue è
-verificata, non simulata.
+> *Questo non è un errore di misura: i numeri qui sotto sono giusti e verificati in
+> tre posti. È un errore su **cosa quei numeri misurino**, su una colonna che
+> nessuno aveva pensato di sospettare — e un'assunzione non dichiarata è
+> indistinguibile da un fatto misurato, per chiunque la legga dopo.*
 
 ## Le quattro righe segnalate: tutte e quattro hanno risposta
 
