@@ -24,6 +24,13 @@ Anonimo: nessun nome, nessun codice fiscale, solo date e titoli verbatim.
 > Non si riconta da qui — l'export non è su questa macchina. Chi ce l'ha lo
 > guardi **prima**, non dopo.
 >
+> **AGGIORNAMENTO della sera del 12 settembre: «due aule» è quasi certamente
+> falso.** Misurato su un altro export che *è* su questa macchina
+> (`ExportExcel (3).xls`, dati al 28/10/2024): lo stesso titolo compare su
+> **cinque date e tre società**, non su due date e una. Le due aule cercate sono
+> di **Rittal RCS Cooling Solutions S.r.l.** Dettagli, riserve e ciò che quella
+> misura *non* dice: [`biennale-i-clienti-e-le-date.md`](biennale-i-clienti-e-le-date.md).
+>
 > **2. Le 12 ore hanno una spiegazione alternativa che qui non era considerata.**
 > L'Accordo dichiara durate **minime**, quindi un corso più lungo del minimo può
 > essere semplicemente più lungo — non per forza un corso *diverso*. Segnalato da

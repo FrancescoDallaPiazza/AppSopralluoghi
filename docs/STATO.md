@@ -883,8 +883,41 @@ nessuno dei due è cosmetico:
 diffusa nel tempo: sono due aule»*. Se la 31ª riga è a dicembre 2025, **non sono
 due aule**, e l'argomento cambia.
 
-Non lo posso risolvere: l'export non è su questa macchina. Va ricontato da chi ce
-l'ha, **prima** che «due aule» entri in un ragionamento come premessa.
+Non lo posso risolvere sul file del 2026: quello non è su questa macchina.
+
+**Ma un altro export c'è, e dice che «due aule» non regge.** `ExportExcel (3).xls`
+(*Elenco Visite/Formazioni*, dati dichiarati al **28/10/2024**) porta lo stesso
+titolo su **cinque date e tre società**:
+
+| `Data` | righe | società |
+|---|---:|---|
+| 2023-12-27 | 4 | MAEMA SRL UNIPERSONALE |
+| 2025-11-08 | 1 | Impresa Agromeccanica Aprili Graziano |
+| 2026-03-29 | 9 | MAEMA SRL UNIPERSONALE |
+| **2026-05-20** | 14 | **Rittal RCS Cooling Solutions S.r.l.** |
+| **2026-09-05** | 26 | **Rittal RCS Cooling Solutions S.r.l.** |
+
+**Le due aule cercate sono di Rittal RCS** — è la risposta che serviva a
+Francesco. Sono le stesse del 20.05.2024 e del 05.09.2024 perché cadono **esatte a
+due anni**, stesso giorno e stesso mese, su entrambe.
+
+**E in quell'export `Data` non può essere l'erogazione:** il file dichiara i dati
+al 28/10/2024 e contiene righe datate 2026. Un export non registra come svolto un
+corso che si terrà diciannove mesi dopo. La lettura che torna sui numeri è la
+**scadenza**, cioè erogazione + 2 anni — il ciclo che il titolo chiama «biennale».
+
+Il che tocca `formazioneImport.ts:230`, che mappa `Data` su `data_completamento`:
+il dubbio era già scritto, adesso **ha un caso dietro invece di un sospetto**. Non
+ho cambiato niente — i due export hanno intestazioni diverse e non so se
+condividano la semantica — ma la domanda «cosa misura la colonna `Data`», che
+AppOverall ha già in cima alla lista per l'Area Formazione, adesso porta una prova.
+
+Quattro cose che quella misura **non** dice, in
+[`docs/c1a/biennale-i-clienti-e-le-date.md`](c1a/biennale-i-clienti-e-le-date.md):
+non risolve il 30 contro 31 (altro file), non conferma che siano le righe da 12
+ore (**quell'export non ha nessuna colonna di ore** — verificato), non spiega
+perché i conteggi siano 14 e 26 invece di 5 e 25, e non estende la lettura di
+`Data` agli altri file.
 
 ## Cosa blocca, e chi lo tiene
 
