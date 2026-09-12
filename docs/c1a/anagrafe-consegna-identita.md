@@ -252,14 +252,40 @@ c'è già ed è acceso. È questa:
 > righe su 153: **sbaglia in silenzio**, e la cosa che perde per intero è la sola
 > figura che l'export dichiara una volta sola.
 
-E c'è un **buco di misura**, che consegno come tale. Metà dell'organigramma non
-sta nelle colonne ma nella **mansione**, in testo libero — 160 righe, di cui 148
-solo lì (`ruoli-fuori-dalla-colonna.md`, mig. `068`). **Per quelle 160 righe la
-copertura del codice fiscale non è mai stata misurata.** Il «12 su 153» vale per
-le righe che dichiarano il ruolo in colonna, e **non** si può estendere alle altre:
-sarebbe trasformare un silenzio in una conferma.
+E c'era un **buco di misura**, che consegnavo come tale: metà dell'organigramma
+non sta nelle colonne ma nella **mansione**, in testo libero — 160 righe, di cui
+148 solo lì — e per quelle la copertura del codice fiscale non era mai stata
+misurata. Scrivevo che il «12 su 153» non si poteva estendere, perché sarebbe
+stato trasformare un silenzio in una conferma.
 
-Non posso misurarlo adesso (§6). La query è una riga e va fatta da chi ha il file.
+> ### ⚠ MISURATO la sera del 12 settembre 2026, e non si estende in meglio
+>
+> Sul foglio `Ruoli SSL` di `ExportExcel.xlsx` (24/12/2023, l'unico export di
+> quella famiglia su questa macchina):
+>
+> | | righe | senza CF | |
+> |---|---:|---:|---:|
+> | ruolo nelle **colonne** | 204 | 16 | 7,8% |
+> | ruolo nella **mansione** | 74 | **47** | **63,5%** |
+> | unione | 275 | 63 | |
+>
+> **Otto volte peggio.** Sulla metà *dedotta* dell'organigramma, agganciare solo
+> per codice fiscale perderebbe quasi **due righe su tre**.
+>
+> **Perché sta qui e non solo nel nostro stato:** questo documento è ciò che la
+> migrazione dati leggerà, e fin qui portava soltanto il numero piccolo — dodici
+> su 153, diciannove incarichi. Un numero piccolo lasciato solo accanto a una
+> decisione la fa sembrare facoltativa: regge finché nessuno la discute, e cade al
+> primo che dice «per diciannove righe non vale la pena». Il numero grande va dove
+> la decisione verrà riletta.
+>
+> **Due riserve, e la seconda dice da che parte sbaglia.** È la fotografia del
+> **2023**, non quella del 2026 da cui vengono il 153 e il 160. E il dizionario è
+> stato costruito **sull'export del 2026**: applicato al 2023 riconosce solo le
+> forme che già conosce, quindi **74 è un limite inferiore**. Le forme non
+> riconosciute sono per costruzione le più irregolari, e non c'è ragione di
+> credere che chi scrive il ruolo in modo irregolare compili meglio il codice
+> fiscale — **quindi il 63,5% è probabilmente ottimista**, non solo incerto.
 
 ---
 

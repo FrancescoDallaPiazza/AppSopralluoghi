@@ -129,6 +129,13 @@ lasciata fuori *sapendo perché*, non per prudenza generica.
 
 ## Quello che resta vero delle trappole già note
 
+> **Aggiunto il 12 settembre 2026: questo numero è il piccolo dei due.** La
+> copertura del CF sulle righe col ruolo nella **mansione** è molto peggiore —
+> **47 su 74, il 63,5%**, contro il 7,8% delle colonne (misurato sull'export del
+> 2023, `biennale-i-clienti-e-le-date.md` per il contesto, dettaglio in
+> `STATO.md`). Chi cita il «12 su 153» per decidere se accendere il ripiego
+> cognome+nome sta guardando la metà buona del problema.
+
 - **12 righe senza codice fiscale** su 153 con almeno un ruolo (colonna 4, `C.F.`,
   valorizzata su 3.269 delle 3.501): agganciando solo per CF si perdono 19
   incarichi in silenzio, e il **100%** dell'unica riga
