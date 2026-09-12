@@ -68,7 +68,11 @@ argomento del documento — *«il `- BIENNALE` comincia a maggio 2024 e finisce 
 dicembre 2025, cioè scavalca l'Accordo in entrambi i versi: è un prodotto suo»* —
 perché scavalcare l'Accordo partendo dal 2021 è un'altra affermazione.
 
-## 4. Cosa questa misura NON dice, e sono quattro cose
+## 4. Cosa questa misura NON dice: erano quattro, ne restano tre
+
+*Erano quattro quando ho chiuso la misura; la **b** è caduta la sera stessa. Resta
+numerata come `b` e barrata invece che tolta, perché una riserva che sparisce
+lascia chi rilegge a chiedersi se sia caduta o se sia stata dimenticata.*
 
 **a) Non risolve il 30 contro 31.** Quel conteggio è sull'export del 2026, questo
 è un altro file: 54 righe qui non si confrontano con 31 là.
