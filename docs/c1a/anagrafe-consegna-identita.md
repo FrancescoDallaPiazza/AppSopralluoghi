@@ -100,6 +100,33 @@ confine perché è una scelta di merito:
 > «Meglio un doppione che si vede di due persone fuse per sbaglio, che non si vede
 > più.»
 
+### E qui la chiave è **garantita**, al di là del confine sarà una stringa
+
+Da questa parte `persona.import_key` non è una convenzione: è protetta da un
+indice unique parziale (`uq_persona_import`, mig. `055` — `on persona(import_key)
+where import_key is not null`). Se un import prova a scrivere due volte la stessa
+chiave, **il database rifiuta**. È successo davvero il 9 settembre, ed è così che
+il difetto della paginazione è diventato visibile invece di produrre doppioni in
+silenzio.
+
+**Dall'altra parte quella garanzia non c'è per costruzione.** Là l'identità della
+persona è il codice fiscale (unique globale), e la chiave che arriva da qui
+atterra su `rapporto_lavoro.import_key` — dove **non è un vincolo e non è un
+indice: è una stringa**. Ed è esattamente quella stringa a tenere separate le
+persone **senza** codice fiscale, che di là non hanno nessuna identità propria.
+
+> **Il che cambia cosa protegge chi.** Qui, se un import sbaglia a comporre la
+> chiave, la scrittura fallisce e qualcuno se ne accorge. Là, se un import la
+> compone male, **due persone diventano una e nessun vincolo protesta**. La
+> garanzia non attraversa il confine insieme al dato: si ferma alla frontiera.
+>
+> E il caso non è raro — è il **63,5%** del §5: sulla metà *dedotta*
+> dell'organigramma il codice fiscale manca in quasi due righe su tre, e per
+> quelle la stringa è l'unica cosa che c'è.
+
+*(Registrato anche di là, nella loro `0015`: i due commenti si nominano a vicenda,
+e l'unico controllo che ha senso su questa migrazione è che continuino a farlo.)*
+
 ---
 
 ## 3. Le quattro cose che la regola **non** dice, e che una migrazione darebbe per scontate
