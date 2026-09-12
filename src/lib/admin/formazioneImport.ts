@@ -541,6 +541,17 @@ export function riconciliaUnita(
     // rivedere. Ma 276 voci false in una lista "da guardare" insegnano a non
     // guardarla, che e' il modo in cui un avviso diventa peggio del suo silenzio.
     //
+    // E DAL 12 SETTEMBRE C'E' UN SECONDO DIFETTO SULLA STESSA RIGA, DI SEGNO
+    // OPPOSTO. Francesco ha dichiarato che il gestionale ha riscritto le ore dello
+    // storico con quelle nuove dell'ASR 2025. Una riga riscritta porta ORA IL
+    // VALORE DEL CATALOGO, quindi `r.ore < dovute` e' falso e la riga NON viene
+    // segnalata - anche quando l'erogazione vera era piu' corta.
+    //
+    // I due difetti si sommano e peggiorano lo stesso elenco da capi opposti:
+    //   - senza finestra temporale ..... 276 righe genuine segnalate a torto;
+    //   - con le ore riscritte ......... le righe davvero corte non segnalate.
+    // Rumore da una parte, silenzio dall'altra, sulla stessa lista.
+    //
     // NON SI RIPARA QUI E ADESSO perche' il dato per farlo non c'e': servirebbe
     // la validita' temporale sul catalogo (scheda 12), che oggi non abbiamo -
     // AppOverall la sta mettendo nella sua `0014`. QUANDO ARRIVA, E' QUESTA LA

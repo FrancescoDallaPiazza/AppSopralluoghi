@@ -4,6 +4,73 @@ Misura dell'11 settembre 2026. Terza gamba del riscontro sul catalogo: il sito
 dice cosa l'accordo **prevede**, il catalogo cosa ci **aspettiamo**, l'export cosa
 è **stato erogato**. **Sola lettura.**
 
+> # ⚠ LA TERZA GAMBA NON REGGE COME FORMULATA — 12 settembre 2026
+>
+> **Il gestionale ha riscritto le ore dello storico.** Parole di Francesco,
+> guardando le due aule del preposto del 2024: *«erano tutte formazioni da 8 ore
+> per completo e 6 per agg. È scritto 12 perché il gestionale ha aggiornato
+> d'imperio tutte le formazioni fatte con le nuove ore dell'ASR25»*.
+>
+> Quindi **la colonna ore dell'export non dice cosa è stato erogato**: per una
+> parte delle righe dice cosa il catalogo assegna **oggi**, scritto all'indietro
+> sullo storico. La premessa in testa a questo documento era un'assunzione che
+> nessuno aveva dichiarato — né qui, né negli altri due repo.
+>
+> ## Cosa questo fa alle conclusioni qui sotto: le INVERTE
+>
+> Il metodo di questo documento è *confrontare le ore dell'export con quelle del
+> catalogo*. Se una parte dello storico è stata riscritta **con le ore del
+> catalogo**, allora:
+>
+> | esito | vale ancora? |
+> |---|---|
+> | **divergenza** (l'export dice un numero ≠ catalogo) | **SÌ.** Una riga che porta un valore del regime vecchio **non può** essere stata riscritta a quello nuovo: è genuina |
+> | **conformità** (l'export dice = catalogo) | **NO.** È esattamente ciò che la riscrittura fabbrica, e dalle ore non si distingue da una conformità vera |
+>
+> **Quindi questo documento va letto al contrario di come è scritto:** le sue
+> *anomalie* sono il risultato solido, le sue *conferme* non sono più prove.
+>
+> ## Le tre conseguenze che vanno nominate, non lasciate dedurre
+>
+> **1. La riga «100% conforme» della tabella finale è quella da non usare.** Ci
+> stanno dentro `PONTEGGI`, `PREPOSTO` agg, `LAV_GEN`, gli antincendio, i primo
+> soccorso e nove codici attrezzature. Nessuno di quei «conforme» è più una prova.
+>
+> **E una decisione ci poggia sopra, in un altro repo:** AppFormazione ha esteso
+> `ponteggi_art136` avendo letto `PONTEGGI` in quella riga («verde, e l'estensione
+> costa una riga»). Quel verde non è più un verde — non è diventato rosso, è
+> diventato **muto**. Va rivisto da chi l'ha preso, e non da qui.
+>
+> **2. La mia lettura del `PREPOSTO` qui sotto è sbagliata.** Scrivevo *«le 8 ore
+> sono il regime precedente all'ASR, le 12 quello nuovo: due regimi sotto un
+> codice, separati nel tempo»*. Francesco dice che le 12 **erano 8**. Non erano due
+> regimi: era un regime solo e una riscrittura. La riga della tabella finale «due
+> regimi nel tempo» cade con lei.
+>
+> **3. Quello che sopravvive, e non per fortuna.** Le anomalie che portano valori
+> che **il catalogo non ha** non possono venire da una riscrittura verso il
+> catalogo: `DIRIGENTE` 16 contro 12, `RLS` agg 8 contro 4, `DL_RSPP_BASE` agg 10
+> e 14 contro 6, le seconde durate delle attrezzature (`CARRELLO` 16,
+> `ESCAVATORI` 16, `GRU TORRE` 14), `LAV_SPEC` iniziale. Restano genuine.
+>
+> E resta il **controllo negativo sull'RLS**, perché confrontava *proporzioni nel
+> tempo* e non *valori* — un controllo costruito per non dipendere dal numero
+> sopravvive a un numero riscritto.
+>
+> ## Cosa NON fare adesso
+>
+> **Non rifare misure sulle ore dell'export** finché non si sa quali righe sono
+> state toccate. Non è una lettura da rifare meglio: è una **domanda al
+> gestionale** — quando è stato fatto quell'aggiornamento, su quali corsi, se resta
+> traccia del valore precedente. Va nella stessa lista della colonna `Data`, e
+> **prima** di quella: la `Data` rende incerta una finestra, le ore rendono incerta
+> **ogni misura di durata fatta finora**.
+>
+> *Perché questa è peggio della colonna `Data`: di quella era scritto da giorni che
+> non si sapeva cosa contenesse. Delle ore nessuno aveva mai scritto che fosse
+> un'assunzione — e un'assunzione non dichiarata è indistinguibile da un fatto
+> misurato, per chiunque la legga dopo.*
+
 ## Metodo, e il suo limite dichiarato
 
 13.348 righe di `ExportExcelCorsiFatti.xlsx`, agganciate ai 40 codici tramite il

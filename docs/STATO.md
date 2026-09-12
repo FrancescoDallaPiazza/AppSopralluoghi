@@ -957,6 +957,72 @@ le due fonti. Due vie indipendenti allo stesso due — le date osservate e la re
 a catalogo — e la lettura «`Data` = scadenza» non poggia più su una sola
 coincidenza.
 
+## Il gestionale ha riscritto le ore dello storico (12 settembre, notte)
+
+**Detto da Francesco**, guardando le due aule del preposto del 2024: «erano tutte
+formazioni da 8 ore per completo e 6 per agg. È scritto 12 perché il gestionale ha
+aggiornato d'imperio tutte le formazioni fatte con le nuove ore dell'ASR25».
+
+**La colonna ore dell'export non dice cosa è stato erogato.** Per una parte delle
+righe dice cosa il catalogo assegna *oggi*, scritto all'indietro sullo storico.
+
+### Perché è peggio della colonna `Data`
+
+Della `Data` era scritto da giorni che non si sapeva cosa contenesse. **Delle ore
+nessuno aveva mai scritto che fosse un'assunzione** — in nessuno dei tre repo — e
+un'assunzione non dichiarata è indistinguibile da un fatto misurato per chiunque la
+legga dopo. La `Data` rende incerta una finestra; le ore rendono incerta **ogni
+misura di durata fatta finora**.
+
+### Cosa fa a `durate-come-controllo.md`: lo inverte
+
+Quel documento confronta le ore dell'export con quelle del catalogo. Se una parte
+dello storico è stata riscritta **con le ore del catalogo**, allora:
+
+| esito | vale ancora? |
+|---|---|
+| **divergenza** — l'export dice ≠ catalogo | **sì**: una riga col valore del regime vecchio non può essere stata riscritta a quello nuovo |
+| **conformità** — l'export dice = catalogo | **no**: è ciò che la riscrittura fabbrica, e dalle ore non si distingue |
+
+**Le sue anomalie sono il risultato solido; le sue conferme non sono più prove.**
+
+**E una decisione di un'altra corsia poggia sulla riga sbagliata.** AppFormazione
+ha esteso `ponteggi_art136` avendo letto `PONTEGGI` nella riga **«100% conforme»**.
+Quel verde non è diventato rosso: è diventato **muto**. Va rivisto da chi l'ha
+preso — l'ho segnalato, non l'ho toccato.
+
+**E una mia lettura è falsificata.** Avevo scritto che `PREPOSTO` ha «due regimi
+separati nel tempo, 8 ore prima dell'ASR e 12 dopo». Le 12 **erano 8**: un regime
+solo e una riscrittura.
+
+*Sopravvive ciò che porta valori che il catalogo non ha* — `DIRIGENTE` 16 contro
+12, `RLS` agg 8 contro 4, `DL_RSPP_BASE` agg 10 e 14 contro 6, le seconde durate
+delle attrezzature — e il **controllo negativo sull'RLS**, perché confrontava
+*proporzioni nel tempo* e non valori. Un controllo costruito per non dipendere dal
+numero sopravvive a un numero riscritto.
+
+### E due punti del nostro codice che consumano quelle ore
+
+**`componiSpezzoni` (`formazione.ts`) promette una cosa che ora non può
+garantire.** Il suo commento dice: «l'errore possibile è un falso ROSSO, mai un
+falso verde». Vale finché `f.ore` sono le ore **erogate**: su una riga riscritta
+la somma conta ore che nessuno ha fatto, e uno spezzone può superare la soglia
+senza che il corso sia stato completato. **Falso verde**, cioè esattamente ciò che
+quella funzione dichiara di non poter produrre. Oggi non morde perché `formazione`
+è a **zero righe** — non è una difesa, è una scadenza: morde al primo import.
+
+**`formazioneImport.ts:527` ha ora due difetti di segno opposto sulla stessa
+riga.** Senza finestra temporale segnala a torto 276 righe genuine; con le ore
+riscritte **non** segnala quelle davvero corte, perché ormai combaciano col
+catalogo. Rumore da una parte, silenzio dall'altra, sullo stesso elenco.
+
+### Cosa non si fa
+
+**Non si rifanno misure sulle ore dell'export** finché non si sa quali righe sono
+state toccate. Non è una lettura da rifare meglio: è una **domanda al gestionale** —
+quando è stato fatto quell'aggiornamento, su quali corsi, se resta traccia del
+valore precedente. Prima della domanda sulla colonna `Data`.
+
 ## Cosa blocca, e chi lo tiene
 
 - **I clienti NON sono da rifare: ci sono già.** Misurato il 9 settembre

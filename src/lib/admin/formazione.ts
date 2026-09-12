@@ -627,6 +627,23 @@ function scegliFormazione(
 // E' conservativo di proposito, l'errore possibile e' un falso ROSSO (si chiede
 // una formazione gia' fatta), mai un falso verde.
 //
+// E QUELLA PROMESSA HA UNA CONDIZIONE CHE NON SAPEVAMO DI FARE, scoperta il 12
+// settembre 2026: vale finche' `f.ore` dice le ore EROGATE. Francesco ha
+// dichiarato che il gestionale ha riscritto d'imperio le ore dello storico con
+// quelle nuove dell'ASR 2025 - le due aule del preposto del 2024 risultano da 12
+// ore ed erano da 8. Su una riga cosi', la somma qui sopra conta ore che nessuno
+// ha fatto, e uno spezzone puo' superare la soglia senza che il corso sia stato
+// completato: FALSO VERDE, cioe' esattamente cio' che questa funzione dichiara di
+// non poter produrre.
+//
+// Non si ripara qui e non si ripara adesso: non si sa quali righe siano state
+// toccate, e non e' una cosa che si legge dal dato - e' una domanda al gestionale
+// (quando, su quali corsi, se resta traccia del valore precedente). Sta in
+// docs/c1a/durate-come-controllo.md con il resto delle conseguenze.
+//
+// Oggi non morde su questo repo per una ragione che NON e' una difesa: `formazione`
+// e' a zero righe. Mordera' al primo import.
+//
 // LIMITE NOTO: la somma non ha finestra temporale, prende tutti gli spezzoni del
 // gruppo. Se una persona ha 6h nel 2018 e 6h nel 2024 senza aver mai chiuso il
 // corso, i due pezzi risultano un obbligo assolto nel 2024. Nei dati veri gli
