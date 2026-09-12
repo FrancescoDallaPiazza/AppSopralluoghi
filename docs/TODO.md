@@ -7,18 +7,27 @@ modello dati, workflow di rilascio) vedi `PROGETTO.md`.
 Convenzione: una riga = una cosa da fare. Si fa, si barra (`- [x]`), e si
 sposta in fondo nella sezione "Fatti di recente".
 
-> **Programma dei lavori.** Testo canonico: `AppFormazione/docs/PROGRAMMA.md`.
+> **Programma dei lavori.** Testo canonico: **`AppOverall/docs/PROGRAMMA.md`**
+> — spostato lì il 9 settembre 2026; in `AppFormazione` ne resta un puntatore.
 > Pagina condivisibile (sua resa):
 > https://claude.ai/code/artifact/8116d53d-6944-4ce0-a9c0-29a1e072d763
 > Qui c'è un puntatore, non una copia: le correzioni si fanno là.
 > Questo repo esegue la **Fase 0 — tenere a galla la barca**.
-> *Attende dall'altra corsia:* il raccordo ATECO a monte, prima di riempire
-> l'ATECO mancante dalle visure (non prima dell'import dei due Excel, che
-> portano codici 2007). *Le deve:* niente.
+> *Attende dall'altra corsia:* **niente**. Il raccordo ATECO a monte — che era
+> l'unica attesa — è stato consegnato il 9 settembre nella libreria
+> (`formazione-81-utils-src`, `0237eaf`) e `ateco.ts` è già stato rigenerato
+> (`3a68c13`). *Le deve:* **niente di aperto**; la consegna dell'anagrafe alla
+> migrazione dati è stata fatta il 12 settembre
+> (`docs/c1a/anagrafe-consegna-identita.md`).
 >
 > Lo stato di questa corsia sta in `docs/STATO.md`, il diario per giornata in
-> `docs/diario/`. Per sapere cosa ha fatto l'altra corsia si legge il suo repo,
-> non si chiede: `git -C ../AppFormazione log --oneline --since=...`.
+> `docs/diario/`. Per sapere cosa ha fatto un'altra corsia si legge il suo repo,
+> non si chiede — ma **prima si guarda quando quella copia è arrivata**: il 12
+> settembre questa macchina aveva tre repo indietro di due giorni, e
+> `git log` avrebbe risposto il falso senza dare errore.
+>
+>     git -C ../AppOverall reflog -3 --date=iso
+>     git -C ../AppOverall log --oneline --since=...
 
 ---
 
