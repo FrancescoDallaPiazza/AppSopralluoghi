@@ -1,15 +1,31 @@
 # Stato della Fase 0 — questa corsia
 
-**Come si legge.** Il piano dei lavori sta in un posto solo
-(`AppFormazione/docs/PROGRAMMA.md`, reso su
-https://claude.ai/code/artifact/8116d53d-6944-4ce0-a9c0-29a1e072d763): quello dice
+**Come si legge.** Il piano dei lavori sta in un posto solo:
+**`AppOverall/docs/PROGRAMMA.md`** dal 9 settembre — in `AppFormazione` ne resta un
+puntatore, non una copia — reso su
+https://claude.ai/code/artifact/8116d53d-6944-4ce0-a9c0-29a1e072d763. Quello dice
 **cosa** va fatto. Questo file dice **a che punto è** ciò che tocca a questo repo,
 e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiude.
 
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **10 settembre 2026**.
+Ultimo aggiornamento: **12 settembre 2026**.
+
+**Una cosa sul come, prima delle caselle, perche' e' il motivo per cui questo
+aggiornamento e' tardivo.** Il lavoro dell'11 settembre e' stato fatto su
+un'altra macchina ed e' arrivato qui solo il **12 alle 16:56**, con un `pull`. Il
+file era fermo all'11 alle 08:19 (`7d0b322`) e dopo di quello c'erano **19
+commit** — la `064`, la `065`, la `066`, la `067`, la `068`, il progetto
+dell'import delle nomine, i due export delle visite. Chi l'ha aperto il 12
+leggeva «10 settembre».
+
+Il costo non e' teorico ed e' stato pagato da qualcun altro: per sapere a che
+punto fosse questa corsia, AppOverall ha dovuto ricostruirla da 19 messaggi di
+commit e dai file in `c1a/`, mentre il file che esiste apposta diceva altro. La
+regola resta quella scritta in testa — si aggiorna **a chiusura di ogni task**,
+non a fine giornata — e nemmeno «a fine giornata» sarebbe bastato qui, perche' la
+giornata e' finita su una macchina e il file si legge su un'altra.
 
 ---
 
@@ -28,6 +44,15 @@ Ultimo aggiornamento: **10 settembre 2026**.
 | L'ATECO mancante sul 57% delle attive | aperto, **non aspetta più**: il raccordo è a monte | `0237eaf` (nella libreria) |
 | Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
 | `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
+| I 268 alias del gestionale, identici in tre posti | chiuso | `7d0b322` |
+| `corso_alias.testo_gestionale`: il commento diceva «verbatim», e non lo è | chiuso (**064**, solo commenti), 268 testi d'origine conservati | `ede5112` |
+| ATECO: **tre** stati (`noto` · `ignoto` · `incerto`), con la cella d'origine accanto al derivato | chiuso (**065**) | `3c8b84e` |
+| L'ATECO mancante diventa un'azione che si chiude da sola | chiuso (**066**), chiave `cliente-ateco:<cliente_id>` | `81f6903` |
+| Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | chiuso (**067**, solo testo) | `f9f7f80` |
+| Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | chiuso (**068**, schema) — l'import **resta fermo** | `8702e8a` |
+| Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
+| **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
+| Import dei ruoli e delle nomine | **fermo**, per decisione di Francesco — non per ostacolo tecnico | — |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
@@ -453,6 +478,152 @@ su 480** hanno almeno un ruolo registrato, e nessun incarico è successivo al
 2022. Dieci RLS su 480 aziende non è la realtà: è quello che qualcuno ha scritto
 nel gestionale. Non è una raccolta fatta, è un punto di partenza.
 
+## L'11 settembre, in 19 commit: cinque migrazioni e due domande chiuse
+
+Tutto in **sola lettura sui dati**: le migrazioni di quel giorno aggiungono una
+colonna e per il resto scrivono *commenti*. Nessuna riga di produzione toccata.
+
+### L'ATECO: da «manca sul 57%» a tre stati distinti
+
+| | |
+|---|---|
+| **Cosa abbiamo** (`5595601`) | **262 divisioni** nell'export, **tutte** risolvono contro la libreria, e il livello di rischio e' **derivato** — non trascritto |
+| **I cinque mancanti** (`154cbcf`) | non sono cinque codici persi: sono **cinque descrizioni senza codice**, e il sesto caso e' un **CAP** finito nella colonna sbagliata |
+| **Le celle multi-codice** (`56ae424`) | quando la cella porta piu' di un codice, la scelta decide anche il **livello**: due clienti, **trenta lavoratori** |
+| **I tre stati** (`3c8b84e`, mig. **065**) | `noto` · `ignoto` · **`incerto`** |
+
+Il terzo stato e' il punto, ed e' una cosa che questo repo non sapeva dire. La
+derivazione (`risolviAteco` prende il primo gruppo di 1-2 cifre) e' giusta **261
+volte su 262**, e la cella d'origine non veniva conservata: della 262esima non
+restava niente con cui accorgersene. In archivio un `37` derivato male sta scritto
+**identico** a ogni divisione giusta — lo distingue solo il confronto con la cella.
+
+Quindi `cliente.ateco_origine` non e' un campo di comodo: **e' cio' che rende
+esistente lo stato `incerto`**. Senza, il difetto non si ripara — si sposta.
+
+E l'ATECO che manca adesso **si chiede da solo** (`81f6903`, mig. **066**): diventa
+un'azione con chiave `cliente-ateco:<cliente_id>`, nella stessa colonna
+`azione.origine_requisito_key` gia' riconciliata, **perche' deve chiudersi da
+sola** quando la cella arriva — senza che nessuno la spunti. Il prefisso serve a
+distinguerla dall'altra forma senza doverci provare: davanti ai due punti c'e' un
+uuid di *persona* nella prima, un id di *cliente* nella seconda.
+
+### Il dizionario: il commento diceva «verbatim», e non lo era
+
+`corso_alias.testo_gestionale` era documentato dalla `055` come «la stringa esatta
+esportata». **Falso su 211 righe su 268** (`a997859`): cio' che ci finisce dentro
+passa da `normalizzaTestoGestionale` — maiuscolo, spazi collassati, niente spazi
+ai bordi. E' una **chiave normalizzata per costruzione**.
+
+La `064` (`ede5112`) corregge il commento e **non tocca una riga di dati**, e i 268
+testi d'origine sono conservati in `docs/c1a/alias-testi-origine.json`. La ragione
+per cui vale un commit: quel commento aveva gia' fatto sbagliare qualcuno, e una
+descrizione di schema falsa costa piu' di una colonna mancante — perche' chi la
+legge non ha modo di sospettarla.
+
+### Le nomine: progettate, e ferme
+
+Il progetto dell'import (`7820c90`) parte da un requisito che non e' tecnico: **il
+sistema deve poter dire di non aver capito**. E la misura che lo giustifica
+(`8dab00a`) e' la piu' scomoda della giornata:
+
+| | |
+|---|---:|
+| righe con un ruolo nelle **colonne** | 153 |
+| righe con un ruolo nella **mansione**, in testo libero | 160 |
+| in entrambi | 12 |
+| **unione** | **301** |
+
+**Le colonne dichiarano il 51% dell'organigramma.** Le altre **148 righe** hanno
+il ruolo scritto dentro un campo libero, in **29 forme diverse** su 108 societa'.
+Una nomina letta dalla colonna e' *dichiarata* e porta una data d'incarico; una
+letta dalla mansione e' *dedotta* e non ne ha nessuna — e la `068` (`8702e8a`)
+scrive la provenienza accanto al dato **perche' senza di essa la seconda non e'
+piu' rivedibile**.
+
+Sulla `067` (`f9f7f80`) c'e' anche una correzione mia: avevo scritto il contrario
+del vero sull'art. 16 (`2b51eef`). L'articolo **non nomina mai la formazione** —
+l'obbligo del delegato non nasce li', e la `053` ci arrivava per convergenza, non
+perche' la delega lo prevedesse. La riga parla della delega **piena**.
+
+### Le visite: le due misure erano a cinque settimane di distanza
+
+E' la sequenza in cui mi sono smentito due volte, ed e' bene che si legga in
+quest'ordine (`bfdbb6b` → `f2b4353` → `be703ec` → `348b6da`):
+
+1. le nove date che non tornavano **non sono richiami anticipati del medico**.
+   Sette sono aritmetica su una **fotografia piu' vecchia** — lo scadenzario
+   dichiara i dati al 06/08, il foglio al 09/09;
+2. la fonte che lo dimostra e' l'export delle visite **fatte**, che esisteva e che
+   non avevo cercato. Con lo storico invece dell'ultima esecuzione, la scadenza e'
+   derivabile **791 volte su 793**;
+3. quindi «riscaricare non allinea» era **troppo forte**, e i due file nuovi hanno
+   un nome: `ExportExcelVisiteFatte.xlsx` e `ExportExcelVisiteScadute.xlsx`.
+
+`PIANIFICATA` non marca un appuntamento: marca le **dieci** righe che non derivano
+da nessuna esecuzione — persone mai visitate, tutte della stessa societa'. E'
+l'unico posto dove una scadenza esiste **senza un fatto dietro**.
+
+### E due misure che dicono «oggi non morde»
+
+- **Il modulo di settore** (`f1184f6`): oggi non morde su **nessuno**, ma mordera'
+  al primo import su **quattro**.
+- **Spazi confinati** (`b0f630c`): **zero** aggiornamenti erogati, e il catalogo ne
+  dichiara **due** durate. Quattro aggiornamenti per quattro platee sotto un codice
+  solo — e' la forma di «manca la separazione dei corsi», non quella di un obbligo
+  pronto.
+- **Le 31 righe** (`40ca5bc`) sono **quattro aziende**, otto clienti stanno sopra i
+  50 dipendenti, e i due titoli sono a zero.
+
+## La consegna dell'anagrafe alla migrazione dati (12 settembre)
+
+Chiesta da AppOverall, **sola lettura**, in
+`docs/c1a/anagrafe-consegna-identita.md`. Blocca il loro passo, perche'
+`sorveglianza.persona_id` deve puntare a persone che nel repo unico non esistono
+ancora, e una migrazione dati **non puo' inventarsi una chiave** dove la fonte non
+ce l'ha.
+
+**Cosa attraversa:** 619 clienti, 619 sedi, 3.419 persone — queste ultime tutte
+marcate `anag:`.
+
+**La regola, in una riga:** l'identita' di una persona e' la coppia **(cliente,
+codice fiscale)**; senza codice fiscale e' **(cliente, cognome+nome)**, e solo
+finche' quel nome e' univoco **sia nell'archivio sia nel file**; senza nemmeno il
+nome la chiave non esiste e la riga resta `riga:N`, cioe' nuova ogni volta.
+
+**E il fatto che conta piu' della regola:** `import_key` contiene
+`cliente.id`, che e' un **uuid generato da questo database**. Se di la' i 619
+clienti rinascono con uuid nuovi, tutte e 3.419 le chiavi puntano a un id che non
+esiste — e **non danno errore**: restano stringhe valide che non agganciano
+niente, e il secondo import ricrea tutto. O attraversano gli uuid, o attraversa
+una tabella di corrispondenza.
+
+Altre tre cose consegnate come **avvertenze**, non come dati:
+
+- **il CF dentro la chiave non e' validato.** `cfPulisci` ripulisce e basta;
+  `valido()` esiste, e' importata, e serve solo all'avviso a schermo. Corretto per
+  l'idempotenza, **non** una garanzia di qualita' — e le visite sono indicizzate
+  **per CF**, quindi una chiave con dentro una stringa che CF non e' aggancia la
+  persona e non agganciera' mai la sua visita;
+- **i clienti attraversano senza chiave.** `import_key` sta su `persona`,
+  `formazione` e `adempimento`, **non** su `cliente`: dei 619 non resta scritto da
+  dove vengono. Va deciso **prima** che attraversino, perche' dopo l'id sara' gia'
+  cambiato;
+- **le 619 sedi sono un riflesso, non un secondo insieme**: la `054` ne crea una
+  per cliente copiando la sede legale, e `persona.sede_id` oggi vuol dire «il
+  cliente» detto in un altro modo. Il sito produttivo non e' mai stato importato.
+
+**E due numeri che ho lasciato non tornanti invece di aggiustarli** — 235 contro
+233 righe senza CF (227 + 6 = 233, e le 2 di differenza *sembrano* le righe
+scartate senza nome, ma il file non c'e' piu' per confermarlo), e 3.420 scritte
+contro **3.419** contate il giorno dopo. Per la migrazione fa fede il 3.419, che
+e' una misura sul database.
+
+**Due cose da misurare prima di migrare, e non le ho potute fare io**: quante
+delle 3.419 chiavi portano un CF non valido (serve il database, qui non c'e'
+`.env.local`), e quante delle 160 righe col ruolo nella mansione hanno il CF
+(serve il file, che su questa macchina non c'e'). Le query stanno nel documento.
+
 ## Cosa blocca, e chi lo tiene
 
 - **I clienti NON sono da rifare: ci sono già.** Misurato il 9 settembre
@@ -548,7 +719,13 @@ questo** dal 9 settembre (`../formazione-81-utils-src`, portata giù da
 AppFormazione per scrivere `736699e`): lo script la trova da solo, `node
 scripts/genera-ateco.mjs --check` gira senza argomenti. Se un giorno non c'è, lo
 script lo dice e ricorda il comando per clonarla.
-- **Cosa dobbiamo all'altra corsia:** niente.
+- **Cosa dobbiamo all'altra corsia:** niente di **aperto**. La consegna
+  dell'anagrafe, che era l'unica cosa che bloccava il loro passo, e' stata fatta
+  il 12 settembre — `docs/c1a/anagrafe-consegna-identita.md`. Quel che resta di la'
+  e' una **decisione**, non un lavoro di qui: se i 619 clienti attraversano il
+  confine con gli **stessi uuid** o con una **tabella di corrispondenza**. Le
+  chiavi delle 3.419 persone valgono nel primo caso alla lettera, nel secondo solo
+  se vengono riscritte in migrazione.
 
 ## Come sapere cosa ha fatto l'altra corsia
 
@@ -563,3 +740,18 @@ cat ../AppFormazione/docs/diario/AAAA-MM-GG.md
 Vale nei due versi. Il giorno in cui i repo non fossero più sulla stessa macchina,
 il punto d'incontro diventa il repo neutro — o, finché non esiste, la pagina
 condivisibile del programma.
+
+**E una riga aggiunta il 12 settembre, pagata.** «Sullo stesso disco» non vuol
+dire «aggiornati»: il 12 questa macchina aveva tre repo indietro di due giorni, e
+il comando qui sopra avrebbe risposto con sicurezza **il falso** — non un errore,
+un elenco di commit vero e incompleto. Prima di leggere lo stato di una corsia si
+guarda **quando quella copia è arrivata**:
+
+```
+git reflog -3 --date=iso                      # quando ho fatto l'ultimo pull
+git log --oneline origin/main..HEAD           # cosa ho e loro no
+git fetch && git log --oneline HEAD..origin/main   # cosa c'e' e io non ho
+```
+
+La forma dell'errore è quella di sempre in questo repo: **una risposta plausibile
+è peggio di una mancante.**
