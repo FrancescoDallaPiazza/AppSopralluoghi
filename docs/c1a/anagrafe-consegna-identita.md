@@ -100,32 +100,51 @@ confine perché è una scelta di merito:
 > «Meglio un doppione che si vede di due persone fuse per sbaglio, che non si vede
 > più.»
 
-### E qui la chiave è **garantita**, al di là del confine sarà una stringa
+### La garanzia attraversa, e **cambia oggetto** — ed è quello che resta scoperto a contare
 
-Da questa parte `persona.import_key` non è una convenzione: è protetta da un
-indice unique parziale (`uq_persona_import`, mig. `055` — `on persona(import_key)
-where import_key is not null`). Se un import prova a scrivere due volte la stessa
-chiave, **il database rifiuta**. È successo davvero il 9 settembre, ed è così che
+> **Correzione del 12 settembre, tarda sera.** Qui era scritto che la garanzia
+> sulla chiave *«si ferma alla frontiera»* — che di qua fosse un vincolo e di là
+> una convenzione. **È falso**, e l'avevo costruito su un'affermazione ricevuta e
+> non verificata. Verificata poi sulle fonti di AppOverall, che stanno sullo
+> stesso disco: `alter table rapporto_lavoro add column import_key text unique`
+> (`0013`). **La chiave è garantita da tutte e due le parti.**
+
+Da questa parte `persona.import_key` è protetta da un indice unique parziale
+(`uq_persona_import`, mig. `055`). Se un import prova a scrivere due volte la
+stessa chiave, **il database rifiuta** — è successo il 9 settembre, ed è così che
 il difetto della paginazione è diventato visibile invece di produrre doppioni in
-silenzio.
+silenzio. Al di là del confine `rapporto_lavoro.import_key` è `unique` allo stesso
+modo: un import che compone male la chiave **fallisce rumorosamente** anche lì.
 
-**Dall'altra parte quella garanzia non c'è per costruzione.** Là l'identità della
-persona è il codice fiscale (unique globale), e la chiave che arriva da qui
-atterra su `rapporto_lavoro.import_key` — dove **non è un vincolo e non è un
-indice: è una stringa**. Ed è esattamente quella stringa a tenere separate le
-persone **senza** codice fiscale, che di là non hanno nessuna identità propria.
+**L'asimmetria vera sta un passo più in là, e si vede solo mettendo i due vincoli
+uno accanto all'altro:**
 
-> **Il che cambia cosa protegge chi.** Qui, se un import sbaglia a comporre la
-> chiave, la scrittura fallisce e qualcuno se ne accorge. Là, se un import la
-> compone male, **due persone diventano una e nessun vincolo protesta**. La
-> garanzia non attraversa il confine insieme al dato: si ferma alla frontiera.
+| | l'unique su `import_key` protegge |
+|---|---|
+| qui | **la persona** — `anag:<cliente>:<cf o nome>` è la sua identità |
+| di là | **il rapporto** — la persona è identificata dal codice fiscale |
+
+E allora emerge la cosa che conta: **di là `persona.codice_fiscale` è `unique` ma
+è *nullable*** (`0001:261`, con un `check` sulla forma a 16 caratteri). In
+PostgreSQL un unique **non morde sui null**, quindi **una persona senza codice
+fiscale, di là, non ha nessun vincolo di unicità**.
+
+> **Il caso da temere non è la chiave scritta male: è la persona fusa.**
 >
-> E il caso non è raro — è il **63,5%** del §5: sulla metà *dedotta*
-> dell'organigramma il codice fiscale manca in quasi due righe su tre, e per
-> quelle la stringa è l'unica cosa che c'è.
+> Qui una persona senza CF è tenuta separata dalla chiave, che porta il cliente
+> dentro. Di là è tenuta separata **solo da ciò che decide la migrazione**, e il
+> vincolo sul rapporto non la protegge — due rapporti con chiavi **diverse**
+> possono puntare alla **stessa** persona sbagliata, e nessun vincolo protesta.
+>
+> Una chiave sbagliata **grida**. Una persona fusa **no**.
 
-*(Registrato anche di là, nella loro `0015`: i due commenti si nominano a vicenda,
-e l'unico controllo che ha senso su questa migrazione è che continuino a farlo.)*
+Ed è esattamente il secondo dei due conti del §6.2, quello sulle **235 righe senza
+codice fiscale**: non è prudenza, è la misura che dice quante persone stanno per
+attraversare senza nessuna rete sotto. Il **63,5%** del §5 dice quanto è grande
+quella popolazione sulla metà *dedotta* dell'organigramma.
+
+*Registrato anche di là, nella loro `0015`: i due commenti si nominano a vicenda,
+e l'unico controllo che ha senso su questa migrazione è che continuino a farlo.*
 
 ---
 
