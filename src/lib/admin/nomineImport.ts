@@ -340,9 +340,22 @@ export async function pianificaNomine(
         .eq('cliente_id', gr.cliente_id).order('id').range(da, a));
     const idx = indicizzaPersone(esistenti);
 
-    const nomineGia = await leggiTutte<{ persona_id: string; figura_codice: string }>(
-      (da, a) => supabase.from('nomina').select('persona_id, figura_codice')
-        .in('persona_id', esistenti.map((p) => p.id)).order('persona_id').range(da, a));
+    // LA GUARDIA SULL'INSIEME VUOTO NON E' DIFENSIVA, E' NECESSARIA. `.in(col, [])`
+    // diventa `col=in.()`, che PostgREST rifiuta come filtro malformato: non torna
+    // zero righe, torna un ERRORE, e `leggiTutte` lo rilancia.
+    //
+    // E il caso non e' teorico: un cliente abbinato le cui persone non sono mai
+    // state importate ha `esistenti` vuoto. Cioe' l'import morirebbe proprio sul
+    // cliente su cui ha piu' da dire - quello dove ogni riga finirebbe fra le
+    // "persone non trovate", che e' il rapporto che questa schermata esiste per
+    // produrre. E' l'idioma di `caricaPerPersone` (formazione.ts:1164), che
+    // questo file avrebbe dovuto seguire dall'inizio.
+    const idsEsistenti = esistenti.map((p) => p.id);
+    const nomineGia = idsEsistenti.length
+      ? await leggiTutte<{ persona_id: string; figura_codice: string }>(
+        (da, a) => supabase.from('nomina').select('persona_id, figura_codice')
+          .in('persona_id', idsEsistenti).order('persona_id').range(da, a))
+      : [];
     const gia = new Set(nomineGia.map((n) => `${n.persona_id}|${n.figura_codice}`));
 
     // I nomi senza CF ripetuti DENTRO il file: stessa guardia dell'import
