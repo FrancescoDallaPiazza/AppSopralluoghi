@@ -10,7 +10,7 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **12 settembre 2026**.
+Ultimo aggiornamento: **12 settembre 2026**, sera.
 
 **Una cosa sul come, prima delle caselle, perché è il motivo per cui questo
 aggiornamento è tardivo.** Il lavoro dell'11 settembre è stato fatto su
@@ -62,7 +62,9 @@ nella corsia `AppFormazione`.*
 | Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | chiuso (**068**, schema) — l'import **resta fermo** | `8702e8a` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| Import dei ruoli e delle nomine | **fermo**, per decisione di Francesco — non per ostacolo tecnico | — |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito**: manca la parola di Francesco per farlo girare sui dati veri | `f296477` |
+| Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
+| I due conti per la migrazione dati (sola lettura) | **strumento pronto**, non eseguito: servono le credenziali | `npm run conti:migrazione` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
@@ -633,6 +635,98 @@ contro **3.419** contate il giorno dopo. Per la migrazione fa fede il 3.419, che
 delle 3.419 chiavi portano un CF non valido (serve il database, qui non c'è
 `.env.local`), e quante delle 160 righe col ruolo nella mansione hanno il CF
 (serve il file, che su questa macchina non c'è). Le query stanno nel documento.
+
+## L'import delle nomine: scritto, e non eseguito su niente (12 settembre, sera)
+
+La pausa l'ha tolta Francesco. Il codice c'è (`f296477`); **non è mai girato su
+dati veri**, e il permesso di farlo girare non è stato chiesto a un relay — un
+ordine si relaia, il permesso di scrivere su un database senza backup no.
+
+**Come è fatto.** La regola sta da sola in `src/lib/admin/ruoliTesto.ts`, senza
+database e senza React, perché così si può provare: `npm run ruoli:check` rifà gli
+**otto esiti** che la `068` dichiara di aver riprodotto dalla `0007` di AppOverall
+— `dl_rspp` 81, `addetto_antincendio` 47, `datore_lavoro` 22, non risolte 7,
+`preposto` 6, `rspp` 3, `aspp` 1, `dirigente` 1 — più i due totali, 168 asserzioni
+su 160 righe. **Passa.** Il corpus non è inventato: è ricostruito dalle grafie
+verbatim e dai conteggi che il seme porta in `note`, **letti dal file della
+migrazione** invece che ricopiati.
+
+### Tre cose trovate scrivendolo, che valgono più del codice
+
+**1. Il seme della `068` dichiarava 34 asserzioni, e sono 32.** La coppia
+`('RSPP/TITOLARE','rspp')` compariva **tre volte**: 34 erano le righe letterali
+dell'`insert`, non le asserzioni. Le due in più non scrivevano niente
+(`on conflict do nothing`), quindi **il database era già giusto** e la correzione
+non cambia un dato — cambia il numero che qualcuno conterebbe per accorgersi che
+i due dizionari sono divergenti. *Una tabella che esiste per essere contata non
+può dichiarare un totale che non è il suo.*
+
+**2. L'azione «ruolo da chiarire» sarebbe sparita al primo ricalcolo.** La
+spazzata degli orfani in `backfillAzioniEsoneri` cancella **ogni** azione del
+cliente la cui `origine_requisito_key` non sia fra le attese. La chiave
+`nomina-forma:` non c'era: le righe «il sistema non ha capito questo ruolo»
+sarebbero state scritte dall'import e **cancellate in silenzio** dal primo
+`sincronizzaScadenzarioCliente` — cioè esattamente il difetto che quelle righe
+esistono per non fare. Ora passano dalle attese, **protette e non riscritte**, e
+la condizione di sopravvivenza è quella del progetto: finché quella persona non
+ha nessuna nomina. Appena ce l'ha, la spazzata la chiude **da sola**.
+
+**3. `leggiFoglio` leggeva sempre `SheetNames[0]`.** Ora accetta un nome di
+foglio. `ExportExcel (4).xlsx` ha quattro fogli e i primi due hanno le **stesse**
+colonne anagrafiche del quarto: il riconoscimento automatico avrebbe detto
+«elenco persone» con ottime ragioni, leggendo il foglio sbagliato. È la lezione
+del 10 settembre applicata **prima** invece che dopo.
+
+### Le decisioni conservative, dette perché si possano ribaltare con una riga
+
+Delle nove colonne di ruolo ne entrano **sei**. Restano fuori:
+
+| colonna | righe | perché |
+|---|---:|---|
+| `RSPP` | 31 | il gestionale ci mette anche il datore dell'art. 34 — mandarle a `rspp` darebbe il percorso del professionista invece di quello del datore |
+| `Addetti Emergenze ed Evacuazione` | 71 | `addetto_antincendio` si chiama «Addetto antincendio / gestione emergenze» e **potrebbe** essere la stessa cosa. «Potrebbe» non basta su 71 righe |
+| `Responsabile Emergenze` | 35 | un responsabile non è un addetto, e nessuna delle tredici figure corrisponde |
+
+Sono **elencate nell'anteprima con il loro perché**: una colonna esclusa e non
+nominata è indistinguibile da una dimenticata, ed è già successo due volte su
+questo stesso file.
+
+E il ripiego cognome+nome è **acceso**, con le due guardie dell'import anagrafiche
+e non una in meno. Senza, si perdevano 19 incarichi e il **100%** dell'unico ASPP.
+
+### Cosa non è verificato
+
+`ExportExcel (4).xlsx` **non è su questa macchina**: l'import non ha mai visto una
+riga vera. Lo script prova la **regola**, non il **foglio**. Se il foglio fosse
+cambiato, `ruoli:check` tacerebbe — a dirlo sarebbe l'anteprima, che stampa i
+conti veri.
+
+## I due conti per la migrazione dati: strumento pronto, non eseguito
+
+Chiesti da AppOverall dopo la decisione sull'uuid (loro `0013`), e nascono da un
+fatto che **nessuno dei due documenti diceva**: le due tabelle `persona` non sono
+la stessa tabella. Qui è **per cliente**; di là `codice_fiscale` è unique
+**globale** e il legame col cliente vive in `rapporto_lavoro`. Quindi la
+migrazione non è una copia, è un **cambio di grana** — e `anag:<cliente>:<cf>` non
+è l'identità di una persona: è l'identità di **una persona presso un cliente**,
+che di là ha già un nome.
+
+I due conti misurano due fusioni che sbagliano in **versi opposti**:
+
+1. **stesso CF valido su più clienti** — righe che *vanno* fuse;
+2. **senza CF, omonimi nello stesso cliente** — righe che *non* vanno fuse: qui si
+   arrendono a `riga:N` e restano separate, di là diventerebbero una persona sola
+   e nessuno lo vedrebbe.
+
+`npm run conti:migrazione` li fa tutti e due, **in sola lettura**. È uno script e
+non due query perché **la validità di un codice fiscale non si calcola in SQL**:
+serve il carattere di controllo, e una query che filtra per *forma* e la chiama
+«valido» è lo stesso scivolamento di `cfPulisci` contro `valido`. Lo script usa la
+funzione di produzione e stampa **tutti e due** i conti, così la differenza si vede
+invece di doverla credere.
+
+**Non è stato eseguito**: su questa macchina non c'è `.env.local`. Senza
+credenziali si ferma e lo dice, invece di stampare uno zero.
 
 ## Cosa blocca, e chi lo tiene
 

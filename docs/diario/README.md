@@ -43,3 +43,9 @@ scritti (`b392190`) prima che qualcuno notasse che **non andavano scritti**.
 
 *Aggiunta il 12 settembre 2026. La stessa scelta è stata fatta nella corsia
 `AppFormazione` per la stessa giornata e per la stessa ragione.*
+
+**E il verso positivo della regola, perché non diventi una scusa per non
+scrivere:** il diario del **12 settembre** c'è, ed è giusto che ci sia — quella
+giornata questa postazione l'ha vista dall'inizio alla fine. La regola dice «non
+scrivere il diario di un giorno che non hai visto», non «nel dubbio non
+scrivere».
