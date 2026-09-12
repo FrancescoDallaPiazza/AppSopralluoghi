@@ -10,7 +10,8 @@
     "guida:check": "node scripts/guida-check.mjs",
     "ateco:check": "node scripts/ateco-tre-stati.mjs",
     "ruoli:check": "node scripts/ruoli-testo-check.mjs",
-    "conti:migrazione": "node scripts/conti-migrazione.mjs"
+    "conti:migrazione": "node scripts/conti-migrazione.mjs",
+    "nomine:dryrun": "node scripts/nomine-dryrun.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",

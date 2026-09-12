@@ -772,12 +772,33 @@ seme è stato **costruito**, non di come viene **letto** — la destinazione è 
 incisa in `ruolo_testo_figura`, e l'import non guarda `posizione` per decidere
 niente. Oggi è documentazione della regola, non un suo ingresso.
 
-### Cosa non è verificato
+### Cosa è verificato, e cosa no
 
-`ExportExcel (4).xlsx` **non è su questa macchina**: l'import non ha mai visto una
-riga vera. Lo script prova la **regola**, non il **foglio**. Se il foglio fosse
-cambiato, `ruoli:check` tacerebbe — a dirlo sarebbe l'anteprima, che stampa i
-conti veri.
+`ExportExcel (4).xlsx` non è su questa macchina. Ma `ExportExcel.xlsx` **sì** — è
+lo stesso export, del **24/12/2023**, e ha lo stesso foglio `Ruoli SSL`. Ci gira
+sopra `npm run nomine:dryrun <file>`, sola lettura e senza database:
+
+| | |
+|---|---|
+| foglio `Ruoli SSL` trovato **per nome** | sì |
+| intestazioni | riga **2** — la stessa dell'export 2026 |
+| righe di dati | 2.462 |
+| **colonne di ruolo che agganciano** | **9 su 9** |
+| righe con una mansione | 1.811 |
+
+**Quindi il plumbing regge su un foglio vero**: il foglio si apre, l'intestazione
+si riconosce, e tutte e nove le colonne si trovano per nome — comprese le tre che
+restano fuori, che vengono contate e dichiarate invece che ignorate.
+
+**Cosa resta non verificato, e sono due cose diverse.** I *numeri* del 2026: quel
+file ha un'altra data e altri dati, quindi non dice niente sulle 153 righe né sulle
+160. E il *dizionario applicato ai dati veri*, che ha bisogno del database.
+
+> Le due prove coprono metà ciascuna e falliscono in modi diversi:
+> `ruoli:check` prova la **regola** su un corpus dichiarato, `nomine:dryrun` prova
+> il **foglio** su un file vero. Una regola giusta su un foglio che non si apre non
+> importa niente; un foglio che si apre con una regola sbagliata importa il dato
+> sbagliato.
 
 ## I due conti per la migrazione dati: strumento pronto, non eseguito
 

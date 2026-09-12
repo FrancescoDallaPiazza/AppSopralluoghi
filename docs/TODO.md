@@ -238,7 +238,19 @@ nostro codice** fa davvero su quei file. Provato girando `leggiFoglio` /
 `pianificaClienti` / `raggruppaPersone` fuori dall'app, con esbuild e senza
 database: dry-run puro, nessuna scrittura.
 
-**I due file che reggono tutto**, entrambi in `~/Downloads`:
+> **Correzione del 12 settembre 2026: tre dei file nominati qui sotto NON sono
+> più su questa macchina.** Cercati: `ElencoSedi (5).xlsx`,
+> `ExportExcelDipendenti.xlsx`, `ExportExcelCorsiFatti.xlsx`,
+> `Report_Qualita_Dati_Migrazione.xlsx` — **nessuno**. C'è solo
+> `ExportExcel.xlsx` (24/12/2023, quattro fogli).
+>
+> Le misure qui sotto **restano valide come registrazioni**: sono state prese
+> quando i file c'erano. Ma «entrambi in `~/Downloads`» oggi è falso, e una
+> riga che dice dove trovare una cosa che non c'è più manda qualcuno a cercarla
+> invece di chiederla. Il lavoro dell'11 settembre è stato fatto su un'altra
+> macchina, ed è lì che quei file vivono.
+
+**I due file che reggevano tutto**, allora entrambi in `~/Downloads`:
 
 | file | cosa fa | righe |
 |---|---|---|
