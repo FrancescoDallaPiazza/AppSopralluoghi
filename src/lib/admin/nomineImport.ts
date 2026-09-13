@@ -184,9 +184,25 @@ export const COLONNE_RUOLO: ColonnaRuolo[] = [
 export async function caricaDizionarioRuoli(): Promise<Dizionario> {
   const testi = await leggiTutte<{ chiave: string; varianti: string[]; posizione: string; note: string | null }>(
     (da, a) => supabase.from('ruolo_testo').select('chiave, varianti, posizione, note').order('chiave').range(da, a));
+  // UN DIZIONARIO VUOTO NON E' MAI UNO STATO LEGITTIMO: la 068 ne semina 27
+  // chiavi e 32 asserzioni. Zero righe vuol dire che la lettura e' stata negata
+  // - RLS senza policy, come in produzione il 13.09 subito dopo la 068 (vedi la
+  // 069) - o che la 068 manca su questo ambiente. E una lettura negata dalle RLS
+  // NON da' errore: torna vuota. Senza questa guardia l'anteprima proseguiva
+  // dichiarando "non riconosciute" tutte le righe col ruolo nella mansione -
+  // meta' dell'organigramma - invece di fermarsi.
+  if (testi.length === 0) {
+    throw new Error('Dizionario dei ruoli vuoto: ruolo_testo non restituisce righe. '
+      + 'Mancano le policy RLS (migrazione 069) o la migrazione 068 su questo database. '
+      + 'L\'anteprima si ferma qui invece di dichiarare non riconosciuti tutti i ruoli scritti nella mansione.');
+  }
   const figure = await leggiTutte<{ chiave: string; ruolo_asserito: string; figura_codice: string | null }>(
     (da, a) => supabase.from('ruolo_testo_figura').select('chiave, ruolo_asserito, figura_codice')
       .order('chiave').order('ruolo_asserito').range(da, a));
+  if (figure.length === 0) {
+    throw new Error('Dizionario dei ruoli senza asserzioni: ruolo_testo_figura non restituisce righe. '
+      + 'Mancano le policy RLS (migrazione 069) o il seme della 068 su questo database.');
+  }
 
   const voci = new Map<string, VoceDizionario>();
   for (const t of testi) voci.set(t.chiave, { ...t, note: t.note ?? null, asserzioni: [] });
