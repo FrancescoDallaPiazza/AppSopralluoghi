@@ -1103,6 +1103,49 @@ file con omonimi senza CF, e il prossimo import delle anagrafiche lo è.
 lasciato nel database, non che il codice sia giusto. Al prossimo import con due
 omonimi senza CF nello stesso cliente, il meccanismo sopra si ripete.
 
+#### IPOTESI, non fatto: il 3.420 contro 3.419 potrebbe essere l'impronta del difetto
+
+Proposta da AppOverall, **verificata qui sul codice ma non sui dati**.
+
+- **Il 3.420 conta voci, non schede.** `gr.nuove` e `gr.aggiornate` contano le
+  voci (`anagraficheImport.ts:773-774`) e `applicaPersone` fa `n++` per voce
+  (`:795`), non per id distinto. Sia il «3.420 scritte» sia il «0 nuove · 3.420
+  aggiornate» del 9 settembre sono conteggi di voci.
+- **3.420 voci su 3.419 righe** vuol dire che **un id ha ricevuto due voci** —
+  oppure che una scheda è stata cancellata fra il 9 e il 10, che nessuna select
+  esclude.
+- **Due voci su un id nascono in due modi**: due omonimi senza CF fusi dalla
+  ricerca per provenienza (`:738`), o la stessa persona in **due gruppi** dello
+  stesso cliente (`perRiga` è per gruppo).
+- **E in tutti e due i casi la scheda doveva esistere già quando il piano è stato
+  calcolato.** Se non c'era, le due righe diventano due schede e la seconda
+  nasce senza provenienza: sarebbe una orfana, e le orfane sono zero. Quindi
+  l'ipotesi regge solo se quella scheda veniva da uno dei **due tentativi falliti**
+  del 9 settembre — il che è possibile, e non verificabile dal database.
+- **Non spiega i 6 omonimi**: tre coppie fuse darebbero +3, non +1.
+
+**NON VERIFICABILE: il file del 9 settembre non esiste più.** Francesco non ha
+più `ExportExcel (5).xlsx` (riferito da AppOverall il 13 settembre). Quindi, **a
+meno che il file salti fuori, restano non spiegati per sempre**:
+
+| numero | contro | stato |
+|---|---|---|
+| **3.420** voci scritte il 9.09 | **3.419** schede contate il 10.09 | non spiegato — l'ipotesi qui sopra è compatibile, non provata |
+| **235** righe senza CF nel file | **228** schede senza CF oggi | non spiegato |
+
+**Cosa li scioglierebbe, scritto perché fra un anno «non spiegato» non si
+confonda con «nessuno ha guardato»:** l'**anteprima** dell'import anagrafiche
+(sola lettura, niente «applica») su **quel** file, che elenca le voci per gruppo
+e fa vedere se un id ne ha due. Guardato il 13 settembre: il file non c'era.
+
+**Un export nuovo non lo sostituisce.** Direbbe se **oggi** ci sono omonimi e se
+il difetto li fonderebbe — il presente, non il 9 settembre. È un buon collaudo
+della riparazione, non una prova sul passato.
+
+**Conseguenza, scritta da AppOverall e giusta:** le 3.419 sono **schede**, non
+persone. Se una fusione c'è stata, una persona vera è già dentro un'altra e
+nessuna migrazione la tira fuori. N = 3.415 è un numero di schede.
+
 ## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
 
 Segnalato da AppOverall con una fonte, e **verificato qui nel codice** invece che
