@@ -59,18 +59,19 @@ nella corsia `AppFormazione`.*
 | Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
 | `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
 | I 268 alias del gestionale, identici in tre posti | chiuso | `7d0b322` |
-| `corso_alias.testo_gestionale`: il commento diceva «verbatim», e non lo è | **scritta** (**064**, solo commenti), 268 testi d'origine conservati — in produzione non misurabile | `ede5112` |
-| ATECO: **tre** stati (`noto` · `ignoto` · `incerto`), con la cella d'origine accanto al derivato | scritta e **applicata** (**065**, misurato 13.09) | `3c8b84e` |
-| L'ATECO mancante diventa un'azione che si chiude da sola | **scritta** (**066**, solo un commento), chiave `cliente-ateco:<cliente_id>` — in produzione non misurabile | `81f6903` |
-| Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | **scritta** (**067**, solo testo) — in produzione non misurabile | `f9f7f80` |
-| Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | **scritta** (**068**), **NON applicata in produzione** — misurato il 13.09 | `8702e8a` |
+| `corso_alias.testo_gestionale`: il commento diceva «verbatim», e non lo è | **scritta** (**064**, solo commenti), 268 testi d'origine conservati — **applicata il 13.09 da SQL Editor**, passata nella transazione 064-068: non misurabile | `ede5112` |
+| ATECO: **tre** stati (`noto` · `ignoto` · `incerto`), con la cella d'origine accanto al derivato | scritta e **applicata** (**065**, già presente al 13.09; ripassata nella transazione 064-068) | `3c8b84e` |
+| L'ATECO mancante diventa un'azione che si chiude da sola | **scritta** (**066**, solo un commento), chiave `cliente-ateco:<cliente_id>` — **applicata il 13.09 da SQL Editor**, passata nella transazione 064-068: non misurabile | `81f6903` |
+| Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | **scritta** (**067**, solo testo) — **era già applicata, non si sa quando**: il controllo prima del 13.09 ha trovato i due testi identici parola per parola; ripassata senza effetto | `f9f7f80` |
+| Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | **applicata il 13.09 da SQL Editor**, misurata con `livello:produzione`: 27 chiavi, 32 asserzioni. **Ma le due tabelle risultano con RLS e senza policy**: la anon legge 0 righe — vedi `069` | `8702e8a` |
+| **069** · RLS e `staff_full` su `ruolo_testo` e `ruolo_testo_figura`, come tutte le altre tabelle | **scritta**, non applicata — la applica Francesco | *questo commit* |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — e in produzione **oggi non partirebbe**: legge `ruolo_testo`, che la `068` crea e che lì non c'è | `f296477` |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — la `068` adesso c'è, ma **NON va lanciato** finché la `069` non è applicata o una select non mostra una policy su `ruolo_testo`: senza, il dizionario arriverebbe **vuoto** e l'anteprima proseguirebbe senza errore | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
 | **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** per i prossimi import (`npm run omonimi:check`, 7 su 7; sul codice di prima A1-A3 falliscono). Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `f25664e`, `42d0531` |
-| **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `d4aeefe` |
+| **Livello della produzione** · a che migrazione è il database | **13.09, prima**: `068` no · **dopo l'applicazione**: `061`-`068` presenti; `064` `066` non misurabili; `067` c'era già. Misura l'**esistenza**, non la leggibilità | `d4aeefe` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
@@ -883,6 +884,62 @@ corsie usavano nello stesso modo.
 
 Da qui in avanti una migrazione in tabella dice **scritta** oppure **applicata**,
 e la seconda solo con `npm run livello:produzione` accanto.
+
+### Applicata la sera stessa, e una cosa che il livello non vede
+
+Il **13 settembre, sera**, Francesco ha incollato la `064`-`068` nell'SQL Editor
+**in un file solo dentro `begin`/`commit`**, preparato da AppOverall con i cinque
+file invariati e in ordine. Niente CLI e niente `db push`: il registro
+`supabase_migrations` di questo progetto è incompleto, perché le migrazioni sono
+sempre passate a mano (`PROGETTO.md`, ogni «Rilascio»), e un push riapplicherebbe
+anche le vecchie.
+
+| controllo | prima | dopo |
+|---|---|---|
+| codici figura che servono a 067 e 068 | 8 su 8 | — |
+| `ruolo_testo` · `ruolo_testo_figura` | assenti | **27** · **32** (attesi 27 · 32, contati dagli insert) |
+| colonne `origine` su `nomina` | 0 | 2 |
+| vincoli `nomina_origine_nota` · `ruolo_testo_posizione_nota` | — | 2 |
+| la riga che la `067` aggiorna | presente, **testo già identico** | invariata |
+| `nomina` | 0 righe | 0 righe |
+
+*Numeri di AppOverall, girati da Francesco nell'SQL Editor* — **come `postgres`,
+che scavalca le RLS**: dicono che le righe **esistono**, non che **si leggono**.
+L'ha fatto notare AppOverall stesso, dopo. La verifica **indipendente**
+è `npm run livello:produzione`, rilanciata qui dopo: `068` presente in tutte e
+quattro le prove, e le due prove di controllo ancora «assente».
+
+**La `067` c'era già.** La produzione prima non stava «fra la 065 e la 067»: stava
+alla **067**. Quando sia stata applicata non lo dice nessuno. La `064` e la `066`
+restano **non misurate**: sono passate nella stessa transazione, ma sono solo
+commenti, e «è passata» non è «l'ho visto».
+
+**E la cosa che il livello non vede.** Subito dopo, con la chiave anon,
+`ruolo_testo` e `ruolo_testo_figura` danno **0 righe senza errore** — dove i
+controlli ne contano 27 e 32. Le RLS sono attive e nessuna policy apre le tabelle
+alla anon. Ma la `068` **non le accende e non scrive policy**: è l'unica migrazione
+del repo che crea tabelle così, tutte le altre seguono la `055`. Qualcosa in
+produzione le ha accese da solo, e se nessuna policy le apre ad `authenticated`,
+**il back-office legge zero righe anche lui**.
+
+Il danno non sarebbe un errore: `caricaDizionarioRuoli` su 0 righe restituisce un
+dizionario **vuoto**, e l'anteprima delle nomine prosegue dichiarando «non
+riconosciute» tutte le righe col ruolo nella mansione. **Prima si fermava; adesso
+continuerebbe sbagliando** — che è peggio.
+
+- **Scritta la `069`**: RLS e `staff_full` su tutte e due, nella forma della
+  `055`. Serve in tutti e due i casi: se le RLS fossero spente, le tabelle
+  sarebbero scrivibili con la chiave anon del bundle pubblico. **La applica
+  Francesco.**
+- **Chiesta una select** di sola lettura su `pg_class.relrowsecurity` e
+  `pg_policies`, scritta in testa alla `069`, con `corso_alias` come confronto.
+- **L'import delle nomine non va lanciato** finché la `069` non è applicata o la
+  select non mostra una policy.
+
+*La lezione sta nello strumento, ed è mia:* `livello:produzione` misura che una
+tabella **esista**, non che **si legga**. Una colonna che manca dà `42703`; una
+tabella che c'è ma che nessuno può leggere dà zero righe, cioè lo stesso esito di
+una tabella vuota. È di nuovo un'assenza che si presenta come un risultato.
 
 ## I due conti per la migrazione dati: misurati il 13 settembre
 
