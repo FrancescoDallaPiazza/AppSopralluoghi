@@ -958,6 +958,12 @@ continuerebbe sbagliando** — che è peggio.
   nomine dal back-office, senza Applica**: non deve fermarsi sulla guardia e deve
   riconoscere le righe col ruolo nella mansione. Va fatta **dopo il push e il
   deploy**, perché prima Vercel serve il codice senza la guardia.
+- **Deploy verificato il 13 settembre, sera**, in due modi indipendenti: GitHub
+  registra in produzione `12b1768` con stato **`success`** (verificato anche da
+  AppOverall), e il bundle pubblico di `app-sopralluoghi.vercel.app` **contiene**
+  sia il messaggio della guardia («Dizionario dei ruoli vuoto») sia la lista «da
+  abbinare a mano». L'anteprima delle nomine dal back-office la fa Francesco il
+  **14 settembre**; fino ad allora l'import delle nomine resta fermo.
 - **L'import delle nomine non va lanciato** finché la `069` non è applicata o la
   select non mostra una policy.
 
