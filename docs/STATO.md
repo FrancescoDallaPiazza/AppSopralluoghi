@@ -69,7 +69,7 @@ nella corsia `AppFormazione`.*
 | **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — e in produzione **oggi non partirebbe**: legge `ruolo_testo`, che la `068` crea e che lì non c'è | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
-| **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **aperto**, verificato nel codice; **non riparato**. Misura 13.09: **0 orfane**, 228/228 senza CF con chiave per nome, 0 omonimi — una fusione già avvenuta non si vede dal database; i 6 omonimi del 9.09 non spiegati, l'export non è su questa macchina | `f25664e` |
+| **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** per i prossimi import (`npm run omonimi:check`, 7 su 7; sul codice di prima A1-A3 falliscono). Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `f25664e`, `42d0531` |
 | **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `d4aeefe` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
@@ -1016,7 +1016,10 @@ differenza i CF più corti.
 i 31 non si cercano doppioni: al più una persona in più, mai due fuse. N = 3.415
 regge. Per il punto 1 qui non c'è altro da fare.
 
-### APERTO — il ripiego sul nome fonde gli omonimi al secondo import (13 settembre)
+### RIPARATO — il ripiego sul nome fondeva gli omonimi al secondo import (13 settembre)
+
+*Riparato la sera stesso, dopo la misura: vedi «La riparazione» in fondo a questa
+sezione. Quel che segue è scritto com'era prima, perché è la ragione del codice.*
 
 Trovato da AppOverall leggendo `anagraficheImport.ts`, **verificato qui riga per
 riga**. Non è riparato apposta: **prima la misura**, perché il database oggi dice
@@ -1145,6 +1148,38 @@ della riparazione, non una prova sul passato.
 **Conseguenza, scritta da AppOverall e giusta:** le 3.419 sono **schede**, non
 persone. Se una fusione c'è stata, una persona vera è già dentro un'altra e
 nessuna migrazione la tira fuori. N = 3.415 è un numero di schede.
+
+#### La riparazione
+
+In `riconciliaPersone` l'ambiguità si decide **prima** di calcolare la chiave:
+senza CF, `anag:<cliente>:n:<nome>` si calcola — e quindi si cerca e si scrive —
+**solo se il nome è univoco sia nell'archivio sia nel file**. Se è ambiguo la
+chiave è nulla: la riga non ritrova nessuna scheda e non ne marca nessuna, e
+torna a essere `riga:N`, nuova. È quello che il commento del ripiego prometteva
+da sempre: **un doppione che si vede invece di due persone fuse**. Con CF non
+cambia niente.
+
+**La prova**, `npm run omonimi:check`, gira sulla funzione vera, con una
+`from()` finta al posto del database:
+
+| caso | prima | dopo |
+|---|---|---|
+| A1 · secondo import, due omonimi senza CF | **fallisce**: `P1, P1`, stessa scheda | ok: due schede, P1 non toccata |
+| A2 · primo import, due omonimi senza CF | **fallisce**: la prima prende la chiave, la seconda no | ok: nessuna delle due |
+| A3 · nome ambiguo nell'archivio, univoco nel file | **fallisce**: si aggancia a P1 | ok: nessuna delle due |
+| B1-B3 · nome univoco senza CF | ok | ok, come prima |
+| C1 · con CF, anche fra omonimi | ok | ok, come prima |
+
+**Il controllo negativo fa parte della prova:** lo stesso script sul codice di
+prima dà 4 su 7, e i tre che falliscono sono esattamente il difetto.
+
+**Cosa non fa.** Non ricostruisce l'import del 9 settembre e non tocca il
+database: vale per il prossimo import. E **lascia fuori un caso vicino**, letto
+nel codice e non provato: la stessa persona in **due gruppi** del file che
+puntano allo stesso cliente, con l'archivio vuoto, diventa due schede e la
+seconda nasce senza provenienza — anche con il CF, perché `perRiga` è per gruppo
+e l'archivio si legge una volta sola prima del ciclo. Oggi l'anteprima lo segnala
+come `collisione` fra gruppi; se vada riparato è un'altra decisione.
 
 ## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
 

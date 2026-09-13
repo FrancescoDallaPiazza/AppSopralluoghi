@@ -730,7 +730,24 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     for (const r of gr.righe) {
       const campi = leggiCampiPersona(r.col);
       if (!campi) continue;
-      const ik = chiaveImportPersona(gr.cliente_id, campi.cf, campi.cognome, campi.nome);
+      // Senza CF il nome vale come chiave - per CERCARE e per MARCARE - solo se
+      // non e' ambiguo, ne' nell'archivio ne' nel file. Fino al 13.09 la chiave
+      // per nome si calcolava sempre e si cercava PRIMA di questo controllo: al
+      // secondo import due omonimi ritrovavano la stessa scheda e l'ultima riga
+      // vinceva, al primo la seconda nasceva senza provenienza. La prova, nei
+      // due versi e con il controllo negativo: scripts/omonimi-check.mjs.
+      let k = '';
+      let candidato: Persona | null | undefined;
+      let nomeUsabile = false;
+      if (!campi.cf) {
+        k = chiaveNome(campi.cognome, campi.nome);
+        candidato = k ? perNomePersona.get(k) : undefined;
+        const unicoNelFile = k ? (nomiSenzaCfNelFile.get(k) ?? 0) === 1 : false;
+        nomeUsabile = !!k && unicoNelFile && candidato !== null;
+      }
+      const ik = campi.cf || nomeUsabile
+        ? chiaveImportPersona(gr.cliente_id, campi.cf, campi.cognome, campi.nome)
+        : null;
       // L'ordine conta: prima la provenienza, poi il codice fiscale. Senza,
       // una seconda passata dopo un import interrotto a meta' non riconosce
       // chi era gia' stato scritto, gli assegna un id nuovo con la stessa
@@ -740,10 +757,7 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
       if (campi.cf) {
         chiaveRiga = campi.cf;
       } else {
-        const k = chiaveNome(campi.cognome, campi.nome);
-        const candidato = k ? perNomePersona.get(k) : undefined;
-        const unicoNelFile = k ? (nomiSenzaCfNelFile.get(k) ?? 0) === 1 : false;
-        if (k && unicoNelFile && candidato !== null) {
+        if (nomeUsabile) {
           chiaveRiga = `nome:${k}`;
           if (candidato) esist = candidato;
         } else {

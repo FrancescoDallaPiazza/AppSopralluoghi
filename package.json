@@ -12,6 +12,7 @@
     "ruoli:check": "node scripts/ruoli-testo-check.mjs",
     "conti:migrazione": "node scripts/conti-migrazione.mjs",
     "livello:produzione": "node scripts/livello-produzione.mjs",
+    "omonimi:check": "node scripts/omonimi-check.mjs",
     "nomine:dryrun": "node scripts/nomine-dryrun.mjs"
   },
   "dependencies": {
