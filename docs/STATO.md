@@ -13,6 +13,8 @@ si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 Ultimo aggiornamento: **13 settembre 2026** — misurato il livello della
 produzione: **la `068` non è applicata**. Vedi
 [«Il livello della produzione»](#il-livello-della-produzione-la-068-non-cè-13-settembre).
+E misurati i due conti della migrazione dati: **N = 3.415**. Vedi
+[«I due conti»](#i-due-conti-per-la-migrazione-dati-misurati-il-13-settembre).
 
 **Una cosa sul come, prima delle caselle, perché è il motivo per cui questo
 aggiornamento è tardivo.** Il lavoro dell'11 settembre è stato fatto su
@@ -66,7 +68,7 @@ nella corsia `AppFormazione`.*
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
 | **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — e in produzione **oggi non partirebbe**: legge `ruolo_testo`, che la `068` crea e che lì non c'è | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
-| I due conti per la migrazione dati (sola lettura) | **eseguito 13.09 con la anon, NON misurato**: legge 0 persone su 0 clienti per le RLS — serve una lettura autenticata | `npm run conti:migrazione` |
+| I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | script di `a41abc6`, output in sezione |
 | **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `d4aeefe` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
@@ -881,7 +883,7 @@ corsie usavano nello stesso modo.
 Da qui in avanti una migrazione in tabella dice **scritta** oppure **applicata**,
 e la seconda solo con `npm run livello:produzione` accanto.
 
-## I due conti per la migrazione dati: strumento pronto, non eseguito
+## I due conti per la migrazione dati: misurati il 13 settembre
 
 Chiesti da AppOverall dopo la decisione sull'uuid (loro `0013`), e nascono da un
 fatto che **nessuno dei due documenti diceva**: le due tabelle `persona` non sono
@@ -938,11 +940,74 @@ qualsiasi**, non la struttura — quindi la differenza che stampa fra forma e
 validità mescola i CF con la struttura sbagliata e quelli con il controllo
 sbagliato.
 
-**E le 235 persone senza CF restano quelle dei documenti, non misurate oggi:**
-227 con un nome univoco agganciate col ripiego cognome+nome, 6 omonime rimaste
-`riga:N` (dall'import del 9 settembre), e i 2 che mancano a fare 235 senza
-spiegazione confermata. Cosa succede loro di là — quante sono gli omonimi nello
-stesso cliente — è proprio il conto 2, ed è quello che non si è potuto leggere.
+### La misura vera (13 settembre, sera)
+
+**Come è stata letta.** Stesso script (versione di `a41abc6`, non più toccato),
+lanciato da Francesco in un suo PowerShell **fuori da Claude**, con la
+`service_role` passata come variabile d'ambiente per quell'esecuzione sola e poi
+rimossa: la chiave non è in nessun file e non è passata dalla conversazione. Qui
+è arrivato l'output. **Prima di qualsiasi import delle nomine**, che non è girato
+e in produzione oggi non girerebbe.
+
+Il totale torna con il `count(*)` del 10 settembre: **3.419 persone su 619
+clienti**.
+
+| conto 1 — CF | |
+|---|---:|
+| persone con un CF scritto | 3.191 |
+| … di 16 caratteri alfanumerici | 3.188 |
+| … **validi** | **3.160** |
+| codici fiscali validi distinti | 3.156 |
+| **presenti su più di un cliente** | **4** |
+| righe coinvolte | 8 — due per codice |
+
+Quattro codici fiscali, ciascuno su **due** clienti: VELOX SERVIZI · VELOX
+HOTELLERIE, DA UGO · BONUM, EXTENSYS · DIMEX, Aprili Graziano · Amari Umberto.
+Di là diventano **4 persone con 8 rapporti**, cioè **4 righe in meno**.
+
+**Una verifica che il conto fa da sé:** 3.160 validi − 3.156 distinti = **4**,
+esattamente le righe in più di quei quattro codici. Quindi **nessun CF valido è
+ripetuto dentro lo stesso cliente** — l'unica fusione è quella fra clienti.
+
+| conto 2 — senza CF | |
+|---|---:|
+| persone senza CF | **228** |
+| senza nemmeno cognome e nome | 0 |
+| **omonimi nello stesso cliente** | **0** |
+| stesso nome su clienti **diversi** | 2 |
+
+**Il numero della migrazione: N = 3.419 − 4 = 3.415**, e vale solo se le 228 non
+vengono fuse. Oggi il rischio del conto 2 — omonimi nello stesso cliente che di
+là collasserebbero — è **zero**. Resta quello opposto: **due nomi** senza CF
+stanno su due clienti diversi, e di là li separa soltanto la `import_key` del
+rapporto. Un import che cercasse le persone senza CF per nome ne farebbe una.
+
+### Tre cose che la misura non chiude
+
+**1. I CF scritti e non validi sono 31, non 28.** Lo script stampa «28
+passerebbero un controllo di sola forma», che è 3.188 − 3.160. Ma i CF scritti
+sono 3.191: altri **3** non arrivano nemmeno a 16 caratteri, e lo script non li
+nomina. `3.191 − 3.160 = 31`. **Di queste 31 righe il conto 1 non cerca i
+doppioni** — conta solo i validi — e cosa diventino di là, dove
+`codice_fiscale` è unique, è una decisione di AppOverall: se entrano così come
+sono, un eventuale doppione fra loro non è misurato; se vengono trattate come
+«senza CF», il conto 2 sale da 228 a **259**.
+
+**2. 228 contro 235, e zero omonimi contro sei.** I documenti del 9 settembre
+parlavano di **235** righe senza CF nel file: 227 con un nome univoco e **6
+omonime** rimaste `riga:N`. Nel database oggi le persone senza CF sono **228** e
+di omonimi nello stesso cliente **non ce n'è nessuno**. I due numeri vengono da
+posti diversi — righe del file contro righe scritte — ma la differenza **non è
+spiegata**, e non la spiego a occhio: le sei omonime o non sono state scritte
+come tali, o non stanno nello stesso cliente, o hanno un CF. Si verifica
+nell'SQL Editor, in sola lettura, contando le `import_key` che contengono
+`riga:` e gli omonimi senza CF per cliente.
+
+**3. Lo script ha due debolezze che questa misura ha messo in luce**, e non sono
+riparate: davanti a **0 righe lette** stampa i conti invece di fermarsi (il giro
+con la anon ha prodotto una pagina di zeri dall'aspetto di un risultato), e la
+riga «di FORMA valida» conta 16 alfanumerici qualsiasi, lasciando fuori dalla
+differenza i CF più corti.
 
 ## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
 
