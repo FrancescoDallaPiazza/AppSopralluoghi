@@ -322,6 +322,18 @@ modello; 2 sole righe scartate su 3418.
   **FATTO 2026-09-09**: ripiego su cognome+nome dentro il cliente, solo se il
   nome non e' ambiguo. Verificato: 235 senza CF, 227 con nome univoco
   agganciate, 6 omonime che restano `riga:N`.
+  **RIVISTO 2026-09-13**: il ripiego fondeva gli omonimi al secondo import
+  (riparato `bb141ee`), e `riga:N` li ricreava a ogni import. Decisione di
+  Francesco: una riga senza CF con nome ambiguo **non si scrive**, va fra le
+  «da abbinare a mano» dell'anteprima (`e18f8c5`, `npm run omonimi:check`).
+  Nel database del 13.09: 228 senza CF, 0 omonimi, 0 orfane.
+- [ ] **Abbinamento guidato** delle righe «da abbinare a mano» dall'anteprima
+  dell'import anagrafiche: oggi la lista c'e', la scelta della scheda no.
+- [ ] **Stessa persona in due gruppi dello stesso cliente**: con CF dovrebbe
+  essere una scheda sola, oggi sono due e la seconda senza provenienza. Da
+  decidere (proposta in `STATO.md`).
+- [ ] **Import persone da Risorse umane** (`RisorseUmane.tsx:503`): nessun
+  ripiego sul nome, senza CF ogni riga e' nuova a ogni import.
 - [x] **`Area di Lavoro` non è fra i sinonimi di reparto** (c'è `area`, non
   `areadilavoro`). Minore: quel campo è vuoto sull'89%.
   **FATTO 2026-09-09**: sinonimo `areadilavoro`. Verificato: aggancia.

@@ -64,13 +64,14 @@ nella corsia `AppFormazione`.*
 | L'ATECO mancante diventa un'azione che si chiude da sola | **scritta** (**066**, solo un commento), chiave `cliente-ateco:<cliente_id>` — **applicata il 13.09 da SQL Editor**, passata nella transazione 064-068: non misurabile | `81f6903` |
 | Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | **scritta** (**067**, solo testo) — **era già applicata, non si sa quando**: il controllo prima del 13.09 ha trovato i due testi identici parola per parola; ripassata senza effetto | `f9f7f80` |
 | Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | **applicata il 13.09 da SQL Editor**, misurata con `livello:produzione`: 27 chiavi, 32 asserzioni. **Ma le due tabelle risultano con RLS e senza policy**: la anon legge 0 righe — vedi `069` | `8702e8a` |
-| **069** · RLS e `staff_full` su `ruolo_testo` e `ruolo_testo_figura`, come tutte le altre tabelle | **scritta**, non applicata — la applica Francesco | *questo commit* |
+| **069** · RLS e `staff_full` su `ruolo_testo` e `ruolo_testo_figura`, come tutte le altre tabelle | **scritta**, non applicata — la rilegge AppOverall, la applica Francesco | `46105df` |
+| **Guardia sul dizionario vuoto** in `caricaDizionarioRuoli`: zero righe è sempre un errore, mai un dizionario vuoto | **fatta**: `npm run dizionario:check` 3 su 3; senza la guardia (`e18f8c5`) 1 su 3 | `5de8965` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — la `068` adesso c'è, ma **NON va lanciato** finché la `069` non è applicata o una select non mostra una policy su `ruolo_testo`: senza, il dizionario arriverebbe **vuoto** e l'anteprima proseguirebbe senza errore | `f296477` |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — la `068` adesso c'è, ma **NON va lanciato** finché la `069` non è applicata o una select non mostra una policy su `ruolo_testo`: senza, il dizionario arriverebbe **vuoto**. Dalla guardia (`5de8965`) l'anteprima si **ferma con un errore** invece di proseguire, ma resta ferma finché la `069` non c'è | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
-| **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** per i prossimi import (`npm run omonimi:check`, 7 su 7; sul codice di prima A1-A3 falliscono). Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `f25664e`, `42d0531` |
+| **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** (`bb141ee`), poi **(a) decisa da Francesco il 13.09**: il nome ambiguo **non si scrive**, va fra i «da abbinare a mano» e l'import resta idempotente (`npm run omonimi:check` 8 su 8; su `bb141ee` A4 dà 2 poi 4). Abbinamento guidato: **manca**. Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `bb141ee`, `e18f8c5` |
 | **Livello della produzione** · a che migrazione è il database | **13.09, prima**: `068` no · **dopo l'applicazione**: `061`-`068` presenti; `064` `066` non misurabili; `067` c'era già. Misura l'**esistenza**, non la leggibilità | `d4aeefe` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
@@ -1237,6 +1238,51 @@ puntano allo stesso cliente, con l'archivio vuoto, diventa due schede e la
 seconda nasce senza provenienza — anche con il CF, perché `perRiga` è per gruppo
 e l'archivio si legge una volta sola prima del ciclo. Oggi l'anteprima lo segnala
 come `collisione` fra gruppi; se vada riparato è un'altra decisione.
+
+#### La decisione: la riga ambigua non si scrive (13 settembre, sera)
+
+**Decisa da Francesco il 13 settembre**, proposta da AppOverall e confermata da lui
+direttamente in questa sessione.
+
+**Perché la riparazione di `bb141ee` non bastava.** Toglieva la fusione, ma una
+riga ambigua tornava `riga:N`, **nuova**: ripassando lo stesso file con due ROSSI
+MARIO senza CF, il primo import creava 2 schede, il secondo — ora il nome era
+ambiguo anche nell'archivio — altre 2, poi 6. Per quei nomi l'import **non era più
+idempotente**, cioè il difetto che il ripiego era nato per chiudere. «Meglio un
+doppione che si vede» vale per **un** doppione, non per uno nuovo a ogni import.
+
+**Cosa fa adesso** (`e18f8c5`). In `riconciliaPersone` una riga senza CF con un
+nome ripetuto — nel file o già in archivio — **non diventa una voce**: va in
+`gr.daAbbinare` con riga, cognome, nome e motivo. `applicaPersone` non la scrive;
+nuove e aggiornate non la contano. L'anteprima dice **«K da abbinare a mano (non
+scritte)»** nel riepilogo e nel gruppo, e mostra l'elenco con il motivo **sempre
+aperto**, non dietro «Vedi le persone»: un'esclusione che non si vede è
+indistinguibile da una riga persa. Il messaggio dopo «Applica» dice quante non sono
+state scritte.
+
+| prova (`npm run omonimi:check`) | `f25664e` | `bb141ee` | adesso |
+|---|---|---|---|
+| A1-A3 · omonimi nel file o in archivio | falliscono (fusione) | falliscono (schede nuove) | **ok**: nessuna voce, da abbinare |
+| **A4** · lo stesso file applicato due volte | «2 poi 2» | **«2 poi 4»** | **ok**: 0 schede e 2 da abbinare a ogni passaggio |
+| B1-B3, C1 · nome univoco, con CF | ok | ok | ok |
+
+**Cosa manca, ed è il passo successivo:** l'**abbinamento guidato** — scegliere
+dall'anteprima a quale scheda attaccare una riga. Oggi la lista dice chi è rimasto
+fuori e perché; sistemarle si fa a mano nell'organigramma del cliente.
+
+**Il caso vicino, proposto a Francesco e non implementato.** La stessa persona in
+**due gruppi** del file che puntano allo stesso cliente oggi diventa due schede, e
+la seconda nasce senza provenienza. La proposta non è la stessa lista per tutti:
+- **con CF** è la stessa persona sullo stesso organigramma — un cliente è un
+  organigramma — e la cosa giusta è **una scheda sola**, non un abbinamento a mano;
+- **senza CF**, due ROSSI MARIO in due sedi dello stesso cliente possono essere due
+  persone: lì sì, la lista «da abbinare».
+Da decidere prima del prossimo import con collisioni fra gruppi.
+
+**E una terza strada, fuori da tutto questo:** l'import per **singolo cliente** in
+Risorse umane (`RisorseUmane.tsx:503`) non ha nessun ripiego sul nome. Senza CF ogni
+riga è `riga:N`, nuova, a ogni import — il difetto del 9 settembre, mai chiuso su
+quella porta. Scritto, non toccato.
 
 ## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
 
