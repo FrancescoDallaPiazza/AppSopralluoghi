@@ -10,7 +10,9 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **12 settembre 2026**, sera.
+Ultimo aggiornamento: **13 settembre 2026** — misurato il livello della
+produzione: **la `068` non è applicata**. Vedi
+[«Il livello della produzione»](#il-livello-della-produzione-la-068-non-cè-13-settembre).
 
 **Una cosa sul come, prima delle caselle, perché è il motivo per cui questo
 aggiornamento è tardivo.** Il lavoro dell'11 settembre è stato fatto su
@@ -55,16 +57,17 @@ nella corsia `AppFormazione`.*
 | Le divisioni 30, 86, 87 | decisa in Fase 2 (`b555d67`), **rigenerata qui**: nessun livello cambia, cambia la provenienza | `3a68c13` |
 | `ateco.ts` rigenerabile con un comando | **chiuso**: `node scripts/genera-ateco.mjs`, con `--check` | `3a68c13` |
 | I 268 alias del gestionale, identici in tre posti | chiuso | `7d0b322` |
-| `corso_alias.testo_gestionale`: il commento diceva «verbatim», e non lo è | chiuso (**064**, solo commenti), 268 testi d'origine conservati | `ede5112` |
-| ATECO: **tre** stati (`noto` · `ignoto` · `incerto`), con la cella d'origine accanto al derivato | chiuso (**065**) | `3c8b84e` |
-| L'ATECO mancante diventa un'azione che si chiude da sola | chiuso (**066**), chiave `cliente-ateco:<cliente_id>` | `81f6903` |
-| Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | chiuso (**067**, solo testo) | `f9f7f80` |
-| Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | chiuso (**068**, schema) — l'import **resta fermo** | `8702e8a` |
+| `corso_alias.testo_gestionale`: il commento diceva «verbatim», e non lo è | **scritta** (**064**, solo commenti), 268 testi d'origine conservati — in produzione non misurabile | `ede5112` |
+| ATECO: **tre** stati (`noto` · `ignoto` · `incerto`), con la cella d'origine accanto al derivato | scritta e **applicata** (**065**, misurato 13.09) | `3c8b84e` |
+| L'ATECO mancante diventa un'azione che si chiude da sola | **scritta** (**066**, solo un commento), chiave `cliente-ateco:<cliente_id>` — in produzione non misurabile | `81f6903` |
+| Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | **scritta** (**067**, solo testo) — in produzione non misurabile | `f9f7f80` |
+| Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | **scritta** (**068**), **NON applicata in produzione** — misurato il 13.09 | `8702e8a` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito**: manca la parola di Francesco per farlo girare sui dati veri | `f296477` |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — e in produzione **oggi non partirebbe**: legge `ruolo_testo`, che la `068` crea e che lì non c'è | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **strumento pronto**, non eseguito: servono le credenziali | `npm run conti:migrazione` |
+| **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `npm run livello:produzione` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
@@ -822,6 +825,61 @@ file ha un'altra data e altri dati, quindi non dice niente sulle 153 righe né s
 > il **foglio** su un file vero. Una regola giusta su un foglio che non si apre non
 > importa niente; un foglio che si apre con una regola sbagliata importa il dato
 > sbagliato.
+
+## Il livello della produzione: la 068 non c'è (13 settembre)
+
+Chiesto da AppOverall dopo aver trovato la produzione di AppFormazione **sei
+migrazioni indietro** rispetto al repo, con i documenti che le davano per chiuse.
+Misurato sul progetto `pvbwcfrgatkqashstxjc` con la sola chiave anon, in sola
+lettura, con `npm run livello:produzione`. Il repo è alla `068`.
+
+| migrazione | cosa si interroga | produzione |
+|---|---|---|
+| `061` · `062` · `063` | `persona.data_cessazione`, `cliente.numero_lavoratori`, `tecnico.cognome` | presenti |
+| `064` | — solo commenti | **non misurabile** |
+| `065` | `cliente.ateco_origine` | **presente** |
+| `066` | — solo un commento | **non misurabile** |
+| `067` | testo in `figura_sicurezza.guida`: con la anon le righe non si vedono | **non misurabile** |
+| **`068`** | `nomina.origine`, `nomina.origine_testo` → `42703`; `ruolo_testo`, `ruolo_testo_figura` → `PGRST205` | **ASSENTE, tutte e quattro** |
+
+**Quindi la produzione sta fra la `065` e la `067`, e la `068` sicuramente no.**
+Dove esattamente, fra 065 e 067, da qui non si sa: le tre migrazioni in mezzo non
+lasciano niente che la chiave anon possa interrogare.
+
+**Come si legge senza vedere un dato.** Le RLS nascondono le righe, ma una colonna
+che non esiste risponde `42703` e una tabella che non esiste `PGRST205`, righe o
+non righe. Lo script lo **prova** prima di credergli: in testa interroga una
+colonna e una tabella inventate, e se quelle non danno «assente» si ferma. Il
+numero di righe non è una misura — con la anon è zero comunque.
+
+### Cosa vuol dire per l'import delle nomine
+
+**Oggi in produzione non parte.** `pianificaNomine` chiama per prima cosa
+`caricaDizionarioRuoli` (`nomineImport.ts:344`), che legge `ruolo_testo`: la
+lettura fallisce e `leggiTutte` rilancia l'errore. Si ferma **all'anteprima**,
+prima di scrivere qualsiasi cosa, e con un errore a schermo — rumoroso, non
+silenzioso. Anche se passasse, la scrittura porta `origine` e `origine_testo`,
+che non esistono.
+
+Quindi, prima che Francesco lo lanci dal back-office, va applicata la `068`. E
+siccome della `066` e della `067` non si sa, la cosa sicura è rilanciare **dalla
+`064` alla `068` in ordine**: tutte e cinque si dichiarano idempotenti in testa
+(`comment on` sovrascrive, `add column if not exists`, `update` per codice,
+`on conflict do nothing`). È una scrittura sullo schema di un database **senza
+backup**: la fa Francesco, non questa corsia.
+
+### E la cosa da tenere, che riguarda questo file
+
+La riga della `068` in tabella diceva **«chiuso (068, schema)»**. Era vero di
+quello che significava per chi l'ha scritta — migrazione scritta e committata — e
+falso di quello che chiunque altro ci legge: che lo schema ci sia. **In questo
+file «chiuso» non ha mai distinto *scritto* da *applicato***, e il secondo non
+l'aveva misurato nessuno. È esattamente quello che AppOverall ha trovato in
+AppFormazione lo stesso giorno: non un errore di una corsia, una parola che le due
+corsie usavano nello stesso modo.
+
+Da qui in avanti una migrazione in tabella dice **scritta** oppure **applicata**,
+e la seconda solo con `npm run livello:produzione` accanto.
 
 ## I due conti per la migrazione dati: strumento pronto, non eseguito
 
