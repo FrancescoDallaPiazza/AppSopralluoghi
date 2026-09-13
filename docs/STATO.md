@@ -69,7 +69,7 @@ nella corsia `AppFormazione`.*
 | **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — e in produzione **oggi non partirebbe**: legge `ruolo_testo`, che la `068` crea e che lì non c'è | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
-| **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **aperto**, verificato nel codice; **non riparato**, prima la misura — il database dice il contrario | — |
+| **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **aperto**, verificato nel codice; **non riparato**. Misura 13.09: **0 orfane**, 228/228 senza CF con chiave per nome, 0 omonimi — una fusione già avvenuta non si vede dal database; i 6 omonimi del 9.09 non spiegati, l'export non è su questa macchina | `f25664e` |
 | **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `d4aeefe` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
@@ -1071,6 +1071,37 @@ La quarta normalizza gli spazi come `normNome`, che un `upper()` da solo non fa.
 
 **Oggi non morde, e morderà:** il difetto agisce solo al **secondo** import di un
 file con omonimi senza CF, e il prossimo import delle anagrafiche lo è.
+
+#### Le select, lanciate da Francesco il 13 settembre, sera
+
+| select | esito |
+|---|---:|
+| persone senza `import_key` | **0** |
+| senza CF **e** senza `import_key` | **0** |
+| senza CF con chiave `anag:…:n:…` | **228** — tutte |
+| omonimi senza CF nello stesso cliente (spazi normalizzati) | **nessuna riga** |
+
+**Cosa dicono, e fin dove.**
+
+- **Schede orfane: nessuna.** Il difetto, nel database, non ha lasciato la sua
+  seconda metà. La prima select conferma lo zero del 10 settembre.
+- **Le 228 senza CF sono tutte agganciate per nome, su nomi univoci** dentro il
+  loro cliente. Il conto 2 e l'SQL dicono la stessa cosa per due strade diverse.
+- **Una fusione avvenuta NON è esclusa.** Due righe del file finite sulla stessa
+  scheda non lasciano traccia nel database: resta una persona sola, con la sua
+  chiave, e l'altra riga non esiste da nessuna parte. Lo zero orfane è compatibile
+  con «non è successo» **e** con «è successo quando la prima scheda c'era già» — per
+  esempio da uno dei due tentativi falliti del 9 settembre. Queste select non
+  sanno distinguere i due casi.
+- **I 6 omonimi del 9 settembre nel database non ci sono come omonimi**, e da qui
+  non si sa dove siano finiti. L'unica fonte che lo direbbe è l'export
+  `ExportExcel (5).xlsx`: **cercato su questa macchina, non c'è.** Senza, la
+  differenza 235 contro 228 e il 3.420 contro 3.419 restano dichiarati e non
+  spiegati — non li chiudo con la spiegazione più comoda.
+
+**Il difetto nel codice resta aperto e vero**: le select dicono che cosa ha
+lasciato nel database, non che il codice sia giusto. Al prossimo import con due
+omonimi senza CF nello stesso cliente, il meccanismo sopra si ripete.
 
 ## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
 
