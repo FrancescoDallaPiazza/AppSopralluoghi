@@ -66,8 +66,8 @@ nella corsia `AppFormazione`.*
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
 | **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — e in produzione **oggi non partirebbe**: legge `ruolo_testo`, che la `068` crea e che lì non c'è | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
-| I due conti per la migrazione dati (sola lettura) | **strumento pronto**, non eseguito: servono le credenziali | `npm run conti:migrazione` |
-| **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `npm run livello:produzione` |
+| I due conti per la migrazione dati (sola lettura) | **eseguito 13.09 con la anon, NON misurato**: legge 0 persone su 0 clienti per le RLS — serve una lettura autenticata | `npm run conti:migrazione` |
+| **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `d4aeefe` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
@@ -905,8 +905,44 @@ serve il carattere di controllo, e una query che filtra per *forma* e la chiama
 funzione di produzione e stampa **tutti e due** i conti, così la differenza si vede
 invece di doverla credere.
 
-**Non è stato eseguito**: su questa macchina non c'è `.env.local`. Senza
-credenziali si ferma e lo dice, invece di stampare uno zero.
+**Eseguito il 13 settembre con la sola chiave anon, e NON è una misura.** Stampa
+«Lette **0** persone su **0** clienti» e poi zero su ogni riga dei due conti. Non
+vuol dire che non ci sono doppioni: vuol dire che le RLS non fanno leggere
+`persona` e `cliente` a chi non è autenticato, e il `count(*)` del 10 settembre
+nell'SQL Editor ne contava 3.419 e 619. **Zero righe lette su tabelle che ne hanno
+tremila è un'assenza che si presenta come un risultato**, e i numeri che ne
+escono non vanno passati a nessuno.
+
+*Una debolezza dello script, trovata eseguendolo:* davanti a 0 righe lette non si
+ferma, stampa i conti. Con la anon è il caso normale, non un'eccezione.
+
+**Cosa serve per misurare davvero:** una lettura **autenticata** — la sessione di
+un utente del back-office, o la chiave `service_role`, che su questa macchina non
+va messa senza che lo decida Francesco. Non sostituibile con due query nell'SQL
+Editor, per la ragione scritta sopra: il conto 1 chiede il carattere di controllo.
+
+**La definizione di «valido» che lo script usa**, letta in
+`src/formazione/codiceFiscale.ts` e non ricopiata dal commento:
+
+1. `pulisci`: maiuscolo, poi via **tutto** ciò che non è `A-Z0-9` — spazi,
+   punti, trattini;
+2. lunghezza **16** e la **struttura** del CF: 6 lettere, 2 posizioni numeriche,
+   la lettera del mese (`ABCDEHLMPRST`), 2 numeriche, una lettera, 3 numeriche,
+   una lettera — dove ogni posizione numerica ammette anche le lettere di
+   **omocodia** `L-V`;
+3. il **carattere di controllo** calcolato sui primi 15 uguale al sedicesimo.
+
+Il comune e il cross-check cognome/nome **non** entrano. E la riga «di FORMA
+valida» dello script è più larga del punto 2: conta **16 caratteri alfanumerici
+qualsiasi**, non la struttura — quindi la differenza che stampa fra forma e
+validità mescola i CF con la struttura sbagliata e quelli con il controllo
+sbagliato.
+
+**E le 235 persone senza CF restano quelle dei documenti, non misurate oggi:**
+227 con un nome univoco agganciate col ripiego cognome+nome, 6 omonime rimaste
+`riga:N` (dall'import del 9 settembre), e i 2 che mancano a fare 235 senza
+spiegazione confermata. Cosa succede loro di là — quante sono gli omonimi nello
+stesso cliente — è proprio il conto 2, ed è quello che non si è potuto leggere.
 
 ## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
 
