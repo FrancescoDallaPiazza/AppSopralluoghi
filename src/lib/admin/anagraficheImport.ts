@@ -519,6 +519,17 @@ export interface GruppoPersone {
   aggiornate: number;
   cfNonValidi: number;
   senzaCf: number;
+  // Righe senza CF con un nome ambiguo: NON si scrivono. Stanno qui, fuori da
+  // `voci` e dai conteggi nuove/aggiornate, perche' l'anteprima le mostri come
+  // cio' che sono - da abbinare a mano - e non come un'esclusione silenziosa.
+  daAbbinare: RigaDaAbbinare[];
+}
+
+export interface RigaDaAbbinare {
+  riga: number;
+  cognome: string;
+  nome: string;
+  motivo: string;
 }
 
 export interface PianoPersone {
@@ -637,7 +648,7 @@ export function raggruppaPersone(
       })),
       righe: g.righe,
       collisione: null,
-      voci: [], nuove: 0, aggiornate: 0, cfNonValidi: 0, senzaCf: 0,
+      voci: [], nuove: 0, aggiornate: 0, cfNonValidi: 0, senzaCf: 0, daAbbinare: [],
     });
   }
 
@@ -707,8 +718,11 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     // risultava SEMPRE nuova, e riapplicare lo stesso file la duplicava.
     // Il nome vale come chiave solo quando non e' ambiguo: se due persone
     // dello stesso cliente si chiamano uguale, o se il file ripete lo stesso
-    // nome senza CF, si torna a "riga:N". Meglio un doppione che si vede di
-    // due persone fuse per sbaglio, che non si vede piu'.
+    // nome senza CF, la riga NON SI SCRIVE e va in `daAbbinare`, con il motivo.
+    // Fino al 13.09 tornava "riga:N", nuova: niente fusioni, ma a ogni import
+    // dello stesso file un doppione in piu'. Dove la fonte non da' una chiave
+    // non se ne inventa una, e l'import resta idempotente (decisione di
+    // Francesco, 13.09.2026).
     const perNomePersona = new Map<string, Persona | null>();   // null = omonimi, inutilizzabile
     for (const p of esistenti) {
       const k = chiaveNome(p.cognome, p.nome);
@@ -726,6 +740,7 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     // Dentro il gruppo il CF e' la chiave: due righe con lo stesso CF sono la
     // stessa persona e si fondono, non diventano due schede.
     const perRiga = new Map<string, VocePersona>();
+    const daAbbinare: RigaDaAbbinare[] = [];
     let senzaCf = 0;
     for (const r of gr.righe) {
       const campi = leggiCampiPersona(r.col);
@@ -744,6 +759,16 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
         candidato = k ? perNomePersona.get(k) : undefined;
         const unicoNelFile = k ? (nomiSenzaCfNelFile.get(k) ?? 0) === 1 : false;
         nomeUsabile = !!k && unicoNelFile && candidato !== null;
+        senzaCf++;
+        if (!nomeUsabile) {
+          daAbbinare.push({
+            riga: r.n, cognome: campi.cognome, nome: campi.nome,
+            motivo: !k ? 'nome non leggibile'
+              : !unicoNelFile ? 'omonimo nel file, senza codice fiscale'
+              : 'omonimo già in archivio, senza codice fiscale',
+          });
+          continue;
+        }
       }
       const ik = campi.cf || nomeUsabile
         ? chiaveImportPersona(gr.cliente_id, campi.cf, campi.cognome, campi.nome)
@@ -757,13 +782,8 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
       if (campi.cf) {
         chiaveRiga = campi.cf;
       } else {
-        if (nomeUsabile) {
-          chiaveRiga = `nome:${k}`;
-          if (candidato) esist = candidato;
-        } else {
-          chiaveRiga = `riga:${senzaCf}`;
-        }
-        senzaCf++;
+        chiaveRiga = `nome:${k}`;
+        if (candidato) esist = candidato;
       }
       const gia = perRiga.get(chiaveRiga);
       const base: Persona = gia
@@ -788,6 +808,7 @@ export async function riconciliaPersone(gruppi: GruppoPersone[]): Promise<Gruppo
     gr.aggiornate = gr.voci.length - gr.nuove;
     gr.cfNonValidi = gr.voci.filter((v) => v.cfNonValido).length;
     gr.senzaCf = senzaCf;
+    gr.daAbbinare = daAbbinare;
   }
   return gruppi;
 }

@@ -105,7 +105,9 @@ export default function ImportAnagrafiche() {
         if (foglio) setPianoC(pianificaClienti(foglio, dati.full));
       } else if (pianoP && foglio) {
         const n = await applicaPersone(pianoP.gruppi);
-        setMsg(`${n} persone scritte.`);
+        setMsg(`${n} persone scritte.` + (daAbbinareP > 0
+          ? ` ${daAbbinareP} righe da abbinare a mano NON sono state scritte: sono elencate nei loro gruppi.`
+          : ''));
         setPianoP(await pianificaPersone(foglio, scelta, abbinamenti));
       }
     } catch (e: any) { setErr(e?.message ?? 'Import non riuscito.'); }
@@ -125,6 +127,11 @@ export default function ImportAnagrafiche() {
     () => pianoP?.gruppi.reduce((n, g) => n + (g.cliente_id ? g.nuove : 0), 0) ?? 0, [pianoP]);
   const aggiornateP = useMemo(
     () => pianoP?.gruppi.reduce((n, g) => n + (g.cliente_id ? g.aggiornate : 0), 0) ?? 0, [pianoP]);
+  // Righe che l'import NON scrive: senza CF, con un nome ambiguo. Contate a
+  // parte, accanto alle nuove e alle aggiornate, perche' un'esclusione che non
+  // si vede e' indistinguibile da una riga persa.
+  const daAbbinareP = useMemo(
+    () => pianoP?.gruppi.reduce((n, g) => n + (g.cliente_id ? g.daAbbinare.length : 0), 0) ?? 0, [pianoP]);
 
   return (
     <div>
@@ -263,6 +270,9 @@ export default function ImportAnagrafiche() {
                   <span><b>{pianoP.gruppi.length}</b> gruppi (azienda + sede)</span>
                   <span><b>{daScrivereP}</b> persone da scrivere</span>
                   <span><b>{nuoveP}</b> nuove · <b>{aggiornateP}</b> aggiornate</span>
+                  {daAbbinareP > 0 && (
+                    <span style={{ color: 'var(--no)' }}><b>{daAbbinareP}</b> da abbinare a mano (non scritte)</span>
+                  )}
                   {gruppiSenzaCliente > 0 && (
                     <span style={{ color: 'var(--no)' }}><b>{gruppiSenzaCliente}</b> gruppi senza cliente</span>
                   )}
@@ -292,6 +302,9 @@ export default function ImportAnagrafiche() {
                     <span>P.IVA <b>{g.partita_iva ?? '—'}</b></span>
                     <span><b>{g.voci.length}</b> persone nel file</span>
                     {g.cliente_id && <span><b>{g.nuove}</b> nuove · <b>{g.aggiornate}</b> aggiornate</span>}
+                    {g.cliente_id && g.daAbbinare.length > 0 && (
+                      <span style={{ color: 'var(--no)' }}><b>{g.daAbbinare.length}</b> da abbinare a mano</span>
+                    )}
                   </div>
                 </div>
                 {g.voci.length > 0 && (
@@ -326,8 +339,22 @@ export default function ImportAnagrafiche() {
               {g.cliente_id && (g.cfNonValidi > 0 || g.senzaCf > 0) && (
                 <p className="bo-sub" style={{ margin: '6px 0 0' }}>
                   {g.cfNonValidi > 0 && <>{g.cfNonValidi} con <b>codice fiscale non valido</b> (importate comunque, da correggere). </>}
-                  {g.senzaCf > 0 && <>{g.senzaCf} <b>senza codice fiscale</b>: nascono sempre come persone nuove, perché non c'è modo di riconoscerle.</>}
+                  {g.senzaCf > 0 && <>{g.senzaCf} <b>senza codice fiscale</b>: si riconoscono per cognome e nome, ma solo se quel nome non si ripete.</>}
                 </p>
+              )}
+
+              {g.cliente_id && g.daAbbinare.length > 0 && (
+                <div className="bo-err" style={{ margin: '8px 0 0' }}>
+                  <b>{g.daAbbinare.length} da abbinare a mano — non vengono scritte.</b>{' '}
+                  Senza codice fiscale e con un nome che si ripete non c'è modo di sapere chi è chi:
+                  scriverle vorrebbe dire fondere due persone, o crearne di nuove a ogni import.
+                  <ul style={{ margin: '6px 0', paddingLeft: 18 }}>
+                    {g.daAbbinare.map((d) => (
+                      <li key={d.riga}>riga {d.riga} · <b>{d.cognome} {d.nome}</b> · {d.motivo}</li>
+                    ))}
+                  </ul>
+                  L'abbinamento guidato da qui non c'è ancora: per ora vanno sistemate a mano nell'organigramma del cliente.
+                </div>
               )}
 
               {aperto[g.chiave] && (
