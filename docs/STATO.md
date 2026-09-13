@@ -64,11 +64,11 @@ nella corsia `AppFormazione`.*
 | L'ATECO mancante diventa un'azione che si chiude da sola | **scritta** (**066**, solo un commento), chiave `cliente-ateco:<cliente_id>` — **applicata il 13.09 da SQL Editor**, passata nella transazione 064-068: non misurabile | `81f6903` |
 | Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | **scritta** (**067**, solo testo) — **era già applicata, non si sa quando**: il controllo prima del 13.09 ha trovato i due testi identici parola per parola; ripassata senza effetto | `f9f7f80` |
 | Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | **applicata il 13.09 da SQL Editor**, misurata con `livello:produzione`: 27 chiavi, 32 asserzioni. **Ma le due tabelle risultano con RLS e senza policy**: la anon legge 0 righe — vedi `069` | `8702e8a` |
-| **069** · RLS e `staff_full` su `ruolo_testo` e `ruolo_testo_figura`, come tutte le altre tabelle | **scritta**, non applicata — la rilegge AppOverall, la applica Francesco. **Misurato prima**: RLS attive e **0 policy** su tutte e due (`corso_alias`: 1) | `46105df` |
+| **069** · RLS e `staff_full` su `ruolo_testo` e `ruolo_testo_figura`, come tutte le altre tabelle | **applicata il 13.09 da SQL Editor** (riletta da AppOverall). **Prima**: RLS attive e **0 policy** su tutte e due (`corso_alias`: 1). **Dopo**: RLS attive e `staff_full` su tutte e tre; con la anon ancora 0 righe senza errore. Lettura da back-office: da verificare | `46105df` |
 | **Guardia sul dizionario vuoto** in `caricaDizionarioRuoli`: zero righe è sempre un errore, mai un dizionario vuoto | **fatta**: `npm run dizionario:check` 3 su 3; senza la guardia (`e18f8c5`) 1 su 3 | `5de8965` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — la `068` adesso c'è, ma **NON va lanciato** finché la `069` non è applicata o una select non mostra una policy su `ruolo_testo`: senza, il dizionario arriverebbe **vuoto**. Dalla guardia (`5de8965`) l'anteprima si **ferma con un errore** invece di proseguire, ma resta ferma finché la `069` non c'è | `f296477` |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — la `068` adesso c'è, ma **NON va lanciato** finché la `069` non è applicata o una select non mostra una policy su `ruolo_testo`: senza, il dizionario arriverebbe **vuoto**. Dalla guardia (`5de8965`) l'anteprima si **ferma con un errore** invece di proseguire. La `069` è applicata il 13.09: **resta da vedere l'anteprima dal back-office**, senza Applica e **dopo il push e il deploy** — prima gira il codice vecchio, senza guardia | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
 | **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** (`bb141ee`), poi **(a) decisa da Francesco il 13.09**: il nome ambiguo **non si scrive**, va fra i «da abbinare a mano» e l'import resta idempotente (`npm run omonimi:check` 8 su 8; su `bb141ee` A4 dà 2 poi 4). Abbinamento guidato: **manca**. Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `bb141ee`, `e18f8c5` |
@@ -946,6 +946,18 @@ continuerebbe sbagliando** — che è peggio.
   `postgres`, **back-office compreso**. La `069` serve così com'è: `enable row
   level security` è una no-op dove sono già attive, e `staff_full` è la parte che
   manca.
+- **La `069` è applicata il 13 settembre, sera**, da Francesco nell'SQL Editor
+  dentro `begin`/`commit`, riletta prima da AppOverall. **Controllo dopo**
+  (AppOverall, sola lettura): su `corso_alias`, `ruolo_testo` e
+  `ruolo_testo_figura` RLS attive e **una** policy, `staff_full`, `ALL` per
+  `authenticated`, `using` e `with check` a `true` — tutte e tre uguali.
+  **Riscontro di qui, con la anon:** le due tabelle danno ancora **0 righe senza
+  errore**, come `corso_alias`; `livello:produzione` invariato.
+- **Cosa questo NON prova:** che il back-office le legga. La anon a zero dice solo
+  che la porta resta chiusa a chi non è entrato. La prova è l'**anteprima delle
+  nomine dal back-office, senza Applica**: non deve fermarsi sulla guardia e deve
+  riconoscere le righe col ruolo nella mansione. Va fatta **dopo il push e il
+  deploy**, perché prima Vercel serve il codice senza la guardia.
 - **L'import delle nomine non va lanciato** finché la `069` non è applicata o la
   select non mostra una policy.
 
