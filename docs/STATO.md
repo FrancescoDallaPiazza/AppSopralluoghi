@@ -68,7 +68,8 @@ nella corsia `AppFormazione`.*
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
 | **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — e in produzione **oggi non partirebbe**: legge `ruolo_testo`, che la `068` crea e che lì non c'è | `f296477` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
-| I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | script di `a41abc6`, output in sezione |
+| I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
+| **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **aperto**, verificato nel codice; **non riparato**, prima la misura — il database dice il contrario | — |
 | **Livello della produzione** · a che migrazione è il database | **misurato 13.09**: `061`-`063` e `065` sì, **`068` no**; `064` `066` `067` non misurabili con la anon | `d4aeefe` |
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
@@ -1008,6 +1009,68 @@ riparate: davanti a **0 righe lette** stampa i conti invece di fermarsi (il giro
 con la anon ha prodotto una pagina di zeri dall'aspetto di un risultato), e la
 riga «di FORMA valida» conta 16 alfanumerici qualsiasi, lasciando fuori dalla
 differenza i CF più corti.
+
+**Sui 31 non validi AppOverall ha già deciso** (loro `0008`): li tratta come
+**assenti**, `codice_fiscale` null e la cella originale in
+`codice_fiscale_origine`. Di là le persone senza CF sono **228 + 31 = 259**, e fra
+i 31 non si cercano doppioni: al più una persona in più, mai due fuse. N = 3.415
+regge. Per il punto 1 qui non c'è altro da fare.
+
+### APERTO — il ripiego sul nome fonde gli omonimi al secondo import (13 settembre)
+
+Trovato da AppOverall leggendo `anagraficheImport.ts`, **verificato qui riga per
+riga**. Non è riparato apposta: **prima la misura**, perché il database oggi dice
+il contrario di quello che il codice dovrebbe aver prodotto.
+
+**Il meccanismo**, in `riconciliaPersone`:
+
+- `:733` — `chiaveImportPersona` (`:78-82`) produce `anag:<cliente>:n:<cognome|nome>`
+  per **ogni** persona senza CF con un nome, **anche quando il nome è ambiguo**.
+  Il controllo di ambiguità (`:743-751`) decide solo `chiaveRiga`
+  (`nome:` contro `riga:N`), **non** la chiave di provenienza.
+- **Primo import**, due omonimi senza CF nello stesso gruppo: `riga:0` e `riga:1`,
+  due persone nuove. La prima prende `import_key`; la seconda resta **null**,
+  perché a `:763` quella chiave è già in `ikUsate`.
+- **Import successivi**: a `:738` la ricerca per `import_key` viene **prima** del
+  ripiego. Tutte e due le righe trovano **la prima** persona, e diventano due voci
+  sullo **stesso id**. `salvaPersona` (`formazione.ts:1457`) fa `upsert` per id:
+  l'ultima riga vince su mansione, reparto e date. La seconda persona, quella con
+  `import_key` null, **non viene più toccata**.
+- Il resoconto dice **«0 nuove»**, che è corretto e rassicurante — ed è
+  esattamente la fusione silenziosa che il commento a `:705-711` dichiara di
+  evitare («meglio un doppione che si vede di due persone fuse per sbaglio»), più
+  una scheda **orfana**.
+
+**La contraddizione.** Se il 9 settembre il codice ha fatto questo, nel database
+dovrebbero esserci coppie di omonimi senza CF nello stesso cliente, una delle due
+senza `import_key`. Il conto 2 ne trova **zero**, e il `count(*)` del 10 settembre
+dava **0 persone senza marcatura** — che è già la prima delle select qui sotto,
+fatta tre giorni fa. Quindi o gli omonimi del file non sono mai arrivati come
+omonimi nello stesso cliente, o è successo qualcos'altro dopo l'import. **Non si
+sceglie a occhio.**
+
+**Le select che decidono**, sola lettura, nell'SQL Editor:
+
+```sql
+select count(*) from persona where import_key is null;
+select count(*) from persona where codice_fiscale is null and import_key is null;
+select count(*) from persona where codice_fiscale is null and import_key like 'anag:%:n:%';
+select cliente_id,
+       upper(regexp_replace(trim(cognome), '\s+', ' ', 'g')) as cognome,
+       upper(regexp_replace(trim(nome),    '\s+', ' ', 'g')) as nome,
+       count(*)
+  from persona where codice_fiscale is null
+ group by 1, 2, 3 having count(*) > 1;
+```
+
+La terza è in più rispetto alle tre di AppOverall: se le 228 senza CF portano
+**tutte** una chiave `:n:` distinta, il ripiego ha lavorato solo su nomi univoci.
+La quarta normalizza gli spazi come `normNome`, che un `upper()` da solo non fa.
+`is null` è giusto perché `salvaPersona` scrive il CF vuoto come null
+(`vuotoNull`).
+
+**Oggi non morde, e morderà:** il difetto agisce solo al **secondo** import di un
+file con omonimi senza CF, e il prossimo import delle anagrafiche lo è.
 
 ## Il confronto sulle ore non ha una finestra temporale (12 settembre, sera)
 
