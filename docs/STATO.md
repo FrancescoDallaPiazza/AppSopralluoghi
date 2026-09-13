@@ -64,7 +64,7 @@ nella corsia `AppFormazione`.*
 | L'ATECO mancante diventa un'azione che si chiude da sola | **scritta** (**066**, solo un commento), chiave `cliente-ateco:<cliente_id>` — **applicata il 13.09 da SQL Editor**, passata nella transazione 064-068: non misurabile | `81f6903` |
 | Delega dell'art. 16: la citazione, e che quella riga parla della delega **piena** | **scritta** (**067**, solo testo) — **era già applicata, non si sa quando**: il controllo prima del 13.09 ha trovato i due testi identici parola per parola; ripassata senza effetto | `f9f7f80` |
 | Provenienza della nomina, e il dizionario dei ruoli scritti nella mansione | **applicata il 13.09 da SQL Editor**, misurata con `livello:produzione`: 27 chiavi, 32 asserzioni. **Ma le due tabelle risultano con RLS e senza policy**: la anon legge 0 righe — vedi `069` | `8702e8a` |
-| **069** · RLS e `staff_full` su `ruolo_testo` e `ruolo_testo_figura`, come tutte le altre tabelle | **scritta**, non applicata — la rilegge AppOverall, la applica Francesco | `46105df` |
+| **069** · RLS e `staff_full` su `ruolo_testo` e `ruolo_testo_figura`, come tutte le altre tabelle | **scritta**, non applicata — la rilegge AppOverall, la applica Francesco. **Misurato prima**: RLS attive e **0 policy** su tutte e due (`corso_alias`: 1) | `46105df` |
 | **Guardia sul dizionario vuoto** in `caricaDizionarioRuoli`: zero righe è sempre un errore, mai un dizionario vuoto | **fatta**: `npm run dizionario:check` 3 su 3; senza la guardia (`e18f8c5`) 1 su 3 | `5de8965` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
@@ -934,6 +934,18 @@ continuerebbe sbagliando** — che è peggio.
   Francesco.**
 - **Chiesta una select** di sola lettura su `pg_class.relrowsecurity` e
   `pg_policies`, scritta in testa alla `069`, con `corso_alias` come confronto.
+  **Misurato prima della `069`** — Francesco, SQL Editor, 13 settembre, sera:
+
+  | tabella | RLS | policy |
+  |---|---|---:|
+  | `corso_alias` (confronto) | attive | 1 |
+  | `ruolo_testo` | **attive** | **0** |
+  | `ruolo_testo_figura` | **attive** | **0** |
+
+  Diagnosi confermata: oggi il dizionario **non lo legge nessuno** tranne
+  `postgres`, **back-office compreso**. La `069` serve così com'è: `enable row
+  level security` è una no-op dove sono già attive, e `staff_full` è la parte che
+  manca.
 - **L'import delle nomine non va lanciato** finché la `069` non è applicata o la
   select non mostra una policy.
 
