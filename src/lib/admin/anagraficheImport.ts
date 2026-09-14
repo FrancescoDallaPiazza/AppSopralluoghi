@@ -69,7 +69,7 @@ const normNome = (s: unknown): string =>
 // aziende hanno l'indirizzo vuoto, quindi il ripiego sul luogo non disambigua
 // - e non si scrive, perche' avvelenerebbe ogni import successivo.
 export const pivaUsabile = (s: string | null | undefined): boolean =>
-  !!s && /^\d{11}$/.test(s) && !/^(\d){10}$/.test(s);
+  !!s && /^\d{11}$/.test(s) && !/^(\d)\1{10}$/.test(s);
 
 // Provenienza della persona (mig. 055). L'indice unique e' GLOBALE, non per
 // cliente: il codice fiscale da solo non basterebbe, perche' la stessa persona
