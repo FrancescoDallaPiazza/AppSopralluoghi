@@ -220,14 +220,22 @@ export async function caricaDizionarioRuoli(): Promise<Dizionario> {
 // ---------------------------------------------------------------------------
 // [3] IL PIANO
 // ---------------------------------------------------------------------------
+// Le tre fonti di una nomina, e restano distinte sulla riga scritta. La QUALIFICA
+// e' la colonna X del foglio, accanto alla Mansione (Y): e' testo libero come la
+// mansione, ma e' un'altra colonna, e fonderle nascondeva da dove veniva una
+// nomina. Decisa da Francesco il 14 settembre 2026: prima la qualifica entrava
+// solo quando la mansione era vuota, travestita da mansione, e 38 righe con un
+// ruolo scritto in Qualifica accanto a una Mansione piena non venivano lette.
+export type FonteNomina = 'colonna' | 'mansione' | 'qualifica';
+
 export interface NominaProposta {
   riga: number;
   persona_id: string;
   persona: string;              // come si chiama, per l'anteprima
   figura_codice: string;
   data_nomina: string | null;
-  origine: 'colonna' | 'mansione';
-  origine_testo: string | null; // il verbatim, solo quando origine = 'mansione'
+  origine: FonteNomina;
+  origine_testo: string | null; // il verbatim, quando origine e' 'mansione' o 'qualifica'
   gia: boolean;                 // la persona ha gia' questa figura: non si tocca
 }
 
@@ -238,8 +246,8 @@ export interface DaDecidere {
   persona_id: string | null;
   persona: string;
   cliente: string;
-  fonte: 'colonna' | 'mansione';
-  testo: string;                // la mansione verbatim, o il nome della colonna
+  fonte: FonteNomina;
+  testo: string;                // la mansione o la qualifica verbatim, o il nome della colonna
   motivo: string;
 }
 
@@ -256,6 +264,8 @@ export interface PianoNomine {
   // nota intercetta. Sono le mansioni distinte che il dizionario non conosce:
   // 603 su 2.890 righe all'ultima misura, e scorrerle e' lavoro da cinque minuti.
   mansioniNuove: { testo: string; righe: number }[];
+  // La stessa rete sulla colonna Qualifica, che e' un'altra fonte (14.09).
+  qualificheNuove: { testo: string; righe: number }[];
   righeLette: number;
 }
 
@@ -364,6 +374,21 @@ export async function pianificaNomine(
   const daDecidere: DaDecidere[] = [];
   const personeNonTrovate: PianoNomine['personeNonTrovate'] = [];
   const mansioniConteggio = new Map<string, number>();
+  const qualificheConteggio = new Map<string, number>();
+
+  // Le due colonne di testo libero, ciascuna per conto suo: i sinonimi di
+  // COL_PERSONA.mansione (anagraficheImport) SENZA la qualifica, e la qualifica
+  // da sola. In maiuscolo come il campo mansione, perche' l'`origine_testo`
+  // delle nomine gia' scritte e' in maiuscolo.
+  const COL_MANSIONE = ['mansione', 'ruolo', 'profilo', 'profiloprofessionale'];
+  const COL_QUALIFICA = ['qualifica'];
+  const testoLibero = (col: Record<string, unknown>, chiavi: string[]): string => {
+    for (const k of chiavi) {
+      const v = S(col[k]);
+      if (v) return v.toUpperCase();
+    }
+    return '';
+  };
 
   // Le colonne che il foglio ha davvero. Una colonna attesa e assente si dice:
   // il file potrebbe essere un export diverso.
@@ -411,16 +436,27 @@ export async function pianificaNomine(
       if (!campi) continue;
       const etichetta = nomeDi(campi.cognome, campi.nome);
 
-      // Cosa questa riga asserisce, dalle due sorgenti.
+      // Cosa questa riga asserisce, dalle tre sorgenti.
       const dalleColonne = COLONNE_RUOLO
         .filter((c) => chiaviFoglio.has(c.chiave) && S(r.col[c.chiave]) !== '')
         .map((c) => ({ col: c, data: isoData(r.col[c.chiave]) }));
-      const mans = S(campi.mansione);
+      // La mansione e la qualifica si leggono CIASCUNA DALLA SUA COLONNA. Il campo
+      // `mansione` di leggiCampiPersona prende la prima non vuota fra mansione,
+      // ruolo e qualifica: per le anagrafiche va bene, qui fonderebbe due fonti.
+      const mans = testoLibero(r.col, COL_MANSIONE);
+      const qual = testoLibero(r.col, COL_QUALIFICA);
       const esitoMans: EsitoMansione | null = mans ? risolviMansione(mans, diz) : null;
+      // Una qualifica che dice parola per parola la stessa cosa della mansione non
+      // e' una seconda fonte: e' lo stesso testo scritto due volte (sull'export del
+      // 09/09/2026, «RSPP/TITOLARE» alle righe 409 e 476). Contarla raddoppierebbe
+      // i «da decidere» senza aggiungere niente.
+      const esitoQual: EsitoMansione | null =
+        qual && chiaveTesto(qual) !== chiaveTesto(mans) ? risolviMansione(qual, diz) : null;
       if (mans) mansioniConteggio.set(mans, (mansioniConteggio.get(mans) ?? 0) + 1);
+      if (qual) qualificheConteggio.set(qual, (qualificheConteggio.get(qual) ?? 0) + 1);
 
-      const asserisceQualcosa =
-        dalleColonne.length > 0 || (esitoMans !== null && esitoMans.asserzioni.length > 0);
+      const asserisceQualcosa = dalleColonne.length > 0
+        || (esitoMans?.asserzioni.length ?? 0) > 0 || (esitoQual?.asserzioni.length ?? 0) > 0;
       if (!asserisceQualcosa) continue;   // terzo esito: niente, e va bene
 
       // La persona serve solo se la riga asserisce qualcosa: risolverla per
@@ -451,38 +487,47 @@ export async function pianificaNomine(
         });
       }
 
-      // --- B. la mansione ---
-      for (const a of esitoMans?.asserzioni ?? []) {
-        if (!a.figura_codice) {
-          daDecidere.push({
-            riga: r.n, persona_id: chi.id, persona: chi.nome, cliente: gr.etichetta,
-            fonte: 'mansione', testo: mans,
-            motivo: esitoMans!.trovata
-              ? `il dizionario conosce questa forma e NON ha una regola per "${a.ruolo_asserito}": `
-                + 'l’assenza e’ voluta, il ruolo esatto non si deduce'
-              : 'forma non a dizionario, ma il testo nomina un ruolo di sicurezza',
+      // --- B. la mansione, e C. la qualifica: due testi, la stessa regola ---
+      // Ciascuna nomina porta scritto da quale dei due testi viene.
+      const persona = chi;
+      const deduci = (fonte: 'mansione' | 'qualifica', testo: string, esito: EsitoMansione | null) => {
+        for (const a of esito?.asserzioni ?? []) {
+          if (!a.figura_codice) {
+            daDecidere.push({
+              riga: r.n, persona_id: persona.id, persona: persona.nome, cliente: gr.etichetta,
+              fonte, testo,
+              motivo: esito!.trovata
+                ? `il dizionario conosce questa forma e NON ha una regola per "${a.ruolo_asserito}": `
+                  + 'l’assenza e’ voluta, il ruolo esatto non si deduce'
+                : 'forma non a dizionario, ma il testo nomina un ruolo di sicurezza',
+            });
+            continue;
+          }
+          proposte.push({
+            riga: r.n, persona_id: persona.id, persona: persona.nome, figura_codice: a.figura_codice,
+            data_nomina: null,          // dedotta da un testo: nessuna data, e non se ne inventa una
+            origine: fonte, origine_testo: testo,
+            gia: gia.has(`${persona.id}|${a.figura_codice}`),
           });
-          continue;
         }
-        proposte.push({
-          riga: r.n, persona_id: chi.id, persona: chi.nome, figura_codice: a.figura_codice,
-          data_nomina: null,          // dedotta da un testo: nessuna data, e non se ne inventa una
-          origine: 'mansione', origine_testo: mans,
-          gia: gia.has(`${chi.id}|${a.figura_codice}`),
-        });
-      }
+      };
+      deduci('mansione', mans, esitoMans);
+      deduci('qualifica', qual, esitoQual);
     }
   }
 
-  // Le mansioni che il dizionario non conosce, in ordine di frequenza: e' la
-  // sola rete possibile per un ruolo scritto senza nessuna parola nota.
-  const mansioniNuove = [...mansioniConteggio.entries()]
+  // Le mansioni e le qualifiche che il dizionario non conosce, in ordine di
+  // frequenza: e' la sola rete possibile per un ruolo scritto senza nessuna
+  // parola nota.
+  const nonADizionario = (conteggio: Map<string, number>) => [...conteggio.entries()]
     .filter(([t]) => !diz.perChiave.has(chiaveTesto(t)))
     .map(([testo, righe]) => ({ testo, righe }))
     .sort((a, b) => b.righe - a.righe || a.testo.localeCompare(b.testo));
+  const mansioniNuove = nonADizionario(mansioniConteggio);
+  const qualificheNuove = nonADizionario(qualificheConteggio);
 
   return {
-    gruppi, proposte, daDecidere, personeNonTrovate, scartate, mansioniNuove,
+    gruppi, proposte, daDecidere, personeNonTrovate, scartate, mansioniNuove, qualificheNuove,
     righeLette: f.righe.length,
   };
 }
@@ -501,7 +546,7 @@ export interface RiepilogoNomine {
   personeNonTrovate: number;
   mansioniNuove: number;
   perFigura: { figura: string; n: number }[];
-  perOrigine: { colonna: number; mansione: number };
+  perOrigine: Record<FonteNomina, number>;
 }
 
 // Una persona puo' ricevere la stessa figura da due proposte: la colonna e la
@@ -510,13 +555,17 @@ export interface RiepilogoNomine {
 // l'anteprima del 14.09 diceva «Scrivi 364 nomine» per scriverne 363: la riga
 // 2782 dava `dirigente` dalla colonna e dalla mansione.
 //
-// Fra le due vince la COLONNA, perche' porta la data dell'incarico.
+// Vince la COLONNA, perche' porta la data dell'incarico. Fra i due testi vince la
+// MANSIONE sulla qualifica: e' la fonte che l'import leggeva gia', e a parita' di
+// figura una nomina non deve cambiare provenienza solo perche' da oggi si legge
+// anche l'altra colonna.
+const PESO_FONTE: Record<FonteNomina, number> = { colonna: 0, mansione: 1, qualifica: 2 };
 function senzaDoppioni(proposte: NominaProposta[]): NominaProposta[] {
   const perChiave = new Map<string, NominaProposta>();
   for (const n of proposte) {
     const k = `${n.persona_id}|${n.figura_codice}`;
     const prima = perChiave.get(k);
-    if (!prima || (prima.origine === 'mansione' && n.origine === 'colonna')) perChiave.set(k, n);
+    if (!prima || PESO_FONTE[n.origine] < PESO_FONTE[prima.origine]) perChiave.set(k, n);
   }
   return [...perChiave.values()];
 }
@@ -537,6 +586,7 @@ export function riepiloga(p: PianoNomine): RiepilogoNomine {
     perOrigine: {
       colonna: nuove.filter((x) => x.origine === 'colonna').length,
       mansione: nuove.filter((x) => x.origine === 'mansione').length,
+      qualifica: nuove.filter((x) => x.origine === 'qualifica').length,
     },
   };
 }

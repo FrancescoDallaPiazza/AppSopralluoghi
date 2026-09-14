@@ -86,10 +86,11 @@ export default function ImportNomine() {
       <h2 className="bo-h">Import nomine (organigramma)</h2>
       <p className="bo-sub">
         Legge il foglio <b>{FOGLIO_RUOLI}</b> dell'export del gestionale — quello con le
-        colonne dei ruoli e la mansione. Le nomine arrivano da <b>due sorgenti che non hanno
-        lo stesso peso</b>: le colonne di ruolo, che portano la data dell'incarico e sono una
-        dichiarazione, e il testo della mansione, che è un'interpretazione fatta da un
-        dizionario. Quale delle due resta scritto sulla riga, per sempre.
+        colonne dei ruoli, la qualifica e la mansione. Le nomine arrivano da <b>tre sorgenti
+        che non hanno lo stesso peso</b>: le colonne di ruolo, che portano la data
+        dell'incarico e sono una dichiarazione, e due testi liberi, la qualifica e la
+        mansione, che sono un'interpretazione fatta da un dizionario. Quale delle tre resta
+        scritto sulla riga, per sempre.
         <b> L'anteprima non scrive niente.</b>
       </p>
 
@@ -127,8 +128,8 @@ export default function ImportNomine() {
           </div>
           <p className="bo-sub" style={{ marginTop: 10 }}>
             Delle {r.daCreare} da creare, <b>{r.perOrigine.colonna}</b> vengono da una colonna
-            (dichiarate, con la data) e <b>{r.perOrigine.mansione}</b> dalla mansione (dedotte,
-            senza data).
+            (dichiarate, con la data), <b>{r.perOrigine.mansione}</b> dalla mansione e{' '}
+            <b>{r.perOrigine.qualifica}</b> dalla qualifica (dedotte, senza data).
           </p>
           {r.perFigura.length > 0 && (
             <table className="bo-table" style={{ marginTop: 8 }}>
@@ -200,7 +201,7 @@ export default function ImportNomine() {
                 <tr key={i}>
                   <td>{d.riga}</td>
                   <td>{d.persona}<br /><small className="bo-sub">{d.cliente}</small></td>
-                  <td>{d.fonte === 'mansione' ? 'mansione' : 'colonna'}</td>
+                  <td>{d.fonte}</td>
                   <td><code>{d.testo}</code></td>
                   <td><small>{d.motivo}</small></td>
                 </tr>
@@ -272,6 +273,30 @@ export default function ImportNomine() {
           </table>
           {piano.mansioniNuove.length > 60 && (
             <p className="bo-sub">…e altre {piano.mansioniNuove.length - 60}.</p>
+          )}
+        </div>
+      )}
+
+      {/* =================== QUALIFICHE NUOVE =================== */}
+      {piano && piano.qualificheNuove.length > 0 && (
+        <div className="bo-card" style={{ marginTop: 12 }}>
+          <h3 className="bo-h3">{piano.qualificheNuove.length} qualifiche che il dizionario non conosce</h3>
+          <p className="bo-sub">
+            La stessa rete delle mansioni, sull'altra colonna di testo libero. È qui che il 14
+            settembre sono venute fuori «Lavoratore e preposto» e «RLS»: scritte in Qualifica,
+            accanto a una Mansione piena, e mai lette.
+          </p>
+          <table className="bo-table">
+            <thead><tr><th>qualifica</th><th style={{ textAlign: 'right' }}>righe</th></tr></thead>
+            <tbody>
+              {piano.qualificheNuove.slice(0, 60).map((m) => (
+                <tr key={m.testo}><td><code>{m.testo}</code></td>
+                  <td style={{ textAlign: 'right' }}>{m.righe}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          {piano.qualificheNuove.length > 60 && (
+            <p className="bo-sub">…e altre {piano.qualificheNuove.length - 60}.</p>
           )}
         </div>
       )}
