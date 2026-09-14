@@ -90,7 +90,18 @@ begin
   end if;
 end $$;
 
--- 2. I CAMPI VUOTI del cliente che si tiene si riempiono con quelli dell'altro.
+-- 2. Si copiano i clienti da togliere, e SOLO DOPO si tolgono. Le loro sedi
+--    vuote seguono per cascata.
+--    L'ordine conta: riempire il cliente tenuto mentre l'altro esiste ancora fa
+--    scattare i vincoli di unicita' (werp_id oggi, uno aggiunto domani), perche'
+--    per un momento lo stesso valore starebbe su due righe. Provato da
+--    AppOverall su un cluster usa e getta (bdb685b, caso F).
+create temp table _copia on commit drop as
+  select * from public.cliente where id in (select togli from _coppie);
+
+delete from public.cliente where id in (select id from _togli);
+
+-- 3. I CAMPI VUOTI del cliente che si tiene si riempiono dalla copia dell'altro.
 --    Solo i vuoti: niente di quello che c'e' gia' viene sovrascritto.
 do $$
 declare
@@ -105,14 +116,11 @@ begin
          and is_generated = 'NEVER' and is_updatable = 'YES'
     loop
       execute format(
-        'update public.cliente k set %1$I = d.%1$I from public.cliente d where k.id = $1 and d.id = $2 and k.%1$I is null and d.%1$I is not null',
+        'update public.cliente k set %1$I = d.%1$I from _copia d where k.id = $1 and d.id = $2 and k.%1$I is null and d.%1$I is not null',
         col.column_name) using r.tieni, r.togli;
     end loop;
   end loop;
 end $$;
-
--- 3. Si tolgono i 5 clienti. Le loro sedi vuote seguono per cascata.
-delete from public.cliente where id in (select id from _togli);
 
 -- 4. DOPO AVER SCRITTO: il risultato deve essere quello atteso, altrimenti si annulla.
 do $$
@@ -132,6 +140,11 @@ begin
 
   select count(*) into n from public.cliente where id in (select tieni from _coppie);
   if n <> 4 then raise exception 'Attesi 4 clienti tenuti, trovati %. Annullato.', n; end if;
+
+  -- IGEA non si tocca: i due clienti (Via Sorte 48 e Via Michelangelo 7) ci sono ancora.
+  select count(*) into n from public.cliente
+   where id in ('3f485f16-bdf6-4106-8caa-0361e1889a80', 'def8645c-3ac9-48de-80ec-65d7ee44a87e');
+  if n <> 2 then raise exception 'Attesi i 2 clienti IGEA intatti, trovati %. Annullato.', n; end if;
 
   select count(*) into n from public.cliente
    where id = '241c7505-38a1-4414-9b04-e99cf0f290bf' and partita_iva = '09318332023';
