@@ -1064,6 +1064,18 @@ clienti IGEA come controllo in tutti:
   produzione, per PARAVANTO, non accade: tutti e due i clienti hanno CAP 37131 e
   Verona, e il tenuto ha già «Via Saraina», che resta.
 
+**Lanciato da Francesco il 14.09**, dopo quello di MAISON 22/Giacomelli. La query
+di verifica, riferita da lui, dà **esattamente l'atteso**: 5 righe, una per P.IVA,
+nessun cliente tolto rimasto.
+
+| P.IVA | cliente | indirizzo | CAP | località | persone |
+|---|---|---|---|---|---|
+| 00199400128 | LINDE MATERIAL HANDLING ITALIA SPA | VIA DEL LUGUZZONE 3 | — | BUGUGGIATE | 0 |
+| 00967010232 | CENTRO ATTIVITA' Soc.Coop.Sociale a r.l. | Via Fratelli Corrà 7 | 37067 | Valeggio sul Mincio | **21** |
+| 01249140235 | CENTRO SOCIALIZZAZIONE Soc.Coop.Sociale a r.l. | Via Cantore, 6 | 37069 | Villafranca di Verona | **26** |
+| 02449980230 | MARANI G. SPA | Via dell'Artigianato 51 | 37051 | Bovolone | 0 |
+| 04312380233 | AZ. AGR. PARAVANTO DI ALBERTO DELIPERI | Via Saraina | 37131 | Verona | 0 |
+
 Un'avvertenza per chi legge: Corrà 9 e il secondo CENTRO SOCIALIZZAZIONE
 potevano essere sedi vere, come MAISON 22. La regola di Francesco li toglie
 perché non hanno persone. Se un giorno arrivano persone di quelle sedi, il
