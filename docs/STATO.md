@@ -1211,10 +1211,50 @@ che l'etichetta non riporta. Due prove indipendenti, senza toccare i dati:
 **Primo passaggio scritto il 14.09.** Francesco ha escluso MAISON 22 e premuto
 Applica. La pagina ha risposto, con le sue parole: «3459 persone scritte. 2 righe
 da abbinare a mano NON sono state scritte: sono elencate nei loro gruppi.» Il numero
-coincide con l'atteso. **Da fare:** la rilettura dell'anteprima (attese 0 nuove,
-3.459 aggiornate) e, col sì di Francesco, la lettura del database. Attese:
-3.481 persone, nessun CF doppio dentro un cliente, e le 24 schede degli spazi
-invariate.
+coincide con l'atteso.
+
+**La lettura del database** (sola lettura, col sì di Francesco dato in questa
+sessione, alle 17:37 ora locale). Tutte le persone sono state confrontate con la
+fotografia di prima e con le attese salvate prima di scrivere. Script e dati sono
+nella scratchpad, perché contengono codici fiscali.
+
+| controllo | esito |
+|---|---|
+| persone | **3.481** = 3.417 + 64 |
+| MAISON 22 | `cc7d7e47` **17**, `f105801a` **4**, stesse schede di prima per id; nessuna delle 4 di Porta Borsari anche sotto `cc7d7e47` |
+| il recupero | i **63 CF** mai visti prima esistono **ciascuno una volta**, **63 su 63 sotto il cliente del loro gruppo**, 63 su 63 con la provenienza `anag:<cliente>:<cf>`; la nuova senza CF (riga 1759) c'è, una volta, sotto il cliente atteso |
+| schede nate | **64**, tutte fra le 64 attese |
+| CF doppi dentro un cliente | **0** (prima 0) |
+| schede di prima | 0 sparite; **3.395** con `updated_at` nuovo, esattamente le 3.395 del piano |
+| **le 24 degli spazi** | **NON invariate: riscritte CON gli spazi doppi.** nome 3, cognome 5, mansione 14, reparto 3 |
+
+Controllo negativo: lo stesso script sulla fotografia di prima fallisce in 6
+controlli su 6 attesi (totale, presenza dei 63, clienti, chiavi, senza CF, nate).
+
+**Nel browser di Francesco girava il codice di prima del deploy.** Lo dicono le
+24 schede. Col codice di `2f8d21a` il ricalcolo dà 0 schede cambiate. Col codice
+di prima dà le stesse 24, con la stessa divisione per campo, 3/5/14/3, e con gli
+stessi valori. Sul resto i due codici danno lo stesso risultato: il piano identico
+e le chiavi identiche sono provati dal confronto su tutte le 3.472 voci. **Il danno
+è limitato agli spazi doppi di 24 schede**, cioè al valore del file scritto tale e
+quale. Il perché non è accertato. L'app è una PWA con `registerType: 'autoUpdate'`,
+e una scheda aperta prima delle 15:21 UTC, o una ricarica che non scavalca il
+service worker, continua a servire il bundle vecchio.
+
+**Prima di ogni import, la versione nel browser si verifica a vista.** Il bundle è
+uno solo: se la pagina *Import nomine* mostra il titolo «Le nove colonne di ruolo,
+**e quella che non entra**» gira `2f8d21a`. Se mostra «… **e le tre che non
+entrano**» gira il codice vecchio, e non si importa niente.
+
+**Le attese del secondo passaggio cambiano in un punto.** Sono ricalcolate col
+codice di `2f8d21a` sull'archivio letto dopo il primo passaggio: 13 nuove (12 CF
+mai visti, 1 senza CF), 3.459 aggiornate, `Applica (3.472)`, 3 gruppi senza
+cliente, 2 da abbinare, 1 scartata. Le **24 schede cambiano**, e tornano a uno
+spazio: il passaggio IGEA **ripara anche le 24**, senza script. La pagina non
+mostra i cambi, quindi il riscontro è la lettura dopo: **3.494 persone, 13 su
+`3f485f16`, 0 su `def8645c`, 0 schede con uno spazio doppio** in nome, cognome,
+mansione e reparto. Se restano spazi doppi, anche quel passaggio ha girato col
+codice vecchio.
 
 **Attese del secondo passaggio**, scritte prima e calcolate sul primo già scritto. IGEA
 va su `3f485f16` e MAISON 22 resta escluso: **13 nuove** (12 con CF, 1 senza),
