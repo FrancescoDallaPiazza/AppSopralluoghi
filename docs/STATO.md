@@ -10,8 +10,11 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **14 settembre 2026** — **le nomine sono scritte**, da
-Francesco: la rilettura dà 0 da creare e 364 già in organigramma. Prima
+Ultimo aggiornamento: **14 settembre 2026, sera** — **D2 e la correzione del
+conteggio sono fatti e verificati, non pubblicati**: ramo `d2-report-componenti`,
+`6532500`. La `070` è **ferma** sulla domanda della Qualifica. Prima,
+**le nomine sono state scritte** da
+Francesco: la rilettura dà 0 da creare e 364 già in organigramma. Prima ancora
 **l'anteprima era stata vista** senza scrivere: 364 da creare, 153 da
 decidere, 4 persone non trovate, e il conto **torna figura per figura** rifatto dal
 file e dal seme della `068`. Vedi
@@ -58,7 +61,7 @@ nella corsia `AppFormazione`.*
 | **I sette buchi dell'import** | chiuso | `0d0c8a0` |
 | Provenienza: `import_key` sulle persone | chiuso | `98082cd` |
 | La schermata della quarantena | chiuso | `69767fa` |
-| **D2** · il report non conosce i componenti | aperto | — |
+| **D2** · il report non conosce i componenti | **fatto e verificato, non pubblicato** (14.09): voci per id, esiti raggruppati per box, sezione e componente nell'ordine del campo; `npm run report:check` 11 su 11, 9 falliti sulla versione di `main`. Sta sul ramo `d2-report-componenti`: il deploy aspetta la decisione sulla Qualifica, e l'Edge Function si pubblica a parte | `6532500` (ramo) |
 | Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
 | Importare le persone | **fatto 9.09**: l'import ne riporta **3.420**, il `count(*)` del 10.09 ne conta **3.419** — per la migrazione fa fede il **3.419** | `af8d945` |
 | Paginazione delle letture (PostgREST tronca a 1000) | **chiuso** su `persona`, `cliente`, `incarico`, `sede` | `af8d945`, `e82169d` |
@@ -248,9 +251,60 @@ quando Mansione è piena?
 
 In tutti e due i casi, prima del commit la forma esatta va mandata ad AppOverall.
 
-**Poi**, come da `PROGRAMMA.md` sezione 8 (commit `44142f9`): **D2** e la
-correzione di `riepiloga` nello stesso deploy, ritirando il commento di
-`nomineImport.ts:542`.
+**Le 160 righe della misura dell'11 settembre leggevano solo la colonna Mansione
+(Y), e la 3401 non è fra loro.** Lo ha chiesto AppOverall (`cf1d6df`), perché la
+loro `0007` è un dizionario di forme e non dice da quale colonna vengano. È stato
+misurato il 14.09, applicando il seme della `068` alle righe del foglio:
+
+| cosa si legge | righe con un ruolo | coppie |
+|---|---|---|
+| solo la colonna **Mansione** (Y) | **160** | **168** |
+| il campo `mansione` come lo legge l'import (Y, e se è vuota Qualifica) | 167 | 175 |
+
+I due numeri di `8dab00a` escono **esatti** solo leggendo Y. Il testo
+`RLS - LAVORATORE` non è una forma del seme, quindi la 3401 non è fra le 160.
+
+Le **7** righe in più che l'import prende stanno tutte in Qualifica con Mansione
+vuota: 11 e 3289 «DATORE DI LAVORO», 585 «Dirigente», 920, 1762 e 2531
+«RSPP/titolare», 2563 «RSPP». Sono loro a spiegare perché l'anteprima del
+14.09 dava `datore_lavoro` 24 contro 22, `dirigente` 2 dalla mansione contro 1, e
+`dl_rspp` 83 più 1 escluso contro 81. **È la differenza di grana che la sezione
+qui sopra lasciava «non indagata»: adesso è spiegata.**
+
+**D2 e la correzione di `riepiloga`: fatte e verificate, non pubblicate.** Il
+codice sta sul ramo **`d2-report-componenti`**, commit **`6532500`**, e non su
+`main`: il push su `main` fa partire il deploy di Vercel, e AppOverall (`cf1d6df`)
+ha chiesto che il deploy aspetti la risposta di Francesco sulla Qualifica. Se la
+risposta è sì, la modifica per la Qualifica va nello stesso deploy.
+
+- **D2, il report che non conosceva i componenti**
+  (`supabase/functions/genera-report/report-data.ts` e `report-html.ts`). Le
+  voci si caricavano con `.eq('template_id', …)`, e quelle dei box hanno
+  `template_id` NULL (`030`). Adesso:
+  - le voci si caricano **per id**;
+  - l'esito porta `componente_id`;
+  - il dettaglio esce raggruppato per box, sezione e componente (etichetta ·
+    matricola · ubicazione), **nell'ordine del campo** (`BoxGenerico`): prima il
+    template piatto, poi i box nell'ordine del giro, i componenti per etichetta.
+
+  Un errore di lettura su queste tabelle adesso ferma il report, invece di
+  produrne uno appiattito in silenzio.
+  **Prova:** `npm run report:check` passa **11 controlli su 11**. Sulla versione
+  di `main` ne **fallisce 9**: chiave grezza al posto dell'etichetta, nessun
+  componente, nessun titolo di box. Il controllo dei tipi (tsc strict, con
+  l'import da esm.sh indirizzato al pacchetto installato) è pulito. **Deno su
+  questa macchina non c'è**: il controllo con Deno non è fatto.
+- **`riepiloga`** toglie i doppioni persona+figura con **la stessa funzione** di
+  `applicaNomine` (`senzaDoppioni`), e la colonna vince sulla mansione. Il
+  commento che diceva «12 righe» e «coincidono» è ritirato. Provato su un piano
+  costruito apposta (4 proposte con il doppione della 2782 → 3, poi 0 da creare
+  e 3 già presenti). `npm run build` verde.
+
+**Come si pubblica, quando si pubblica.** Sono due canali (`docs/PROGETTO.md`):
+il merge su `main` pubblica l'app su Vercel, mentre l'Edge Function
+`genera-report` va pubblicata a parte, dal Dashboard o con
+`npx supabase functions deploy genera-report --use-api`. Tutte e due le cose sono
+di Francesco o vanno fatte col suo sì.
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
