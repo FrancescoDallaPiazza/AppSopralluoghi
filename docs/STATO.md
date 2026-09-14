@@ -740,6 +740,34 @@ cascata, `persona`, `incarico`, `sopralluogo`, `azione`.
 
 Visto da loro, non da qui. **Francesco lo può lanciare.**
 
+**Lanciato da Francesco il 14.09. La pulizia è fatta, e con il risultato atteso,
+anche se a Francesco è arrivato un errore.** L'errore riferito:
+`ERROR: 42P01: relation "_coppie" does not exist`. Subito dopo, il database letto
+in sola lettura dà:
+
+| | visto | atteso |
+|---|---|---|
+| clienti in tutto | **614** | 619 − 5 |
+| clienti da togliere, e loro sedi, ancora presenti | **0** e **0** | 0 |
+| clienti tenuti | **4** | 4 |
+| IGEA | **2**, modificati l'ultima volta il 2026-09-09 | 2, intatti |
+| EMERA tenuto | P.IVA **09318332023**, Via del Lavoro 16, Vigasio | la P.IVA dell'altro |
+| IL MAGNIFICO tenuto («IL MAGNIFICO S.R.L.») | **Largo Pescheria Vecchia, 10, Verona** | l'indirizzo dell'altro |
+| clienti modificati oggi | **4**, tutti a **12:11:47.548 UTC** | i 4 tenuti |
+
+I 4 clienti tenuti sono stati modificati **nello stesso istante**, quindi in una
+transazione sola. Lo script è arrivato in fondo **una volta**, alle 12:11:47 UTC.
+L'errore su `_coppie` viene da **un altro lancio**, che non ha scritto niente:
+una seconda esecuzione intera avrebbe dato «trovati 0», non 42P01. Come sia stato
+lanciato, per esempio con una parte del testo selezionata, non è stato
+riferito: **non è spiegato**.
+
+Una riscrittura dello script in un unico blocco `do` era stata preparata qui
+partendo dall'ipotesi «l'editor non tiene la transazione, niente scritto». La
+lettura del database l'ha smentita, quindi è stata **scartata prima del commit**.
+Nel repo resta la versione provata da AppOverall e lanciata, `10cd71f`. **Lo script
+non va rilanciato.**
+
 **2. Il caso «XXXXXXXXXXXX»: non è un abbinamento sbagliato, è la stessa persona
 scritta due volte nel file.** Zimmari Luigino compare alla riga **3473** sotto
 la società «XXXXXXXXXXXX» (sede «XXXXXXXXXX», mansione «Operaio») e alla **3474**
