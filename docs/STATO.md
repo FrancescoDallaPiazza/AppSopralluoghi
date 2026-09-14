@@ -717,7 +717,28 @@ Chi si tiene:
   file persone, a cui si copia l'indirizzo scelto da Francesco. Tenendo «Il
   Magnifico Srl», l'import delle persone non lo riconoscerebbe per nome.
 
-**Non è stato eseguito** su un Postgres: qui non c'è un database locale.
+**Eseguito da AppOverall**, perché qui non c'è un database locale. Il file è stato
+lanciato con `psql` e `ON_ERROR_STOP` su un cluster `initdb` usa e getta, con uno
+schema minimo che ha i vincoli che contano: `cliente.werp_id` unique, `sede` in
+cascata, `persona`, `incarico`, `sopralluogo`, `azione`.
+- **Prima versione, `32a68b7`** (`bdb685b`): 5 casi su 6. Nel caso F `werp_id`
+  stava solo sul cliente da togliere: copiarlo nel tenuto mentre l'altro esisteva
+  ancora violava `cliente_werp_id_key`. Tutto annullato, niente scritto, ma lo
+  script non finiva.
+- **Corretto in `10cd71f`**: prima si copiano i clienti da togliere in una tabella
+  temporanea, poi si cancellano, e solo dopo si riempiono i vuoti dei tenuti dalla
+  copia. In più, il controllo finale che i due clienti IGEA ci siano ancora.
+- **Rieseguito** (`c06081e`), 7 casi, ognuno su un database pulito:
+  - **A**, lancio normale: passa. Clienti da 12 a 7, EMERA con la P.IVA,
+    IL MAGNIFICO con Largo Pescheria Vecchia 10, IGEA e le sue persone intatte;
+  - **B**, rieseguito: non trova i clienti e non scrive niente;
+  - **C, D, E**, una persona, un sopralluogo o un'azione `cliente-ateco` collegati
+    a un cliente da togliere: errore, niente scritto;
+  - **F**, `werp_id` solo sul cliente da togliere: adesso passa, e il tenuto lo
+    riceve;
+  - **G**, un cliente IGEA mancante: «trovati 1. Annullato.»
+
+Visto da loro, non da qui. **Francesco lo può lanciare.**
 
 **2. Il caso «XXXXXXXXXXXX»: non è un abbinamento sbagliato, è la stessa persona
 scritta due volte nel file.** Zimmari Luigino compare alla riga **3473** sotto
