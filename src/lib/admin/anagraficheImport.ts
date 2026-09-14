@@ -193,6 +193,7 @@ const valore = (col: Record<string, unknown>, sinonimi: string[]): unknown => {
   return null;
 };
 const testo = (col: Record<string, unknown>, sinonimi: string[]): string => S(valore(col, sinonimi));
+const unoSpazio = (s: string): string => s.replace(/\s+/g, ' ');
 
 // Riconoscimento del tipo di file dalle sole intestazioni. Serve perche'
 // l'ingresso e' uno solo: si carica il file e l'app dice cosa ci ha visto,
@@ -856,16 +857,24 @@ export function personaVuota(clienteId: string): Persona {
 // Legge i campi persona da una riga gia' normalizzata. `null` = riga senza nome,
 // da scartare. Mansione e reparto salgono in MAIUSCOLO qui, un punto solo:
 // e' il vocabolario che poi popola le tendine, e due grafie fanno due voci.
+//
+// Nei quattro campi di testo gli spazi ripetuti diventano uno (decisione di
+// Francesco, 14.09.2026). Sull'export del 09/09 24 schede risultavano
+// "aggiornate" solo perche' il file scrive «GIULIANA  FRANCA» dove l'archivio ha
+// «GIULIANA FRANCA». Non tocca il riconoscimento: la chiave per nome
+// (`chiaveNome` -> `normNome`) e il dizionario dei ruoli (`chiaveTesto`, che
+// legge la mansione DAL FILE, non da qui) collassavano gia' gli spazi.
+// La prova: scripts/spazi-check.mjs.
 export function leggiCampiPersona(col: Record<string, unknown>): CampiPersona | null {
-  const cognome = testo(col, COL_PERSONA.cognome!);
-  const nome = testo(col, COL_PERSONA.nome!);
+  const cognome = unoSpazio(testo(col, COL_PERSONA.cognome!));
+  const nome = unoSpazio(testo(col, COL_PERSONA.nome!));
   if (!nome && !cognome) return null;
   const cfRaw = testo(col, COL_PERSONA.codice_fiscale!);
   return {
     nome, cognome,
     cf: cfRaw ? cfPulisci(cfRaw) : '',
-    mansione: vuotoNull(testo(col, COL_PERSONA.mansione!))?.toUpperCase() ?? null,
-    reparto: vuotoNull(testo(col, COL_PERSONA.reparto!))?.toUpperCase() ?? null,
+    mansione: vuotoNull(unoSpazio(testo(col, COL_PERSONA.mansione!)))?.toUpperCase() ?? null,
+    reparto: vuotoNull(unoSpazio(testo(col, COL_PERSONA.reparto!)))?.toUpperCase() ?? null,
     data_assunzione: isoData(valore(col, COL_PERSONA.data_assunzione!)),
     data_cessazione: isoData(valore(col, COL_PERSONA.data_cessazione!)),
   };

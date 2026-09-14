@@ -16,6 +16,7 @@
     "dizionario:check": "node scripts/dizionario-vuoto-check.mjs",
     "report:check": "node scripts/report-componenti-check.mjs",
     "qualifica:check": "node scripts/qualifica-check.mjs",
+    "spazi:check": "node scripts/spazi-check.mjs",
     "nomine:dryrun": "node scripts/nomine-dryrun.mjs"
   },
   "dependencies": {
