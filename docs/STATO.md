@@ -1148,6 +1148,21 @@ spazi (4/4).
 cui 0 che cambiano**, 2 da abbinare, 3 gruppi senza cliente, 1 scartata. Tutto
 identico a prima tranne le 24.
 
+**Merge e deploy fatti il 14.09**, con il sì di Francesco dato in questa sessione.
+Merge **`2f8d21a`** su main. Sul main unito sono verdi la build e le otto prove.
+
+| canale | cosa è online | come è verificato |
+|---|---|---|
+| **app** (Vercel) | `2f8d21a` | stato GitHub `success` alle 15:21:53 UTC. Il bundle pubblico passa da `index-C73qlAK6.js` (ora 404) a `index-C89rMZll.js`. Contiene «Addetti Emergenze ed Evacuazione» con `figura:"addetto_antincendio"`, il titolo «quella che non entra» e non più «E QUELLA CHE NON ENTRA». In `leggiCampiPersona` nome, cognome, mansione e reparto passano tutti per `uf` (`unoSpazio`), in modo identico alla build locale |
+| **Edge Function** `genera-report` | **v9**, invariata | da `944fa84` a `2f8d21a` nessun file sotto `supabase/functions` né `supabase/migrations` è cambiato |
+
+**Il file per l'anteprima è lo stesso delle attese**, e non va riscaricato. È
+`~/Downloads/ExportExcel (4).xlsx` (7.228.718 byte, 09/09/2026 12:48), quattro
+fogli, e l'import legge il primo, «Fattori di Rischio». L'ultima riga dice
+«Report aggiornato al 09/09/2026». Un export di oggi darebbe altri numeri, e
+potrebbe riscrivere campi corretti in app dopo il 9: va bene dopo, come import
+normale, con le sue attese ricalcolate.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
