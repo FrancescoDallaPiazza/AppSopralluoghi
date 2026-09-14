@@ -409,6 +409,33 @@ obbligato:
    cambia come l'import riconosce i clienti, e misurare prima vuol dire sapere
    chi si sposta. Serve **un sì di Francesco per questa lettura**: quello dato per
    le nomine non vale qui.
+   **Fatta il 14.09**, con il sì di Francesco dato in questa sessione, dopo la
+   `070` e lo script:
+
+   | in produzione (`cliente`) | |
+   |---|---|
+   | clienti | **619** |
+   | con 11 cifre tutte uguali come `partita_iva` | **40**, tutti `00000000000` |
+   | senza `partita_iva` | 22 |
+   | valori di `partita_iva` condivisi da più clienti | **13**, su **64** clienti: il segnaposto (40 clienti) e 12 partite IVA vere su 24 clienti, cioè la stessa azienda con più sedi |
+   | persone collegate ai 40 clienti con segnaposto | **0** su tutti e 40 |
+
+   **Chi si sposta con la correzione: nessuno.**
+   - **I clienti.** Le 40 righe attive di `ElencoSedi.xlsx` con `00000000000`,
+     confrontate con la produzione sulla ragione sociale (colonna `SOCIETÀ`,
+     normalizzata come fa l'import), trovano **ciascuna esattamente un cliente
+     per nome**: 40 su 40, nessuna per codice fiscale, nessuna nuova. Con la
+     correzione il prossimo import dei clienti le abbina **agli stessi clienti**.
+     Con la guardia rotta invece i candidati erano i 40 clienti con lo zero più
+     quello con il nome giusto, e si prendeva quello nello stesso luogo o
+     altrimenti il primo.
+   - **Le persone.** Nessun foglio di `ExportExcel (4).xlsx` ha una colonna
+     partita IVA (controllati tutti e quattro). Il raggruppamento delle persone
+     non passa dalla guardia su questi file: **nessuna persona si sposta**.
+
+   Una prima versione del confronto aveva preso la colonna `SEDE` al posto della
+   ragione sociale, e dava «nessun cliente» su 40 righe. È stata scartata e rifatta
+   con i sinonimi dell'import, prima di scrivere qui.
 2. **Francesco applica la `070`** dall'SQL Editor. Va **prima del codice**, che
    scrive `'qualifica'` e senza la `070` verrebbe rifiutato dal vincolo.
    **Fatto il 14.09**, testo preso dal ramo a `a82c6af`. Il controllo in sola
