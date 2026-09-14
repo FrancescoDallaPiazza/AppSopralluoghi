@@ -10,8 +10,9 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **14 settembre 2026** — **l'anteprima delle nomine è stata
-vista** da Francesco dal back-office, senza scrivere: 364 da creare, 153 da
+Ultimo aggiornamento: **14 settembre 2026** — **le nomine sono scritte**, da
+Francesco: la rilettura dà 0 da creare e 364 già in organigramma. Prima
+**l'anteprima era stata vista** senza scrivere: 364 da creare, 153 da
 decidere, 4 persone non trovate, e il conto **torna figura per figura** rifatto dal
 file e dal seme della `068`. Vedi
 [«L'anteprima delle nomine»](#lanteprima-delle-nomine-vista-da-francesco-e-il-conto-torna-14-settembre).
@@ -74,7 +75,7 @@ nella corsia `AppFormazione`.*
 | **Guardia sul dizionario vuoto** in `caricaDizionarioRuoli`: zero righe è sempre un errore, mai un dizionario vuoto | **fatta**: `npm run dizionario:check` 3 su 3; senza la guardia (`e18f8c5`) 1 su 3 | `5de8965` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| **Import delle nomine** · la pausa è tolta, il codice è scritto | **anteprima vista il 14.09**, da Francesco dal back-office e **senza scrivere**, sul codice di `12b1768` (quello del deploy verificato in `033994a`). La guardia non si è fermata: **364** da creare (198 dalle colonne, 166 dalla mansione), **153** da decidere, **4** persone non trovate, **0** già in organigramma, 4 unità del file non abbinate. **Riconciliata fuori dal database figura per figura** con il file e il seme della `068`: tutti i numeri coincidono. **La scrittura resta di Francesco, e non è fatta.** Un difetto di conteggio, non di dati: il pulsante dice 364 e ne scriverebbe **363** — vedi la sezione del 14 | `f296477`, `12b1768` |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **anteprima vista il 14.09**, da Francesco dal back-office e **senza scrivere**, sul codice di `12b1768` (quello del deploy verificato in `033994a`). La guardia non si è fermata: **364** da creare (198 dalle colonne, 166 dalla mansione), **153** da decidere, **4** persone non trovate, **0** già in organigramma, 4 unità del file non abbinate. **Riconciliata fuori dal database figura per figura** con il file e il seme della `068`: tutti i numeri coincidono. **Scritto da Francesco il 14.09**, sullo stesso codice: il deploy di `d8a7cc7` tocca solo questo file. La rilettura dà **0** da creare, **364** già in organigramma, 153 da decidere e 4 persone non trovate. Le 364 proposte sono 363 coppie persona+figura: vedi la sezione del 14. Resta un difetto di conteggio, non di dati: `riepiloga` non toglie i doppioni | `f296477`, `12b1768` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
 | **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** (`bb141ee`), poi **(a) decisa da Francesco il 13.09**: il nome ambiguo **non si scrive**, va fra i «da abbinare a mano» e l'import resta idempotente (`npm run omonimi:check` 8 su 8; su `bb141ee` A4 dà 2 poi 4). Abbinamento guidato: **manca**. Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `bb141ee`, `e18f8c5` |
@@ -169,11 +170,43 @@ Da qui non è indagato.
    - «RLS - LAVORATORE» (3401, CAFFINI SPA): una forma nuova su cui c'è una
      decisione da prendere, e non l'ha presa nessuno.
 
-**Chi fa cosa adesso.** Scrivere è di Francesco. Se scrive senza abbinare le 4
-unità, le loro righe entrano a un secondo passaggio con lo stesso file: l'import è
-idempotente, per il vincolo unico e perché le nomine già presenti risultano «già in
-organigramma». Questa corsia non tocca il codice prima della scrittura. Poi viene
-**D2**, e la correzione del conteggio può partire con lo stesso deploy.
+**La scrittura, lo stesso giorno.** Francesco ha premuto «Scrivi 364 nomine» sul
+codice di `12b1768`: il deploy di `d8a7cc7` tocca solo questo file, quindi il
+codice è lo stesso dell'anteprima. Le 4 unità **non** sono state abbinate. La
+schermata riletta dopo la scrittura dice:
+
+| conto | prima | dopo |
+|---|---|---|
+| nomine da creare | 364 | **0** |
+| già in organigramma | 0 | **364** |
+| da decidere | 153 | 153 |
+| persone non trovate | 4 | 4 |
+| unità non abbinate | 4 | 4 |
+
+Le **364 già in organigramma sono 363 coppie** persona+figura: la riga 2782
+propone `dirigente` due volte e trova la stessa nomina due volte. Il messaggio
+verde con il numero scritto non è stato riportato, e da qui non si legge il
+database. Quindi **«363 scritte» è dedotto, non visto**. La rilettura a 0 da
+creare, invece, è vista, ed è la prova dell'idempotenza sul caso vero: ripassare
+lo stesso file non aggiunge niente.
+
+**Le righe delle 4 unità non abbinate non sono entrate.** Entrano con un secondo
+passaggio dello stesso file, dopo che Francesco dice a quale cliente appartengono.
+È una sua decisione.
+
+**«RLS - LAVORATORE» (riga 3401, ZAMPERLINI DEMIS, CAFFINI SPA): la lettura l'ha
+data Francesco il 14.09.** Indica due ruoli, RLS e lavoratore. Sul file è l'unica
+mansione che unisce un ruolo e «LAVORATORE», e la colonna RLS di quella riga è
+vuota: l'RLS sta scritto solo lì. Il lavoratore non va dedotto, perché il
+dizionario non lo asserisce mai e l'organigramma lo mette già dall'import della
+formazione. **Conta la metà RLS.** Proposta, **non ancora confermata**: una
+migrazione `070` che aggiunge la forma al dizionario con `rls`, avvisando
+AppOverall perché la loro `0007` è la copia gemella. Poi un secondo passaggio
+dello stesso file.
+
+**Poi**, come da `PROGRAMMA.md` sezione 8 (commit `44142f9`): **D2** e la
+correzione di `riepiloga` nello stesso deploy, ritirando il commento di
+`nomineImport.ts:542`.
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
