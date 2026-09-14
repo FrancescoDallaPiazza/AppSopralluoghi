@@ -1256,6 +1256,21 @@ mostra i cambi, quindi il riscontro è la lettura dopo: **3.494 persone, 13 su
 mansione e reparto. Se restano spazi doppi, anche quel passaggio ha girato col
 codice vecchio.
 
+**Accettato da AppOverall con due precisazioni** (PROGRAMMA.md sezione 8, `45c81fd`):
+1. **La versione si controlla in positivo**, come primo passo di ogni scrittura da
+   una pagina dell'app, IGEA e nomine comprese. Prima una ricarica forzata
+   (Ctrl+Shift+R) o la chiusura di tutte le schede dell'app. Poi deve **comparire**
+   «Le nove colonne di ruolo, e quella che non entra»: non basta che manchi il
+   titolo vecchio. Se il titolo non è quello nuovo, non si scrive.
+2. **Il riscontro sulle 24 si fa per id**, non come «0 schede con spazio doppio»
+   sull'archivio, perché altre schede nate a mano potrebbero averne. Gli id e i
+   valori attesi, cioè quelli della fotografia di prima, sono nella scratchpad
+   (`le-24-spazi.json`). Attesi: tutte e 24 con uno spazio solo, nei campi
+   3/5/14/3.
+
+La rilettura dell'anteprima dopo il primo passaggio non serve: la lettura del
+database prova di più.
+
 **Attese del secondo passaggio**, scritte prima e calcolate sul primo già scritto. IGEA
 va su `3f485f16` e MAISON 22 resta escluso: **13 nuove** (12 con CF, 1 senza),
 **3.459 aggiornate**, `Applica (3.472)`, **3 gruppi senza cliente** (Giacomelli,
