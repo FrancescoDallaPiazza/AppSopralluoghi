@@ -367,7 +367,8 @@ Il ramo ha due commit:
     qualifica.
   - L'anteprima conta per fonte ed elenca le qualifiche che il dizionario non
     conosce.
-  - **La `070`** (non applicata) fa accettare a `nomina.origine` il valore
+  - **La `070`** (**applicata il 14.09** da Francesco, verificata: vedi l'ordine
+    qui sotto, passo 2) fa accettare a `nomina.origine` il valore
     `'qualifica'` e aggiunge cinque forme viste solo in Qualifica:
     `LAVORATORE E PREPOSTO` → `preposto` (13 righe), `RLS` → `rls` (4),
     `RLS - LAVORATORE` → `rls` (3), `RSPP-SOCIO` → rspp **non mappabile** (1),
