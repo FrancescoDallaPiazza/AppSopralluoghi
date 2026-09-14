@@ -565,6 +565,60 @@ l'import delle anagrafiche, che è una scrittura su dati veri ed è di Francesco
 Adesso che la guardia è riparata (`944fa84`), quelle righe si abbinano per
 ragione sociale ai 40 clienti, come misurato sopra. **Prima di farlo va vista
 l'anteprima dell'import delle anagrafiche.**
+
+**Il recupero, nell'ordine di AppOverall (`b2bdf9e`).** Prima dell'import, due
+misure lette in produzione il 14.09, con il sì di Francesco per ciascuna.
+
+**1. La misura allargata a tutti i clienti.** I codici fiscali del foglio persone
+(«Ruoli SSL», 479 società, tutte con un cliente omonimo in produzione) che in
+`persona` non esistono sotto nessun cliente sono **75**:
+
+| | clienti | CF mancanti | righe senza CF |
+|---|---|---|---|
+| i clienti con la P.IVA segnaposto | 35 | **53** | 0 |
+| IGEA SRL UNIPERSONALE | 2 omonimi in produzione | **12** | 1 |
+| LA TORRE S.R.L. SOCIETA' AGRICOLA | 2 omonimi | **5** | 1 |
+| IL MAGNIFICO S.R.L | **2** con la stessa P.IVA, scritti diversamente: «IL MAGNIFICO S.R.L.» senza indirizzo e «Il Magnifico Srl» in Largo Pescheria Vecchia 10. La sede del file, Corso Porta Nuova 131, non è di nessuno dei due. Perché le 2 righe non siano entrate, con un solo omonimo esatto, **non è spiegato** | **2** | 0 |
+| PROGETTO EMERA ONLUS | 2 omonimi | **2** | 0 |
+| GIARDINAGGIO ADAMI FERDINANDO PERITO AGRARIO | 2 omonimi | **1** | 0 |
+
+**Il buco non è solo quello dei segnaposto.** Quattro dei cinque clienti in più
+sono esattamente le «4 unità non abbinate» dell'import delle nomine, e hanno
+**due clienti con lo stesso nome** in produzione, tutti creati dall'import del
+9.09 alle 10:30 e tutti con 0 persone:
+- **GIARDINAGGIO ADAMI**: due righe identiche, stessa P.IVA e nessun indirizzo.
+- **LA TORRE**: identiche salvo una virgola nell'indirizzo («Via Trezzolano 4» e
+  «Via Trezzolano, 4»).
+- **EMERA**: una ha l'indirizzo e non la P.IVA, l'altra la P.IVA e non
+  l'indirizzo.
+- **IGEA**: stessa P.IVA e due indirizzi diversi, Via Sorte 48 e Via
+  Michelangelo 7. Potrebbero essere due sedi vere.
+
+Con due candidati l'import delle anagrafiche non ha scelto, ed è corretto: non si
+indovina. Quelle persone però sono rimaste fuori.
+
+**2. Il caso «XXXXXXXXXXXX»: non è un abbinamento sbagliato, è la stessa persona
+scritta due volte nel file.** Zimmari Luigino compare alla riga **3473** sotto
+la società «XXXXXXXXXXXX» (sede «XXXXXXXXXX», mansione «Operaio») e alla **3474**
+sotto Rittal RCS Cooling Solutions, **con lo stesso codice fiscale**. In
+produzione c'è **una sola scheda**, sotto Rittal: attiva, assunta il 2004-07-01,
+0 nomine, con la chiave d'import del cliente Rittal, quindi viene dalla 3474. Il
+cliente «XXXXXXXXXXXX» esiste, con P.IVA `00000000000`, 1 sede e 0 persone.
+**Reimportando, la 3473 creerebbe una seconda scheda della stessa persona sotto
+un cliente fittizio.**
+
+**Decisioni di Francesco prima dell'import delle anagrafiche:**
+- la riga 3473: proposta **esclusa**, cioè non si crea la seconda scheda;
+- i doppioni di GIARDINAGGIO ADAMI, LA TORRE, EMERA e IL MAGNIFICO: su quale dei
+  due clienti vanno le persone, e se i doppioni si uniscono (una scrittura sui
+  clienti);
+- IGEA: due sedi vere o un doppione, e le 13 righe del file (Via Sorte 48) su
+  quale cliente vanno.
+
+**Le attese per l'anteprima dell'import delle anagrafiche**, prima di vederla:
+**75** persone nuove con CF, più **2** righe senza CF (IGEA e LA TORRE), da
+abbinare. La 3473 non entra, se esclusa. **Nessun campo sovrascritto** sulle
+altre 3.415 persone.
 6. **La scrittura**, di Francesco.
 
 AppOverall ha scritto la gemella (`0018`). Le cinque forme sono identiche byte per
