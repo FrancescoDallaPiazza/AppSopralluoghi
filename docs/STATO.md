@@ -1271,6 +1271,20 @@ codice vecchio.
 La rilettura dell'anteprima dopo il primo passaggio non serve: la lettura del
 database prova di più.
 
+**PAUSA del 14.09, dove si riprende.** Francesco è uscito prima del passaggio IGEA.
+Istruzioni passo per passo già date: versione in positivo, file, MAISON 22 escluso,
+IGEA sulla prima delle due con l'id letto in console, attese, Applica. Per la
+console Chrome blocca l'incolla la prima volta («consenti incolla»), oppure si
+scrive il comando a mano. **Il titolo e l'id non sono ancora stati controllati, e
+IGEA non è scritta.** Restano da fare, in quest'ordine:
+1. il passaggio IGEA;
+2. la lettura per id delle 24 schede;
+3. lo script FIORIO (riga 1298);
+4. un solo import delle nomine, preceduto dal controllo della versione.
+
+L'archivio adesso: 3.481 persone, e le 24 schede con gli spazi doppi. Le attese
+del passaggio IGEA sono quelle scritte sopra.
+
 **Attese del secondo passaggio**, scritte prima e calcolate sul primo già scritto. IGEA
 va su `3f485f16` e MAISON 22 resta escluso: **13 nuove** (12 con CF, 1 senza),
 **3.459 aggiornate**, `Applica (3.472)`, **3 gruppi senza cliente** (Giacomelli,
