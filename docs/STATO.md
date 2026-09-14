@@ -814,7 +814,8 @@ verifica e l'avvertenza di lanciarlo tutto, che lancia Francesco.
 2. **merge e deploy di questo ramo**, con la verifica per canale;
 3. **un solo import delle nomine**, per le persone recuperate e per le emergenze.
    Le attese si scrivono prima dell'anteprima, contate sul file;
-4. **lo script per la data di FIORIO**.
+4. **lo script per la data di FIORIO**. *(14.09 sera: non era legato all'ordine, ed
+   è già fatto, prima di IGEA. Vedi la PAUSA del 14.09, più sotto.)*
 
 ### Le date del foglio: nessuno scarto nel codice, lo scarto era nelle mie analisi (14 settembre)
 
@@ -1279,8 +1280,41 @@ scrive il comando a mano. **Il titolo e l'id non sono ancora stati controllati, 
 IGEA non è scritta.** Restano da fare, in quest'ordine:
 1. il passaggio IGEA;
 2. la lettura per id delle 24 schede;
-3. lo script FIORIO (riga 1298);
-4. un solo import delle nomine, preceduto dal controllo della versione.
+3. un solo import delle nomine, preceduto dal controllo della versione.
+
+**Lo script FIORIO (riga 1298) è fuori da quest'ordine: si può lanciare in
+qualunque momento, anche prima di IGEA** (verifica del 14.09 sera, domanda di
+AppOverall). Non dipende da nessuno dei tre passi e non ne cambia nessuna attesa:
+- **IGEA** scrive solo `persona`, con un upsert per id (`applicaPersone` →
+  `salvaPersona`). Le schede esistenti tengono id e cliente, e `nomina` non viene
+  né letta né scritta. I conteggi 3.472 / 13 / 3.459 / 3 / 2 / 1 contano persone;
+- **le 24 schede** non c'entrano: lo script cerca `upper(trim())` di FIORIO e
+  STEFANO, parole singole, e non legge mansione o reparto. Se per assurdo la
+  scheda non si trovasse, il controllo dà «trovate 0» e non scrive niente;
+- **l'import delle nomine** riconosce una nomina già presente per la sola coppia
+  (persona, figura) (`gia`, nomineImport.ts:410), senza guardare la data, e non la
+  riscrive (`unique (persona_id, figura_codice)`, `ignoreDuplicates`). FIORIO
+  resta fra le «già in organigramma» con la data 2004 come con la 2001, e
+  l'import non può riportarla indietro;
+- **non passa dal bundle dell'app** (SQL Editor), quindi non serve il controllo
+  della versione.
+
+Nella nota della pausa scritta prima, FIORIO stava al punto 3 e nell'ordine di
+`f3d224b` al punto 4. Il perché dello spostamento non è scritto. Il codice non
+chiede nessuna delle due posizioni.
+
+**FIORIO è fatto (14.09 sera).** L'ha lanciato Francesco dall'SQL Editor, fuori
+ufficio, prima di IGEA. Il risultato, incollato da lui e riferito da AppOverall:
+**una riga**, `FIORIO | STEFANO | I.VAR INDUSTRY SRL | addetto_antincendio |
+2001-05-14 | colonna`, nessun errore. Lo script era quello di `origin/main`, letto
+da AppOverall prima di passare i passi. **Non va rilanciato**: un secondo lancio
+darebbe «ne ha toccate 0» e non scriverebbe niente.
+
+**Restano** il passaggio IGEA, la lettura per id delle 24 schede e un solo import
+delle nomine, in quest'ordine. Aspettano tutti `ExportExcel (4).xlsx` (7.228.718
+byte, 09/09 12:48), che è sul PC dell'ufficio e non su Drive. Un export nuovo è
+sconsigliato. L'archivio è ancora com'era alla pausa: 3.481 persone e le 24 schede
+con gli spazi doppi.
 
 L'archivio adesso: 3.481 persone, e le 24 schede con gli spazi doppi. Le attese
 del passaggio IGEA sono quelle scritte sopra.
