@@ -195,14 +195,58 @@ passaggio dello stesso file, dopo che Francesco dice a quale cliente appartengon
 È una sua decisione.
 
 **«RLS - LAVORATORE» (riga 3401, ZAMPERLINI DEMIS, CAFFINI SPA): la lettura l'ha
-data Francesco il 14.09.** Indica due ruoli, RLS e lavoratore. Sul file è l'unica
-mansione che unisce un ruolo e «LAVORATORE», e la colonna RLS di quella riga è
-vuota: l'RLS sta scritto solo lì. Il lavoratore non va dedotto, perché il
-dizionario non lo asserisce mai e l'organigramma lo mette già dall'import della
-formazione. **Conta la metà RLS.** Proposta, **non ancora confermata**: una
-migrazione `070` che aggiunge la forma al dizionario con `rls`, avvisando
-AppOverall perché la loro `0007` è la copia gemella. Poi un secondo passaggio
-dello stesso file.
+data Francesco il 14.09.** Indica due ruoli, RLS e lavoratore. Conta la metà
+RLS: il lavoratore non va dedotto, perché il dizionario non lo asserisce mai e
+l'organigramma lo mette già dall'import della formazione. Poi Francesco ha detto
+**sì anche alla `070`**.
+
+**Correzione, misurata il 14.09 subito dopo.** Qui e nel messaggio ad
+AppOverall era scritto che fosse «l'unico caso» e che stesse «nella mansione»:
+**sono false tutte e due**.
+
+Il testo `RLS - LAVORATORE` (byte per byte, ASCII) sta nella colonna **Qualifica**
+(X), non in Mansione (Y), e compare su **tre** righe. Nessuna delle tre ha la
+colonna RLS compilata:
+
+| riga | persona | cliente | Mansione |
+|---|---|---|---|
+| 1234 | FERC ANDREEA VIORICA | FOOD & SWEET SRL | AIUTO CUCINA E GASTRONOMIA |
+| 3353 | VISENTIN ROSSANO | PALLADIO SCALE SRL | OPERAIO |
+| 3401 | ZAMPERLINI DEMIS | CAFFINI SPA | *(vuota)* |
+
+L'import vede solo la 3401 perché il campo `mansione` prende la **prima colonna
+non vuota** fra `mansione`, `ruolo` e `qualifica`
+(`src/lib/admin/anagraficheImport.ts:174`, `valore` a `:187`). Sulla 3401
+Mansione è vuota, sulle altre due no.
+
+**E non riguarda solo l'RLS.** Delle 377 Qualifiche piene, 336 stanno accanto a
+una Mansione piena e l'import non le legge. **38** di queste contengono una
+parola di ruolo, quasi sempre senza nessuna colonna di ruolo compilata:
+
+| Qualifica | righe | nel dizionario della `068` |
+|---|---|---|
+| LAVORATORE E PREPOSTO | 13 | **no** |
+| PREPOSTO | 9 | sì → `preposto` |
+| RLS | 4 | **no** |
+| DIRIGENTE | 3 | sì |
+| RLS - LAVORATORE | 2 | **no** |
+| RSPP | 2 | sì, non mappabile |
+| RSPP/TITOLARE | 2 | sì (con la stessa Mansione) |
+| SOCIO/RSPP | 1 | sì, non mappabile (con la stessa Mansione) |
+| LEGALE RAPPRESENTANTE/RSPP | 1 | **no** |
+| DATORE DI LAVORO | 1 | sì (con la stessa Mansione) |
+
+**Quindi la `070` è ferma su una domanda che è di Francesco**, e non la scrivo
+prima della risposta. La domanda: l'import deve leggere **anche** Qualifica
+quando Mansione è piena?
+
+- **Se no**, la `070` porta solo `RLS - LAVORATORE` e produce **una** nomina, la
+  3401.
+- **Se sì**, prima serve una modifica al codice, e la `070` deve portare anche le
+  forme che oggi il dizionario non ha. A leggerle entrerebbero decine di
+  nomine, non una.
+
+In tutti e due i casi, prima del commit la forma esatta va mandata ad AppOverall.
 
 **Poi**, come da `PROGRAMMA.md` sezione 8 (commit `44142f9`): **D2** e la
 correzione di `riepiloga` nello stesso deploy, ritirando il commento di
