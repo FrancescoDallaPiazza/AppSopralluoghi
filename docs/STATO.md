@@ -908,6 +908,76 @@ copia, e in produzione ce n'è uno solo. Nessun altro campo cambia.
 Francesco: il doppione MAISON 22, il caso GIACOMELLI / Aprili, e se gli spazi
 doppi vanno ripuliti nel codice.
 
+**Le decisioni, date da Francesco in questa sessione:**
+- **Spazi doppi:** «Sì, ripulisci». Si collassano nella lettura delle persone,
+  sul ramo delle emergenze.
+- **MAISON 22 non è un doppione.** Le sue parole: «MAISON 22 ha 2 sedi: Corso
+  Porta Borsari, 26, 37121 Verona VR in cui ci sono 4 risorse e Via IV Novembre,
+  1d, 37126 Verona VR con 17». Le 4 di Porta Borsari, indicate da lui: SACCA'
+  ALESSANDRA, PASINATO GIULIA, SGANZERLA MAIRA, SILVA LASITH GIMHAN. Il file
+  non distingue le sedi (21 righe con Sede «Verona», Struttura e Reparto vuoti),
+  e in `ElencoSedi.xlsx` le due righe sono identiche.
+- **Giacomelli:**
+  - «AZIENDA AGRICOLA GIACOMELLI FRANCESCO» è la stessa azienda di AZ. AGR.
+    GIACOMELLI FRANCESCO: «si». Nel gestionale porta la P.IVA 00912140233 e un
+    CF di persona, cioè i dati di Aprili.
+  - I dati veri li ha dati Francesco: **P.IVA 02984860235**. In produzione c'è
+    `02884860235`, e la cifra di controllo lo conferma come refuso. Il CF, che è
+    di una persona, lo corregge lui dalla scheda cliente: non va nel repository.
+  - AMARI UMBERTO e GIACOMELLI FRANCESCO lavorano per Aprili? «NO». Le loro
+    schede sotto Aprili, create dall'import del 9.09 alle 11:07, non hanno
+    niente collegato (letto su adempimento, esonero, formazione, nomina e azioni).
+  - NEGRETTI LUCA: «Aprili». La sua scheda lì resta.
+
+**Lo script: `supabase/scripts/correggi_maison22_giacomelli.sql`**, un solo blocco
+con avvertenza e verifica dentro. Fa quattro cose:
+1. dà a `f105801a` e alla sua sede Corso Porta Borsari 26;
+2. sposta le 4 persone con sede e chiave d'import nuove;
+3. toglie le 2 schede sotto Aprili;
+4. toglie `5d6187bd`.
+
+Ogni scrittura controlla quante righe tocca, e i conteggi finali si fanno
+rispetto a prima. **Non lanciato: prima la prova di AppOverall.** Una prima
+versione è stata fermata prima del commit dal controllo sui caratteri non ASCII.
+
+**MAISON 22 NEGLI IMPORT: IL GRUPPO VA ESCLUSO, NON ABBINATO** (AppOverall,
+`012d1d4`). Dopo lo script il gruppo del file (21 righe, sede «Verona») ha due
+candidati. Abbinato a mano a `cc7d7e47`, ricreerebbe lì le 4 persone spostate,
+perché la loro chiave `anag:cc7d7e47:…` non esiste più. Si chiude solo correggendo
+la sede nel gestionale.
+
+### Tutti i clienti che condividono ancora una P.IVA (letti il 14.09, con il sì di Francesco)
+
+P.IVA usabili (11 cifre, non tutte uguali) presenti su più di un cliente: **9
+P.IVA su 18 clienti**. Tutti creati dall'import del 9.09 tra le 10:29 e le 10:30,
+nessuno con incarichi.
+
+| P.IVA | clienti | indirizzi | persone | stato |
+|---|---|---|---|---|
+| 00199400128 | LINDE MATERIAL HANDLING ITALIA SPA ×2 | Via del Luguzzone 3, Buguggiate · nessuno | 0 · 0 | **da decidere** |
+| 00912140233 | AZIENDA AGRICOLA GIACOMELLI FRANCESCO · Aprili | nessuno · Via Muri 6 | 0 · 6 | deciso, nello script |
+| 00967010232 | CENTRO ATTIVITA' Soc.Coop.Sociale ×2 | Via Fratelli Corrà 7 · Via fratelli Corrà 9, Valeggio | **21** · 0 | **da decidere** |
+| 01249140235 | CENTRO SOCIALIZZAZIONE Soc.Coop.Sociale ×2 | Via Cantore 6 · Via Cantore 6, Villafranca | **26** · 0 | **da decidere** |
+| 02325330237 | ECODENT S.R.L. ×2 | Via del Lavoro 6/8, Trevenzuolo · Via Belgio 6, Villafranca | 8 · 8 | due sedi con persone |
+| 02449980230 | MARANI G. SPA ×2 | Via dell'Artigianato 51, Bovolone · identico | 0 · 0 | **da decidere** |
+| 04285130235 | MAISON 22 S.R.L. ×2 | Via Quattro Novembre 1/D · identico | 21 · 0 | deciso: due sedi, nello script |
+| 04312380233 | AZ. AGR. PARAVANTO DI ALBERTO DELIPERI · DELIPERI ALBERTO | Via Saraina · Via T. Saraina 13, Verona | 0 · 0 | **da decidere** |
+| 04366240234 | IGEA SRL UNIPERSONALE ×2 | Via Sorte 48 · Via Michelangelo 7, San Bonifacio | 0 · 0 | deciso: due sedi vere |
+
+Il controllo che la query vedesse il caso noto regge: IGEA c'è.
+
+**Quattro P.IVA usabili sbagliano la cifra di controllo** (calcolata sul dump dei
+614 clienti; l'algoritmo è verificato su 02984860235, che passa, e 02884860235,
+che no):
+- AZ. AGR. GIACOMELLI FRANCESCO `02884860235` (corretta da Francesco: 02984860235);
+- CAPRINI FRANCO `20619000235`;
+- L'ERBA DEL VICINO di Alberto Marcazzan `04570450234`;
+- Progetto EMERA Onlus `09318332023`, la P.IVA arrivata dall'unione delle 12:11.
+
+Nessuna funzione dell'import controlla la cifra: né `pivaUsabile`, né la `0017`
+di AppOverall. Se «usabile» debba voler dire anche «cifra giusta» lo decide
+Francesco.
+
 **L'anteprima vista dopo la pulizia era quella delle nomine, non delle anagrafiche**,
 e a pagina vecchia. I numeri tornano con lo stato: 0 da creare, **392** già in
 organigramma (363 + 29), 154 da decidere, 6 non trovate. ADAMI, LA TORRE ed EMERA
