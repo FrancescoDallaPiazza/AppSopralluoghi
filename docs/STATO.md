@@ -791,7 +791,7 @@ la decisione.
 |---|---|
 | con «Emergenze» o «Responsabile Emergenze», **senza** Antincendio: **nuovi addetti antincendio** | **29**: 18 solo Emergenze, 5 solo Responsabile, 6 tutte e due. Nessuna fra le unità non abbinate o le persone non trovate |
 | con Antincendio **e** una delle altre due | 48 |
-| di queste, con la data più vecchia **non** in Antincendio | **1**: riga 1298, FIORIO STEFANO (I.VAR), Antincendio 2004-01-06 ed Emergenze 2001-05-13 |
+| di queste, con la data più vecchia **non** in Antincendio | **1**: riga 1298, FIORIO STEFANO (I.VAR), Antincendio **2004-01-07** ed Emergenze **2001-05-14** (seriali 37993 e 37025; qui erano state citate con un giorno in meno, vedi «Le date del foglio») |
 
 **FIORIO va corretto a parte.** La sua nomina `addetto_antincendio` esiste già con
 la data 2004. L'import non riscrive una nomina esistente (`on conflict do nothing`),
@@ -815,6 +815,98 @@ verifica e l'avvertenza di lanciarlo tutto, che lancia Francesco.
 3. **un solo import delle nomine**, per le persone recuperate e per le emergenze.
    Le attese si scrivono prima dell'anteprima, contate sul file;
 4. **lo script per la data di FIORIO**.
+
+### Le date del foglio: nessuno scarto nel codice, lo scarto era nelle mie analisi (14 settembre)
+
+**Il rilievo** (AppFormazione e AppOverall, `f854aa3`): nel file la riga 1298
+porta i seriali **37993** e **37025**, cioè **2004-01-07** e **2001-05-14**. Qui
+erano stati riferiti 2004-01-06 e 2001-05-13, un giorno prima.
+
+**La prova, solo sul file.** Tutte le celle data dei fogli «Ruoli SSL» e
+«Fattori di Rischio» di `ExportExcel (4).xlsx` sono state lette in due modi:
+- con `leggiFoglio` e `isoData` **di produzione**;
+- con i **seriali grezzi**, convertiti a mano dal 1899-12-30.
+
+La prova è stata fatta due volte, con il fuso **Europe/Rome** (quello del browser
+di Francesco e di questa macchina) e con **UTC**:
+
+| foglio | celle data confrontate | uguali | diverse |
+|---|---|---|---|
+| Ruoli SSL (nascita, scadenza contratto, assunzione, prima assunzione e le 9 colonne di ruolo) | **3.990** | **3.990** | **0** |
+| Fattori di Rischio (nascita, scadenza contratto, assunzione, prima assunzione) | **3.651** | **3.651** | **0** |
+
+Tutti i decenni dal 1940 al 2020 danno zero differenze, con tutti e due i fusi.
+La riga 1298, letta dal codice di produzione, dà **2004-01-07** e **2001-05-14**.
+
+**Quindi il codice di produzione non ha lo scarto**, e le date scritte finora
+dagli import (nomine, assunzioni, cessazioni) sono quelle del file. **Lo scarto
+stava nei miei script di analisi**: leggevano con `cellDates: true` e convertivano
+con `toISOString()` sul fuso della macchina. Sono sbagliate di un giorno le date
+citate qui per FIORIO e gli esempi di date nella misura sulle emergenze. **I
+conteggi restano validi**, perché ogni confronto usava la stessa conversione da
+tutte e due le parti, e la misura date–corsi è stata rifatta sui seriali.
+
+**Lo script `supabase/scripts/correggi_data_antincendio_fiorio.sql`** è corretto
+di conseguenza, **prima di essere committato o lanciato**: la nomina passa da
+**2004-01-07** a **2001-05-14**.
+
+**Le date delle colonne di ruolo, confrontate con i corsi** (domanda di AppOverall,
+misurata sui seriali). Per le 79 righe con «Addetti Antincendio», si guarda il
+corso antincendio più vicino della stessa persona in `ExportExcelCorsiFatti.xlsx`,
+per codice fiscale:
+- stesso giorno: **19**;
+- entro 7 giorni: 2;
+- entro 31 giorni: 4;
+- entro un anno: 24;
+- oltre un anno: 21;
+- senza corso antincendio: 4; senza codice fiscale: 5.
+
+**La data della colonna non è, in genere, la data di un corso**: coincide in
+circa un caso su quattro. Da qui non si stabilisce cosa misuri.
+
+### L'anteprima dell'import delle anagrafiche, rifatta sui dati di produzione (14 settembre)
+
+**Vista da Francesco, senza scrivere:** 480 gruppi, 3.483 persone da scrivere,
+**93 nuove**, 3.390 aggiornate, 2 da abbinare a mano, 2 gruppi senza cliente,
+1 riga scartata. Le attese erano circa **64** nuove: 75 CF mancanti, meno i 12
+di IGEA (senza cliente finché non si abbina), più LESO IRENE senza CF.
+
+**Rifatta qui**, con il sì di Francesco a leggere le persone in produzione:
+- le funzioni vere (`leggiFoglio` sul primo foglio, `pianificaPersone`);
+- un client finto riempito con clienti, sedi e persone lette in sola lettura
+  (614, 614, 3.419).
+
+I gruppi, i 2 da abbinare, i 2 gruppi senza cliente (IGEA e «XXXXXXXXXXXX») e la
+riga scartata coincidono. **Le nuove vengono 88 e le aggiornate 3.395**: 5 di
+scarto rispetto alla schermata, **non spiegate**.
+
+| le 88 nuove | |
+|---|---|
+| CF mai visto in produzione: il recupero atteso | **63** |
+| CF già presente sotto **un altro cliente** | **24** |
+| senza CF, nessuno con quel nome nel cliente (LESO IRENE, LA TORRE) | 1 |
+
+**Delle 24, 21 sono MAISON 22 S.R.L., ed è un altro cliente doppio.** In produzione
+ci sono due «MAISON 22 S.R.L.», stessa P.IVA 04285130235, località Verona:
+`cc7d7e47` ha **21 persone**, `f105801a` **nessuna**. Il gruppo del file ha due
+candidati, e con la sede «Verona» sceglie quello **vuoto**: l'import creerebbe
+**21 doppioni**.
+
+**Le altre 3 sono di AZIENDA AGRICOLA GIACOMELLI FRANCESCO**, e i loro CF stanno
+sotto altre aziende agricole: AMARI UMBERTO sotto AZ. AGR. AMARI UMBERTO,
+GIACOMELLI FRANCESCO e NEGRETTI LUCA sotto Impresa Agromeccanica Aprili Graziano.
+C'è di più: **AZIENDA AGRICOLA GIACOMELLI FRANCESCO** (0 persone) e **Impresa
+Agromeccanica Aprili Graziano** (6 persone) hanno **la stessa P.IVA
+00912140233**, ed esiste anche **AZ. AGR. GIACOMELLI FRANCESCO** con un'altra
+P.IVA e 1 persona. Da qui non si stabilisce se siano la stessa azienda.
+
+**Delle 3.395 aggiornate, 24 schede cambierebbero, tutte solo per gli spazi**: il
+file ha spazi doppi (per esempio «SAMIR  HERRERA AGURTO»), `fondiPersona` li
+copia, e in produzione ce n'è uno solo. Nessun altro campo cambia.
+
+**Prima dell'import delle anagrafiche**, quindi, servono tre decisioni di
+Francesco: il doppione MAISON 22, il caso GIACOMELLI / Aprili, e se gli spazi
+doppi vanno ripuliti nel codice.
 
 **L'anteprima vista dopo la pulizia era quella delle nomine, non delle anagrafiche**,
 e a pagina vecchia. I numeri tornano con lo stato: 0 da creare, **392** già in
