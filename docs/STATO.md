@@ -1163,6 +1163,54 @@ fogli, e l'import legge il primo, «Fattori di Rischio». L'ultima riga dice
 potrebbe riscrivere campi corretti in app dopo il 9: va bene dopo, come import
 normale, con le sue attese ricalcolate.
 
+**La prima schermata sul codice online torna.** Francesco l'ha incollata ad
+AppOverall prima di fare le scelte: 480 gruppi, 3.480 da scrivere, 68 nuove, 3.412
+aggiornate, 2 da abbinare, 3 gruppi senza cliente, 1 scartata. È lo stato «senza
+scelte a mano» del ricalcolo, cifra per cifra. Lo scarto 93/88 di prima qui non c'è.
+
+### Le attese del PRIMO passaggio: MAISON 22 escluso, IGEA fuori (14 settembre)
+
+Decisione di AppOverall (PROGRAMMA.md sezione 8): **IGEA non entra in questo
+passaggio**. Nella tendina i due clienti hanno la stessa etichetta, «IGEA SRL
+UNIPERSONALE — San Bonifacio (37047)» due volte. Scegliere per posizione, a
+occhio, è un'ipotesi.
+
+Ricalcolato col codice di `2f8d21a` e le stesse funzioni della pagina:
+
+| voce sulla schermata | attesa |
+|---|---|
+| gruppi | **480** |
+| `Applica (…)` = da scrivere | **3.459** |
+| nuove | **64**: 63 CF mai visti in produzione, più 1 senza CF |
+| aggiornate | **3.395**, di cui **0** che cambiano |
+| da abbinare | **2** (Pradella Tazio ×2) |
+| **gruppi senza cliente** | **4**: la pagina conta ogni gruppo senza cliente, esclusioni a mano comprese (`gruppi.filter(g => !g.cliente_id)`). Sono AZIENDA AGRICOLA GIACOMELLI FRANCESCO, MAISON 22 (escluso), IGEA (2 candidati, nessuna proposta) e «XXXXXXXXXXXX» |
+| righe scartate | **1** |
+
+**L'unica scelta a mano è escludere MAISON 22.** IGEA è già su «— non importare
+questo gruppo —» da sola, e non va toccata. Prima si ricarica la pagina, così gira
+il codice di `2f8d21a` e la lista clienti è letta ora. Se un numero non torna ci
+si ferma. **Dopo la scrittura**, la stessa anteprima con le stesse scelte deve dare
+**0 nuove** e 3.459 aggiornate.
+
+**IGEA, secondo passaggio: come si sceglie `3f485f16` senza ipotesi.** I due
+clienti sono identici in tutto ciò che la tendina mostra: nome, P.IVA 04366240234,
+San Bonifacio, 37047, una sede a testa, 0 persone. Differiscono solo
+nell'indirizzo, Via Sorte 48 per `3f485f16` e Via Michelangelo 7 per `def8645c`,
+che l'etichetta non riporta. Due prove indipendenti, senza toccare i dati:
+
+1. **Il valore dell'opzione è l'id del cliente** (`<option value={c.id}>`,
+   ImportAnagrafiche.tsx:327). Scelta l'opzione, tasto destro sulla tendina →
+   *Ispeziona*: il `<select>` evidenziato mostra l'`<option>` selezionata con
+   `value="3f485f16-bdf6-4106-8caa-0361e1889a80"`. Si legge, non si deduce.
+2. **L'ordine è quello della query**, e la pagina non lo rimescola (`scelta.map`).
+   `caricaClientiScelta` ordina per `ragione_sociale` e poi per `id`. Con i due nomi
+   identici decide l'id, e `3f485f16` < `def8645c`: **la prima delle due IGEA è
+   `3f485f16`**. Serve da controllo incrociato del punto 1, non da sola.
+
+Dopo la scrittura, con il sì di Francesco, una lettura in sola lettura del conteggio
+delle persone per i due id. Attese: 13 su `3f485f16`, 0 su `def8645c`.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
