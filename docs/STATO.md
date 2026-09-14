@@ -10,9 +10,14 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **14 settembre 2026, sera** — **D2 e la correzione del
-conteggio sono fatti e verificati, non pubblicati**: ramo `d2-report-componenti`,
-`6532500`. La `070` è **ferma** sulla domanda della Qualifica. Prima,
+Ultimo aggiornamento: **14 settembre 2026, pomeriggio** — **D2 è pubblicato**
+(app `e33efc2`, Edge Function `genera-report` v9) e si chiude con un report vero.
+**La Qualifica come fonte distinta e la `070` sono pronte sul ramo
+`qualifica-fonte-distinta`** (`d849073`), insieme alla riparazione di
+`pivaUsabile` (`5fb57ab`): non pubblicate, e l'ordine è scritto in
+[«La Qualifica come fonte distinta»](#la-qualifica-come-fonte-distinta-e-la-piva-segnaposto-14-settembre-pomeriggio).
+Prima ancora, D2 era stato preparato sul ramo `d2-report-componenti`
+(`6532500`). Prima,
 **le nomine sono state scritte** da
 Francesco: la rilettura dà 0 da creare e 364 già in organigramma. Prima ancora
 **l'anteprima era stata vista** senza scrivere: 364 da creare, 153 da
@@ -344,6 +349,73 @@ C'è una cosa in più, e viene da prima delle nomine: su queste persone anche
 `persona.mansione` contiene la Qualifica («DIRIGENTE», «RSPP/TITOLARE»,
 «DATORE DI LAVORO»). Ce l'ha messa l'import delle anagrafiche del 9.09, con lo
 stesso ripiego.
+
+## La Qualifica come fonte distinta, e la P.IVA segnaposto (14 settembre, pomeriggio)
+
+**Deciso da Francesco il 14.09**, riferito da AppOverall (`7270bbe`) e confermato in
+questa sessione: l'import delle nomine legge la Qualifica **anche quando la
+Mansione è piena**, come **fonte distinta**, con l'origine scritta sulla nomina.
+
+**Sta sul ramo `qualifica-fonte-distinta`, non su `main`, e non è pubblicato.**
+Il ramo ha due commit:
+
+- **`d849073`, Qualifica e `070`.**
+  - `nomineImport.ts` legge mansione e qualifica ciascuna dalla sua colonna, e
+    scrive `origine = 'qualifica'`.
+  - Una Qualifica identica alla Mansione non conta due volte.
+  - Fra due proposte persona+figura uguali vince colonna, poi mansione, poi
+    qualifica.
+  - L'anteprima conta per fonte ed elenca le qualifiche che il dizionario non
+    conosce.
+  - **La `070`** (non applicata) fa accettare a `nomina.origine` il valore
+    `'qualifica'` e aggiunge cinque forme viste solo in Qualifica:
+    `LAVORATORE E PREPOSTO` → `preposto` (13 righe), `RLS` → `rls` (4),
+    `RLS - LAVORATORE` → `rls` (3), `RSPP-SOCIO` → rspp **non mappabile** (1),
+    `LEGALE RAPPRESENTANTE/RSPP` → rspp **non mappabile** (1). Le grafie sono
+    copiate dal file, la migrazione è solo ASCII, e le 27 chiavi della `068` non
+    si toccano.
+  - **`supabase/scripts/correggi_origine_qualifica.sql`** corregge le 6 nomine
+    lette sopra: per id, solo dove l'origine è ancora `mansione`, e finisce con un
+    conteggio che deve dire 6.
+  - **Prova:** `npm run qualifica:check` 8 casi su 8, **7 falliti** sulla
+    versione di `main`. Build verde; `ruoli:check`, `dizionario:check`,
+    `omonimi:check`, `report:check` e `nomine:dryrun` verdi.
+  - Proposta mandata ad AppOverall **prima** del commit, come chiesto.
+- **`5fb57ab`, `pivaUsabile`.** Segnalato da AppOverall (`373da54`): una P.IVA
+  segnaposto come `00000000000` risultava usabile, e poteva agganciare il cliente
+  sbagliato.
+  - **La causa vista nel file è un'altra da quella letta a schermo**: dopo `(\d)`
+    non c'era `{10}` ma il **byte di controllo 0x01**, cioè un `\1` diventato
+    invisibile. La regex non corrispondeva mai.
+  - Il byte è entrato con `0d0c8a0` (9 settembre), ed era l'unico carattere di
+    controllo nei sorgenti del repo.
+  - Corretto in `(\d)\1{10}` e provato sulla funzione vera: `00000000000`,
+    `11111111111` e `99999999999` rifiutate; `12345678901` e `00000000001`
+    accettate.
+  - **Nessun import delle anagrafiche prima del deploy.**
+
+**Cosa porterebbe un secondo passaggio del file**, stimato fuori dal database e
+al netto delle unità non abbinate e delle persone non trovate: **30 nomine nuove
+dalla Qualifica** (29 da righe con Mansione piena, fra cui 20 `preposto`, e la 3401
+di ZAMPERLINI), **4 da decidere** in più, e le 6 già scritte che cambiano solo
+provenienza. Quante di queste la persona abbia già lo dirà l'anteprima.
+
+**L'ordine, ed è obbligato:**
+
+1. **Francesco applica la `070`** dall'SQL Editor. Prima della `070` il codice
+   nuovo scriverebbe un'origine che il vincolo rifiuta.
+2. **Francesco lancia `correggi_origine_qualifica.sql`**: deve dire 6.
+3. **Misura in sola lettura dei clienti con una P.IVA segnaposto**, e di quanti
+   condividono la stessa. Serve **un sì di Francesco per questa lettura**: quello
+   dato per le nomine non vale qui.
+4. **Merge del ramo su `main`**, con lo stesso controllo del deploy fatto per D2.
+5. **Anteprima dell'import delle nomine** con lo stesso file, e poi la scrittura,
+   tutte e due di Francesco.
+
+**Una domanda aperta per Francesco:** «Legale Rappresentante/RSPP» (riga 3397,
+PLASTIMETAL) nella `070` non si traduce in nessuna figura, perché «legale
+rappresentante» non è scritto «datore di lavoro». Sul file non cambia niente: la
+stessa persona ha già `dl_rspp` dalla Mansione.
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
