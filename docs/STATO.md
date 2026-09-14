@@ -768,6 +768,61 @@ lettura del database l'ha smentita, quindi è stata **scartata prima del commit*
 Nel repo resta la versione provata da AppOverall e lanciata, `10cd71f`. **Lo script
 non va rilanciato.**
 
+### Le colonne Emergenze sono addetti antincendio (decisione del 14 settembre, pomeriggio)
+
+**Le parole di Francesco**, date in questa sessione:
+- sulla colonna «Addetti Emergenze ed Evacuazione»: **«Addetto alle emergenze ed
+  evacuazione = Addetto antincendio»**;
+- sulla colonna «Responsabile Emergenze»: **«Sì, anche lui»**;
+- sulla data, per le righe che hanno più di una di queste colonne con date diverse:
+  **«ma emergenze 2022 è l'aggioranmento quinquennale di antincendio 2017»**.
+  Quindi la nomina porta **la data più vecchia**: le successive sono aggiornamenti
+  della formazione, non nuovi incarichi.
+
+**La regola vecchia** escludeva le due colonne per una misura di AppFormazione
+(11.09): 24 delle 71 righe hanno emergenze senza antincendio, e delle 47 con
+entrambe solo 32 hanno la stessa data. La misura resta vera, ma dice **come il
+gestionale usa due colonne**, non se i ruoli siano due. Da oggi la regola la fissa
+la decisione.
+
+**Sul file**, `ExportExcel (4).xlsx`, foglio «Ruoli SSL»:
+
+| | righe |
+|---|---|
+| con «Emergenze» o «Responsabile Emergenze», **senza** Antincendio: **nuovi addetti antincendio** | **29**: 18 solo Emergenze, 5 solo Responsabile, 6 tutte e due. Nessuna fra le unità non abbinate o le persone non trovate |
+| con Antincendio **e** una delle altre due | 48 |
+| di queste, con la data più vecchia **non** in Antincendio | **1**: riga 1298, FIORIO STEFANO (I.VAR), Antincendio 2004-01-06 ed Emergenze 2001-05-13 |
+
+**FIORIO va corretto a parte.** La sua nomina `addetto_antincendio` esiste già con
+la data 2004. L'import non riscrive una nomina esistente (`on conflict do nothing`),
+quindi la data 2001 non entra da sola. Serve uno script piccolo, con dentro la
+verifica e l'avvertenza di lanciarlo tutto, che lancia Francesco.
+
+**Il codice, sul ramo `emergenze-antincendio`, commit `6a8c404`, non pubblicato:**
+- in `COLONNE_RUOLO` le due colonne passano a `addetto_antincendio`; resta fuori
+  solo RSPP;
+- in `senzaDoppioni`, a parità di fonte vince **la data più vecchia**, e una data
+  vale più di nessuna;
+- **prova:** `npm run qualifica:check` **12 casi su 12**. I nuovi: Q9, 2017 più
+  2022 dà una nomina con data 2017; Q10, solo Responsabile; Q11, 2004 più 2001 dà
+  2001; Q12, il numero scritto è quello del pulsante. Sulla versione di `main`
+  **4 falliti** (Q7, Q9, Q10, Q11). Build verde; `omonimi`, `ruoli`, `dizionario` e
+  `report` verdi.
+
+**L'ordine**, come da AppOverall (`f3d224b`), per non fare due import delle nomine:
+1. **l'import delle anagrafiche del recupero**, con le attese scritte sopra;
+2. **merge e deploy di questo ramo**, con la verifica per canale;
+3. **un solo import delle nomine**, per le persone recuperate e per le emergenze.
+   Le attese si scrivono prima dell'anteprima, contate sul file;
+4. **lo script per la data di FIORIO**.
+
+**L'anteprima vista dopo la pulizia era quella delle nomine, non delle anagrafiche**,
+e a pagina vecchia. I numeri tornano con lo stato: 0 da creare, **392** già in
+organigramma (363 + 29), 154 da decidere, 6 non trovate. ADAMI, LA TORRE ed EMERA
+risultavano ancora non abbinate perché `caricaClientiScelta` legge i clienti solo
+all'apertura della pagina, senza cache, e la pagina era aperta da prima della
+pulizia delle 12:11.
+
 **2. Il caso «XXXXXXXXXXXX»: non è un abbinamento sbagliato, è la stessa persona
 scritta due volte nel file.** Zimmari Luigino compare alla riga **3473** sotto
 la società «XXXXXXXXXXXX» (sede «XXXXXXXXXX», mansione «Operaio») e alla **3474**
