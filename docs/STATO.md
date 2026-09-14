@@ -627,11 +627,55 @@ Per IGEA il file non mostra persone su Via Michelangelo 7. Per IL MAGNIFICO la
 sede del file non è l'indirizzo di nessuno dei due clienti. Se siano due sedi vere
 il file da solo non lo dice.
 
-**Prima di decidere sui doppioni manca una misura**, chiesta da AppOverall: cosa
-punta a ciascuno dei 10 clienti delle coppie e al cliente «XXXXXXXXXXXX» (sedi,
-incarichi, sopralluoghi, nomine, formazione, azioni, ogni tabella con
-`cliente_id`). Unire o cancellare un cliente sposta tutto questo, e «0 persone»
-non vuol dire «niente collegato». Serve il sì di Francesco per quella lettura.
+**Cosa punta ai clienti delle coppie e a «XXXXXXXXXXXX»**, letto in produzione
+il 14.09 con il sì di Francesco per questa lettura. Misura chiesta da AppOverall:
+unire o cancellare un cliente sposta tutto ciò che vi è collegato, e «0 persone»
+non vuol dire «niente collegato».
+
+Le tabelle non sono state prese dalle migrazioni ma **dal catalogo**
+(`pg_constraint`): **14** chiavi esterne verso `cliente` o `sede`.
+- Verso `cliente`: `adempimento`, `azione.responsabile_cliente_id`, `incarico`,
+  `organigramma_conferma`, `organigramma_revisione`, `persona`, `sede`,
+  `werp_da_chiarire`, `werp_da_rivedere`.
+- Verso `sede`: `adempimento`, `componente_sito`, `incarico`, `persona`,
+  `sopralluogo`.
+
+In più sono stati contati i sopralluoghi raggiunti tramite `incarico`.
+
+| cliente | id | P.IVA | indirizzo | collegati |
+|---|---|---|---|---|
+| GIARDINAGGIO ADAMI | `98a9bfd3` | 04810070237 | — | 1 sede |
+| GIARDINAGGIO ADAMI | `d448dcab` | 04810070237 | — | 1 sede |
+| IGEA SRL UNIPERSONALE | `3f485f16` | 04366240234 | Via Sorte, 48 | 1 sede |
+| IGEA SRL UNIPERSONALE | `def8645c` | 04366240234 | Via Michelangelo 7 | 1 sede |
+| IL MAGNIFICO S.R.L. | `a4d2fa39` | 04267570283 | — | 1 sede |
+| Il Magnifico Srl | `aceced43` | 04267570283 | Largo Pescheria Vecchia, 10 | 1 sede |
+| LA TORRE S.R.L. SOCIETA' AGRICOLA | `0654ea7c` | 04355330236 | Via Trezzolano 4 | 1 sede |
+| LA TORRE S.R.L. SOCIETA' AGRICOLA | `49400eec` | 04355330236 | Via Trezzolano, 4 | 1 sede |
+| Progetto EMERA Onlus | `241c7505` | — | Via del Lavoro 16 | 1 sede |
+| Progetto EMERA Onlus | `cd4885cc` | 09318332023 | — | 1 sede |
+| XXXXXXXXXXXX | `5ff86755` | 00000000000 | — | 1 sede |
+
+**A nessuno degli 11 clienti è collegato altro che la sua sede**: nessun incarico,
+sopralluogo, adempimento, azione, componente, revisione o conferma
+dell'organigramma, persona, e quindi nessuna nomina né formazione. Unire o
+togliere uno di questi clienti **non sposta niente**, a parte una sede vuota.
+Tutti gli 11 hanno il codice fiscale, tranne «XXXXXXXXXXXX».
+
+**Le decisioni sono di Francesco.** Le raccomandazioni di AppOverall (`4c12034`)
+erano condizionate a questa misura, che non trova niente di collegato:
+- **ADAMI e LA TORRE**: doppioni veri, se ne tiene uno;
+- **EMERA**: un cliente solo, con la P.IVA dell'uno e l'indirizzo dell'altro;
+- **IGEA**: le 13 persone sul cliente di Via Sorte 48 (`3f485f16`). Se Via
+  Michelangelo 7 sia una seconda sede vera lo sa Francesco, e finché non lo dice
+  non si unisce e non si toglie;
+- **IL MAGNIFICO**: stessa P.IVA, si uniscono. L'indirizzo delle persone, Corso
+  Porta Nuova 131, è un terzo indirizzo, ed è una domanda per lui;
+- **«XXXXXXXXXXXX»**: la riga 3473 esclusa. Il cliente è un candidato a essere
+  tolto.
+
+Unire un cliente cambia **dove** vanno le persone, non **quante** sono: dopo le
+decisioni le attese vanno riscritte.
 
 **2. Il caso «XXXXXXXXXXXX»: non è un abbinamento sbagliato, è la stessa persona
 scritta due volte nel file.** Zimmari Luigino compare alla riga **3473** sotto
