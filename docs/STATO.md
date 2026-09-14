@@ -10,7 +10,13 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **13 settembre 2026** — misurato il livello della
+Ultimo aggiornamento: **14 settembre 2026** — **l'anteprima delle nomine è stata
+vista** da Francesco dal back-office, senza scrivere: 364 da creare, 153 da
+decidere, 4 persone non trovate, e il conto **torna figura per figura** rifatto dal
+file e dal seme della `068`. Vedi
+[«L'anteprima delle nomine»](#lanteprima-delle-nomine-vista-da-francesco-e-il-conto-torna-14-settembre).
+
+13 settembre 2026 — misurato il livello della
 produzione: **la `068` non è applicata**. Vedi
 [«Il livello della produzione»](#il-livello-della-produzione-la-068-non-cè-13-settembre).
 E misurati i due conti della migrazione dati: **N = 3.415**. Vedi
@@ -68,11 +74,106 @@ nella corsia `AppFormazione`.*
 | **Guardia sul dizionario vuoto** in `caricaDizionarioRuoli`: zero righe è sempre un errore, mai un dizionario vuoto | **fatta**: `npm run dizionario:check` 3 su 3; senza la guardia (`e18f8c5`) 1 su 3 | `5de8965` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| **Import delle nomine** · la pausa è tolta, il codice è scritto | **scritto, mai eseguito** — la `068` adesso c'è, ma **NON va lanciato** finché la `069` non è applicata o una select non mostra una policy su `ruolo_testo`: senza, il dizionario arriverebbe **vuoto**. Dalla guardia (`5de8965`) l'anteprima si **ferma con un errore** invece di proseguire. La `069` è applicata il 13.09: **resta da vedere l'anteprima dal back-office**, senza Applica e **dopo il push e il deploy** — prima gira il codice vecchio, senza guardia | `f296477` |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **anteprima vista il 14.09**, da Francesco dal back-office e **senza scrivere**, sul codice di `12b1768` (quello del deploy verificato in `033994a`). La guardia non si è fermata: **364** da creare (198 dalle colonne, 166 dalla mansione), **153** da decidere, **4** persone non trovate, **0** già in organigramma, 4 unità del file non abbinate. **Riconciliata fuori dal database figura per figura** con il file e il seme della `068`: tutti i numeri coincidono. **La scrittura resta di Francesco, e non è fatta.** Un difetto di conteggio, non di dati: il pulsante dice 364 e ne scriverebbe **363** — vedi la sezione del 14 | `f296477`, `12b1768` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
 | **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** (`bb141ee`), poi **(a) decisa da Francesco il 13.09**: il nome ambiguo **non si scrive**, va fra i «da abbinare a mano» e l'import resta idempotente (`npm run omonimi:check` 8 su 8; su `bb141ee` A4 dà 2 poi 4). Abbinamento guidato: **manca**. Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `bb141ee`, `e18f8c5` |
 | **Livello della produzione** · a che migrazione è il database | **13.09, prima**: `068` no · **dopo l'applicazione**: `061`-`068` presenti; `064` `066` non misurabili; `067` c'era già. Misura l'**esistenza**, non la leggibilità | `d4aeefe` |
+
+## L'anteprima delle nomine: vista da Francesco, e il conto torna (14 settembre)
+
+**Chi, dove, su cosa.** Francesco, dal back-office, il 14 settembre: gruppo
+*Anagrafiche* → *Import nomine*, file `ExportExcel (4).xlsx` del 9 settembre,
+**senza premere «Scrivi»**. Il codice è quello di `12b1768`, il deploy verificato in
+`033994a`: fra i due cambia solo questo file. Da quando c'è il deploy, questa
+corsia non ha lanciato né l'anteprima né la scrittura.
+
+**Cosa ha detto la schermata:**
+
+| conto | valore |
+|---|---|
+| nomine da creare | **364** — 198 da una colonna (con la data), 166 dalla mansione (senza data) |
+| da decidere | **153** |
+| persone non trovate | **4** |
+| già in organigramma | **0** |
+| unità del file non abbinate a un cliente | **4** (GIARDINAGGIO ADAMI 1 riga, IGEA SRL 13, LA TORRE 6, Progetto EMERA 2) |
+| mansioni che il dizionario non conosce | **593** |
+
+La guardia sul dizionario vuoto (`5de8965`) **non si è fermata**, e 166 nomine
+dalla mansione vuol dire che il dizionario arriva al back-office. Ma «arriva»
+non vuol dire «arriva tutto»: se ne arrivasse metà, i numeri sarebbero più bassi
+e comunque diversi da zero.
+
+**Per questo il conto è stato rifatto fuori dal database.** Il seme della `068` è
+stato letto dal file della migrazione, con lo stesso parsing di `ruoli:check`, e
+applicato con `risolviMansione` alle 3.501 righe del foglio. Poi sono state tolte
+le righe che l'anteprima non poteva prendere: le 4 unità non abbinate e le 4
+persone non trovate. Nessuna scrittura, nessuna rete. Lo script è rimasto nella
+scratchpad della sessione e non è nel repo.
+
+| figura | colonna | mansione | totale | anteprima |
+|---|---|---|---|---|
+| `addetto_antincendio` | 77 | 47 | 124 | 124 |
+| `addetto_primo_soccorso` | 83 | 0 | 83 | 83 |
+| `dl_rspp` | 0 | 83 | 83 | 83 |
+| `preposto` | 25 | 6 | 31 | 31 |
+| `datore_lavoro` | 0 | 24 | 24 | 24 |
+| `rls` | 10 | 0 | 10 | 10 |
+| `dirigente` | 2 | 2 | 4 | 4 |
+| `rspp` | 0 | 3 | 3 | 3 |
+| `aspp` | 1 | 1 | 2 | 2 |
+| **totale** | **198** | **166** | **364** | **364** |
+
+Anche i **153 da decidere** tornano: 135 dalle colonne escluse, 18 dalla mansione.
+Le righe escluse portavano altre 5 nomine (4 da colonna, 1 `dl_rspp` da mansione) e
+3 da decidere. **Il back-office legge dal dizionario di produzione le stesse
+asserzioni che il seme dichiara**, almeno per le chiavi che questo file usa.
+Questa prova non verifica le 27 chiavi una per una.
+
+Il confronto con gli otto esiti della `0007` (dl_rspp 81, antincendio 47,
+datore 22…) **non si fa su questi numeri**. Quelli sono contati sul database di
+AppOverall dopo il carico, questi sono righe del foglio con delle esclusioni: la
+stessa trappola delle «grane diverse» scritta in `scripts/ruoli-testo-check.mjs`.
+Da qui non è indagato.
+
+**Cosa ha fatto vedere. Niente di questo blocca la scrittura:**
+
+1. **Il pulsante dice «Scrivi 364 nomine», e ne verrebbero scritte 363.**
+   `applicaNomine` toglie i doppioni persona+figura prima di scrivere
+   (`src/lib/admin/nomineImport.ts:548`), e fra colonna e mansione tiene la colonna,
+   che ha la data. `riepiloga` (`:507`) non li toglie. Sul file c'è **una** riga che
+   dà la stessa figura dalle due sorgenti: la **2782**, RUFFO RICCARDO,
+   `dirigente` dalla colonna e dalla mansione «DIRIGENTE». Il commento a `:542`
+   dice «12 righe lo fanno» e che così i due conteggi «coincidono»: sono false
+   tutte e due le cose. Il messaggio dopo la scrittura direbbe «363 nomine
+   scritte», e la rilettura «0 da creare». Il dato scritto è giusto: il vincolo
+   `unique (persona_id, figura_codice)` c'è dalla `015`. Non ho controllato se la
+   stessa persona compaia su due righe dello stesso cliente, perché per saperlo
+   serve l'archivio. **Da correggere:** `riepiloga` deve togliere i doppioni come
+   `applicaNomine`. Serve un deploy, quindi va fatto dopo la scrittura, non prima.
+2. **La (a) sugli omonimi ha lavorato su un caso vero.** «Pradella Tazio» compare
+   due volte senza codice fiscale nello stesso cliente, A.S.D. EX CALCIATORI HELLAS
+   VERONA (righe 2562 e 2563): non viene scritto e finisce fra le persone non
+   trovate. Nell'elenco c'è solo la 2563 perché la 2562 non porta ruoli. Con il
+   codice fiscale la stessa persona sta alla 2561, in Overall Group, e lì
+   entra. È materia per l'abbinamento guidato, che non è assegnato.
+3. **Il piè di pagina si legge come una riga e poi si scarta:** la 3503, «Report
+   aggiornato al 09/09/2026», non ha campi persona. Le righe lette sono 3.501, le
+   persone 3.500.
+4. **Nella mansione ci sono tre forme non a dizionario fra i «da decidere».**
+   - «INSTALLATORE/MANUTENTORE IMPIANTI ANTINCENDIO E ANTIFURTO»: 9 righe di DER
+     ERSTE. È un mestiere, non un ruolo, ed è preso solo perché contiene
+     ANTINCENDIO (`src/lib/admin/ruoliTesto.ts:94`). È rumore e non diventa nomina.
+   - «RSPP-SOCIO» (2248): è «SOCIO/RSPP» rovesciata, che il dizionario conosce e
+     volutamente non traduce.
+   - «RLS - LAVORATORE» (3401, CAFFINI SPA): una forma nuova su cui c'è una
+     decisione da prendere, e non l'ha presa nessuno.
+
+**Chi fa cosa adesso.** Scrivere è di Francesco. Se scrive senza abbinare le 4
+unità, le loro righe entrano a un secondo passaggio con lo stesso file: l'import è
+idempotente, per il vincolo unico e perché le nomine già presenti risultano «già in
+organigramma». Questa corsia non tocca il codice prima della scrittura. Poi viene
+**D2**, e la correzione del conteggio può partire con lo stesso deploy.
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
