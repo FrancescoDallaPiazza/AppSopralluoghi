@@ -440,6 +440,11 @@ obbligato:
      `mansione`;
    - prima della `070`, il vincolo lo rifiuta e non scrive niente.
    Visto da loro, non da qui.
+   **Lanciato da Francesco il 14.09, dopo la `070`.** Il controllo in sola lettura
+   sui 6 id, lanciato da lui subito dopo, dà **una riga sola: `qualifica`, 6**.
+   Se sia comparsa la notice «Controllo superato» non è stato riferito. Il conto
+   però dice che la transazione è arrivata al commit: con un numero diverso da 6
+   il blocco avrebbe annullato tutto, e le 6 sarebbero rimaste `mansione`.
 4. **Merge del ramo su `main` e deploy**, Qualifica e `pivaUsabile` insieme, con
    lo stesso controllo fatto per D2 (stato GitHub e bundle).
 5. **L'anteprima dell'import delle nomine** con lo stesso file. **Le attese,
