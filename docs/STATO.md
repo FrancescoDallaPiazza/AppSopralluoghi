@@ -1208,6 +1208,14 @@ che l'etichetta non riporta. Due prove indipendenti, senza toccare i dati:
    identici decide l'id, e `3f485f16` < `def8645c`: **la prima delle due IGEA è
    `3f485f16`**. Serve da controllo incrociato del punto 1, non da sola.
 
+**Primo passaggio scritto il 14.09.** Francesco ha escluso MAISON 22 e premuto
+Applica. La pagina ha risposto, con le sue parole: «3459 persone scritte. 2 righe
+da abbinare a mano NON sono state scritte: sono elencate nei loro gruppi.» Il numero
+coincide con l'atteso. **Da fare:** la rilettura dell'anteprima (attese 0 nuove,
+3.459 aggiornate) e, col sì di Francesco, la lettura del database. Attese:
+3.481 persone, nessun CF doppio dentro un cliente, e le 24 schede degli spazi
+invariate.
+
 **Attese del secondo passaggio**, scritte prima e calcolate sul primo già scritto. IGEA
 va su `3f485f16` e MAISON 22 resta escluso: **13 nuove** (12 con CF, 1 senza),
 **3.459 aggiornate**, `Applica (3.472)`, **3 gruppi senza cliente** (Giacomelli,
