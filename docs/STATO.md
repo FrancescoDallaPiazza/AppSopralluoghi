@@ -400,17 +400,39 @@ dalla Qualifica** (29 da righe con Mansione piena, fra cui 20 `preposto`, e la 3
 di ZAMPERLINI), **4 da decidere** in più, e le 6 già scritte che cambiano solo
 provenienza. Quante di queste la persona abbia già lo dirà l'anteprima.
 
-**L'ordine, ed è obbligato:**
+**L'ordine su produzione**, come da `PROGRAMMA.md` sezione 8 (`6a2fd08`). È
+obbligato:
 
-1. **Francesco applica la `070`** dall'SQL Editor. Prima della `070` il codice
-   nuovo scriverebbe un'origine che il vincolo rifiuta.
-2. **Francesco lancia `correggi_origine_qualifica.sql`**: deve dire 6.
-3. **Misura in sola lettura dei clienti con una P.IVA segnaposto**, e di quanti
-   condividono la stessa. Serve **un sì di Francesco per questa lettura**: quello
-   dato per le nomine non vale qui.
-4. **Merge del ramo su `main`**, con lo stesso controllo del deploy fatto per D2.
-5. **Anteprima dell'import delle nomine** con lo stesso file, e poi la scrittura,
-   tutte e due di Francesco.
+1. **Misura in sola lettura dei clienti con una P.IVA segnaposto**, e di quanti
+   condividono la stessa. Va fatta **prima del deploy**, perché la correzione
+   cambia come l'import riconosce i clienti, e misurare prima vuol dire sapere
+   chi si sposta. Serve **un sì di Francesco per questa lettura**: quello dato per
+   le nomine non vale qui.
+2. **Francesco applica la `070`** dall'SQL Editor. Va **prima del codice**, che
+   scrive `'qualifica'` e senza la `070` verrebbe rifiutato dal vincolo.
+3. **Francesco lancia `correggi_origine_qualifica.sql`**, dopo la `070`. Dal
+   commit **`a82c6af`** lo script **annulla** se il conto non dà 6: un blocco
+   `do` fa `raise exception` prima del commit. Nella prima versione il conto era
+   una `select` e il commit sarebbe avvenuto comunque (rilievo di AppOverall). Il
+   blocco **non è stato eseguito** su un Postgres: qui non c'è un database locale.
+4. **Merge del ramo su `main` e deploy**, Qualifica e `pivaUsabile` insieme, con
+   lo stesso controllo fatto per D2 (stato GitHub e bundle).
+5. **L'anteprima dell'import delle nomine** con lo stesso file. **Le attese,
+   scritte prima di vederla**, al netto delle 4 unità non abbinate e delle 4
+   persone non trovate:
+   - **36** proposte dalla Qualifica;
+   - di queste, **30 nuove** (29 da righe con Mansione piena, più la 3401) e
+     **6 già in organigramma** (le nomine corrette dallo script);
+   - **4** righe da decidere in più dalla Qualifica (350 e 748 «RSPP», 2248
+     «RSPP-SOCIO», 3397 «LEGALE RAPPRESENTANTE/RSPP»).
+
+   Il numero «da creare» può uscire **sotto 30** se qualcuna di quelle persone ha
+   già la figura da un'altra fonte: in quel caso va spiegato riga per riga, non
+   accettato.
+6. **La scrittura**, di Francesco.
+
+AppOverall ha scritto la gemella (`0018`). Le cinque forme sono identiche byte per
+byte alle varianti della `070`, con le stesse posizioni e figure.
 
 **Una domanda aperta per Francesco:** «Legale Rappresentante/RSPP» (riga 3397,
 PLASTIMETAL) nella `070` non si traduce in nessuna figura, perché «legale
