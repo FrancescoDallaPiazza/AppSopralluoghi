@@ -1076,6 +1076,40 @@ nessun cliente tolto rimasto.
 | 02449980230 | MARANI G. SPA | Via dell'Artigianato 51 | 37051 | Bovolone | 0 |
 | 04312380233 | AZ. AGR. PARAVANTO DI ALBERTO DELIPERI | Via Saraina | 37131 | Verona | 0 |
 
+### Le attese dell'anteprima delle anagrafiche, dopo i due script (14 settembre)
+
+Rilette in sola lettura clienti (**608**), sedi (608) e persone (**3.417**) di
+dopo i due script. L'anteprima è stata rifatta con le funzioni vere
+(`leggiFoglio` sul primo foglio di `ExportExcel (4).xlsx`, `pianificaPersone`) e
+il codice di `main`.
+
+**Senza scelte a mano** il gruppo **MAISON 22 si abbina da solo a uno dei due
+clienti**: escluderlo non è facoltativo. Gruppi senza cliente: AZIENDA AGRICOLA
+GIACOMELLI FRANCESCO (3 righe), IGEA (2 candidati) e «XXXXXXXXXXXX».
+
+**Con le scelte da fare nell'anteprima** (gruppo **MAISON 22 escluso**, gruppo
+**IGEA abbinato a `3f485f16`, Via Sorte 48**):
+
+| | atteso |
+|---|---|
+| gruppi | **480** |
+| persone da scrivere | **3.472** |
+| **nuove** | **77**: 75 CF mai visti in produzione, più 2 senza CF |
+| con CF già presente sotto un altro cliente | **0** (erano 24, di cui 21 MAISON 22) |
+| aggiornate | **3.395**, di cui **24** che cambiano solo per spazi doppi |
+| da abbinare a mano | **2** (Pradella Tazio ×2, senza CF, A.S.D. EX CALCIATORI HELLAS) |
+| gruppi senza cliente | **3**: AZIENDA AGRICOLA GIACOMELLI FRANCESCO, MAISON 22 (escluso), «XXXXXXXXXXXX» |
+| righe scartate | 1 (il piè di pagina) |
+
+Le 77 nuove, per gruppo: IGEA 13, LA TORRE 6, Dalla Piazza 5, SIGNORINI SERVICE 4,
+CTF INTEGRATED LOGISTIC 3, IL MAGNIFICO 2, EMERA 2, NEW METROPOL 2, GIARDINAGGIO
+ADAMI 1, e le altre dei clienti con la P.IVA segnaposto.
+
+**Le 24 aggiornate con gli spazi doppi scendono a 0 solo se la pulizia degli spazi
+è pubblicata prima.** Per questo è proposto ad AppOverall di anticipare merge e
+deploy del ramo delle emergenze, con la pulizia, **prima** della scrittura delle
+anagrafiche. L'import delle nomine resta uno solo, dopo.
+
 Un'avvertenza per chi legge: Corrà 9 e il secondo CENTRO SOCIALIZZAZIONE
 potevano essere sedi vere, come MAISON 22. La regola di Francesco li toglie
 perché non hanno persone. Se un giorno arrivano persone di quelle sedi, il
