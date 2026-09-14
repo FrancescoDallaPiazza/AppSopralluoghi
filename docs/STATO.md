@@ -946,6 +946,35 @@ candidati. Abbinato a mano a `cc7d7e47`, ricreerebbe lì le 4 persone spostate,
 perché la loro chiave `anag:cc7d7e47:…` non esiste più. Si chiude solo correggendo
 la sede nel gestionale.
 
+**Va escluso anche dall'import della formazione** (AppOverall, `ccace2e`). La
+chiave dei corsi è `gest:<cf>:<corso>:<data>`, senza cliente, quindi i corsi già
+scritti restano riconosciuti. L'import della formazione però cerca le persone
+dentro un cliente solo (`ctx.personeCliente`): un corso nuovo di una delle 4, in
+un'unità MAISON 22 abbinata a `cc7d7e47`, non troverebbe la persona.
+
+**Lo script, provato da AppOverall** (`f2132a2`, `ccace2e`), regge in 6 casi su 7:
+- normale;
+- rilancio;
+- una persona già spostata;
+- una nomina su una scheda da togliere;
+- un adempimento sul cliente da togliere;
+- la chiave nuova già esistente.
+
+**Nel settimo lasciava le visite di una persona spostata sul vecchio cliente e
+sulla vecchia sede**: controllava i collegamenti di ciò che toglie, non di ciò
+che sposta, e `adempimento` porta cliente, sede e persona insieme. **Corretto**:
+- ogni tabella con una chiave esterna verso `persona` e una verso `cliente` o
+  `sede`, presa dal catalogo al lancio, porta le righe delle 4 sul cliente e
+  sulla sede nuovi, con il conto delle righe toccate;
+- lo stesso vale per le azioni che hanno la persona nel testo della chiave;
+- dopo, un controllo che niente delle 4 sia rimasto sul vecchio cliente.
+
+Da riprovare sugli stessi sette casi **prima del lancio**.
+
+**Le P.IVA con la cifra di controllo sbagliata: EMERA per prima** (AppOverall).
+`09318332023` è l'unica fra le quattro arrivata con una scrittura di oggi,
+l'unione delle 12:11.
+
 ### Tutti i clienti che condividono ancora una P.IVA (letti il 14.09, con il sì di Francesco)
 
 P.IVA usabili (11 cifre, non tutte uguali) presenti su più di un cliente: **9
