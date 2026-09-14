@@ -61,7 +61,7 @@ nella corsia `AppFormazione`.*
 | **I sette buchi dell'import** | chiuso | `0d0c8a0` |
 | Provenienza: `import_key` sulle persone | chiuso | `98082cd` |
 | La schermata della quarantena | chiuso | `69767fa` |
-| **D2** · il report non conosce i componenti | **fatto e verificato, non pubblicato** (14.09): voci per id, esiti raggruppati per box, sezione e componente nell'ordine del campo; `npm run report:check` 11 su 11, 9 falliti sulla versione di `main`. Sta sul ramo `d2-report-componenti`: il deploy aspetta la decisione sulla Qualifica, e l'Edge Function si pubblica a parte | `6532500` (ramo) |
+| **D2** · il report non conosce i componenti | **pubblicato il 14.09, da chiudere con un report vero**. Voci per id, esiti raggruppati per box, sezione e componente nell'ordine del campo; `npm run report:check` 11 su 11, 9 falliti sulla versione precedente. **Online, per canale:** l'app (Vercel) è a `e33efc2`, stato GitHub `success`, bundle `index-BSYYMtW7.js` (prima `index-7vqDM7i-.js`) senza il conteggio vecchio; l'Edge Function `genera-report` è alla **v9** (10:05:57 UTC), pubblicata con la CLI dal codice di `e33efc2`, e i tre file scaricati risultano identici a `e33efc2`; la v8 era identica a `main` prima di D2, quindi non si è perso niente fatto dal Dashboard. **Si chiude** quando Francesco guarda un report vero su un sopralluogo con box e componenti | `6532500`, merge `e33efc2` |
 | Ricreare i clienti: le 619 anagrafiche attive | **già fatto** (misurato in app) | — |
 | Importare le persone | **fatto 9.09**: l'import ne riporta **3.420**, il `count(*)` del 10.09 ne conta **3.419** — per la migrazione fa fede il **3.419** | `af8d945` |
 | Paginazione delle letture (PostgREST tronca a 1000) | **chiuso** su `persona`, `cliente`, `incarico`, `sede` | `af8d945`, `e82169d` |
@@ -305,6 +305,45 @@ il merge su `main` pubblica l'app su Vercel, mentre l'Edge Function
 `genera-report` va pubblicata a parte, dal Dashboard o con
 `npx supabase functions deploy genera-report --use-api`. Tutte e due le cose sono
 di Francesco o vanno fatte col suo sì.
+
+**Pubblicato il 14.09, con il sì di Francesco dato in questa sessione.** Da oggi
+i due canali possono essere a commit diversi, quindi si scrivono separati:
+
+| canale | cosa è online | come è verificato |
+|---|---|---|
+| **app** (Vercel) | `e33efc2`, il merge del ramo | stato GitHub `success` alle 10:05:15 UTC; il bundle pubblico passa da `index-7vqDM7i-.js` a `index-BSYYMtW7.js`, e il segno del conteggio vecchio (`giaPresenti:e.proposte.length-t.length`) **non c'è più** |
+| **Edge Function** `genera-report` | **v9** (10:05:57 UTC), dal codice di `e33efc2` | pubblicata con la CLI da `main` pulito; riscaricata, i tre file sono **identici** a `e33efc2`. Prima era la v8 del 3 giugno, identica a `main` prima di D2, quindi nessuna modifica fatta dal Dashboard è andata persa. `verify_jwt` resta `true` |
+
+**D2 non si chiude con la prova automatica**, perché Deno qui non c'è: si chiude
+quando Francesco guarda un report vero su un sopralluogo con box e componenti.
+
+**Le nomine di stamattina, lette dal database (sola lettura, 14.09, con il sì di
+Francesco).** Nella tabella `nomina`, con `created_at` del 14.09, ci sono **198**
+nomine `colonna` e **165** `mansione`: **363**, tutte delle 09:07:13 UTC. Il «363
+scritte» che la sezione qui sopra dava per dedotto adesso è **visto**.
+
+Delle 7 righe prese dalla Qualifica perché Mansione era vuota, **6 hanno una
+nomina, e tutte e 6 portano `origine = mansione`**, con la Qualifica in
+`origine_testo`:
+
+| persona | cliente | figura |
+|---|---|---|
+| VEDOVA FLAVIO | AZ. AGR. VEDOVA TARCISIO DI VEDOVA FLAVIO | `datore_lavoro` |
+| ABD RABOU ESSAM MOHAMED | ERTA SERVIZI SRL | `datore_lavoro` |
+| CAFFINI AMEDEO | CAFFINI SPA | `dirigente` |
+| POLETTO RUGGERO | CARROZZERIA AUTOSTAR SAS | `dl_rspp` |
+| CUNEGO ELENA | CUNEGO ELENA | `dl_rspp` |
+| LEZZI FRANCESCO | POLIS MEDICAL CENTER S.R.L. | `dl_rspp` |
+
+La settima, la 2563 (Pradella senza codice fiscale), non ha nomine: quelle di
+PRADELLA TAZIO nel database sono le due della riga 2561 in Overall Group, dalla
+colonna. **Correggere la provenienza di queste 6 è una scrittura su dati veri, ed
+è di Francesco.**
+
+C'è una cosa in più, e viene da prima delle nomine: su queste persone anche
+`persona.mansione` contiene la Qualifica («DIRIGENTE», «RSPP/TITOLARE»,
+«DATORE DI LAVORO»). Ce l'ha messa l'import delle anagrafiche del 9.09, con lo
+stesso ripiego.
 
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
