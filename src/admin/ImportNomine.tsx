@@ -233,7 +233,7 @@ export default function ImportNomine() {
 
       {/* =================== LE COLONNE CHE NON ENTRANO =================== */}
       <div className="bo-card" style={{ marginTop: 12 }}>
-        <h3 className="bo-h3">Le nove colonne di ruolo, e le tre che non entrano</h3>
+        <h3 className="bo-h3">Le nove colonne di ruolo, e quella che non entra</h3>
         <p className="bo-sub">
           Elencate tutte, comprese quelle escluse: una colonna esclusa e non nominata è
           indistinguibile da una colonna dimenticata.

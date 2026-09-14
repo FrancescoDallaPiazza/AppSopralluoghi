@@ -1,4 +1,5 @@
-// BANCO DI PROVA DELLA QUALIFICA COME FONTE DISTINTA (import delle nomine).
+// BANCO DI PROVA DELLA QUALIFICA COME FONTE DISTINTA, E DELLE COLONNE EMERGENZE
+// (import delle nomine).
 //
 // Perche' esiste. Il 14 settembre 2026 si e' visto che il foglio "Ruoli SSL" ha due
 // colonne di testo libero, Qualifica (X) e Mansione (Y), e che l'import leggeva la
@@ -8,10 +9,15 @@
 // con un ruolo scritto in Qualifica accanto a una Mansione piena non venivano
 // lette. Francesco ha deciso: la Qualifica e' una fonte sua, con la sua origine.
 //
-// Cosa fa. Compila `pianificaNomine` e `riepiloga` VERI e li fa girare su righe
-// costruite apposta, con un client Supabase finto: il dizionario e' il seme della
-// 068 piu' quello della 070, letti dai file delle migrazioni. NESSUNA RETE,
-// NESSUN DATABASE.
+// Lo stesso giorno Francesco ha deciso che «Addetti Emergenze ed Evacuazione» e
+// «Responsabile Emergenze» sono addetti antincendio, e che quando la stessa
+// persona ha piu' di una di queste colonne la nomina porta la data PIU' VECCHIA
+// (le successive sono aggiornamenti della formazione). Casi Q9-Q11.
+//
+// Cosa fa. Compila `pianificaNomine`, `riepiloga` e `applicaNomine` VERI e li fa
+// girare su righe costruite apposta, con un client Supabase finto: il dizionario
+// e' il seme della 068 piu' quello della 070, letti dai file delle migrazioni, e
+// la scrittura finisce in memoria. NESSUNA RETE, NESSUN DATABASE.
 //
 // Il controllo negativo fa parte della prova:
 //   NOMINE_MODULO=<file .ts> node scripts/qualifica-check.mjs
@@ -31,7 +37,7 @@ const fuori = join('node_modules', '.qualifica-check-' + process.pid + '.mjs');
 await build({
   stdin: {
     contents: [
-      `export { pianificaNomine, riepiloga } from '${modulo}';`,
+      `export { pianificaNomine, riepiloga, applicaNomine } from '${modulo}';`,
       "export { supabase } from './src/lib/supabase';",
     ].join('\n'),
     resolveDir: '.', sourcefile: 'qualifica-entry.ts', loader: 'ts',
@@ -43,7 +49,7 @@ await build({
     'import.meta.env.VITE_SUPABASE_ANON_KEY': 'undefined',
   },
 });
-const { pianificaNomine, riepiloga, supabase } = await import(pathToFileURL(fuori).href);
+const { pianificaNomine, riepiloga, applicaNomine, supabase } = await import(pathToFileURL(fuori).href);
 rmSync(fuori, { force: true });
 
 // ---------------------------------------------------------------------------
@@ -79,9 +85,11 @@ const CLI = 'CL1';
 const PERSONE = [
   ['P2', 'ROSSI', 'MARIO'], ['P3', 'BIANCHI', 'ANNA'], ['P4', 'VERDI', 'LUCA'], ['P5', 'NERI', 'PAOLA'],
   ['P6', 'GIALLI', 'RITA'], ['P7', 'BLU', 'MARCO'], ['P8', 'VIOLA', 'SARA'],
+  ['P9', 'CORDIOLI', 'MARA'], ['P10', 'MAGGIA', 'MARCO'], ['P11', 'FIORIO', 'STEFANO'],
 ].map(([id, cognome, nome]) => ({ id, cliente_id: CLI, cognome, nome, codice_fiscale: null }));
 const NOMINE = [{ persona_id: 'P7', figura_codice: 'rls' }];   // BLU e' gia' RLS
 const TABELLE = { ruolo_testo: TESTI, ruolo_testo_figura: FIGURE, persona: PERSONE, nomina: NOMINE };
+const SCRITTE = [];
 
 supabase.from = (tabella) => {
   if (!(tabella in TABELLE)) throw new Error('lettura inattesa su ' + tabella);
@@ -92,6 +100,7 @@ supabase.from = (tabella) => {
     in: (c, vs) => { righe = righe.filter((r) => vs.includes(r[c])); return b; },
     order: () => b,
     range: async (da, a) => ({ data: righe.slice(da, a + 1), error: null }),
+    upsert: async (nuove) => { if (tabella !== 'nomina') throw new Error('scrittura inattesa su ' + tabella); SCRITTE.push(...nuove); return { error: null }; },
   };
   return b;
 };
@@ -100,7 +109,8 @@ supabase.from = (tabella) => {
 const riga = (n, cognome, nome, col) => ({ n, col: { societa: 'ACME SRL', sede: '', cognome, nome, ...col } });
 const foglio = {
   nomeFile: 'prova.xlsx', rigaHeader: 2, tipo: 'persone', motivoTipo: '', riconosciute: [], ignorate: [],
-  intestazioni: ['Società', 'Sede', 'Cognome', 'Nome', 'Qualifica', 'Mansione', 'Preposto', 'RLS'],
+  intestazioni: ['Società', 'Sede', 'Cognome', 'Nome', 'Qualifica', 'Mansione', 'Preposto', 'RLS',
+    'Addetti Antincendio', 'Addetti Emergenze ed Evacuazione', 'Responsabile Emergenze'],
   righe: [
     riga(2, 'Rossi', 'Mario', { qualifica: 'RSPP/titolare', mansione: '' }),               // solo Qualifica, nel dizionario 068
     riga(3, 'Bianchi', 'Anna', { qualifica: 'RLS', mansione: 'OPERAIO' }),                 // Qualifica accanto a Mansione piena, forma 070
@@ -109,6 +119,10 @@ const foglio = {
     riga(6, 'Gialli', 'Rita', { qualifica: 'Legale Rappresentante/RSPP', mansione: 'IMPIEGATA' }), // conosciuta, non mappabile
     riga(7, 'Blu', 'Marco', { qualifica: 'RLS - LAVORATORE', mansione: 'AUTISTA' }),       // gia' in organigramma
     riga(8, 'Viola', 'Sara', { qualifica: 'CAPO SQUADRA', mansione: 'OPERAIO' }),          // nessuna parola di ruolo
+    // Le colonne emergenze (decisione del 14.09): date come nel file vero.
+    riga(9, 'Cordioli', 'Mara', { mansione: 'OPERAIO', addettiantincendio: '2017-07-27', addettiemergenzeedevacuazione: '2022-09-04' }),
+    riga(10, 'Maggia', 'Marco', { mansione: 'OPERAIO', responsabileemergenze: '2020-01-01' }),
+    riga(11, 'Fiorio', 'Stefano', { mansione: 'OPERAIO', addettiantincendio: '2004-01-06', addettiemergenzeedevacuazione: '2001-05-13' }),
   ],
 };
 const clienti = [{ id: CLI, ragione_sociale: 'ACME SRL', partita_iva: null, localita: null, cap: null, operativa: null }];
@@ -119,6 +133,9 @@ const clienti = [{ id: CLI, ragione_sociale: 'ACME SRL', partita_iva: null, loca
 const p = await pianificaNomine(foglio, clienti, {});
 const r = riepiloga(p);
 const di = (n) => p.proposte.filter((x) => x.riga === n);
+const scritta = (persona, figura) => SCRITTE.filter((x) => x.persona_id === persona && x.figura_codice === figura);
+let scritte = null, erroreScrittura = null;
+try { scritte = await applicaNomine(p); } catch (e) { erroreScrittura = e?.message ?? String(e); }
 const casi = [
   ['Q1 · solo Qualifica (Mansione vuota): la nomina porta origine = qualifica', () => {
     const x = di(2);
@@ -149,7 +166,7 @@ const casi = [
     if (x.length !== 1 || !x[0].gia || x[0].figura_codice !== 'rls') return JSON.stringify(x);
   }],
   ['Q7 · il riepilogo conta per fonte, senza doppioni', () => {
-    const atteso = { daCreare: 4, giaPresenti: 1, daDecidere: 1, colonna: 1, mansione: 1, qualifica: 2 };
+    const atteso = { daCreare: 7, giaPresenti: 1, daDecidere: 1, colonna: 4, mansione: 1, qualifica: 2 };
     const visto = { daCreare: r.daCreare, giaPresenti: r.giaPresenti, daDecidere: r.daDecidere, ...r.perOrigine };
     for (const k of Object.keys(atteso)) if (visto[k] !== atteso[k]) return `visto ${JSON.stringify(visto)}`;
   }],
@@ -157,6 +174,23 @@ const casi = [
     const q = p.qualificheNuove ?? [];
     if (!q.some((x) => x.testo === 'CAPO SQUADRA')) return JSON.stringify(q);
     if (q.some((x) => x.testo === 'RLS')) return 'RLS e\' nella 070 e non dovrebbe essere nuova';
+  }],
+  ['Q9 · antincendio 2017 ed emergenze 2022: una nomina addetto_antincendio, data 2017', () => {
+    if (erroreScrittura) return 'scrittura: ' + erroreScrittura;
+    const x = scritta('P9', 'addetto_antincendio');
+    if (x.length !== 1 || x[0].data_nomina !== '2017-07-27' || x[0].origine !== 'colonna') return JSON.stringify(x);
+    if (p.daDecidere.some((d) => d.riga === 9)) return 'la colonna emergenze finisce ancora fra i da decidere';
+  }],
+  ['Q10 · solo Responsabile Emergenze: diventa addetto_antincendio con la sua data', () => {
+    const x = scritta('P10', 'addetto_antincendio');
+    if (x.length !== 1 || x[0].data_nomina !== '2020-01-01') return JSON.stringify(x);
+  }],
+  ['Q11 · antincendio 2004 ed emergenze 2001: vince la data piu\' vecchia, 2001', () => {
+    const x = scritta('P11', 'addetto_antincendio');
+    if (x.length !== 1 || x[0].data_nomina !== '2001-05-13') return JSON.stringify(x);
+  }],
+  ['Q12 · il numero scritto e\' quello del pulsante', () => {
+    if (scritte !== r.daCreare) return `scritte ${scritte}, pulsante ${r.daCreare}`;
   }],
 ];
 
