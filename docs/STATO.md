@@ -410,6 +410,20 @@ obbligato:
    le nomine non vale qui.
 2. **Francesco applica la `070`** dall'SQL Editor. Va **prima del codice**, che
    scrive `'qualifica'` e senza la `070` verrebbe rifiutato dal vincolo.
+   **Fatto il 14.09**, testo preso dal ramo a `a82c6af`. Il controllo in sola
+   lettura lanciato da Francesco subito dopo dà:
+
+   | | visto | atteso |
+   |---|---|---|
+   | vincolo `nomina_origine_nota` | `CHECK (((origine IS NULL) OR (origine = ANY (ARRAY['colonna', 'mansione', 'qualifica', 'manuale']))))` | contiene `qualifica` |
+   | `ruolo_testo` | **32** | 27 + 5 |
+   | `ruolo_testo_figura` | **37** | 32 + 5 |
+   | le cinque forme nuove | **5** | 5 |
+
+   **Da qui al deploy, niente import delle nomine.** Il codice online legge ancora
+   la Qualifica come mansione quando la Mansione è vuota, e con le forme nuove
+   scriverebbe `RLS - LAVORATORE` (riga 3401) e `RSPP-SOCIO` con la provenienza
+   sbagliata.
 3. **Francesco lancia `correggi_origine_qualifica.sql`**, dopo la `070`. Dal
    commit **`a82c6af`** lo script **annulla** se il conto non dà 6: un blocco
    `do` fa `raise exception` prima del commit. Nella prima versione il conto era
