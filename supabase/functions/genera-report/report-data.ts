@@ -11,6 +11,13 @@ const MAX_FOTO = 4;
 
 export type Variante = 'cliente' | 'interna';
 
+// Dove sta una risposta data dentro un box: il box, la sezione e, per le sezioni
+// ripetibili, il componente (etichetta · matricola · ubicazione, come in campo).
+export interface GruppoDisplay {
+  box: string;
+  sezione: string | null;
+  componente: string | null;
+}
 export interface EsitoDisplay {
   sezione: string | null;
   testo: string;
@@ -20,6 +27,7 @@ export interface EsitoDisplay {
   note: string | null;
   foto: string[];            // data URI
   figli: EsitoDisplay[];
+  gruppo: GruppoDisplay | null;  // null = voce del template piatto
 }
 export interface AzioneDisplay {
   descrizione: string;
@@ -123,16 +131,64 @@ export async function assemblaReport(
   let conformi = 0, non_conformi = 0, non_applicabili = 0, totale = 0;
 
   if (comp) {
-    const { data: vociRaw } = await sb.from('voce_template')
-      .select('id, tipo, config').eq('template_id', (comp as any).template_id);
-    const vociById = new Map<string, any>();
-    for (const v of (vociRaw ?? []) as any[]) vociById.set(v.id, v);
-
     const { data: esRaw } = await sb.from('esito_voce')
-      .select('id, voce_template_id, voce_tipo, voce_testo, voce_sezione, ordine, parent_esito_id, stato, valore, note')
+      .select('id, voce_template_id, voce_tipo, voce_testo, voce_sezione, ordine, parent_esito_id, stato, valore, note, componente_id')
       .eq('checklist_compilata_id', (comp as any).id)
       .order('ordine', { ascending: true });
     const esiti = (esRaw ?? []) as any[];
+
+    // LE VOCI SI CARICANO PER ID, NON PER TEMPLATE (D2). Le voci dei box hanno
+    // `template_id` NULL e `sezione_id` valorizzato (migrazione 030): con il
+    // filtro sul template restavano fuori, e le loro risposte uscivano con la
+    // chiave grezza e senza dire di quale componente fossero. Qui un errore di
+    // lettura ferma il report, perche' un report appiattito in silenzio e'
+    // proprio il difetto che si ripara.
+    const perIds = async (tabella: string, colonne: string, ids: unknown[]): Promise<any[]> => {
+      const unici = [...new Set(ids.filter((x): x is string => typeof x === 'string'))];
+      const out: any[] = [];
+      for (let i = 0; i < unici.length; i += 100) {
+        const { data, error } = await sb.from(tabella).select(colonne).in('id', unici.slice(i, i + 100));
+        if (error) throw error;
+        out.push(...((data ?? []) as any[]));
+      }
+      return out;
+    };
+    const vociById = new Map<string, any>();
+    for (const v of await perIds('voce_template', 'id, tipo, config, sezione_id, ordine', esiti.map((e) => e.voce_template_id))) {
+      vociById.set(v.id, v);
+    }
+    const sezById = new Map<string, any>();
+    for (const s of await perIds('box_sezione', 'id, box_id, nome, ordine', [...vociById.values()].map((v) => v.sezione_id))) {
+      sezById.set(s.id, s);
+    }
+    const boxById = new Map<string, any>();
+    for (const b of await perIds('box_catalogo', 'id, nome', [...sezById.values()].map((s) => s.box_id))) {
+      boxById.set(b.id, b);
+    }
+    const compById = new Map<string, any>();
+    for (const c of await perIds('componente_sito', 'id, etichetta, matricola, ubicazione', esiti.map((e) => e.componente_id))) {
+      compById.set(c.id, c);
+    }
+    const ordineBox = new Map<string, number>();
+    if (boxById.size) {
+      const { data: sbox, error: eBox } = await sb.from('sopralluogo_box')
+        .select('box_id, ordine').eq('sopralluogo_id', sopralluogoId);
+      if (eBox) throw eBox;
+      for (const r of (sbox ?? []) as any[]) ordineBox.set(r.box_id, r.ordine);
+    }
+
+    // Il componente si scrive come in campo (BoxGenerico): etichetta · matricola · ubicazione.
+    const sezioneDi = (e: any) => sezById.get(vociById.get(e.voce_template_id)?.sezione_id);
+    const gruppoDi = (e: any): GruppoDisplay | null => {
+      const sez = sezioneDi(e);
+      const c = e.componente_id ? compById.get(e.componente_id) : undefined;
+      if (!sez && !c) return null;
+      return {
+        box: boxById.get(sez?.box_id)?.nome ?? 'Box',
+        sezione: sez?.nome ?? null,
+        componente: c ? [c.etichetta, c.matricola, c.ubicazione].filter(Boolean).join(' · ') : null,
+      };
+    };
 
     // foto per esito
     const fotoByEsito = new Map<string, string[]>();
@@ -164,6 +220,7 @@ export async function assemblaReport(
         sezione: e.voce_sezione, testo: e.voce_testo, tipo: e.voce_tipo ?? 'scelta',
         stato: e.stato ?? null, valore: etichettaValore(voce, e.valore),
         note: e.note, foto: fotoByEsito.get(e.id) ?? [], figli,
+        gruppo: e.parent_esito_id ? null : gruppoDi(e),
       };
     };
 
@@ -173,7 +230,25 @@ export async function assemblaReport(
       else if (e.stato === 'non_applicabile') non_applicabili++;
       if (e.stato) totale++;
     }
-    for (const e of esiti.filter((x) => !x.parent_esito_id)) {
+
+    // L'ordine del campo: prima le voci del template piatto, poi i box
+    // nell'ordine del giro, le sezioni nel loro, i componenti per etichetta
+    // (come BoxGenerico) e dentro ciascuno l'ordine delle voci. Ordinando solo
+    // per `ordine`, le risposte di N componenti alla stessa voce uscivano
+    // intrecciate. `sort` e' stabile.
+    const chiave = (e: any): [number, number, number, string, string, number] => {
+      const sez = sezioneDi(e);
+      if (!sez) return [0, 0, 0, '', '', e.ordine ?? 0];
+      const c = e.componente_id ? compById.get(e.componente_id) : undefined;
+      return [1, ordineBox.get(sez.box_id) ?? Number.MAX_SAFE_INTEGER, sez.ordine ?? 0,
+        c?.etichetta ?? '', e.componente_id ?? '', e.ordine ?? 0];
+    };
+    const confronta = (a: any, b: any): number => {
+      const ka = chiave(a), kb = chiave(b);
+      return (ka[0] - kb[0]) || (ka[1] - kb[1]) || (ka[2] - kb[2])
+        || ka[3].localeCompare(kb[3]) || ka[4].localeCompare(kb[4]) || (ka[5] - kb[5]);
+    };
+    for (const e of esiti.filter((x) => !x.parent_esito_id).sort(confronta)) {
       if (haContenuto(e)) esitiTop.push(toDisplay(e));
     }
   }

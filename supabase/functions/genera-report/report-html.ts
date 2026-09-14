@@ -2,7 +2,7 @@
 // base64), stampabile A4. Due varianti: 'cliente' e 'interna'. Porta lo stile
 // del mockup mockup-report-sopralluogo.html.
 
-import type { ReportData, EsitoDisplay, AzioneDisplay } from './report-data.ts';
+import type { ReportData, EsitoDisplay, AzioneDisplay, GruppoDisplay } from './report-data.ts';
 
 const esc = (s: unknown): string =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -112,8 +112,25 @@ export function renderReport(d: ReportData): string {
       (azCliente.length ? `<h2 class="sec">Comunicato al cliente</h2>${azCliente.map(azioneCard).join('')}` : '')
     );
 
+  // Le risposte dei box escono raggruppate come in campo: il titolo del box e
+  // della sezione quando cambiano, e l'intestazione del componente prima delle
+  // sue risposte. Senza, N estintori diventavano N righe identiche.
+  let prec: GruppoDisplay | null = null;
+  const righeEsiti = d.esiti.map((e) => {
+    const g = e.gruppo;
+    let testa = '';
+    if (g) {
+      const nuovaSez = !prec || prec.box !== g.box || prec.sezione !== g.sezione;
+      if (nuovaSez) testa += `<div class="grp-h">${esc([g.box, g.sezione].filter(Boolean).join(' · '))}</div>`;
+      if (g.componente && (nuovaSez || prec?.componente !== g.componente)) {
+        testa += `<div class="grp-comp">${esc(g.componente)}</div>`;
+      }
+    }
+    prec = g;
+    return testa + esitoRow(e);
+  }).join('');
   const dettaglio = d.esiti.length
-    ? `<h2 class="sec">${cli ? 'Dettaglio degli esiti' : 'Esiti completi'}</h2>${d.esiti.map((e) => esitoRow(e)).join('')}`
+    ? `<h2 class="sec">${cli ? 'Dettaglio degli esiti' : 'Esiti completi'}</h2>${righeEsiti}`
     : '';
 
   const piE = d.sopralluogo.progressivo ? ` · Sopralluogo ${esc(d.sopralluogo.progressivo)}` : '';
@@ -152,6 +169,8 @@ h2.sec{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.1e
 .cont-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);}
 .cont-row .dot{width:9px;height:9px;border-radius:50%;margin-top:5px;flex-shrink:0;} .cont-row.ok .dot{background:var(--ok);} .cont-row.open .dot{background:var(--no);}
 .cont-desc{font-size:13.5px;font-weight:500;} .cont-meta{font-size:11.5px;color:var(--soft);margin-top:2px;}
+.grp-h{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);margin:18px 0 2px;padding-bottom:4px;border-bottom:2px solid var(--hi);}
+.grp-comp{font-size:13px;font-weight:600;color:var(--hi-dark);margin:12px 0 0;padding:6px 10px;background:#fbf3e2;border-radius:6px;}
 .voce{border-bottom:1px solid var(--line);padding:13px 0;} .voce:last-child{border-bottom:none;}
 .voce.sub{border-bottom:none;padding:6px 0 0 16px;margin-left:6px;border-left:2px solid var(--line);}
 .voce-sez{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px;}
