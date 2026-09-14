@@ -969,7 +969,22 @@ che sposta, e `adempimento` porta cliente, sede e persona insieme. **Corretto**:
 - lo stesso vale per le azioni che hanno la persona nel testo della chiave;
 - dopo, un controllo che niente delle 4 sia rimasto sul vecchio cliente.
 
-Da riprovare sugli stessi sette casi **prima del lancio**.
+**Riprovato da AppOverall** (`ec2f15b`, `8c36837`) su **otto casi**, ognuno su un
+database pulito, con in più la visita di un'altra persona di Via IV Novembre
+come controllo:
+1. normale: passa;
+2. rilancio: annulla;
+3. una persona già spostata: annulla;
+4. una nomina su una scheda da togliere: annulla;
+5. un adempimento sul cliente da togliere: annulla;
+6. la chiave nuova già esistente: annulla;
+7. la visita di SACCA' sul vecchio cliente: passa, e la visita segue la persona su
+   cliente e sede nuovi;
+8. un'azione di SACCA' con il vecchio cliente come responsabile: passa, e segue.
+
+In tutti gli otto casi la visita di controllo resta su `cc7d7e47`. **Francesco lo
+può lanciare.** L'esito si registra con la query di verifica e i conteggi per
+cliente, non con la notice.
 
 **Le P.IVA con la cifra di controllo sbagliata: EMERA per prima** (AppOverall).
 `09318332023` è l'unica fra le quattro arrivata con una scrittura di oggi,
@@ -994,6 +1009,32 @@ nessuno con incarichi.
 | 04366240234 | IGEA SRL UNIPERSONALE ×2 | Via Sorte 48 · Via Michelangelo 7, San Bonifacio | 0 · 0 | deciso: due sedi vere |
 
 Il controllo che la query vedesse il caso noto regge: IGEA c'è.
+
+**Le cinque «da decidere»: decise da Francesco il 14.09**, con queste parole:
+«tieni solo la sede con persone e dove non ci sono persone la prima sede che
+incontri in ordine». L'ordine è quello della tabella qui sopra.
+
+| P.IVA | si tiene | si toglie |
+|---|---|---|
+| 00199400128 | LINDE MATERIAL HANDLING, Via del Luguzzone 3 (`d0b15ad6`) | LINDE, senza indirizzo (`bd790392`) |
+| 00967010232 | CENTRO ATTIVITA', Via Fratelli Corrà 7, 21 persone (`08344499`) | CENTRO ATTIVITA', Via fratelli Corrà 9, 0 persone (`e1a8a4d4`) |
+| 01249140235 | CENTRO SOCIALIZZAZIONE, 26 persone (`a4c840e2`) | CENTRO SOCIALIZZAZIONE, 0 persone (`2e5f7e66`) |
+| 02449980230 | MARANI G. SPA, il primo (`8130dd73`) | MARANI G. SPA, identico (`ef8e37aa`) |
+| 04312380233 | AZ. AGR. PARAVANTO DI ALBERTO DELIPERI (`c4bb073c`) | DELIPERI ALBERTO (`5f5792ea`) |
+
+**Lo script: `supabase/scripts/unisci_cinque_piva_condivise.sql`**, un solo blocco
+con avvertenza e verifica dentro. Segue l'ordine provato sui doppioni (`10cd71f`):
+copia dei cinque clienti, rimozione (le sedi seguono per cascata), poi solo i
+campi **vuoti** dei tenuti dalla copia. Prima di scrivere controlla che le coppie
+abbiano la stessa P.IVA e che niente punti ai clienti da togliere o alle loro
+sedi, dal catalogo al lancio, più le azioni `cliente-ateco:`. Ogni scrittura
+controlla le righe toccate; dopo, clienti − 5 e persone dei tenuti invariate.
+**Non lanciato: prima la prova di AppOverall.**
+
+Un'avvertenza per chi legge: Corrà 9 e il secondo CENTRO SOCIALIZZAZIONE
+potevano essere sedi vere, come MAISON 22. La regola di Francesco li toglie
+perché non hanno persone. Se un giorno arrivano persone di quelle sedi, il
+cliente va ricreato.
 
 **Quattro P.IVA usabili sbagliano la cifra di controllo** (calcolata sul dump dei
 614 clienti; l'algoritmo è verificato su 02984860235, che passa, e 02884860235,
