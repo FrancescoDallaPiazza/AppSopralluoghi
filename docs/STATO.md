@@ -1031,6 +1031,25 @@ sedi, dal catalogo al lancio, più le azioni `cliente-ateco:`. Ogni scrittura
 controlla le righe toccate; dopo, clienti − 5 e persone dei tenuti invariate.
 **Non lanciato: prima la prova di AppOverall.**
 
+**Provato da AppOverall** (`ac8cd75`, `23d07ce`) su **otto casi su otto**, con i due
+clienti IGEA come controllo in tutti:
+1. normale: passa, clienti e sedi − 5, persone e IGEA intatte;
+2. rilancio: annulla;
+3. una persona sul cliente da togliere: annulla;
+4. una visita sulla sua sede: annulla;
+5. una coppia con P.IVA diversa: annulla;
+6. `werp_id` solo sul tolto: passa, e il tenuto lo prende;
+7. un campo pieno e diverso sul tolto: resta quello del tenuto;
+8. un'azione `cliente-ateco:` sul tolto: annulla.
+
+**Francesco lo può lanciare.** Due avvertenze, nessuna blocca:
+- all'inizio l'editor può stampare «schema "pg_temp" does not exist, skipping»
+  (dal `drop table if exists`): è innocuo. Si annuncia a Francesco invece di
+  cambiare il file, che andrebbe riprovato;
+- il riempimento campo per campo può comporre un indirizzo da due righe. In
+  produzione, per PARAVANTO, non accade: tutti e due i clienti hanno CAP 37131 e
+  Verona, e il tenuto ha già «Via Saraina», che resta.
+
 Un'avvertenza per chi legge: Corrà 9 e il secondo CENTRO SOCIALIZZAZIONE
 potevano essere sedi vere, come MAISON 22. La regola di Francesco li toglie
 perché non hanno persone. Se un giorno arrivano persone di quelle sedi, il
