@@ -497,6 +497,19 @@ obbligato:
    Il numero «da creare» può uscire **sotto 30** se qualcuna di quelle persone ha
    già la figura da un'altra fonte: in quel caso va spiegato riga per riga, non
    accettato.
+   **Vista da Francesco il 14.09**, sul codice di `944fa84`, senza scrivere:
+
+   | | visto | atteso | spiegazione |
+   |---|---|---|---|
+   | da creare | **29** (0 colonna, 0 mansione, 29 qualifica) | 30 | la **654** (CAPUTO MARIANNA, CENTRO SOCIALIZZAZIONE, Qualifica «PREPOSTO») ha un codice fiscale non valido e la persona non è in archivio: va fra le non trovate. Per figura: `preposto` **19** (20 − 1), `rls` **7**, `dirigente` **3**, come stimato |
+   | già in organigramma | **363** | 363 | le 6 corrette dallo script adesso arrivano dalla Qualifica e sono già presenti, contate una volta. Nel messaggio a Francesco era scritto 369: **sbagliato**, perché le contava due volte |
+   | da decidere | **154** | 153 + 4 = 157, **sbagliato** | 153 + **350** + **3397** − **3401**, che adesso si risolve in `rls`. La **2248** era già fra le 153, letta come mansione col ripiego, e adesso ha `fonte = qualifica`. La **748** va fra le non trovate. L'errore dell'attesa: la 2248 e la 3401 erano già dentro le 153 |
+   | persone non trovate | **6** | 4 | le 4 di prima, più la **654** e la **748** (Chiaramonte Nicola, NEW METROPOL, codice fiscale non in archivio) |
+   | qualifiche fuori dizionario | 92 | — | riquadro nuovo, come previsto |
+
+   **Tutti gli scarti sono spiegati riga per riga.** Da notare, senza trarne
+   conclusioni: NEW METROPOL (748) e CAVOUR SRL (1931) sono fra i 40 clienti con
+   `partita_iva = 00000000000`, che in produzione hanno 0 persone.
 6. **La scrittura**, di Francesco.
 
 AppOverall ha scritto la gemella (`0018`). Le cinque forme sono identiche byte per
