@@ -1108,7 +1108,49 @@ ADAMI 1, e le altre dei clienti con la P.IVA segnaposto.
 **Le 24 aggiornate con gli spazi doppi scendono a 0 solo se la pulizia degli spazi
 è pubblicata prima.** Per questo è proposto ad AppOverall di anticipare merge e
 deploy del ramo delle emergenze, con la pulizia, **prima** della scrittura delle
-anagrafiche. L'import delle nomine resta uno solo, dopo.
+anagrafiche. L'import delle nomine resta uno solo, dopo. AppOverall ha accettato
+l'ordine (PROGRAMMA.md sezione 8, 6b4ba46), con tre condizioni sulla prova.
+
+### La pulizia degli spazi è sul ramo, con la prova (14 settembre)
+
+Commit **a567e20** su `emergenze-antincendio`, non ancora su main.
+`leggiCampiPersona` riduce a uno gli spazi ripetuti in **nome, cognome, mansione e
+reparto**, e in nient'altro. Decisione di Francesco: «Sì, ripulisci».
+
+**I campi delle 24**, contati sull'archivio: **mansione 14, cognome 5, nome 3,
+reparto 3** (una scheda ne ha due). Gli spazi stanno tutti **nel file**: nel
+database i valori erano già puliti. Tutte e 24 le schede hanno il CF.
+
+**La mansione è compresa, nonostante la seconda condizione di AppOverall** («la
+mansione resta com'è: il dizionario dei ruoli la legge alla lettera»). La mansione
+fa 14 differenze su 24: senza di lei le 24 non vanno a 0. Il dizionario non legge
+`persona.mansione`: l'import delle nomine prende la mansione **dalla colonna del
+file** (`testoLibero`, nomineImport.ts) e la confronta con `chiaveTesto`, che
+collassava già gli spazi. Lo prova il confronto qui sotto.
+
+Le tre condizioni, e cosa le prova:
+
+| condizione | prova | esito |
+|---|---|---|
+| la chiave `anag:<cliente>:n:COGNOME\|NOME` non cambia | `spazi:check` S2: persona senza CF con doppio spazio nel cognome e nel nome, chiave e scheda ritrovate | ok, anche sul codice di prima |
+| | anteprima vera, codice vecchio contro nuovo: `import_key`, nuova/aggiornata e id delle **3.472 voci**, **229 senza CF** | **identiche riga per riga** |
+| il collasso tocca solo quei campi | S1 (i quattro campi), S4 (CF, date, testo già pulito, note intatte) | ok |
+| | piano delle nomine sul file vero, codice vecchio contro nuovo | **identico**: 506 proposte, 50 da decidere, 3 non trovate, 590 mansioni, 95 qualifiche |
+| le 24 non risultano più aggiornate | S3; anteprima vera col codice del ramo | **0 schede che cambiano** (erano 24) |
+
+**Controllo negativo:** sul codice di prima S1 e S3 falliscono, S2 e S4 passano,
+perché sono le cose che non devono cambiare. Sul ramo sono verdi `build` e tutte
+le prove: guida, ateco, ruoli, omonimi, dizionario, report, qualifica (12/12),
+spazi (4/4).
+
+**Attese dell'anteprima col codice del ramo** (MAISON 22 escluso, IGEA su
+`3f485f16`): 480 gruppi, 3.472 da scrivere, **77 nuove**, **3.395 aggiornate, di
+cui 0 che cambiano**, 2 da abbinare, 3 gruppi senza cliente, 1 scartata. Tutto
+identico a prima tranne le 24.
+
+**Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
+anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
+88) non è mai stato spiegato.
 
 Un'avvertenza per chi legge: Corrà 9 e il secondo CENTRO SOCIALIZZAZIONE
 potevano essere sedi vere, come MAISON 22. La regola di Francesco li toglie
