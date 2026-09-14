@@ -677,6 +677,48 @@ erano condizionate a questa misura, che non trova niente di collegato:
 Unire un cliente cambia **dove** vanno le persone, non **quante** sono: dopo le
 decisioni le attese vanno riscritte.
 
+**L'ultima misura prima dello script** (AppOverall, `eb02916`). Il catalogo vede
+solo i riferimenti che hanno un vincolo, non quelli scritti dentro un testo.
+Letto in produzione il 14.09, con il sì di Francesco per le letture su questi
+clienti:
+
+| | risultato |
+|---|---|
+| azioni con `origine_requisito_key = 'cliente-ateco:' ‖ id`, per gli 11 clienti | **0**; e in tutto il database le azioni `cliente-ateco:` sono **0**. La colonna è verificata sul commento della `066` |
+| colonne `text`, `varchar`, `json`, `jsonb`, `uuid` o array **senza** chiave esterna, dal catalogo: **190** colonne in **36** tabelle, cercando gli 11 id dei clienti e gli 11 delle loro sedi | **0** righe |
+| dove si salvano gli abbinamenti file → cliente di `ImportAnagrafiche.tsx` e `ImportNomine.tsx` | **solo nello stato React della pagina** (`useState` / `setAbbinamenti`), nessun `localStorage` e nessuna tabella: chiusa la pagina non restano |
+
+**Zero misurato su tutti e tre i punti.**
+
+**Le decisioni di Francesco, 14.09, date in questa sessione:**
+- **ADAMI, LA TORRE, EMERA, IL MAGNIFICO**: si uniscono;
+- **IGEA**: Via Michelangelo 7 è **una sede vera**, quindi tutti e due i clienti
+  restano. Le 13 persone vanno su Via Sorte 48 (`3f485f16`);
+- **IL MAGNIFICO**: resta l'indirizzo di **Largo Pescheria Vecchia 10**;
+- **la riga 3473 si esclude, e il cliente «XXXXXXXXXXXX» si toglie.**
+
+**Lo script: `supabase/scripts/unisci_clienti_doppi.sql`.** Lo lancia Francesco
+dall'SQL Editor.
+1. **Prima di scrivere rifà la misura.** Legge dal catalogo, al momento del
+   lancio, ogni chiave esterna verso cliente e sede, più le azioni
+   `cliente-ateco`. Se ai clienti da togliere punta qualcosa, annulla.
+2. **Riempie solo i campi vuoti** del cliente che si tiene, prendendoli
+   dall'altro: niente di quello che c'è viene sovrascritto.
+3. **Toglie 5 clienti:** i 4 doppioni e «XXXXXXXXXXXX». Le loro sedi vuote
+   seguono per cascata.
+4. **Dopo, controlla il risultato:** 5 clienti in meno; EMERA con la P.IVA
+   `09318332023`; IL MAGNIFICO con l'indirizzo di Verona. Altrimenti annulla.
+
+Chi si tiene:
+- ADAMI `98a9bfd3`, due clienti identici;
+- LA TORRE `49400eec`, «Via Trezzolano, 4» come nel file;
+- EMERA `241c7505`, che ha l'indirizzo;
+- IL MAGNIFICO `a4d2fa39`, cioè **«IL MAGNIFICO S.R.L.»**, lo stesso nome del
+  file persone, a cui si copia l'indirizzo scelto da Francesco. Tenendo «Il
+  Magnifico Srl», l'import delle persone non lo riconoscerebbe per nome.
+
+**Non è stato eseguito** su un Postgres: qui non c'è un database locale.
+
 **2. Il caso «XXXXXXXXXXXX»: non è un abbinamento sbagliato, è la stessa persona
 scritta due volte nel file.** Zimmari Luigino compare alla riga **3473** sotto
 la società «XXXXXXXXXXXX» (sede «XXXXXXXXXX», mansione «Operaio») e alla **3474**
