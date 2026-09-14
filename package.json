@@ -14,6 +14,7 @@
     "livello:produzione": "node scripts/livello-produzione.mjs",
     "omonimi:check": "node scripts/omonimi-check.mjs",
     "dizionario:check": "node scripts/dizionario-vuoto-check.mjs",
+    "report:check": "node scripts/report-componenti-check.mjs",
     "nomine:dryrun": "node scripts/nomine-dryrun.mjs"
   },
   "dependencies": {

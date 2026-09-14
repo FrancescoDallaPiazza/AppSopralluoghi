@@ -504,13 +504,31 @@ export interface RiepilogoNomine {
   perOrigine: { colonna: number; mansione: number };
 }
 
+// Una persona puo' ricevere la stessa figura da due proposte: la colonna e la
+// mansione dicono la stessa cosa. Il doppione si toglie in UN posto solo, e lo
+// usano sia il riepilogo sia la scrittura. Prima lo toglieva solo la scrittura, e
+// l'anteprima del 14.09 diceva «Scrivi 364 nomine» per scriverne 363: la riga
+// 2782 dava `dirigente` dalla colonna e dalla mansione.
+//
+// Fra le due vince la COLONNA, perche' porta la data dell'incarico.
+function senzaDoppioni(proposte: NominaProposta[]): NominaProposta[] {
+  const perChiave = new Map<string, NominaProposta>();
+  for (const n of proposte) {
+    const k = `${n.persona_id}|${n.figura_codice}`;
+    const prima = perChiave.get(k);
+    if (!prima || (prima.origine === 'mansione' && n.origine === 'colonna')) perChiave.set(k, n);
+  }
+  return [...perChiave.values()];
+}
+
 export function riepiloga(p: PianoNomine): RiepilogoNomine {
-  const nuove = p.proposte.filter((x) => !x.gia);
+  const nuove = senzaDoppioni(p.proposte.filter((x) => !x.gia));
+  const gia = senzaDoppioni(p.proposte.filter((x) => x.gia));
   const perFigura = new Map<string, number>();
   for (const n of nuove) perFigura.set(n.figura_codice, (perFigura.get(n.figura_codice) ?? 0) + 1);
   return {
     daCreare: nuove.length,
-    giaPresenti: p.proposte.length - nuove.length,
+    giaPresenti: gia.length,
     daDecidere: p.daDecidere.length,
     personeNonTrovate: p.personeNonTrovate.length,
     mansioniNuove: p.mansioniNuove.length,
@@ -536,23 +554,13 @@ export function riepiloga(p: PianoNomine): RiepilogoNomine {
 // quella e' la sua origine. Riscriverla significherebbe sovrascrivere una
 // dichiarazione con un'interpretazione, che e' il verso sbagliato.
 export async function applicaNomine(p: PianoNomine): Promise<number> {
-  const nuove = p.proposte.filter((x) => !x.gia);
+  // Il doppione si toglie QUI, non lasciando che sia il database a scartare la
+  // seconda proposta, e con la stessa funzione del riepilogo: il numero che
+  // l'anteprima mostra e' quello che viene scritto.
+  const nuove = senzaDoppioni(p.proposte.filter((x) => !x.gia));
   if (nuove.length === 0) return 0;
 
-  // Una persona potrebbe ricevere la stessa figura da due righe (la colonna e la
-  // mansione dicono la stessa cosa: 12 righe lo fanno). Si deduplica QUI, non
-  // lasciando che sia il database a scartare la seconda: cosi' il conteggio che
-  // l'anteprima ha mostrato e quello che viene scritto coincidono.
-  //
-  // E fra le due vince la COLONNA, perche' porta la data dell'incarico.
-  const perChiave = new Map<string, NominaProposta>();
-  for (const n of nuove) {
-    const k = `${n.persona_id}|${n.figura_codice}`;
-    const gia = perChiave.get(k);
-    if (!gia || (gia.origine === 'mansione' && n.origine === 'colonna')) perChiave.set(k, n);
-  }
-
-  const righe = [...perChiave.values()].map((n) => ({
+  const righe = nuove.map((n) => ({
     id: newId(),
     persona_id: n.persona_id,
     figura_codice: n.figura_codice,
