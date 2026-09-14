@@ -413,8 +413,18 @@ obbligato:
 3. **Francesco lancia `correggi_origine_qualifica.sql`**, dopo la `070`. Dal
    commit **`a82c6af`** lo script **annulla** se il conto non dà 6: un blocco
    `do` fa `raise exception` prima del commit. Nella prima versione il conto era
-   una `select` e il commit sarebbe avvenuto comunque (rilievo di AppOverall). Il
-   blocco **non è stato eseguito** su un Postgres: qui non c'è un database locale.
+   una `select` e il commit sarebbe avvenuto comunque (rilievo di AppOverall).
+   **Eseguito da AppOverall** (`bf34926`), perché qui non c'è un database locale:
+   il file di `a82c6af` con `psql` e `ON_ERROR_STOP`, su un cluster `initdb` usa e
+   getta, poi cancellato, con i 6 id veri più due righe estranee. Quattro casi,
+   tutti come previsto:
+   - dopo la `070`, con le 6 presenti, passa e le due righe estranee restano
+     intatte;
+   - rieseguito, non cambia niente;
+   - dopo la `070`, con una riga mancante, «trovate 5», e le 5 tornano a
+     `mansione`;
+   - prima della `070`, il vincolo lo rifiuta e non scrive niente.
+   Visto da loro, non da qui.
 4. **Merge del ramo su `main` e deploy**, Qualifica e `pivaUsabile` insieme, con
    lo stesso controllo fatto per D2 (stato GitHub e bundle).
 5. **L'anteprima dell'import delle nomine** con lo stesso file. **Le attese,
