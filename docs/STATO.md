@@ -474,6 +474,17 @@ obbligato:
    il blocco avrebbe annullato tutto, e le 6 sarebbero rimaste `mansione`.
 4. **Merge del ramo su `main` e deploy**, Qualifica e `pivaUsabile` insieme, con
    lo stesso controllo fatto per D2 (stato GitHub e bundle).
+   **Fatto il 14.09**, con il sì di Francesco dato in questa sessione. Merge
+   `6f936df`, online con `944fa84`. Prima build verde e le cinque prove verdi
+   (`qualifica`, `omonimi`, `ruoli`, `dizionario`, `report`) sul `main` unito.
+
+   | canale | cosa è online | come è verificato |
+   |---|---|---|
+   | **app** (Vercel) | `944fa84` | stato GitHub `success` alle 11:05:03 UTC; il bundle pubblico passa da `index-BSYYMtW7.js` a `index-C73qlAK6.js`, e contiene «qualifiche che il dizionario», il peso delle fonti `colonna:0,mansione:1,qualifica:2` e la guardia `(\d)\1{10}`; il byte 0x01 non c'è più |
+   | **Edge Function** `genera-report` | **v9**, invariata | da `e33efc2` a `944fa84` nessun file sotto `supabase/functions` è cambiato: non va ripubblicata |
+
+   **La finestra fra la `070` e il deploy è chiusa**: l'import delle nomine si può
+   lanciare di nuovo.
 5. **L'anteprima dell'import delle nomine** con lo stesso file. **Le attese,
    scritte prima di vederla**, al netto delle 4 unità non abbinate e delle 4
    persone non trovate:
