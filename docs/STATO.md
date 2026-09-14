@@ -986,6 +986,20 @@ In tutti gli otto casi la visita di controllo resta su `cc7d7e47`. **Francesco l
 può lanciare.** L'esito si registra con la query di verifica e i conteggi per
 cliente, non con la notice.
 
+**Lanciato da Francesco il 14.09.** La query di verifica in fondo al file, riferita
+da lui, dà **esattamente l'atteso**:
+
+| cliente | indirizzo | CAP | P.IVA | persone | adempimenti |
+|---|---|---|---|---|---|
+| AZ. AGR. GIACOMELLI FRANCESCO | VIA IV NOVEMBRE 16 | 37060 | 02884860235 | **1** | 0 |
+| Impresa Agromeccanica Aprili Graziano | Via Muri, 6 | 37060 | 00912140233 | **4** | 0 |
+| MAISON 22 S.R.L. | **Corso Porta Borsari, 26** | **37121** | 04285130235 | **4** | 0 |
+| MAISON 22 S.R.L. | VIA QUATTRO NOVEMBRE, 1/D | 37126 | 04285130235 | **17** | 0 |
+
+AZIENDA AGRICOLA GIACOMELLI FRANCESCO non compare più. La P.IVA di AZ. AGR.
+GIACOMELLI FRANCESCO è ancora `02884860235`, come previsto: lo script non la
+tocca, e **la corregge Francesco dalla scheda cliente** (02984860235 e il CF).
+
 **Le P.IVA con la cifra di controllo sbagliata: EMERA per prima** (AppOverall).
 `09318332023` è l'unica fra le quattro arrivata con una scrittura di oggi,
 l'unione delle 12:11.
