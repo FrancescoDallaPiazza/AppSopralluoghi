@@ -510,6 +510,61 @@ obbligato:
    **Tutti gli scarti sono spiegati riga per riga.** Da notare, senza trarne
    conclusioni: NEW METROPOL (748) e CAVOUR SRL (1931) sono fra i 40 clienti con
    `partita_iva = 00000000000`, che in produzione hanno 0 persone.
+6. **La scrittura**, di Francesco. **Fatta il 14.09.** Il messaggio riferito da
+   lui: **«29 nomine scritte. Rilettura: 0 da creare, 154 da decidere»**,
+   esattamente l'atteso. Il numero scritto e il numero dell'anteprima coincidono
+   (29 e 29), e la rilettura a 0 conferma di nuovo che l'import è idempotente.
+
+### Le persone dei 40 clienti con la P.IVA segnaposto (misura assegnata da AppOverall, `7409550`)
+
+**L'ipotesi, di AppOverall:** con la guardia rotta, 40 clienti con la stessa
+«P.IVA» sono proprio il caso in cui l'abbinamento non sa dove mettere una riga.
+L'import delle anagrafiche del 9.09 potrebbe quindi aver lasciato fuori le persone
+di quei clienti.
+
+**Primo passo, solo sui file, il 14.09. Non è zero.** Righe persona la cui
+società coincide, per ragione sociale normalizzata, con uno dei 40 clienti:
+
+| export su disco | righe | con CF | persone distinte | clienti toccati |
+|---|---|---|---|---|
+| `ExportExcel (4).xlsx`, tutti e quattro i fogli | **55** | 55 | **54** | **36** su 40 |
+| `ExportExcelDipendenti.xlsx`, `ExportExcel (5).xlsx` | 55 | 55 | 54 | 36 |
+| `ExportExcelCorsiFatti.xlsx` | 64 | 64 | 48 | 34 |
+| `ExportExcelCorsiScadenze.xlsx` | 56 | 56 | 48 | 34 |
+| gli altri export persone | 0 | — | — | — |
+
+I quattro clienti che nel foglio persone non compaiono sono AUTOCARROZZERIA
+M & W, Cantiere Ecodent, DALL'OCA LATTONERIE e GO&GO STAND. In produzione quei
+40 clienti hanno **0 persone**.
+
+**Secondo passo, in produzione, il 14.09**, in sola lettura e con il sì di
+Francesco per questa lettura. I 54 codici fiscali distinti del foglio «Ruoli SSL»
+che appartengono ai 40 clienti sono stati cercati in `persona` su **tutti** i
+clienti. Il confronto normalizza il CF: maiuscolo, solo lettere e cifre.
+
+| | codici fiscali |
+|---|---|
+| sotto il cliente giusto (uno dei 40) | **0** |
+| sotto un **altro** cliente | **1** |
+| **non esistono da nessuna parte** | **53** |
+
+**L'ipotesi di AppOverall è confermata dalla misura.** Le persone di quei clienti
+non sono entrate con l'import delle anagrafiche del 9.09: **53 persone** di
+**35 clienti** oggi non hanno scheda, quindi nemmeno organigramma o formazione
+dovuta. Le più numerose: Dalla Piazza srl 5, SIGNORINI SERVICE 4, CTF INTEGRATED
+LOGISTIC 3.
+- **Il numero N = 3.415 della migrazione dati è basso** di almeno queste 53, per
+  quanto riguarda questo file.
+- **L'unico CF trovato altrove** sta nel foglio sotto il cliente di nome
+  «XXXXXXXXXXXX», e in produzione sotto *Rittal RCS Cooling Solutions S.r.l.*
+  (P.IVA vera). Da qui non si stabilisce se sia la stessa persona abbinata bene o
+  un abbinamento sbagliato: resta da guardare.
+
+**Cosa non si fa da qui.** Rimettere dentro le 53 persone vuol dire rilanciare
+l'import delle anagrafiche, che è una scrittura su dati veri ed è di Francesco.
+Adesso che la guardia è riparata (`944fa84`), quelle righe si abbinano per
+ragione sociale ai 40 clienti, come misurato sopra. **Prima di farlo va vista
+l'anteprima dell'import delle anagrafiche.**
 6. **La scrittura**, di Francesco.
 
 AppOverall ha scritto la gemella (`0018`). Le cinque forme sono identiche byte per
