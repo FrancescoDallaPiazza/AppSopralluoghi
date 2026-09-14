@@ -1208,6 +1208,14 @@ che l'etichetta non riporta. Due prove indipendenti, senza toccare i dati:
    identici decide l'id, e `3f485f16` < `def8645c`: **la prima delle due IGEA è
    `3f485f16`**. Serve da controllo incrociato del punto 1, non da sola.
 
+**Attese del secondo passaggio**, scritte prima e calcolate sul primo già scritto. IGEA
+va su `3f485f16` e MAISON 22 resta escluso: **13 nuove** (12 con CF, 1 senza),
+**3.459 aggiornate**, `Applica (3.472)`, **3 gruppi senza cliente** (Giacomelli,
+MAISON 22, «XXXXXXXXXXXX»), 2 da abbinare, 1 scartata. Nient'altro di nuovo. Se
+l'id letto con Ispeziona e l'ordine non concordano, ci si ferma (AppOverall,
+`d702429`). L'indirizzo nell'etichetta dei clienti omonimi va nel prossimo giro di
+codice.
+
 Dopo la scrittura, con il sì di Francesco, una lettura in sola lettura del conteggio
 delle persone per i due id. Attese: 13 su `3f485f16`, 0 su `def8645c`.
 
