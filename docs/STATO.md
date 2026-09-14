@@ -597,6 +597,42 @@ sono esattamente le «4 unità non abbinate» dell'import delle nomine, e hanno
 Con due candidati l'import delle anagrafiche non ha scelto, ed è corretto: non si
 indovina. Quelle persone però sono rimaste fuori.
 
+**Da dove vengono i due candidati, letto nel codice** (domanda di AppOverall).
+In `raggruppaPersone` il gruppo dei candidati è `daPiva` più `daNome`
+(`src/lib/admin/anagraficheImport.ts:584-586`). `daPiva` però nasce dalla colonna
+P.IVA **del file persone**, e nessun foglio di `ExportExcel (4).xlsx` o di
+`ExportExcelDipendenti.xlsx` ce l'ha. Quindi per le persone i candidati vengono
+**solo dal nome**:
+- IGEA, LA TORRE, EMERA e ADAMI hanno lo stesso nome normalizzato sui due clienti:
+  due candidati, e la sede del file non ne sceglie nessuno. È spiegato così.
+- IL MAGNIFICO **no**: «IL MAGNIFICO S.R.L.» e «Il Magnifico Srl» si normalizzano
+  diversi, e col codice di oggi il candidato per nome è uno solo. L'ipotesi «la
+  P.IVA li porta dentro tutti e due» non vale per le persone. Perché le 2 righe
+  siano rimaste fuori il 9.09 **resta non spiegato**: quel giorno girava un codice
+  precedente, e l'import non si ricostruisce. Lo dirà l'anteprima.
+
+**Le sedi delle righe persona, contate sul file.** In `ExportExcel (4).xlsx` e
+`ExportExcelDipendenti.xlsx` le persone di ciascuna azienda stanno **tutte su una
+sede sola**:
+
+| azienda | sede nel file | righe | i due clienti in produzione |
+|---|---|---|---|
+| IGEA SRL UNIPERSONALE | Via Sorte 48 - 37047 San Bonifacio | 13 | Via Sorte, 48 · Via Michelangelo 7 |
+| IL MAGNIFICO S.R.L. | Corso Porta Nuova,131 - 37122 Verona | 2 | nessun indirizzo · Largo Pescheria Vecchia 10 |
+| LA TORRE S.R.L. SOCIETA' AGRICOLA | Via Trezzolano, 4 - 37141 Verona | 6 | Via Trezzolano 4 · Via Trezzolano, 4 |
+| Progetto EMERA Onlus | Via del Lavoro, 16- Vigasio | 2 | Via del Lavoro 16 · nessun indirizzo |
+| GIARDINAGGIO ADAMI | Via Valle, 63 - Dossobuono | 1 | nessun indirizzo · nessun indirizzo |
+
+Per IGEA il file non mostra persone su Via Michelangelo 7. Per IL MAGNIFICO la
+sede del file non è l'indirizzo di nessuno dei due clienti. Se siano due sedi vere
+il file da solo non lo dice.
+
+**Prima di decidere sui doppioni manca una misura**, chiesta da AppOverall: cosa
+punta a ciascuno dei 10 clienti delle coppie e al cliente «XXXXXXXXXXXX» (sedi,
+incarichi, sopralluoghi, nomine, formazione, azioni, ogni tabella con
+`cliente_id`). Unire o cancellare un cliente sposta tutto questo, e «0 persone»
+non vuol dire «niente collegato». Serve il sì di Francesco per quella lettura.
+
 **2. Il caso «XXXXXXXXXXXX»: non è un abbinamento sbagliato, è la stessa persona
 scritta due volte nel file.** Zimmari Luigino compare alla riga **3473** sotto
 la società «XXXXXXXXXXXX» (sede «XXXXXXXXXX», mansione «Operaio») e alla **3474**
@@ -615,10 +651,15 @@ un cliente fittizio.**
 - IGEA: due sedi vere o un doppione, e le 13 righe del file (Via Sorte 48) su
   quale cliente vanno.
 
-**Le attese per l'anteprima dell'import delle anagrafiche**, prima di vederla:
-**75** persone nuove con CF, più **2** righe senza CF (IGEA e LA TORRE), da
-abbinare. La 3473 non entra, se esclusa. **Nessun campo sovrascritto** sulle
-altre 3.415 persone.
+**Le attese per l'anteprima dell'import delle anagrafiche**, prima di vederla.
+Corrette su rilievo di AppOverall: la prima versione diceva «75 meno la 3473 se
+esclusa», e sottraeva una riga che nei 75 non c'è. I 75 sono i CF che non esistono
+**sotto nessun cliente**. Zimmari esiste già sotto Rittal, ma l'import lavora **per
+cliente**, e sotto «XXXXXXXXXXXX» la 3473 risulterebbe nuova.
+- **75** persone nuove con CF se la 3473 è **esclusa**, **76** se non lo è. Le
+  2 di IL MAGNIFICO sono già dentro i 75.
+- più **2** righe senza CF (IGEA e LA TORRE), da abbinare;
+- **nessun campo sovrascritto** sulle altre persone.
 6. **La scrittura**, di Francesco.
 
 AppOverall ha scritto la gemella (`0018`). Le cinque forme sono identiche byte per
