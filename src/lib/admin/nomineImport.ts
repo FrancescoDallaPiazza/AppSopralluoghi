@@ -63,7 +63,7 @@ export { CHIAVE_NOMINA_FORMA } from './formazione';
 import { CHIAVE_NOMINA_FORMA } from './formazione';
 
 // ---------------------------------------------------------------------------
-// [1] LE NOVE COLONNE DI RUOLO, E LE TRE CHE NON ENTRANO
+// [1] LE NOVE COLONNE DI RUOLO, E QUELLA CHE NON ENTRA
 // ---------------------------------------------------------------------------
 //
 // Enumerate tutte e nove, comprese quelle che restano fuori: una colonna esclusa
@@ -88,7 +88,7 @@ export const COLONNE_RUOLO: ColonnaRuolo[] = [
   { intestazione: 'Preposto', chiave: normHeader('Preposto'), figura: 'preposto', perche: null },
   { intestazione: 'RLS', chiave: normHeader('RLS'), figura: 'rls', perche: null },
 
-  // --- LE TRE CHE NON ENTRANO, e ciascuna per una ragione sua -----------------
+  // --- QUELLA CHE NON ENTRA, e le due che entrano dal 14 settembre -----------
 
   // La colonna dice "RSPP" e il file e' COERENTE CON SE STESSO: la colonna 32
   // ripete gli stessi ruoli in chiaro e le nove mappature combaciano, zero
@@ -107,36 +107,25 @@ export const COLONNE_RUOLO: ColonnaRuolo[] = [
       + 'A/B/C professionali e’ zero. Mandarle a "rspp" darebbe il percorso sbagliato. '
       + 'Serve sapere chi compila il gestionale.' },
 
-  // QUESTA NON E' UNA DEDUZIONE RIFIUTATA: E' UNA DEDUZIONE SMENTITA, e la
-  // differenza conta perche' una riga cosi' non si riapre fra un mese.
+  // EMERGENZE ED EVACUAZIONE, E RESPONSABILE EMERGENZE: SONO ADDETTI ANTINCENDIO.
+  // Decisione di Francesco del 14 settembre 2026, con queste parole:
+  //     «Addetto alle emergenze ed evacuazione = Addetto antincendio»
+  // e, sulla seconda colonna, «Sì, anche lui». La figura e' una sola, «Addetto
+  // antincendio / gestione emergenze» (art. 46, DM 2 settembre 2021).
   //
-  // La tentazione c'era, ed era forte: `addetto_antincendio` si chiama "Addetto
-  // antincendio / gestione emergenze" e l'art. 46 tratta incendio ed evacuazione
-  // insieme. Ma il gestionale le tiene distinte E I DATI GLI DANNO RAGIONE -
-  // misurato da AppFormazione l'11 settembre 2026
-  // (AppFormazione/docs/07-i-ruoli-sicurezza-erano-in-un-export.md, verificato
-  // il 12 leggendo il file, non il riassunto):
+  // Fino a quel giorno queste due colonne restavano fuori per una misura di
+  // AppFormazione (11.09): 24 delle 71 righe hanno emergenze senza antincendio, e
+  // delle 47 che le hanno entrambe solo 32 portano la stessa data. La misura resta
+  // vera, ma dice COME il gestionale usa due colonne, non se i ruoli siano due.
   //
-  //     24 delle 71 righe hanno EMERGENZE SENZA ANTINCENDIO
-  //     delle 47 che hanno entrambe, solo 32 portano la STESSA DATA
-  //
-  // Quindi collassarle sarebbe falso su 24 righe, e sulle altre 15 obbligherebbe
-  // a scegliere quale data dell'incarico tenere. Resta fuori perche' la misura lo
-  // dice, non perche' nessuno se la sia sentita.
+  // LA DATA. Quando la stessa persona ha piu' di una di queste colonne, la nomina
+  // e' UNA e porta la data PIU' VECCHIA: le date successive sono gli aggiornamenti
+  // della formazione, non nuovi incarichi («emergenze 2022 è l'aggiornamento
+  // quinquennale di antincendio 2017», Francesco). La regola sta in senzaDoppioni.
   { intestazione: 'Addetti Emergenze ed Evacuazione',
-    chiave: normHeader('Addetti Emergenze ed Evacuazione'), figura: null,
-    perche: 'Non e’ addetto_antincendio, ed e’ MISURATO: 24 delle 71 righe hanno emergenze '
-      + 'senza antincendio, e delle 47 che hanno entrambe solo 32 portano la stessa data. '
-      + 'Collassarle sarebbe falso su 24 righe e costringerebbe a scegliere una data sulle altre. '
-      + 'Nessuna delle tredici figure corrisponde: ne servirebbe una nuova.' },
-
-  // Un RESPONSABILE non e' un ADDETTO, e nessuna figura del D.Lgs 81/08 nel
-  // nostro elenco corrisponde. Qui la deduzione sarebbe piu' azzardata della
-  // precedente, non meno.
+    chiave: normHeader('Addetti Emergenze ed Evacuazione'), figura: 'addetto_antincendio', perche: null },
   { intestazione: 'Responsabile Emergenze', chiave: normHeader('Responsabile Emergenze'),
-    figura: null,
-    perche: 'Un responsabile non e’ un addetto, e nessuna delle tredici figure corrisponde. '
-      + 'Non si deduce.' },
+    figura: 'addetto_antincendio', perche: null },
 ];
 
 // ---------------------------------------------------------------------------
@@ -559,13 +548,23 @@ export interface RiepilogoNomine {
 // MANSIONE sulla qualifica: e' la fonte che l'import leggeva gia', e a parita' di
 // figura una nomina non deve cambiare provenienza solo perche' da oggi si legge
 // anche l'altra colonna.
+//
+// E fra due proposte della STESSA fonte - due colonne che danno la stessa figura,
+// come Antincendio ed Emergenze - vince la DATA PIU' VECCHIA: e' l'incarico, le
+// successive sono aggiornamenti della formazione (decisione di Francesco del
+// 14.09). Una data vale piu' di nessuna data.
 const PESO_FONTE: Record<FonteNomina, number> = { colonna: 0, mansione: 1, qualifica: 2 };
+const piuVecchia = (a: string | null, b: string | null): boolean => a !== null && (b === null || a < b);
 function senzaDoppioni(proposte: NominaProposta[]): NominaProposta[] {
   const perChiave = new Map<string, NominaProposta>();
   for (const n of proposte) {
     const k = `${n.persona_id}|${n.figura_codice}`;
     const prima = perChiave.get(k);
-    if (!prima || PESO_FONTE[n.origine] < PESO_FONTE[prima.origine]) perChiave.set(k, n);
+    const pesoN = PESO_FONTE[n.origine];
+    const pesoPrima = prima ? PESO_FONTE[prima.origine] : Infinity;
+    if (!prima || pesoN < pesoPrima || (pesoN === pesoPrima && piuVecchia(n.data_nomina, prima.data_nomina))) {
+      perChiave.set(k, n);
+    }
   }
   return [...perChiave.values()];
 }
