@@ -1643,6 +1643,12 @@ bundle. Per questo deploy il segno giusto è la **scritta «da decidere, già
 risolte»** nella barra del riepilogo: nel bundle di prima (`index-C89rMZll.js`)
 non c'è, in quello nuovo sì. Il 427 non distingue niente: è uguale nei due codici.
 
+**La seconda verifica torna, sul bundle nuovo** (15.09, Francesco, dopo aver chiuso
+le schede e ricaricato): la barra mostra «da decidere, già risolte», e i numeri sono
+**0 da creare, 7 da decidere, 35 già risolte, 1 persona non trovata, 427 già in
+organigramma**, tutti come atteso. La modifica è chiusa. Le «da decidere» che la
+pagina mostra adesso sono le 7 aperte davvero.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
