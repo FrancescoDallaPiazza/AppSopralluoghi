@@ -18,7 +18,8 @@
     "qualifica:check": "node scripts/qualifica-check.mjs",
     "spazi:check": "node scripts/spazi-check.mjs",
     "nomine:dryrun": "node scripts/nomine-dryrun.mjs",
-    "attese:nomine": "node --max-http-header-size=65536 scripts/attese-nomine.mjs"
+    "attese:nomine": "node --max-http-header-size=65536 scripts/attese-nomine.mjs",
+    "risolte:check": "node scripts/gia-risolte-check.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",

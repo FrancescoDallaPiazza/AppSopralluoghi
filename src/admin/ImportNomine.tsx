@@ -122,6 +122,7 @@ export default function ImportNomine() {
             {/* Mai zero implicito: se e' zero lo dice, perche' "161 nomine" da solo
                 e' un riepilogo che mente per omissione. */}
             <Conto n={r.daDecidere} etichetta="da decidere" allarme={r.daDecidere > 0} />
+            <Conto n={r.giaRisolte} etichetta="da decidere, già risolte" />
             <Conto n={r.personeNonTrovate} etichetta="persone non trovate"
               allarme={r.personeNonTrovate > 0} />
             <Conto n={r.giaPresenti} etichetta="già in organigramma" />
@@ -204,6 +205,32 @@ export default function ImportNomine() {
                   <td>{d.fonte}</td>
                   <td><code>{d.testo}</code></td>
                   <td><small>{d.motivo}</small></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* =================== GIA' RISOLTE =================== */}
+      {piano && piano.giaRisolte.length > 0 && (
+        <div className="bo-card" style={{ marginTop: 12 }}>
+          <h3 className="bo-h3">{piano.giaRisolte.length} righe da decidere, già risolte da una nomina scritta</h3>
+          <p className="bo-sub">
+            La riga dice «RSPP» senza dire se sia il datore o un RSPP esterno, ma la persona ha
+            <b> già una nomina che risponde</b>: qualcuno ha deciso. Non chiedono niente e non
+            vengono riscritte; restano elencate per poterle rivedere.
+          </p>
+          <table className="bo-table">
+            <thead><tr><th>riga</th><th>chi</th><th>dove</th><th>testo</th><th>risolta da</th></tr></thead>
+            <tbody>
+              {piano.giaRisolte.map((d, i) => (
+                <tr key={i}>
+                  <td>{d.riga}</td>
+                  <td>{d.persona}<br /><small className="bo-sub">{d.cliente}</small></td>
+                  <td>{d.fonte}</td>
+                  <td><code>{d.testo}</code></td>
+                  <td><code>{d.risoltaDa}</code></td>
                 </tr>
               ))}
             </tbody>

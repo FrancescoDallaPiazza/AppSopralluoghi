@@ -74,6 +74,9 @@ export interface ColonnaRuolo {
   chiave: string;               // normHeader dell'intestazione
   figura: string | null;        // null = riconosciuta, NON mappabile
   perche: string | null;        // perche' non e' mappata. Null quando lo e'.
+  // Quando figura e' null: il ruolo che la colonna DICHIARA. Serve a riconoscere una
+  // riga gia' risolta da una nomina scritta (vedi RISOLTA_DA).
+  ruolo?: string;
 }
 
 export const COLONNE_RUOLO: ColonnaRuolo[] = [
@@ -101,7 +104,7 @@ export const COLONNE_RUOLO: ColonnaRuolo[] = [
   // professionista invece di quello del datore. Resta fuori SAPENDO PERCHE',
   // non per prudenza generica, e AppFormazione ha gia' dovuto correggerlo una
   // volta con `togli_ruoli_rspp.sql`.
-  { intestazione: 'RSPP', chiave: normHeader('RSPP'), figura: null,
+  { intestazione: 'RSPP', chiave: normHeader('RSPP'), figura: null, ruolo: 'rspp',
     perche: 'Il gestionale chiama "RSPP" anche il datore che assume l’incarico in proprio '
       + '(art. 34): 26 attestati su 33 sono da datore-RSPP e la sovrapposizione con i moduli '
       + 'A/B/C professionali e’ zero. Mandarle a "rspp" darebbe il percorso sbagliato. '
@@ -240,10 +243,17 @@ export interface DaDecidere {
   motivo: string;
 }
 
+// Una riga da decidere a cui una nomina GIA' SCRITTA risponde. Non chiede niente, ma
+// non sparisce: resta elencata a parte, con la figura che la risolve.
+export type GiaRisolta = DaDecidere & { risoltaDa: string };
+
 export interface PianoNomine {
   gruppi: GruppoPersone[];      // l'abbinamento riga -> cliente, come per le persone
   proposte: NominaProposta[];
   daDecidere: DaDecidere[];
+  // Le righe che sarebbero da decidere e a cui la persona ha gia' risposto con una
+  // nomina scritta (15.09). Fuori da `daDecidere`, e contate a parte.
+  giaRisolte: GiaRisolta[];
   // Righe che nominano una persona che in archivio non si trova. Non e' un
   // "da decidere": e' un presupposto mancante, e la risposta e' importare prima
   // le anagrafiche.
@@ -353,6 +363,19 @@ function risolviPersona(
   return p;
 }
 
+// UNA RIGA DA DECIDERE PUO' ESSERE GIA' RISOLTA. Il dizionario si astiene su «RSPP»
+// secco, «SOCIO/RSPP», «LEGALE RAPPRESENTANTE/RSPP», e la colonna RSPP resta fuori:
+// il testo non dice se sia il datore o un RSPP esterno. Tutte le astensioni del
+// dizionario (068, 070) asseriscono `rspp`. Ma se la persona ha GIA' una nomina
+// `dl_rspp` o `rspp`, qualcuno ha deciso - a mano, o con gli script sugli attestati
+// del 15.09 - e la riga non chiede piu' niente. Senza questa regola l'anteprima del
+// 15.09 mostrava 42 da decidere, 35 delle quali decise e scritte.
+//
+// Solo nomine SCRITTE: una proposta dello stesso piano non risolve niente finche'
+// non e' scritta. E solo le figure elencate: un addetto antincendio non risponde a
+// «RSPP». Una forma non a dizionario asserisce un ruolo che non si conosce, e resta.
+const RISOLTA_DA: Record<string, string[]> = { rspp: ['dl_rspp', 'rspp'] };
+
 export async function pianificaNomine(
   f: Foglio, clienti: ClienteScelta[], abbinamenti: Record<string, string | null> = {},
 ): Promise<PianoNomine> {
@@ -361,6 +384,7 @@ export async function pianificaNomine(
 
   const proposte: NominaProposta[] = [];
   const daDecidere: DaDecidere[] = [];
+  const giaRisolte: GiaRisolta[] = [];
   const personeNonTrovate: PianoNomine['personeNonTrovate'] = [];
   const mansioniConteggio = new Map<string, number>();
   const qualificheConteggio = new Map<string, number>();
@@ -408,6 +432,8 @@ export async function pianificaNomine(
           .in('persona_id', idsEsistenti).order('persona_id').range(da, a))
       : [];
     const gia = new Set(nomineGia.map((n) => `${n.persona_id}|${n.figura_codice}`));
+    const risoltaDa = (personaId: string, ruolo: string | null | undefined): string | null =>
+      (ruolo ? RISOLTA_DA[ruolo]?.find((fig) => gia.has(`${personaId}|${fig}`)) : undefined) ?? null;
 
     // I nomi senza CF ripetuti DENTRO il file: stessa guardia dell'import
     // anagrafiche, e va calcolata sul gruppo perche' l'identita' e' per cliente.
@@ -459,10 +485,13 @@ export async function pianificaNomine(
       // --- A. le colonne ---
       for (const { col, data } of dalleColonne) {
         if (!col.figura) {
-          daDecidere.push({
+          const voce: DaDecidere = {
             riga: r.n, persona_id: chi.id, persona: chi.nome, cliente: gr.etichetta,
             fonte: 'colonna', testo: col.intestazione, motivo: col.perche ?? 'colonna non mappata',
-          });
+          };
+          const risolta = risoltaDa(chi.id, col.ruolo);
+          if (risolta) giaRisolte.push({ ...voce, risoltaDa: risolta });
+          else daDecidere.push(voce);
           continue;
         }
         proposte.push({
@@ -482,14 +511,17 @@ export async function pianificaNomine(
       const deduci = (fonte: 'mansione' | 'qualifica', testo: string, esito: EsitoMansione | null) => {
         for (const a of esito?.asserzioni ?? []) {
           if (!a.figura_codice) {
-            daDecidere.push({
+            const voce: DaDecidere = {
               riga: r.n, persona_id: persona.id, persona: persona.nome, cliente: gr.etichetta,
               fonte, testo,
               motivo: esito!.trovata
                 ? `il dizionario conosce questa forma e NON ha una regola per "${a.ruolo_asserito}": `
                   + 'l’assenza e’ voluta, il ruolo esatto non si deduce'
                 : 'forma non a dizionario, ma il testo nomina un ruolo di sicurezza',
-            });
+            };
+            const risolta = risoltaDa(persona.id, a.ruolo_asserito);
+            if (risolta) giaRisolte.push({ ...voce, risoltaDa: risolta });
+            else daDecidere.push(voce);
             continue;
           }
           proposte.push({
@@ -516,7 +548,7 @@ export async function pianificaNomine(
   const qualificheNuove = nonADizionario(qualificheConteggio);
 
   return {
-    gruppi, proposte, daDecidere, personeNonTrovate, scartate, mansioniNuove, qualificheNuove,
+    gruppi, proposte, daDecidere, giaRisolte, personeNonTrovate, scartate, mansioniNuove, qualificheNuove,
     righeLette: f.righe.length,
   };
 }
@@ -532,6 +564,7 @@ export interface RiepilogoNomine {
   daCreare: number;
   giaPresenti: number;
   daDecidere: number;
+  giaRisolte: number;
   personeNonTrovate: number;
   mansioniNuove: number;
   perFigura: { figura: string; n: number }[];
@@ -578,6 +611,7 @@ export function riepiloga(p: PianoNomine): RiepilogoNomine {
     daCreare: nuove.length,
     giaPresenti: gia.length,
     daDecidere: p.daDecidere.length,
+    giaRisolte: p.giaRisolte.length,
     personeNonTrovate: p.personeNonTrovate.length,
     mansioniNuove: p.mansioniNuove.length,
     perFigura: [...perFigura.entries()].map(([figura, n]) => ({ figura, n }))
