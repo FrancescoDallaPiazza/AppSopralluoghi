@@ -190,6 +190,22 @@ async function main() {
       console.log('  da creare, per figura:');
       for (const x of r.perFigura) console.log(`      ${x.figura.padEnd(28)} ${String(x.n).padStart(4)}`);
     }
+    // Le righe, per riconciliare sul file senza database: riga, figura, origine.
+    // Nessun nome. Il doppione persona+figura si toglie come in `riepiloga`
+    // (vince la colonna, poi la mansione), e il conto deve tornare col pulsante.
+    if (s === SCENARI[1]) {
+      const PESO = { colonna: 0, mansione: 1, qualifica: 2 };
+      const una = new Map();
+      for (const x of p.proposte.filter((y) => !y.gia)) {
+        const k = `${x.persona_id}|${x.figura_codice}`;
+        const prima = una.get(k);
+        if (!prima || PESO[x.origine] < PESO[prima.origine]) una.set(k, x);
+      }
+      const righe = [...una.values()].sort((a, b) => a.riga - b.riga);
+      console.log(`  le righe delle ${righe.length} da creare (riga · figura · origine)`
+        + `${righe.length === r.daCreare ? '' : `  >> NON tornano col pulsante (${r.daCreare})`}:`);
+      for (const x of righe) console.log(`      ${String(x.riga).padStart(4)} · ${x.figura_codice} · ${x.origine}`);
+    }
   }
 
   console.log('\nSola lettura: nessuna scrittura tentata, e la guardia le avrebbe fermate.\n');
