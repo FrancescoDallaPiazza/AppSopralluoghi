@@ -1570,6 +1570,27 @@ tiene la gemella del dizionario, e questa voce non ce l'ha.
 data, **454 nomine** in tutto. Lo script non va rilanciato. La 071 è il passo
 successivo.
 
+**La 071 è applicata (15.09, Francesco dall'SQL Editor), e la lettura torna:** una
+riga, `INSTALLATORE/MANUTENTORE IMPIANTI ANTINCENDIO E ANTIFURTO`, posizione
+`non_dichiarato`, 0 figure. Applicata incollando l'SQL, quindi **non è registrata**
+in `supabase_migrations.schema_migrations`, come le altre date dall'editor.
+
+**Dove sono adesso le 51 da decidere della pagina nomine** (sullo stesso file):
+- la pagina ne mostrerà **42**: le 9 di DER ERSTE non ci sono più;
+- di quelle 42, **35 hanno già una risposta scritta**, e la pagina le mostra lo
+  stesso perché non guarda le nomine esistenti:
+
+  | fonte | nella pagina | già risolte | aperte |
+  |---|---|---|---|
+  | colonna RSPP | 31 | 26 (script della colonna) | 5: 1097, 1503, 2146, 2326, 3451 |
+  | mansione | 7 | 6: 855, 1206, 2103, 2537, 2578 (scritte oggi), 916 | 1: **2461** |
+  | qualifica | 4 | 3: 350, 748 (scritte oggi), 3397 | 1: **2248** |
+  | **totale** | **42** | **35** | **7** |
+
+- **aperte davvero: 7.** Le 5 righe della colonna RSPP senza attestato che basti,
+  la **2248** (CARROZZERIA TOP CAR S.N.C., nessun attestato) e la **2461** (ECODENT,
+  ALESSIA PERONI, solo il Modulo A, non è la legale rappresentante).
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
