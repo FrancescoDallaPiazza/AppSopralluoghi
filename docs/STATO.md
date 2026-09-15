@@ -1684,6 +1684,45 @@ le schede e ricaricato): la barra mostra «da decidere, già risolte», e i nume
 organigramma**, tutti come atteso. La modifica è chiusa. Le «da decidere» che la
 pagina mostra adesso sono le 7 aperte davvero.
 
+### Il campo ATECO a mano: il livello non segue più la scelta (15 settembre, sera, ramo)
+
+**Ordine di AppOverall** (sezione 8, verificato da loro sul codice prima di
+assegnarlo, e riverificato qui): in `Anagrafiche.tsx:881-884` `scegli` scriveva
+`codice_ateco` **e** `livello_rischio` nella stessa patch. Un livello messo a mano
+veniva sostituito senza conferma nella scheda, e al primo «Salva» nell'archivio
+(`patch` cambia solo lo stato della scheda). Ultima condizione aperta prima della
+campagna ATECO, **che non parte**.
+
+**La modifica**, sul ramo `ateco-scelta-senza-livello` (`71462cf` più la riga sotto
+il bottone), non pubblicata:
+- la regola sta in due funzioni pure di `formazione/ateco.ts`: `patchSceltaAteco`
+  (la scelta scrive **solo** il codice) e `statoRischio` (cosa mostra e propone il
+  bottone RISCHIO, che resta l'unico gesto che cambia il livello);
+- sotto il bottone, quando c'è qualcosa da applicare: «ATECO propone BASSO: premi
+  per applicarlo». Serve perché prima il livello si metteva da solo;
+- **`ateco_origine`: deciso di non toccarlo**, né dalla scelta né dall'input libero.
+  È la cella del gestionale e l'unico riscontro. Il prezzo, dichiarato: dopo una
+  correzione a mano l'avviso «la divisione potrebbe essere un'altra» confronta
+  ancora il codice nuovo con quella cella, e può restare. Da decidere con la
+  campagna ATECO, non qui.
+
+**Le prove:** `npm run ateco-scelta:check` **6 casi su 6**, fra cui quello chiesto
+da AppOverall: «livello alto messo a mano, scelgo una divisione che propone basso:
+il livello resta alto, e il bottone propone basso». **Il negativo**: su main la
+regola non era una funzione ma una riga del componente, quindi il controllo
+negativo compila `ateco.ts` con la patch della riga 882 di main trascritta alla
+lettera, e **fallisce 4 casi su 6**. Build verde, altri dieci controlli verdi.
+
+**Il segno della versione:** «premi per applicarlo». Nel bundle online
+`index-G0ow0SI3.js` **0** occorrenze (e la patch codice+livello c'è, 1); nella build
+del ramo c'è, e la patch vecchia no.
+
+**Aperto, per quando Francesco torna:**
+- il **sì a merge e deploy** di questo ramo (non ancora chiesto a lui: è uscito);
+- la **verifica a vista** delle etichette omonimi (`03b1633`, online): le due IGEA
+  con voci diverse, indirizzo o id; e nella stessa schermata 2 da decidere e 40 già
+  risolte.
+
 ### Le etichette dei clienti omonimi nelle tendine (15 settembre, sera, ramo)
 
 **Ordine di AppOverall** (PROGRAMMA.md sezione 8): il giro di codice promesso il 14,
