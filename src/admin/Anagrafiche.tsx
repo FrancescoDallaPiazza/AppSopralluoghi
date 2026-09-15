@@ -973,6 +973,13 @@ function CampoAteco({
             }}>
             RISCHIO<br />{effettivo ? ETICHETTA_RISCHIO[effettivo] : '—'}
           </button>
+          {/* Scegliere il codice non cambia piu' il livello (15.09.2026): chi guarda
+              la scheda deve sapere che il livello proposto aspetta un gesto. */}
+          {puoApplicare && proposto && (
+            <div style={{ fontSize: 11, marginTop: 4, color: 'var(--ink-soft)', maxWidth: 170 }}>
+              ATECO propone {ETICHETTA_RISCHIO[proposto]}: premi per applicarlo
+            </div>
+          )}
         </div>
       </div>
 
