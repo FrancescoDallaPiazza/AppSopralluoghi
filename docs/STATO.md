@@ -1733,9 +1733,23 @@ prima del merge, riga sopra.
 
 Il ramo `ateco-scelta-senza-livello` è unito e si può cancellare: non l'ho fatto.
 
-**Aperto: la verifica a vista di Francesco**, a ricarica forzata e senza scrivere:
-- **ATECO**: su un cliente con livello messo a mano, scegliere un suggerimento non
-  cambia il livello, e sotto RISCHIO compare «… premi per applicarlo»;
+**Verifica a vista dell'ATECO: superata**, da Francesco nel browser il 15.09 sera
+(riferita da appoverall-55), senza scrivere: su un cliente con un livello salvato,
+scegliere un suggerimento con un rischio diverso lascia il livello di prima, e sotto
+RISCHIO compare «… premi per applicarlo».
+
+**Un falso allarme lungo la strada, da annotare, non un difetto.** Il primo cliente
+provato **non aveva un livello salvato**: il bottone mostrava la proposta come se
+fosse un livello, e si è letto «il livello è cambiato da solo». Col campo vuoto il
+bottone dava «—». I dati restano a posto. Il motivo è nel codice:
+`statoRischio` rende `effettivo: livello ?? proposto` (`formazione/ateco.ts:275`), e
+il bottone mostra `effettivo` con il colore del rischio (`Anagrafiche.tsx:969-974`).
+**Non l'ha introdotto questo ramo**: su `0f519d1` la stessa riga stava nel componente
+(`const effettivo = livello ?? proposto`, riga 887). A vista, oggi, una proposta non
+si distingue da un livello salvato. **Non è un ordine**: se ritoccarlo lo decide
+Francesco.
+
+**Aperte le altre due verifiche a vista**, a ricarica forzata e senza scrivere:
 - le **etichette omonimi** (`03b1633`): le due IGEA con voci diverse, indirizzo o id;
 - nella pagina nomine, **2 da decidere e 40 già risolte**.
 
