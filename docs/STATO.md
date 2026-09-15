@@ -1591,6 +1591,34 @@ in `supabase_migrations.schema_migrations`, come le altre date dall'editor.
   la **2248** (CARROZZERIA TOP CAR S.N.C., nessun attestato) e la **2461** (ECODENT,
   ALESSIA PERONI, solo il Modulo A, non è la legale rappresentante).
 
+### La pagina nomine separa le «da decidere» già risolte (15 settembre, ramo)
+
+**Il problema:** la pagina mostrava 42 da decidere, 35 decise e scritte, perché non
+guardava le nomine esistenti. Non scriveva niente di sbagliato: `azioniDaDecidere`
+non la chiama nessuno, quindi le righe non diventano compiti. Era un problema di
+lettura. Sì di Francesco alla modifica.
+
+**La regola**, in un punto solo (`RISOLTA_DA`, nomineImport.ts): una riga che
+asserisce `rspp` su una persona che ha **già scritta** una nomina `dl_rspp` o `rspp`
+va fra le **«già risolte»**, con la figura che la risolve, e non fra le da decidere.
+Tutte le astensioni del dizionario (068, 070) asseriscono `rspp`; la colonna RSPP
+ora lo dichiara (`ruolo: 'rspp'`). Non valgono le proposte dello stesso piano, né
+un'altra figura, né le forme non a dizionario. La pagina mostra il conto nella barra
+e l'elenco in una scheda a parte.
+
+**Le prove**, sul ramo `da-decidere-gia-risolte`:
+- `npm run risolte:check` (`scripts/gia-risolte-check.mjs`), **8 casi su 8**. Sul
+  codice di `main` falliscono R1, R3 e R8, cioè quelli che la modifica deve cambiare;
+- build verde; `qualifica`, `ruoli`, `dizionario`, `omonimi`, `spazi`, `report`,
+  `guida`, `ateco` verdi;
+- **sul file vero**, col dizionario 068+070+071 e i 33 `dl_rspp` scritti oggi (26
+  colonna, 7 testi) più 916 e 3397: **7 da decidere** (1097, 1503, 2146, 2248, 2326,
+  2461, 3451) e **35 già risolte** (colonna 26, mansione 6, qualifica 3). È il conto
+  scritto sopra, riga per riga.
+
+**Non pubblicato.** Merge e deploy aspettano il sì di Francesco. Dopo il deploy, la
+versione nel browser si controlla in positivo come sempre.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
