@@ -10,7 +10,34 @@ e lo dice qui perché è qui che si lavora — le caselle le riempie chi le chiu
 L'altra corsia legge questo file, non deve chiederlo. Aggiornato quando qualcosa
 si chiude, con l'hash del commit accanto: se manca l'hash, non è chiuso.
 
-Ultimo aggiornamento: **14 settembre 2026, pomeriggio** — **D2 è pubblicato**
+Ultimo aggiornamento: **15 settembre 2026, pomeriggio** — **il recupero è chiuso**,
+e ogni passo è riletto sul database dopo la scrittura:
+- **anagrafiche**: primo passaggio (64 nuove), FIORIO, IGEA (13 nuove su
+  `3f485f16`, le 24 schede con gli spazi doppi riparate, riscontrate per id).
+  **3.494 persone**;
+- **import nomine**, un passaggio solo: attese calcolate prima sulla produzione
+  (`scripts/attese-nomine.mjs`) e riconciliate riga per riga, 35 scritte, 427;
+- **colonna RSPP** abbinata con gli attestati, decisione di Francesco: 20 `dl_rspp`
+  (`supabase/scripts/nomine_dl_rspp_da_attestati.sql`), 447; poi 7 `dl_rspp` dai
+  testi di mansione e qualifica (`nomine_dl_rspp_da_testo_e_attestati.sql`).
+  **454 nomine**;
+- **`071`** (il mestiere di DER ERSTE nel dizionario, senza figure) **applicata
+  dall'SQL Editor e quindi non registrata in `supabase_migrations.schema_migrations`**.
+  La gemella di AppOverall è la loro `0019`;
+- **pagina nomine con le «già risolte»**, merge `bea1692`, bundle
+  `index-CXXQmiL0.js`, verificata nel browser: **7 da decidere**, 35 già risolte.
+
+**Le 7 da decidere aspettano Francesco**: 1097, 1503, 2146, 2326, 3451 (colonna RSPP
+senza un attestato che basti), 2248 (CARROZZERIA TOP CAR S.N.C.), 2461 (ECODENT).
+Le domande gliele ha messe davanti AppOverall (PROGRAMMA.md sezione 8, `24ff1b1`).
+**Nessuna scrittura nuova sulla produzione finché non risponde.** Quando risponde:
+si registra qui, e le nomine che ne escono si scrivono con attese prima e lettura
+dopo, come il 15.
+
+Il dettaglio sta nelle sezioni del 15 settembre, più sotto: le attese dell'import
+nomine, la colonna RSPP, le 20 da decidere dai testi, la pagina nomine.
+
+**Prima, 14 settembre 2026, pomeriggio** — **D2 è pubblicato**
 (app `e33efc2`, Edge Function `genera-report` v9) e si chiude con un report vero.
 **La Qualifica come fonte distinta e la `070` sono pronte sul ramo
 `qualifica-fonte-distinta`** (`d849073`), insieme alla riparazione di
