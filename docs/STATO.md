@@ -1413,8 +1413,13 @@ codice va provato e pubblicato, e l'import aspetterebbe un altro deploy.
 **Le attese, dal lancio completo** (15.09, con il flag; «Sola lettura» in fondo).
 Produzione: 3.494 persone, 392 nomine, 608 clienti attivi. **I tre scenari danno gli
 stessi numeri**: né IGEA né MAISON 22 portano nomine, quindi le scelte a mano non
-cambiano il conto. Si fanno come nelle anagrafiche: IGEA su `3f485f16`, MAISON 22
-escluso.
+cambiano il conto. **L'unica scelta è IGEA su `3f485f16`.** MAISON 22 in questa
+pagina **non si può escludere** (rilievo di Francesco): la tabella degli abbinamenti
+elenca solo le unità senza cliente (`ImportNomine.tsx:156-183`), la tendina non ha
+«non importare», e MAISON 22 è già proposta su `cc7d7e47`. Vale lo scenario C, che dà
+gli stessi numeri: le sue 21 righe non producono nessuna nomina, né da creare né già
+presente. Quindi le unità non abbinate sono **3 prima della scelta** (Giacomelli,
+IGEA, «XXXXXXXXXXXX») e **2 dopo**.
 
 | sulla pagina | atteso |
 |---|---|
@@ -1424,7 +1429,7 @@ escluso.
 | da decidere | **51**: colonna 31, mansione 16, qualifica 4 |
 | persone non trovate | **1**, la 2563 (Pradella senza CF) |
 | già in organigramma | **392** |
-| unità non abbinate | **3**: Giacomelli, MAISON 22 (escluso), «XXXXXXXXXXXX» |
+| unità non abbinate | **2** dopo aver scelto IGEA: Giacomelli, «XXXXXXXXXXXX» |
 
 **Riconciliate sul file, riga per riga**, con l'elenco stampato dallo script:
 - **29** sono esattamente le 29 righe con Emergenze o Responsabile Emergenze e senza
