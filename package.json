@@ -20,7 +20,8 @@
     "nomine:dryrun": "node scripts/nomine-dryrun.mjs",
     "attese:nomine": "node --max-http-header-size=65536 scripts/attese-nomine.mjs",
     "risolte:check": "node scripts/gia-risolte-check.mjs",
-    "omonimi-etichetta:check": "node scripts/etichetta-omonimi-check.mjs"
+    "omonimi-etichetta:check": "node scripts/etichetta-omonimi-check.mjs",
+    "ateco-scelta:check": "node scripts/ateco-scelta-check.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",
