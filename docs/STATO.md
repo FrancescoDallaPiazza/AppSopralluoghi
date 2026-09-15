@@ -1532,6 +1532,39 @@ Delle 51 da decidere della pagina nomine, 26 hanno adesso una risposta scritta.
 Restano **5 righe della colonna RSPP** (1097, 1503, 2146, 2326, 3451) e **20 testi**
 di mansione e qualifica.
 
+### Le 20 da decidere dai testi (15 settembre)
+
+**Ricostruite fuori dal database**: `pianificaNomine` sul file, col dizionario letto
+dalla 068 e dalla 070, un cliente finto per unità (tranne Giacomelli e
+«XXXXXXXXXXXX»), la 2563 tolta. Tornano **16 da mansione e 4 da qualifica**,
+esattamente come la pagina. Accanto a ogni riga, gli attestati della persona da
+`ExportExcelCorsiFatti.xlsx`.
+
+| gruppo | righe | decisione |
+|---|---|---|
+| **A** · RSPP nel testo e attestato da datore RSPP, nessun modulo da professionista | 350, 748 (qualifica «RSPP»); 855, 1206 («SOCIO/ RSPP»); 2103 («SOCIO/RSPP»); 2537, 2578 («RSPP») | **7 `dl_rspp`**, sì di Francesco. Nelle 1206, 2103 e 2537 il datore del corso è un'altra persona: il corso da datore RSPP lo frequenta però solo chi è datore |
+| **B** · DER ERSTE, «INSTALLATORE/MANUTENTORE IMPIANTI ANTINCENDIO E ANTIFURTO» | 180, 277, 278, 919, 1825, 2260, 2381, 2670, 2868 | **mestiere, non ruolo**: nel dizionario come testo senza figure, sì di Francesco (migrazione `071`) |
+| **B** · hanno già `dl_rspp` | 916 (script della colonna RSPP), 3397 (mansione) | niente da fare |
+| **C** · aperte | 2248 CARROZZERIA TOP CAR S.N.C., «RSPP-SOCIO», nessun attestato: la TOP CAR SRL della 2812 è **un'altra società** (Francesco) · 2461 ECODENT, «DIRETTORE TECNICO, RSPP E COMMERCIALE», solo il Modulo A da professionista, non è il legale rappresentante | restano da decidere |
+
+**Lo script delle 7** è `supabase/scripts/nomine_dl_rspp_da_testo_e_attestati.sql`.
+Scrive come la pagina scrive una nomina dedotta da un testo: origine `mansione` o
+`qualifica`, il testo in `origine_testo`, nessuna data, e in `note` la regola data
+dall'attestato. Si annulla se un md5 non trova esattamente una persona, se una delle
+7 ha già `dl_rspp`, o se l'insert non scrive 7 righe. **Provato su un `initdb`**:
+lancio normale cinque `ok` e 454 nomine; secondo lancio fermo; una delle 7 con
+`dl_rspp` già presente, fermo. Una lettura di prima (`lettura-dl-7.sql`, provata
+positiva e negativa) è stata preparata, ma il controllo 2 dello script la fa già.
+**Atteso dopo il lancio: 454 nomine.**
+
+**La migrazione `071`** mette la forma di DER ERSTE in `ruolo_testo`, con posizione
+`non_dichiarato` e nessuna riga in `ruolo_testo_figura`: una voce trovata senza
+asserzioni non produce né nomina né «da decidere». **Provata sul file**: con la 071
+le da decidere passano da **51 a 42** (mansione da 16 a 7), DER ERSTE da 9 a 0, le
+proposte non cambiano. **Provata su un `initdb`**: due lanci, una riga sola.
+`ruoli:check` e `dizionario:check` leggono solo la 068 e non cambiano. AppOverall
+tiene la gemella del dizionario, e questa voce non ce l'ha.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
