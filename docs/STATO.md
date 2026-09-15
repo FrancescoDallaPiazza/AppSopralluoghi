@@ -1616,8 +1616,22 @@ e l'elenco in una scheda a parte.
   2461, 3451) e **35 già risolte** (colonna 26, mansione 6, qualifica 3). È il conto
   scritto sopra, riga per riga.
 
-**Non pubblicato.** Merge e deploy aspettano il sì di Francesco. Dopo il deploy, la
-versione nel browser si controlla in positivo come sempre.
+**Merge e deploy fatti il 15.09**, col sì di Francesco. Merge **`bea1692`** su main;
+sul main unito build verde e nove controlli verdi (`risolte`, `qualifica`, `ruoli`,
+`dizionario`, `omonimi`, `spazi`, `report`, `guida`, `ateco`).
+
+| canale | cosa è online | come è verificato |
+|---|---|---|
+| **app** (Vercel) | `bea1692` | stato GitHub `success` alle 12:37:05 UTC. Il bundle pubblico passa da `index-C89rMZll.js` a `index-CXXQmiL0.js`, e contiene `giaRisolte`, l'etichetta «da decidere, già risolte», `rspp:["dl_rspp","rspp"]` e il titolo «e quella che non entra» |
+| **Edge Function** | invariate | nessun file sotto `supabase/functions` è cambiato |
+
+**Resta la verifica nel browser**, di Francesco: ricarica forzata, poi sulla pagina
+*Import nomine* con `ExportExcel (4).xlsx` e IGEA su `3f485f16` devono uscire **7 da
+decidere**, **35 già risolte**, **0 da creare** e **427 già in organigramma**. Non
+454: «già in organigramma» conta le proposte del file che esistono già (392 + le 35
+scritte dalla pagina), e le 27 `dl_rspp` degli script stanno su righe che non sono
+proposte, sono le «già risolte». Nel messaggio a Francesco era scritto 454:
+**sbagliato**, e corretto prima della verifica.
 
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
