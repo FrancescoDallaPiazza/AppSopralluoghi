@@ -1450,6 +1450,17 @@ andava sul doppione vuoto e le sue persone risultavano non trovate.
 **Dopo la scrittura** la pagina deve dire «35 nomine scritte. Rilettura: 0 da
 creare, 51 da decidere.», e in produzione le nomine devono essere **427**.
 
+**Import nomine scritto il 15.09.** Prima di scrivere, Francesco ha confermato il
+titolo nuovo dopo la ricarica forzata, e l'anteprima ha coinciso con le attese in
+ogni voce: 35 da creare (33/1/1), per figura 31/2/1/1, 51 da decidere, 1 non
+trovata, 392 già in organigramma, 2 unità non abbinate. La pagina ha risposto, con
+le sue parole: «35 nomine scritte. Rilettura: 0 da creare, 51 da decidere.» **Da
+rileggere:** una select sola per l'SQL Editor (`verifica-nomine.sql`, nella
+scratchpad), con dieci controlli. Attesi: 427 in tutto, 35 create oggi, per figura
+31/2/1/1, per origine 33/1/1, 33 con la data di nomina. È provata su un `initdb` usa
+e getta: dieci `ok`, e il negativo fallisce su 1, 2, 8 e 10. Una riserva: i
+controlli «oggi» contano anche le nomine create a mano dall'app nella giornata.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
