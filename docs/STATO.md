@@ -1477,6 +1477,50 @@ FIORIO, IGEA (13 nuove, le 24 schede riparate), nomine (35). L'archivio adesso:
 - MAISON 22 **non si può escludere** dalla pagina nomine: oggi non conta, perché le
   sue righe non portano nomine.
 
+### La colonna RSPP, abbinata con gli attestati (15 settembre)
+
+**Decisione di Francesco**, con queste parole: «fai già te abbinamento prendendo i
+26 attestati». Sostituisce la domanda a chi compila il gestionale.
+
+**Il riscontro, sul file.** Le 31 righe con la colonna RSPP di «Ruoli SSL» sono
+state cercate in `ExportExcelCorsiFatti.xlsx`: per codice fiscale e, dove manca,
+per cognome e nome.
+- **27** hanno attestati da datore di lavoro RSPP («R.S.P.P. DATORE DI LAVORO
+  RISCHIO …» e aggiornamenti). **0** hanno i moduli A/B/C del professionista. In
+  25 casi su 27 il campo «Datore di lavoro» del corso è la persona stessa.
+- **26** di queste sono agganciate per CF, e sono quelle che entrano.
+- **Fuori:** la **1097**, con attestato trovato solo per nome, senza CF e senza
+  vincolo di società; e la **1503**, la **2146**, la **2326** e la **3451**, che non
+  hanno attestati RSPP. Restano da decidere.
+- Le date della colonna sono i seriali di Excel convertiti come `isoData`,
+  riscontrati **26 su 26**. Una prima lettura con `toISOString` le dava un giorno
+  prima: è l'errore già scritto in «Le date del foglio», ripetuto.
+
+**La lettura di prima** (sola lettura, SQL Editor, per md5 del CF): 26 persone su
+26, una volta ciascuna. **6** hanno già `dl_rspp` dalla mansione, senza data: 347,
+821, 2651, 2729, 3260, 3397. Non si toccano. **Da scrivere: 20.**
+
+**Lo script** è `supabase/scripts/nomine_dl_rspp_da_attestati.sql`, e lo lancia
+Francesco dall'SQL Editor. Dentro non ci sono codici fiscali: le persone si
+riconoscono per md5. Scrive come la pagina: origine `colonna`, la data della
+colonna, e in `note` il perché. Il blocco si annulla se un md5 non trova
+esattamente una persona, se chi ha già `dl_rspp` non è esattamente i 6, o se
+l'insert non scrive 20 righe. **Provato su un `initdb`** costruito come la
+produzione (427 nomine, i 6 `dl_rspp` da mansione, quello di oggi della 1931):
+- lancio normale: sei `ok`, 447 nomine;
+- secondo lancio: si ferma, 447;
+- una persona duplicata: si ferma al controllo 1, 427;
+- uno dei 6 tolto: si ferma al controllo 2, niente scritto.
+
+**Attesi dopo il lancio**: le 26 trovate, 26 con `dl_rspp`, 20 da colonna con la
+data della colonna, 6 da mansione intatte, 20 `dl_rspp` da colonna creati oggi,
+**447** nomine in tutto. Il controllo 5 conta solo quelli da colonna, perché
+l'import di oggi ha già scritto il `dl_rspp` della 1931 dalla mansione.
+
+**Resta un effetto sulla pagina nomine:** le righe della colonna RSPP continueranno
+a comparire fra le «da decidere», perché la pagina non guarda le nomine già
+scritte per quella colonna. Sono 31, e per 26 di loro la risposta c'è già.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
