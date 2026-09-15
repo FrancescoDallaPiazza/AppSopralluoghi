@@ -1720,7 +1720,19 @@ due IGEA non hanno più la stessa voce nella tendina.
 su un piano con il doppione della 2782 e oggi coperto da `qualifica:check` Q7. La
 riga della tabella in testa che lo dava ancora aperto era rimasta indietro.
 
-**Non pubblicato.** Merge e deploy aspettano il sì di Francesco.
+**Merge e deploy fatti il 15.09 sera**, col sì di Francesco, chiesto dicendo che il
+cambio vale per tre tendine (Import anagrafiche, nomine, formazione). Merge
+**`03b1633`** su main; sul main unito build verde e dieci controlli verdi.
+
+| canale | cosa è online | come è verificato |
+|---|---|---|
+| **app** (Vercel) | `03b1633` | stato GitHub `success` alle 15:33:47 UTC. Il bundle pubblico passa da `index-CXXQmiL0.js` a `index-G0ow0SI3.js`; la stringa segno `id, ragione_sociale, partita_iva, localita, cap, indirizzo` sale da **0 a 1** occorrenza, e `giaRisolte` resta (7) |
+| **Edge Function** | invariate | nessun file sotto `supabase/functions` è cambiato |
+
+**Resta la verifica a vista nel browser di Francesco**, a ricarica forzata e senza
+scrivere: le due IGEA nella tendina con due voci diverse, e **da dove viene** ciò che
+le distingue (l'indirizzo, o l'inizio dell'id se l'indirizzo non basta). Nella
+stessa schermata, l'attesa 2 da decidere e 40 già risolte.
 
 ### Le 7 da decidere: le risposte di Francesco (15 settembre, sera)
 
