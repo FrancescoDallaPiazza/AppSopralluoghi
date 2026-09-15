@@ -263,6 +263,8 @@ export function raggruppaUnita(righe: RigaGestionale[]): UnitaFile[] {
 export interface Luogo {
   localita: string | null;
   cap: string | null;
+  // Letto per distinguere gli omonimi nella tendina (vedi distinguiOmonimi).
+  indirizzo?: string | null;
 }
 
 export interface ClienteScelta {
@@ -278,15 +280,55 @@ export interface ClienteScelta {
   // la stessa sede legale e sedi operative diverse, quindi e' l'unico dato che
   // li distingue - sia per l'abbinamento sia per l'occhio di chi apre la tendina.
   operativa: Luogo | null;
+  // L'indirizzo dell'anagrafica. Serve solo a distinguere due clienti che nella
+  // tendina avrebbero la stessa etichetta.
+  indirizzo?: string | null;
+  // Cosa si aggiunge all'etichetta quando un altro cliente ne avrebbe una
+  // identica. Null per chi non ha omonimi. La calcola distinguiOmonimi.
+  distinzione?: string | null;
 }
 
 // Etichetta della tendina. Mostra il luogo che DISTINGUE (l'operativa se c'e')
 // e il CAP: senza, due clienti della stessa azienda compaiono come due voci
 // identiche e la scelta a mano diventa un tiro a indovinare.
 export function etichettaCliente(c: ClienteScelta): string {
+  return etichettaBase(c) + (c.distinzione ? ` · ${c.distinzione}` : '');
+}
+
+function etichettaBase(c: ClienteScelta): string {
   const l = c.operativa ?? { localita: c.localita, cap: c.cap };
   const dove = [l.localita, l.cap ? `(${l.cap})` : ''].filter(Boolean).join(' ').trim();
   return c.ragione_sociale + (dove ? ` — ${dove}` : '');
+}
+
+// GLI OMONIMI NELLA TENDINA. Il 14.09 due clienti IGEA avevano la stessa etichetta
+// - «IGEA SRL UNIPERSONALE — San Bonifacio (37047)» due volte - e differivano solo
+// per l'indirizzo, che l'etichetta non mostrava: per scegliere il giusto si e'
+// dovuto leggere l'id con Ispeziona. Scegliere per posizione, a occhio, e' un'ipotesi.
+//
+// Solo chi ha un omonimo cambia etichetta; gli altri restano come sono. A chi ne ha
+// uno si aggiunge l'indirizzo (quello dell'operativa, se c'e', se no quello
+// dell'anagrafica). Se l'indirizzo manca, o e' uguale a quello di un omonimo, si
+// aggiunge anche l'inizio dell'id: e' l'unica cosa che due doppioni veri non
+// hanno uguale, ed e' quella che il 14.09 si e' letta a mano.
+export function distinguiOmonimi(clienti: ClienteScelta[]): ClienteScelta[] {
+  const perEtichetta = new Map<string, ClienteScelta[]>();
+  for (const c of clienti) {
+    const k = etichettaBase(c);
+    const l = perEtichetta.get(k); if (l) l.push(c); else perEtichetta.set(k, [c]);
+  }
+  const indirizzoDi = (c: ClienteScelta) => (c.operativa?.indirizzo ?? c.indirizzo ?? '').trim();
+  const chiaveIndirizzo = (c: ClienteScelta) => indirizzoDi(c).toUpperCase().replace(/\s+/g, ' ');
+  return clienti.map((c) => {
+    const gruppo = perEtichetta.get(etichettaBase(c))!;
+    if (gruppo.length < 2) return { ...c, distinzione: null };
+    const ind = indirizzoDi(c);
+    const stessoIndirizzo = gruppo.filter((x) => chiaveIndirizzo(x) === chiaveIndirizzo(c)).length;
+    const distinzione = ind && stessoIndirizzo === 1
+      ? ind
+      : [ind, `id ${c.id.slice(0, 8)}`].filter(Boolean).join(' · ');
+    return { ...c, distinzione };
+  });
 }
 
 // Divergenze fra il luogo del cliente scelto e lo stabilimento del file. Non
@@ -406,7 +448,7 @@ export function proponiAbbinamenti(
 export async function caricaClientiScelta(): Promise<ClienteScelta[]> {
   const clienti = await leggiTutte<Omit<ClienteScelta, 'operativa'>>((da, a) => supabase
     .from('cliente')
-    .select('id, ragione_sociale, partita_iva, localita, cap')
+    .select('id, ragione_sociale, partita_iva, localita, cap, indirizzo')
     .eq('attivo', true)
     .order('ragione_sociale').order('id', { ascending: true })
     .range(da, a));
@@ -414,19 +456,19 @@ export async function caricaClientiScelta(): Promise<ClienteScelta[]> {
   // Sedi operative attive (`principale = false`): una per cliente nel modello a
   // un solo organigramma. Query separata e non join annidata: PostgREST la
   // renderebbe come array da appiattire comunque, e cosi' resta leggibile.
-  const sedi = await leggiTutte<{ cliente_id: string; localita: string | null; cap: string | null }>(
+  const sedi = await leggiTutte<{ cliente_id: string; localita: string | null; cap: string | null; indirizzo: string | null }>(
     (da, a) => supabase
       .from('sede')
-      .select('cliente_id, localita, cap')
+      .select('cliente_id, localita, cap, indirizzo')
       .eq('attivo', true)
       .eq('principale', false)
       .order('id', { ascending: true }).range(da, a),
   );
   const perCliente = new Map<string, Luogo>();
   for (const s of sedi) {
-    if (!perCliente.has(s.cliente_id)) perCliente.set(s.cliente_id, { localita: s.localita, cap: s.cap });
+    if (!perCliente.has(s.cliente_id)) perCliente.set(s.cliente_id, { localita: s.localita, cap: s.cap, indirizzo: s.indirizzo });
   }
-  return clienti.map((c) => ({ ...c, operativa: perCliente.get(c.id) ?? null }));
+  return distinguiOmonimi(clienti.map((c) => ({ ...c, operativa: perCliente.get(c.id) ?? null })));
 }
 
 // ============================ [3] RICONCILIAZIONE ============================
