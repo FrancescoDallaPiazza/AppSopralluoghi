@@ -1676,6 +1676,44 @@ le schede e ricaricato): la barra mostra «da decidere, già risolte», e i nume
 organigramma**, tutti come atteso. La modifica è chiusa. Le «da decidere» che la
 pagina mostra adesso sono le 7 aperte davvero.
 
+### Le 7 da decidere: le risposte di Francesco (15 settembre, sera)
+
+Con le sue parole: «1097 A, 1503 C, 2146 A, 2326 A, 3451 A, 2248 A, 2461 C», dove
+**A** = è il datore di lavoro e fa da RSPP in proprio (`dl_rspp`), **C** = non è
+l'RSPP di quell'azienda, o non si sa.
+
+| riga | azienda | nel gestionale | risposta | cosa ne esce |
+|---|---|---|---|---|
+| 1097 | FALEGNAMERIA MAST S.N.C. | colonna RSPP 2015-02-17, senza CF | **A** | `dl_rspp`, origine `colonna`, data della colonna |
+| 1503 | QUALIFT S.P.A. | colonna RSPP 2019-11-12, senza CF | **C** | niente: resta da decidere |
+| 2146 | AUTOFFICINA MORARI DI MORARI LUCA | colonna RSPP 2022-03-01, «Titolare» | **A** | `dl_rspp`, origine `colonna`, data della colonna |
+| 2326 | MOTUS TEAM di Padovani Marco & C. sas | colonna RSPP 2021-06-07, «TITOLARE» | **A** | `dl_rspp`, origine `colonna`, data della colonna |
+| 3451 | GRAFICHE DUEGI DI ZARDINI G & C. SNC | colonna RSPP 2019-04-29, senza CF | **A** | `dl_rspp`, origine `colonna`, data della colonna |
+| 2248 | CARROZZERIA TOP CAR S.N.C. | qualifica «RSPP-SOCIO» | **A** | `dl_rspp`, origine `qualifica`, testo «RSPP-SOCIO», senza data |
+| 2461 | ECODENT S.R.L. | «DIRETTORE TECNICO, RSPP E COMMERCIALE» | **C** | niente: resta da decidere |
+
+**Da scrivere: 5 nomine**, come oggi, con attese prima e lettura dopo. La 1097 e la
+3451 non hanno CF: la persona si cerca per nome, e prima di scrivere si legge che
+il nome trovi esattamente una persona. **Atteso dopo: 459 nomine**, e nella pagina
+2 da decidere (1503, 2461) e 40 già risolte.
+
+### Le altre due decisioni di Francesco sulla sezione 8 (15 settembre, sera)
+
+- **La lettura per AppFormazione: sì.** Con le sue parole: «ok». La corsia
+  AppFormazione può leggere il proprio progetto (`glubjqkrbgjcbrksocap`) in sola
+  lettura; le letture le lancia Francesco dall'SQL Editor, come qui.
+- **Il progetto Supabase di AppOverall:** si **riusa più avanti uno dei due progetti
+  esistenti, svuotandolo quando le app vecchie vengono archiviate** (Fase 5). Non è
+  ancora detto **quale dei due**, né **dove si fa la prova generale** della
+  migrazione dati finché quel progetto è in uso. Riferito ad AppOverall.
+
+- **Rigenerare la chiave `service_role`: no.** Con le sue parole: «NO». Il 15.09 è
+  stata usata nel suo PowerShell per `attese-nomine.mjs`, non è passata dalla
+  conversazione e non è in nessun file.
+
+Nelle prime due questa corsia non fa niente: le decisioni toccano AppOverall e
+AppFormazione.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
