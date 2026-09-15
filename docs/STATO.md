@@ -1694,7 +1694,7 @@ veniva sostituito senza conferma nella scheda, e al primo «Salva» nell'archivi
 campagna ATECO, **che non parte**.
 
 **La modifica**, sul ramo `ateco-scelta-senza-livello` (`71462cf` più la riga sotto
-il bottone), non pubblicata:
+il bottone), **pubblicata con il merge `29f3968`** (più sotto):
 - la regola sta in due funzioni pure di `formazione/ateco.ts`: `patchSceltaAteco`
   (la scelta scrive **solo** il codice) e `statoRischio` (cosa mostra e propone il
   bottone RISCHIO, che resta l'unico gesto che cambia il livello);
@@ -1717,11 +1717,27 @@ lettera, e **fallisce 4 casi su 6**. Build verde, altri dieci controlli verdi.
 `index-G0ow0SI3.js` **0** occorrenze (e la patch codice+livello c'è, 1); nella build
 del ramo c'è, e la patch vecchia no.
 
-**Aperto, per quando Francesco torna:**
-- il **sì a merge e deploy** di questo ramo (non ancora chiesto a lui: è uscito);
-- la **verifica a vista** delle etichette omonimi (`03b1633`, online): le due IGEA
-  con voci diverse, indirizzo o id; e nella stessa schermata 2 da decidere e 40 già
-  risolte.
+**Merge e deploy fatti il 15.09 sera**, col sì di Francesco. Merge **`29f3968`**
+(`--no-ff` su `0f519d1`) fatto da appoverall-55 in questa copia di lavoro, con
+`ateco-scelta:check` 6 su 6, `ateco:check`, `omonimi-etichetta:check` e build verdi;
+push `0f519d1..29f3968` lanciato da qui su richiesta di Francesco.
+
+| canale | cosa è online | come è verificato |
+|---|---|---|
+| **app** (Vercel) | `29f3968` | stato GitHub `success` alle 16:31:42 UTC, deployment Production `6463589757`. Il bundle pubblico passa da `index-G0ow0SI3.js` a `index-Da57U_gT.js`, **identico byte per byte** alla build locale del merge. «premi per applicarlo» sale da **0 a 1**; la patch vecchia (`codice_ateco:X.divisione,livello_rischio:X.livello`) è **0**, al suo posto `{codice_ateco:e.divisione}`; `giaRisolte` resta (7). Riletto qui anche `ateco-scelta:check` su `29f3968`: 6 su 6 |
+| **Edge Function** | invariate | il merge non tocca `supabase/functions` |
+
+Il negativo sul bundle vecchio **non si può più rifare**: `index-G0ow0SI3.js` sul
+dominio pubblico ora risponde 404. L'«1» della patch vecchia lì resta quello letto
+prima del merge, riga sopra.
+
+Il ramo `ateco-scelta-senza-livello` è unito e si può cancellare: non l'ho fatto.
+
+**Aperto: la verifica a vista di Francesco**, a ricarica forzata e senza scrivere:
+- **ATECO**: su un cliente con livello messo a mano, scegliere un suggerimento non
+  cambia il livello, e sotto RISCHIO compare «… premi per applicarlo»;
+- le **etichette omonimi** (`03b1633`): le due IGEA con voci diverse, indirizzo o id;
+- nella pagina nomine, **2 da decidere e 40 già risolte**.
 
 ### Le etichette dei clienti omonimi nelle tendine (15 settembre, sera, ramo)
 
