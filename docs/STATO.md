@@ -1633,6 +1633,16 @@ scritte dalla pagina), e le 27 `dl_rspp` degli script stanno su righe che non so
 proposte, sono le «già risolte». Nel messaggio a Francesco era scritto 454:
 **sbagliato**, e corretto prima della verifica.
 
+**La prima verifica nel browser ha girato sul bundle vecchio.** Francesco ha
+riportato: 0 da creare, **42 da decidere**, 1 non trovata, 427 già in organigramma,
+e **nessun conto «da decidere, già risolte»**, che il codice nuovo mostra sempre,
+anche a 0. È esattamente il codice di `2f8d21a` con la 071 applicata (51 − 9 = 42).
+**L'errore è stato mio:** come segno della versione avevo indicato il titolo «e
+quella che non entra», che esiste già da `2f8d21a` e quindi non distingue i due
+bundle. Per questo deploy il segno giusto è la **scritta «da decidere, già
+risolte»** nella barra del riepilogo: nel bundle di prima (`index-C89rMZll.js`)
+non c'è, in quello nuovo sì. Il 427 non distingue niente: è uguale nei due codici.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
