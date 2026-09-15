@@ -20,19 +20,27 @@ e ogni passo è riletto sul database dopo la scrittura:
 - **colonna RSPP** abbinata con gli attestati, decisione di Francesco: 20 `dl_rspp`
   (`supabase/scripts/nomine_dl_rspp_da_attestati.sql`), 447; poi 7 `dl_rspp` dai
   testi di mansione e qualifica (`nomine_dl_rspp_da_testo_e_attestati.sql`).
-  **454 nomine**;
+  **454 nomine**; la sera, 5 `dl_rspp` dalle risposte di Francesco sulle 7
+  (`nomine_dl_rspp_ultime_cinque.sql`): **459 nomine**;
 - **`071`** (il mestiere di DER ERSTE nel dizionario, senza figure) **applicata
   dall'SQL Editor e quindi non registrata in `supabase_migrations.schema_migrations`**.
   La gemella di AppOverall è la loro `0019`;
 - **pagina nomine con le «già risolte»**, merge `bea1692`, bundle
   `index-CXXQmiL0.js`, verificata nel browser: **7 da decidere**, 35 già risolte.
+  Dopo le 5 della sera, sullo stesso file, devono risultare **2 da decidere e 40
+  già risolte** (atteso, non ancora visto a schermo).
 
-**Le 7 da decidere aspettano Francesco**: 1097, 1503, 2146, 2326, 3451 (colonna RSPP
-senza un attestato che basti), 2248 (CARROZZERIA TOP CAR S.N.C.), 2461 (ECODENT).
-Le domande gliele ha messe davanti AppOverall (PROGRAMMA.md sezione 8, `24ff1b1`).
-**Nessuna scrittura nuova sulla produzione finché non risponde.** Quando risponde:
-si registra qui, e le nomine che ne escono si scrivono con attese prima e lettura
-dopo, come il 15.
+**Le 7 da decidere: Francesco ha risposto la sera del 15.** «1097 A, 1503 C, 2146 A,
+2326 A, 3451 A, 2248 A, 2461 C» (A = datore che fa da RSPP in proprio). Le cinque A
+sono scritte con `supabase/scripts/nomine_dl_rspp_ultime_cinque.sql`, con la
+lettura prima (una persona ciascuna, 0 con `dl_rspp`) e la verifica dopo, cinque
+`ok`: **459 nomine**. **Restano 2 da decidere: 1503 (QUALIFT S.P.A.) e 2461
+(ECODENT)**, e «C» vuol dire «non si sa»: non si toccano. **Nessuna scrittura nuova
+sulla produzione su quelle due** finché non arriva un'altra risposta.
+
+Le altre decisioni della sera, nella sezione «Le altre due decisioni di Francesco
+sulla sezione 8»: la lettura per AppFormazione sì; il progetto Supabase di AppOverall
+sarà uno dei due esistenti, riusato più avanti; la `service_role` non si rigenera.
 
 Il dettaglio sta nelle sezioni del 15 settembre, più sotto: le attese dell'import
 nomine, la colonna RSPP, le 20 da decidere dai testi, la pagina nomine.
@@ -1708,6 +1716,14 @@ La ricerca per nome della 1097 e della 3451 trova una persona sola: si scrive.
 un secondo Zardini, fermo al controllo 1; un `dl_rspp` già presente, fermo al 2. Le
 righe stanno entro i 70 caratteri, perché Francesco lo copia dalla chat: gli appunti
 di Windows non sono un canale che usa.
+
+**Lanciato da Francesco il 15.09, e la verifica torna: cinque `ok` su cinque.** Una
+persona ciascuna, 5 con `dl_rspp`, origine e data giuste, **459 nomine** in tutto.
+Lo script non va rilanciato. Delle 7 da decidere restano **2**, la **1503**
+(QUALIFT S.P.A.) e la **2461** (ECODENT): «C» vuol dire «non si sa», e non si
+toccano. Nella pagina nomine, sullo stesso file, devono risultare 2 da decidere e
+40 già risolte. Il file locale con i CF e i nomi delle 5, usato per le prove, è
+cancellato.
 
 ### Le altre due decisioni di Francesco sulla sezione 8 (15 settembre, sera)
 
