@@ -1363,6 +1363,26 @@ i controlli. **Controllo negativo:** con una persona in più e uno spazio doppio
 rimesso in una delle 24 schede, fallisce esattamente l'1, il 9 e il 10. Poi il
 cluster è stato cancellato.
 
+**La lettura di dopo torna: dieci `ok` su dieci** (15.09, lanciata da Francesco
+nell'SQL Editor). Persone 3.494; 13 su `3f485f16`, 12 con CF; 0 su `def8645c`;
+MAISON 22 17 e 4; 0 CF doppi dentro un cliente; le 24 trovate per id, 25 campi su
+25 uguali all'atteso, 0 con spazio doppio. La riga informativa dà **3.472** schede
+con `updated_at` del 15.09, esattamente il numero della pagina: nessun'altra
+scrittura sulle persone in giornata. **Il passaggio IGEA ha girato col codice di
+`2f8d21a` e ha riparato le 24 senza script.** Il passo 2 dell'ordine (la lettura per
+id delle 24) è chiuso con questa stessa lettura.
+
+Il primo lancio era fallito con `syntax error at or near "%"`, e non per la query:
+copiata dal terminale, le righe lunghe arrivavano spezzate e con pezzi mancanti
+(alla riga 46 mancava `e47)', (select count(*) from `). Riscritta con righe di al
+massimo 63 caratteri, riprovata sul cluster usa e getta (positiva e negativa di
+nuovo come sopra) e passata aprendo il file nel Blocco note.
+
+**Resta un solo passo: l'import delle nomine**, preceduto dal controllo della
+versione in positivo (ricarica forzata, poi deve comparire «Le nove colonne di
+ruolo, e quella che non entra»). L'archivio adesso: 3.494 persone, nessuna scheda
+delle 24 con spazi doppi.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
