@@ -1565,6 +1565,11 @@ proposte non cambiano. **Provata su un `initdb`**: due lanci, una riga sola.
 `ruoli:check` e `dizionario:check` leggono solo la 068 e non cambiano. AppOverall
 tiene la gemella del dizionario, e questa voce non ce l'ha.
 
+**Le 7 sono scritte (15.09, Francesco dall'SQL Editor), e la verifica torna: cinque
+`ok` su cinque.** 7 persone trovate, 7 con `dl_rspp`, origine e testo giusti, senza
+data, **454 nomine** in tutto. Lo script non va rilanciato. La 071 è il passo
+successivo.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
