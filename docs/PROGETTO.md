@@ -1114,7 +1114,10 @@ snapshot (vedi §7), scelta della checklist per seduta (default = incarico).
   rischio dell'organigramma (`cliente.livello_rischio`, colonna gia' presente
   dalla 015). Digitando un codice a mano il rischio viene proposto con un bottone
   "Applica" (non sovrascrive un valore gia' scelto). Il livello resta comunque
-  modificabile dall'organigramma del cliente (ultimo salvataggio vince). La
+  modificabile dall'organigramma del cliente (ultimo salvataggio vince).
+  **Superato il 15.09.2026** (merge `29f3968`): anche scegliendo una voce si
+  scrive solo `codice_ateco`; il livello si applica solo col bottone RISCHIO, che
+  sotto dice «premi per applicarlo». Vedi `docs/STATO.md`. La
   tabella ATECO->rischio (`src/lib/ateco.ts`, 88 divisioni) e' **generata dalla
   libreria normativa** `FrancescoDallaPiazza/formazione-81-utils-src`
   (`allegato_iv_asr2025.js`), non trascritta a mano; livelli in minuscolo per

@@ -998,6 +998,13 @@ scegliendo una divisione scrive **sia** `codice_ateco` **sia** `livello_rischio`
 Non è una deduzione arbitraria: è una tabella di legge. Quindi la visura, dando
 l'ATECO, dà anche il rischio proposto — ed è giusto che lo faccia.
 
+> **Superato il 15.09.2026** (merge `29f3968`, online): scegliere una divisione
+> scrive **solo** `codice_ateco`. Il livello lo **propone** il bottone RISCHIO («ATECO
+> propone …: premi per applicarlo») e cambia solo premendolo — un livello messo a mano
+> veniva sostituito senza conferma. Regola in `patchSceltaAteco` e `statoRischio`
+> (`formazione/ateco.ts`), `npm run ateco-scelta:check`. Vedi `docs/STATO.md`, «Il
+> campo ATECO a mano». Resta vero il resto: il rischio proposto viene dall'ATECO.
+
 Nota di modello: `codice_ateco` conserva la **divisione a 2 cifre** (`'74'`),
 non il codice completo.
 
