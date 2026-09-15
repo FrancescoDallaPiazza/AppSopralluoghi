@@ -1521,6 +1521,17 @@ l'import di oggi ha già scritto il `dl_rspp` della 1931 dalla mansione.
 a comparire fra le «da decidere», perché la pagina non guarda le nomine già
 scritte per quella colonna. Sono 31, e per 26 di loro la risposta c'è già.
 
+**Lanciato da Francesco il 15.09, e la verifica torna: sei `ok` su sei.** 26 persone
+trovate, 26 con `dl_rspp`, 20 da colonna con la data della colonna, 6 da mansione
+intatte, 20 `dl_rspp` da colonna creati oggi, **447 nomine** in tutto. Lo script
+**non va rilanciato**: un secondo lancio si ferma al controllo 2 e non scrive.
+Il file locale con i codici fiscali delle 26, usato solo per le prove, è stato
+cancellato dalla scratchpad.
+
+Delle 51 da decidere della pagina nomine, 26 hanno adesso una risposta scritta.
+Restano **5 righe della colonna RSPP** (1097, 1503, 2146, 2326, 3451) e **20 testi**
+di mansione e qualifica.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
