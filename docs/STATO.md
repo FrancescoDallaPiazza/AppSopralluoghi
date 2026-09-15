@@ -38,7 +38,9 @@ sono scritte con `supabase/scripts/nomine_dl_rspp_ultime_cinque.sql`, con la
 lettura prima (una persona ciascuna, 0 con `dl_rspp`) e la verifica dopo, cinque
 `ok`: **459 nomine**. **Restano 2 da decidere: 1503 (QUALIFT S.P.A.) e 2461
 (ECODENT)**, e «C» vuol dire «non si sa»: non si toccano. **Nessuna scrittura nuova
-sulla produzione su quelle due** finché non arriva un'altra risposta.
+sulla produzione su quelle due** finché non arriva un'altra risposta. **C
+riconfermata da Francesco su tutte e due il 15.09 sera**: la 1503 perché la persona
+è RSPP di un'altra società del gruppo, non di QUALIFT (sezione «Le 7 da decidere»).
 
 Le altre decisioni della sera, nella sezione «Le altre due decisioni di Francesco
 sulla sezione 8»: la lettura per AppFormazione sì; il progetto Supabase di AppOverall
@@ -1851,6 +1853,23 @@ Lo script non va rilanciato. Delle 7 da decidere restano **2**, la **1503**
 toccano. Nella pagina nomine, sullo stesso file, devono risultare 2 da decidere e
 40 già risolte. Il file locale con i CF e i nomi delle 5, usato per le prove, è
 cancellato.
+
+**Le ultime 2: tutte e due C, confermate da Francesco il 15.09 sera.** Una prima
+risposta riferita da appoverall-55 dava «1503 b; 2461 C», con B = `rspp`. Mentre
+preparavo lo script della 1503, Francesco ha scritto qui: «per QUALIFT lascia stare.
+Fa parte di un gruppo per cui è RSPP è di altra entità», e poi «quindi anche per
+QUALIFT, C». Vale questa. **Nessuno script, nessuna scrittura**; restano **459
+nomine**, e nella pagina **2 da decidere e 40 già risolte**, come a vista.
+- **1503 QUALIFT S.P.A.**: la persona della colonna RSPP (12/11/2019) fa da RSPP
+  per un'altra società del gruppo, non per QUALIFT. Resta da decidere, e non è una
+  mancanza dei nostri dati: una `rspp` qui sarebbe sbagliata.
+- **2461 ECODENT S.R.L.**: C, non si sa. Resta da decidere.
+
+Due cose viste preparando lo script, che restano vere se un giorno la 1503 si
+scrive: una nomina `rspp` **risolverebbe** la riga (`RISOLTA_DA` in
+`nomineImport.ts:377` accetta `dl_rspp` e `rspp`); e il file delle attese,
+`ExportExcel (4).xlsx` da 7.228.718 byte, **non è più in `Downloads`**:
+`scripts/attese-nomine.mjs` senza argomenti oggi si ferma.
 
 ### Le altre due decisioni di Francesco sulla sezione 8 (15 settembre, sera)
 
