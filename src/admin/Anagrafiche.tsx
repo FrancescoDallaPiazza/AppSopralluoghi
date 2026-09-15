@@ -14,6 +14,7 @@ import {
 import type { Cliente, Sede } from '../lib/types';
 import {
   risolviAteco, cercaAteco, ETICHETTA_RISCHIO, classificaAteco,
+  patchSceltaAteco, statoRischio,
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
@@ -851,10 +852,16 @@ function SediCliente({ cliente, sedi, onCambia }: {
 }
 
 // ===================== Campo ATECO guidato =====================
-// Typeahead sull'Allegato IV ASR 2025: si cerca per codice o per attivita,
-// si sceglie la divisione e si imposta automaticamente il livello di rischio
-// dell'organigramma. Digitando un codice a mano, il livello viene proposto
-// (bottone "Applica") senza sovrascrivere un valore gia' scelto.
+// Typeahead sull'Allegato IV ASR 2025: si cerca per codice o per attivita e si
+// sceglie la divisione. Il livello di rischio NON segue la scelta: il bottone
+// RISCHIO lo propone e lo applica solo se lo si preme. Fino al 15.09.2026 la
+// scelta scriveva anche il livello e sostituiva senza conferma quello messo a
+// mano (patchSceltaAteco e statoRischio, in formazione/ateco.ts).
+//
+// Ne' la scelta ne' il codice scritto a mano toccano `ateco_origine`: e' la cella
+// del gestionale, e toglierla leverebbe l'unico riscontro. Il prezzo, dichiarato:
+// dopo una correzione a mano l'avviso «la divisione potrebbe essere un'altra»
+// confronta ancora il codice nuovo con quella cella, e puo' restare.
 function CampoAteco({
   codice, origine, livello, onPatch,
 }: {
@@ -878,14 +885,13 @@ function CampoAteco({
   const coloreRischio = (l: RischioAteco) =>
     l === 'basso' ? 'var(--ok)' : l === 'alto' ? 'var(--no)' : 'var(--hi-dark)';
 
+  // Solo il codice: il livello resta quello che c'e', e il bottone lo propone.
   const scegli = (d: AtecoDivisione) => {
-    onPatch({ codice_ateco: d.divisione, livello_rischio: d.livello });
+    onPatch(patchSceltaAteco(d));
     setAperto(false);
   };
 
-  const proposto = ris?.livello ?? null;          // rischio proposto dall'ATECO
-  const effettivo = livello ?? proposto;           // cosa mostra il bottone
-  const puoApplicare = proposto != null && proposto !== livello;
+  const { proposto, effettivo, puoApplicare } = statoRischio(testo, livello);
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -967,6 +973,13 @@ function CampoAteco({
             }}>
             RISCHIO<br />{effettivo ? ETICHETTA_RISCHIO[effettivo] : '—'}
           </button>
+          {/* Scegliere il codice non cambia piu' il livello (15.09.2026): chi guarda
+              la scheda deve sapere che il livello proposto aspetta un gesto. */}
+          {puoApplicare && proposto && (
+            <div style={{ fontSize: 11, marginTop: 4, color: 'var(--ink-soft)', maxWidth: 170 }}>
+              ATECO propone {ETICHETTA_RISCHIO[proposto]}: premi per applicarlo
+            </div>
+          )}
         </div>
       </div>
 

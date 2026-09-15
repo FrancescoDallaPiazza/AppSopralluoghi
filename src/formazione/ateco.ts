@@ -242,3 +242,37 @@ export function cercaAteco(query: string, limite = ATECO_DIVISIONI.length): Atec
   }
   return [...perCodice, ...perTesto].slice(0, limite);
 }
+
+// ===========================================================================
+// IL CAMPO ATECO A MANO: il codice e il livello sono due gesti
+// ===========================================================================
+//
+// Fino al 15 settembre 2026, nella scheda cliente, scegliere una divisione dal
+// menu dei suggerimenti scriveva il codice E il livello di rischio nella stessa
+// patch. Un livello messo a mano, o deciso diversamente, veniva sostituito senza
+// conferma, e al primo «Salva» finiva nell'archivio. Il livello dell'Allegato IV
+// e' una proposta: lo applica una persona, col bottone RISCHIO, che lo sapeva
+// gia' fare come gesto separato. Ordine di AppOverall, prima della campagna ATECO.
+// Prova: `npm run ateco-scelta:check`.
+
+// Cosa scrive la scelta di un suggerimento: SOLO il codice. Ne' il livello, ne'
+// la cella d'origine (`ateco_origine`), che resta quella del gestionale.
+export function patchSceltaAteco(d: AtecoDivisione): { codice_ateco: string } {
+  return { codice_ateco: d.divisione };
+}
+
+// Cosa mostra e cosa propone il bottone RISCHIO. `proposto` e' il livello
+// dell'Allegato IV per il codice scritto; `effettivo` e' quello del cliente, o la
+// proposta se il cliente non ne ha uno; `puoApplicare` dice se il bottone ha
+// qualcosa da cambiare.
+export function statoRischio(
+  codice: string | null | undefined,
+  livello: RischioAteco | null | undefined,
+): { proposto: RischioAteco | null; effettivo: RischioAteco | null; puoApplicare: boolean } {
+  const proposto = risolviAteco(codice)?.livello ?? null;
+  return {
+    proposto,
+    effettivo: livello ?? proposto,
+    puoApplicare: proposto != null && proposto !== livello,
+  };
+}
