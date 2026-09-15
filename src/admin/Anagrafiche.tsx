@@ -891,7 +891,7 @@ function CampoAteco({
     setAperto(false);
   };
 
-  const { proposto, effettivo, puoApplicare } = statoRischio(testo, livello);
+  const { proposto, effettivo, puoApplicare, soloProposta } = statoRischio(testo, livello);
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -965,13 +965,26 @@ function CampoAteco({
             disabled={!puoApplicare}
             onClick={() => proposto && onPatch({ livello_rischio: proposto })}
             title={puoApplicare ? 'Applica il rischio proposto dall\u2019ATECO' : 'Livello di rischio del cliente'}
-            style={{
+            style={soloProposta && effettivo ? {
+              // Solo la proposta, il cliente non ha un livello (15.09.2026): contorno
+              // tratteggiato del colore del rischio su fondo vuoto, non il colore
+              // pieno di un livello salvato.
+              background: 'transparent', color: coloreRischio(effettivo),
+              border: `2px dashed ${coloreRischio(effettivo)}`, borderRadius: 12, cursor: 'pointer',
+              fontFamily: 'inherit', fontWeight: 800, fontSize: 15, letterSpacing: '.03em',
+              padding: '10px 18px', minWidth: 140,
+            } : {
               background: effettivo ? coloreRischio(effettivo) : 'var(--faint)',
               color: '#fff', border: 'none', borderRadius: 12, cursor: puoApplicare ? 'pointer' : 'default',
               fontFamily: 'inherit', fontWeight: 800, fontSize: 15, letterSpacing: '.03em',
               padding: '12px 20px', minWidth: 140, opacity: effettivo ? 1 : .7,
             }}>
             RISCHIO<br />{effettivo ? ETICHETTA_RISCHIO[effettivo] : '—'}
+            {soloProposta && (
+              <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.04em' }}>
+                proposto, non salvato
+              </span>
+            )}
           </button>
           {/* Scegliere il codice non cambia piu' il livello (15.09.2026): chi guarda
               la scheda deve sapere che il livello proposto aspetta un gesto. */}

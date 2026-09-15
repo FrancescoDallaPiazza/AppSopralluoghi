@@ -265,14 +265,23 @@ export function patchSceltaAteco(d: AtecoDivisione): { codice_ateco: string } {
 // dell'Allegato IV per il codice scritto; `effettivo` e' quello del cliente, o la
 // proposta se il cliente non ne ha uno; `puoApplicare` dice se il bottone ha
 // qualcosa da cambiare.
+//
+// `soloProposta` dice che `effettivo` NON e' un livello salvato ma la proposta
+// dell'Allegato IV: il cliente non ha un livello. Il 15.09.2026, nella verifica a
+// vista, un bottone che mostrava la proposta col colore pieno si e' letto «il
+// livello e' cambiato da solo». Il bottone la deve mostrare diversa.
 export function statoRischio(
   codice: string | null | undefined,
   livello: RischioAteco | null | undefined,
-): { proposto: RischioAteco | null; effettivo: RischioAteco | null; puoApplicare: boolean } {
+): {
+  proposto: RischioAteco | null; effettivo: RischioAteco | null;
+  puoApplicare: boolean; soloProposta: boolean;
+} {
   const proposto = risolviAteco(codice)?.livello ?? null;
   return {
     proposto,
     effettivo: livello ?? proposto,
     puoApplicare: proposto != null && proposto !== livello,
+    soloProposta: livello == null && proposto != null,
   };
 }
