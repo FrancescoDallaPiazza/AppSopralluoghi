@@ -1410,6 +1410,41 @@ l'anteprima delle nomine fallisce sul cliente più grande, la causa è questa, e
 correzione è spezzare l'`in` a blocchi. Non si tocca prima di questo import: il
 codice va provato e pubblicato, e l'import aspetterebbe un altro deploy.
 
+**Le attese, dal lancio completo** (15.09, con il flag; «Sola lettura» in fondo).
+Produzione: 3.494 persone, 392 nomine, 608 clienti attivi. **I tre scenari danno gli
+stessi numeri**: né IGEA né MAISON 22 portano nomine, quindi le scelte a mano non
+cambiano il conto. Si fanno come nelle anagrafiche: IGEA su `3f485f16`, MAISON 22
+escluso.
+
+| sulla pagina | atteso |
+|---|---|
+| pulsante | **«Scrivi 35 nomine»** |
+| nomine da creare | **35**: colonna 33, mansione 1, qualifica 1 |
+| per figura | `addetto_antincendio` **31**, `addetto_primo_soccorso` **2**, `dl_rspp` **1**, `preposto` **1** |
+| da decidere | **51**: colonna 31, mansione 16, qualifica 4 |
+| persone non trovate | **1**, la 2563 (Pradella senza CF) |
+| già in organigramma | **392** |
+| unità non abbinate | **3**: Giacomelli, MAISON 22 (escluso), «XXXXXXXXXXXX» |
+
+**Riconciliate sul file, riga per riga**, con l'elenco stampato dallo script:
+- **29** sono esattamente le 29 righe con Emergenze o Responsabile Emergenze e senza
+  Antincendio: tutte e 29 nella lista, nessuna fuori;
+- **1** `preposto` dalla qualifica: la **654**, «Preposto»;
+- **1** `dl_rspp` dalla mansione: la **1931**, «RSPP/TITOLARE», CAVOUR SRL, una delle
+  persone recuperate il 14.09;
+- **4** dalle colonne: la **2268** e la **3049**, antincendio e primo soccorso
+  ciascuna (date 22.06.2020). Nessuna delle due ha un secondo CF nel file.
+- Le **31** da decidere dalle colonne sono le 31 righe della colonna RSPP, fuori per
+  scelta.
+
+La 654, la 2268 e la 3049 sono tutte di CENTRO SOCIALIZZAZIONE, uno dei clienti
+doppi tolti il 14.09 alle 12:11, dopo l'import delle nomine. Il 14.09 le persone non
+trovate erano 6, oggi 1. **Probabile, non verificato:** quel giorno l'unità del file
+andava sul doppione vuoto e le sue persone risultavano non trovate.
+
+**Dopo la scrittura** la pagina deve dire «35 nomine scritte. Rilettura: 0 da
+creare, 51 da decidere.», e in produzione le nomine devono essere **427**.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
