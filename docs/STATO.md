@@ -28,7 +28,9 @@ e ogni passo è riletto sul database dopo la scrittura:
 - **pagina nomine con le «già risolte»**, merge `bea1692`, bundle
   `index-CXXQmiL0.js`, verificata nel browser: **7 da decidere**, 35 già risolte.
   Dopo le 5 della sera, sullo stesso file, devono risultare **2 da decidere e 40
-  già risolte** (atteso, non ancora visto a schermo).
+  già risolte**: **visto a schermo da Francesco il 15.09 sera** (Import nomine, senza
+  Scrivi), «ok» sull'atteso 0 / 2 / 40, riferito da appoverall-55 senza i numeri
+  uno per uno.
 
 **Le 7 da decidere: Francesco ha risposto la sera del 15.** «1097 A, 1503 C, 2146 A,
 2326 A, 3451 A, 2248 A, 2461 C» (A = datore che fa da RSPP in proprio). Le cinque A
@@ -1749,9 +1751,14 @@ il bottone mostra `effettivo` con il colore del rischio (`Anagrafiche.tsx:969-97
 si distingue da un livello salvato. **Non è un ordine**: se ritoccarlo lo decide
 Francesco.
 
-**Aperte le altre due verifiche a vista**, a ricarica forzata e senza scrivere:
-- le **etichette omonimi** (`03b1633`): le due IGEA con voci diverse, indirizzo o id;
-- nella pagina nomine, **2 da decidere e 40 già risolte**.
+**Superate anche le altre due verifiche a vista**, dopo, nella pagina Import nomine
+col file delle nomine e senza premere Scrivi (riferite da appoverall-55):
+- **etichette omonimi** (`03b1633`): le due IGEA SRL UNIPERSONALE sono 2 voci
+  distinte; se le distingue l'indirizzo o l'id **non è stato riferito**;
+- **conteggi**: «ok» sull'atteso 0 da creare / 2 da decidere / 40 già risolte, senza
+  i numeri riferiti uno per uno.
+
+Con queste **le tre verifiche a vista del 15.09 sono chiuse.**
 
 ### Le etichette dei clienti omonimi nelle tendine (15 settembre, sera, ramo)
 
@@ -1798,10 +1805,11 @@ cambio vale per tre tendine (Import anagrafiche, nomine, formazione). Merge
 | **app** (Vercel) | `03b1633` | stato GitHub `success` alle 15:33:47 UTC. Il bundle pubblico passa da `index-CXXQmiL0.js` a `index-G0ow0SI3.js`; la stringa segno `id, ragione_sociale, partita_iva, localita, cap, indirizzo` sale da **0 a 1** occorrenza, e `giaRisolte` resta (7) |
 | **Edge Function** | invariate | nessun file sotto `supabase/functions` è cambiato |
 
-**Resta la verifica a vista nel browser di Francesco**, a ricarica forzata e senza
-scrivere: le due IGEA nella tendina con due voci diverse, e **da dove viene** ciò che
-le distingue (l'indirizzo, o l'inizio dell'id se l'indirizzo non basta). Nella
-stessa schermata, l'attesa 2 da decidere e 40 già risolte.
+**Verifica a vista nel browser di Francesco: superata** il 15.09 sera (riferita da
+appoverall-55), pagina Import nomine col file delle nomine, senza premere Scrivi: le
+due IGEA SRL UNIPERSONALE compaiono come **2 voci distinte**. **Da dove viene** ciò
+che le distingue, l'indirizzo o l'inizio dell'id, **non è stato riferito**. Nella
+stessa schermata, 0 da creare / 2 da decidere / 40 già risolte: «ok».
 
 ### Le 7 da decidere: le risposte di Francesco (15 settembre, sera)
 
