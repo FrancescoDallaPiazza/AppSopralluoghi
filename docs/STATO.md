@@ -1383,6 +1383,33 @@ versione in positivo (ricarica forzata, poi deve comparire «Le nove colonne di
 ruolo, e quella che non entra»). L'archivio adesso: 3.494 persone, nessuna scheda
 delle 24 con spazi doppi.
 
+### Le attese dell'import nomine si calcolano sulla produzione (15 settembre)
+
+`npm run attese:nomine` (`scripts/attese-nomine.mjs`) fa girare le funzioni della
+pagina sul database vero e stampa solo numeri, in tre scenari. È in sola lettura:
+una guardia blocca le scritture e si prova prima di leggere. La `service_role` la
+passa Francesco da un suo PowerShell, per un'esecuzione sola, e con `node` invece di
+`npm`, perché PowerShell su questa macchina non esegue `npm.ps1`.
+
+**Il primo lancio si è fermato a metà, e ha trovato una cosa della pagina.** Lette
+3.494 persone, **392 nomine** (363 + 29, FIORIO non ne aggiunge) e 608 clienti
+attivi; 3.501 righe nel foglio «Ruoli SSL». IGEA senza proposta, con i due
+candidati; MAISON 22 proposta da sola su `cc7d7e47`. Poi `fetch failed`,
+`UND_ERR_HEADERS_OVERFLOW`: `pianificaNomine` legge le nomine di un cliente con
+`.in('persona_id', [tutti i suoi id])`, e sul cliente più grande **l'URL fa 16.060
+caratteri**. Il server l'ha accettato e ha risposto; è il `fetch` di Node che
+rifiuta risposte con intestazioni oltre 16 KB. Il browser non ha quel limite, e il
+14.09 la pagina ha scritto 364 nomine. **Nello script** il limite si alza con
+`--max-http-header-size=65536`, provato su un server locale che risponde con 20 KB
+di intestazioni: senza il flag lo stesso errore, con il flag 200. Lo script ora
+controlla il limite prima di chiedere la chiave.
+
+**Nella pagina è un margine, non un difetto di oggi:** un URL da 16 KB è vicino ai
+limiti tipici dei proxy, e cresce con le persone del cliente. Se un giorno
+l'anteprima delle nomine fallisce sul cliente più grande, la causa è questa, e la
+correzione è spezzare l'`in` a blocchi. Non si tocca prima di questo import: il
+codice va provato e pubblicato, e l'import aspetterebbe un altro deploy.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.

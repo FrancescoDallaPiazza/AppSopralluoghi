@@ -19,11 +19,13 @@
 // Claude, e poi si toglie. Una chiave sbagliata, o la anon, non deve dare «0 da
 // creare»: una lettura vuota qui e' un errore, e lo script si ferma.
 //
-// Uso (PowerShell, dalla cartella del repo):
+// Uso (PowerShell, dalla cartella del repo). `node` e non `npm`: su questa
+// macchina PowerShell non esegue `npm.ps1` (execution policy). Il flag serve,
+// vedi in testa a main():
 //   $s = Read-Host 'service_role' -AsSecureString
 //   $env:SUPABASE_SERVICE_ROLE_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))
-//   npm run attese:nomine
-//   Remove-Item Env:SUPABASE_SERVICE_ROLE_KEY
+//   node --max-http-header-size=65536 scripts\attese-nomine.mjs
+//   Remove-Item Env:SUPABASE_SERVICE_ROLE_KEY; Remove-Variable s
 //
 // Senza argomenti legge `~/Downloads/ExportExcel (4).xlsx` e pretende la sua
 // dimensione, 7.228.718 byte: le attese scritte in STATO.md sono di quel file.
@@ -32,6 +34,7 @@
 import { build } from 'esbuild';
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, rmSync, statSync } from 'node:fs';
+import http from 'node:http';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -50,6 +53,16 @@ const LETTE = new Set(['cliente', 'sede', 'persona', 'nomina', 'ruolo_testo', 'r
 const VIETATE = new Set(['insert', 'upsert', 'update', 'delete']);
 
 async function main() {
+  // Il `fetch` di Node rifiuta le RISPOSTE con intestazioni oltre 16 KB, e la
+  // pagina chiede le nomine di un cliente con `.in('persona_id', [tutti gli id])`:
+  // sul cliente piu' grande l'URL fa 16.060 caratteri e la risposta supera il
+  // limite (UND_ERR_HEADERS_OVERFLOW, 15.09). Il browser non ha quel limite, per
+  // questo la pagina funziona. Qui il limite si alza col flag, e si controlla
+  // prima di chiedere la chiave a qualcuno.
+  if (http.maxHeaderSize < 65536) {
+    ferma('Va lanciato col limite delle intestazioni alzato:\n'
+      + '  node --max-http-header-size=65536 scripts\\attese-nomine.mjs', 2);
+  }
   const chiave = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!chiave) ferma('Manca SUPABASE_SERVICE_ROLE_KEY nell\'ambiente. Vedi l\'uso in testa al file.', 2);
 
