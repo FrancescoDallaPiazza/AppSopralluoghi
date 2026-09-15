@@ -1461,6 +1461,22 @@ scratchpad), con dieci controlli. Attesi: 427 in tutto, 35 create oggi, per figu
 e getta: dieci `ok`, e il negativo fallisce su 1, 2, 8 e 10. Una riserva: i
 controlli «oggi» contano anche le nomine create a mano dall'app nella giornata.
 
+**La lettura di dopo torna: dieci `ok` su dieci** (15.09, SQL Editor). 427 nomine in
+tutto, 35 create oggi, per figura 31/2/1/1, per origine 33/1/1, 33 con la data di
+nomina. Nessun'altra nomina creata nella giornata.
+
+**La sequenza del recupero è chiusa:** anagrafiche (primo passaggio, 64 nuove),
+FIORIO, IGEA (13 nuove, le 24 schede riparate), nomine (35). L'archivio adesso:
+3.494 persone, 427 nomine. **Restano aperti, e nessuno blocca:**
+- le **51 da decidere** della pagina nomine: le 31 della colonna RSPP aspettano chi
+  compila il gestionale, le altre 20 sono testi di mansione e qualifica;
+- le **2 unità non abbinate** (Giacomelli, «XXXXXXXXXXXX») e la **2563** (Pradella
+  senza CF, da abbinare a mano);
+- nella pagina nomine, la **lettura `.in` da 16 KB** sul cliente più grande (vedi
+  sopra), e l'**indirizzo nell'etichetta** dei clienti omonimi;
+- MAISON 22 **non si può escludere** dalla pagina nomine: oggi non conta, perché le
+  sue righe non portano nomine.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
