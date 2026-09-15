@@ -118,7 +118,7 @@ nella corsia `AppFormazione`.*
 | **Guardia sul dizionario vuoto** in `caricaDizionarioRuoli`: zero righe è sempre un errore, mai un dizionario vuoto | **fatta**: `npm run dizionario:check` 3 su 3; senza la guardia (`e18f8c5`) 1 su 3 | `5de8965` |
 | Sorveglianza sanitaria: i due export delle visite, riconciliati | chiuso | `348b6da` |
 | **Consegna dell'anagrafe alla migrazione dati** di AppOverall | **consegnata** (sola lettura) | `docs/c1a/anagrafe-consegna-identita.md` |
-| **Import delle nomine** · la pausa è tolta, il codice è scritto | **anteprima vista il 14.09**, da Francesco dal back-office e **senza scrivere**, sul codice di `12b1768` (quello del deploy verificato in `033994a`). La guardia non si è fermata: **364** da creare (198 dalle colonne, 166 dalla mansione), **153** da decidere, **4** persone non trovate, **0** già in organigramma, 4 unità del file non abbinate. **Riconciliata fuori dal database figura per figura** con il file e il seme della `068`: tutti i numeri coincidono. **Scritto da Francesco il 14.09**, sullo stesso codice: il deploy di `d8a7cc7` tocca solo questo file. La rilettura dà **0** da creare, **364** già in organigramma, 153 da decidere e 4 persone non trovate. Le 364 proposte sono 363 coppie persona+figura: vedi la sezione del 14. Resta un difetto di conteggio, non di dati: `riepiloga` non toglie i doppioni | `f296477`, `12b1768` |
+| **Import delle nomine** · la pausa è tolta, il codice è scritto | **anteprima vista il 14.09**, da Francesco dal back-office e **senza scrivere**, sul codice di `12b1768` (quello del deploy verificato in `033994a`). La guardia non si è fermata: **364** da creare (198 dalle colonne, 166 dalla mansione), **153** da decidere, **4** persone non trovate, **0** già in organigramma, 4 unità del file non abbinate. **Riconciliata fuori dal database figura per figura** con il file e il seme della `068`: tutti i numeri coincidono. **Scritto da Francesco il 14.09**, sullo stesso codice: il deploy di `d8a7cc7` tocca solo questo file. La rilettura dà **0** da creare, **364** già in organigramma, 153 da decidere e 4 persone non trovate. Le 364 proposte sono 363 coppie persona+figura: vedi la sezione del 14. ~~Resta un difetto di conteggio, non di dati: `riepiloga` non toglie i doppioni~~ **chiuso** dal commit `6532500` (D2, pubblicato con `e33efc2`): `riepiloga` usa `senzaDoppioni`, coperto da `qualifica:check` Q7. Riga corretta il 15.09 sera, su rilievo di AppOverall | `f296477`, `12b1768`, `6532500` |
 | Il dizionario dei ruoli: gli otto esiti della `0007`, rifatti qui | **chiuso**: `npm run ruoli:check` | `f296477` |
 | I due conti per la migrazione dati (sola lettura) | **misurati 13.09** (service_role, prima dell'import nomine): **4** CF validi su due clienti → **N = 3.415**; **0** omonimi senza CF nello stesso cliente. Aperti: 31 CF non validi, 228 contro 235 | `d12196a` |
 | **Ripiego sul nome**: al secondo import due omonimi senza CF finiscono sulla stessa scheda, e la seconda resta orfana (`anagraficheImport.ts:733-763`) | **riparato** (`bb141ee`), poi **(a) decisa da Francesco il 13.09**: il nome ambiguo **non si scrive**, va fra i «da abbinare a mano» e l'import resta idempotente (`npm run omonimi:check` 8 su 8; su `bb141ee` A4 dà 2 poi 4). Abbinamento guidato: **manca**. Misura 13.09: **0 orfane**, 228/228 con chiave per nome, 0 omonimi. L'import del 9.09 non si ricostruisce: 3.420/3.419 e 235/228 **non spiegati per sempre**, il file non esiste più | `bb141ee`, `e18f8c5` |
@@ -1683,6 +1683,44 @@ le schede e ricaricato): la barra mostra «da decidere, già risolte», e i nume
 **0 da creare, 7 da decidere, 35 già risolte, 1 persona non trovata, 427 già in
 organigramma**, tutti come atteso. La modifica è chiusa. Le «da decidere» che la
 pagina mostra adesso sono le 7 aperte davvero.
+
+### Le etichette dei clienti omonimi nelle tendine (15 settembre, sera, ramo)
+
+**Ordine di AppOverall** (PROGRAMMA.md sezione 8): il giro di codice promesso il 14,
+«l'indirizzo nell'etichetta dei clienti omonimi». È il difetto che per IGEA ha
+costretto a leggere l'id con Ispeziona.
+
+**La modifica**, sul ramo `etichetta-clienti-omonimi` (`b1765b0`), in
+`formazioneImport.ts`:
+- `caricaClientiScelta` legge anche `cliente.indirizzo` e l'indirizzo della sede
+  operativa;
+- `distinguiOmonimi`: a chi ha un'etichetta uguale a quella di un altro cliente
+  aggiunge l'indirizzo (dell'operativa, se no dell'anagrafica); se l'indirizzo manca
+  o è uguale, anche l'inizio dell'id («id 3f485f16»). Chi non ha omonimi resta
+  com'era;
+- vale in tutte e tre le tendine che usano `etichettaCliente`: Import anagrafiche,
+  Import nomine, Import formazione.
+
+**Le prove:** `npm run omonimi-etichetta:check` **5 casi su 5**; sul
+`formazioneImport.ts` di `main` **ne falliscono 4** (E1 IGEA, E2 operative, E3
+doppioni veri, E5 nessuna etichetta ripetuta) e passa solo E4, chi non ha omonimi,
+che non deve cambiare. Build verde, gli altri nove controlli verdi.
+
+**Da dove venga l'indirizzo delle due IGEA non è verificato** (la tabella del 14.09
+riporta «Via Sorte 48 · Via Michelangelo 7» senza dire se da `cliente` o da `sede`).
+Le due etichette si distinguono in ogni caso: con l'indirizzo se sta sull'anagrafica
+o sull'operativa, con l'inizio dell'id altrimenti.
+
+**Il segno della versione**, scelto fra ciò che manca nel bundle di prima: la
+stringa `id, ragione_sociale, partita_iva, localita, cap, indirizzo`. A schermo: le
+due IGEA non hanno più la stessa voce nella tendina.
+
+**Il difetto di `riepiloga` segnalato il 14 è già chiuso**: toglie i doppioni con
+`senzaDoppioni` dal commit `6532500` (D2, pubblicato con `e33efc2`), provato allora
+su un piano con il doppione della 2782 e oggi coperto da `qualifica:check` Q7. La
+riga della tabella in testa che lo dava ancora aperto era rimasta indietro.
+
+**Non pubblicato.** Merge e deploy aspettano il sì di Francesco.
 
 ### Le 7 da decidere: le risposte di Francesco (15 settembre, sera)
 
