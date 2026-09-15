@@ -1697,6 +1697,18 @@ l'RSPP di quell'azienda, o non si sa.
 il nome trovi esattamente una persona. **Atteso dopo: 459 nomine**, e nella pagina
 2 da decidere (1503, 2461) e 40 già risolte.
 
+**La lettura di prima torna** (15.09, SQL Editor, sola lettura): 5 righe, **una
+persona ciascuna**, **0** con `dl_rspp`, e il cliente giusto su tutte (FALEGNAMERIA
+MAST, AUTOFFICINA MORARI, CARROZZERIA TOP CAR S.N.C., MOTUS TEAM, GRAFICHE DUEGI);
+CF presente sulla 2146, 2248, 2326, assente sulla 1097 e sulla 3451, come nel file.
+La ricerca per nome della 1097 e della 3451 trova una persona sola: si scrive.
+
+**Lo script** è `supabase/scripts/nomine_dl_rspp_ultime_cinque.sql`, provato su
+`initdb` in quattro casi: lancio normale cinque `ok` e 459; secondo lancio fermo;
+un secondo Zardini, fermo al controllo 1; un `dl_rspp` già presente, fermo al 2. Le
+righe stanno entro i 70 caratteri, perché Francesco lo copia dalla chat: gli appunti
+di Windows non sono un canale che usa.
+
 ### Le altre due decisioni di Francesco sulla sezione 8 (15 settembre, sera)
 
 - **La lettura per AppFormazione: sì.** Con le sue parole: «ok». La corsia
