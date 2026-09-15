@@ -17,7 +17,8 @@
     "report:check": "node scripts/report-componenti-check.mjs",
     "qualifica:check": "node scripts/qualifica-check.mjs",
     "spazi:check": "node scripts/spazi-check.mjs",
-    "nomine:dryrun": "node scripts/nomine-dryrun.mjs"
+    "nomine:dryrun": "node scripts/nomine-dryrun.mjs",
+    "attese:nomine": "node scripts/attese-nomine.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",
