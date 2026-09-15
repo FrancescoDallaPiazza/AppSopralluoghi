@@ -1330,6 +1330,39 @@ codice.
 Dopo la scrittura, con il sì di Francesco, una lettura in sola lettura del conteggio
 delle persone per i due id. Attese: 13 su `3f485f16`, 0 su `def8645c`.
 
+**Secondo passaggio (IGEA) scritto il 15.09.** Francesco ha confermato con due «sì»
+i passi prima della scrittura, cioè la versione controllata in positivo e l'id
+`3f485f16` letto con Ispeziona. Poi ha premuto Applica. La pagina ha risposto, con
+le sue parole: «3472 persone scritte. 2 righe da abbinare a mano NON sono state
+scritte: sono elencate nei loro gruppi.» Il numero coincide con `Applica (3.472)`.
+**Non è ancora la prova**: il primo passaggio aveva dato il numero giusto col codice
+vecchio. Fa fede la lettura.
+
+**La lettura di dopo è una select sola, da lanciare nell'SQL Editor**, scritta in
+modo che non esca nessun nome e nessun codice fiscale. Le 24 schede si riscontrano
+per id, come chiesto da AppOverall, confrontando l'md5 del valore con l'md5
+dell'atteso preso da `le-24-spazi.json`. Il testo della query non entra nel repo e
+sta nella scratchpad della sessione (`verifica-igea.sql`). Attesi:
+
+| # | controllo | atteso |
+|---|---|---|
+| 1 | persone in tutto | **3.494** |
+| 2 | su IGEA Via Sorte 48 (`3f485f16`) | **13** |
+| 3 | di cui con codice fiscale | **12** |
+| 4 | su IGEA Via Michelangelo 7 (`def8645c`) | **0** |
+| 5–6 | MAISON 22, `cc7d7e47` / `f105801a` | **17 / 4** |
+| 7 | CF doppi dentro un cliente | **0** |
+| 8 | le 24, trovate per id | **24** |
+| 9 | le 24, campi uguali all'atteso (3+5+14+3) | **25** |
+| 10 | le 24, campi con uno spazio doppio | **0** |
+| info | schede con `updated_at` del 15.09 | circa 3.472, non vincolante |
+
+**Prima di passarla, la query è stata provata** su un PostgreSQL 16 usa e getta
+(`initdb`), con una `persona` finta costruita sulle attese: dà `ok` su tutti e dieci
+i controlli. **Controllo negativo:** con una persona in più e uno spazio doppio
+rimesso in una delle 24 schede, fallisce esattamente l'1, il 9 e il 10. Poi il
+cluster è stato cancellato.
+
 **Alla schermata del punto 3 ci si ferma prima di scrivere se un numero non torna**,
 anche per uno scarto piccolo. Lo scarto di 5 della schermata di prima (93 contro
 88) non è mai stato spiegato.
