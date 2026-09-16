@@ -1953,6 +1953,73 @@ PLASTIMETAL) nella `070` non si traduce in nessuna figura, perché «legale
 rappresentante» non è scritto «datore di lavoro». Sul file non cambia niente: la
 stessa persona ha già `dl_rspp` dalla Mansione.
 
+### Il livello di rischio: togliere, scegliere a mano, e tenere traccia (16 settembre)
+
+Online dalle 13 del 16 settembre: `92b3596` su `main`, deployment `6479348909`
+success, bundle `index-BpTh7V03.js` sul dominio pubblico — dentro ci sono «proposto,
+non salvato», «togli il livello» e «scegli a mano», e **non** c'è più la frase vecchia
+«modificabile anche dall'organigramma del cliente» (0 occorrenze).
+
+**Quattro giri di anteprima, e ognuno viene da un rilievo di Francesco che provava.**
+Non erano rifiniture: ogni giro ha trovato una cosa che il giro prima lasciava rotta.
+
+1. **Il livello applicato non si poteva togliere.** L'unico punto che scriveva
+   `cliente.livello_rischio` era il bottone RISCHIO: nessuna schermata lo riportava a
+   «non impostato». Finché il livello seguiva l'ATECO il gesto opposto era cambiare il
+   codice; da quando (15.09) è un gesto suo, gliene serviva uno suo anche per disfarlo.
+2. **Togliere senza dire perché è peggio che non togliere.** Deciso da Francesco: il
+   gesto **chiede una motivazione** e senza non fa niente. Da qui la migrazione `072`,
+   `cliente.livello_rischio_definito_mediante`, sorella di
+   `antincendio_definito_mediante` (050) e `primo_soccorso_definito_mediante` (051).
+   **Applicata in produzione da Francesco il 16 settembre**: non va rifatta.
+3. **La data non dice chi.** La riga porta il tecnico collegato, come già fanno le
+   revisioni dell'organigramma. Se la sessione non sa dire chi, la riga resta **senza
+   firma** invece che con una firma inventata.
+4. **Riapplicando spariva il motivo di prima** — cioè proprio la riga che spiegava
+   perché adesso c'è un livello. Il testo ora **si accumula**: la riga nuova in testa,
+   le precedenti sotto, e nella scheda si legge l'ultima con le altre dietro una «ⓘ N
+   prima» che si apre col mouse.
+5. **Senza ATECO il bottone non è cliccabile, e il livello non si poteva assegnare in
+   nessun altro modo.** Vero, e contraddiceva la decisione 8 di AppOverall: la classe
+   dell'Allegato IV è un **default**, e dove la valutazione dei rischi trova rischi
+   particolari se ne applica un'altra — che non si poteva nemmeno scrivere. Quindi
+   **«scegli a mano»**, con motivazione obbligatoria.
+
+**E «scegli a mano» va solo verso l'alto.** Decisione di Francesco dello stesso
+giorno. Non cancella il «nei due versi» della decisione 8: la discesa che l'ASR 2025
+prevede (Parte II 2.1.1, chi non frequenta i reparti produttivi) è **per mansione**, e
+ha già il suo posto — il campo «Rischio (override)» della singola persona, che accetta
+anche un livello più basso. Azienda solo in su, persona nei due versi.
+
+**Cosa resta nell'archivio, e come si distingue.** Una colonna di testo, una riga per
+gesto, dalla più recente:
+
+    livello ALTO scelto a mano il 16/09/2026 da <tecnico>: DVR rev. 3, saldatura...
+    tabella_ateco, applicato il 16/09/2026 da <tecnico>
+    livello tolto il 16/09/2026 da <tecnico>: ATECO sbagliato, corretto in visura
+
+**Ed è dichiaratamente la forma povera di un archivio.** La decisione 8 chiede una riga
+per decisione con vocabolario, fonte, data e autore in **colonne proprie**, e la
+colloca nella prima migrazione del repo unico; qui è entrato in anticipo solo ciò che
+serviva a non cancellare senza lasciare traccia. Il «chi» è un nome e non un `id`: la
+persona esiste già (`tecnico.id`), quello che manca è la colonna per puntarci.
+
+**Provato:** `ateco-scelta:check` **13 su 13** — A8 (togliere non tocca l'ATECO), A9
+(senza motivazione non toglie; con, restano ragione e data), A10 (la firma, e senza
+firma la riga resta leggibile), A11 (le decisioni si accumulano, tre giri senza
+perdite), A12 (solo i più alti, e la regola sta nella funzione, non solo nel menu),
+A13 (a mano si distingue da tabella). Negativo con l'`ateco.ts` di `b52913e`:
+falliscono tutti quelli nuovi. `ateco:check` e `omonimi-etichetta:check` verdi, build
+verde.
+
+**Una cosa che questo giro insegna sul metodo, e non sul rischio.** Nessuno dei cinque
+punti è uscito leggendo il codice: sono usciti **provando l'anteprima su un cliente
+vero**, uno dopo l'altro, e ogni correzione ne ha scoperto un'altra che prima era
+coperta. Il primo rilievo («non riesco a cancellare») era perfino descritto male — si
+parlava dell'ATECO e il difetto era il livello — e la sessione ha perso un giro a
+cercare nel posto sbagliato prima di chiedere cosa succedeva esattamente. **Chiedere
+il sintomo costa una domanda; dedurlo costa un ramo.**
+
 ## Il dizionario del gestionale: verificato, e la lezione sta nella query
 
 **11 settembre 2026.** I 268 alias del gestionale — giudizi presi a mano, uno per
