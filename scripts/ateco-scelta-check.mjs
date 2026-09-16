@@ -37,7 +37,7 @@ await build({
   entryPoints: [modulo],
   bundle: true, platform: 'node', format: 'esm', outfile: fuori, logLevel: 'warning',
 });
-const { patchSceltaAteco, statoRischio, cercaAteco, risolviAteco, patchTogliLivello, patchApplicaLivello, righeDefinitoMediante } = await import(pathToFileURL(fuori).href);
+const { patchSceltaAteco, statoRischio, cercaAteco, risolviAteco, patchTogliLivello, patchApplicaLivello, righeDefinitoMediante, patchScegliLivello, livelliPiuAlti } = await import(pathToFileURL(fuori).href);
 rmSync(fuori, { force: true });
 
 // Una divisione che propone 'basso' e una che propone 'alto', prese dal catalogo
@@ -184,6 +184,35 @@ const casi = [
     if (righeDefinitoMediante('   ').length !== 0) return 'spazi producono righe';
     const primo = patchTogliLivello('primo', null, '   ', new Date(2026, 8, 16));
     if (righeDefinitoMediante(primo.livello_rischio_definito_mediante).length !== 1) return 'la prima riga non e sola';
+  }],
+  // Aggiunto il 16.09.2026, dal rilievo di Francesco: senza ATECO il bottone non ha
+  // niente da proporre, e il livello non si poteva mettere in nessun altro modo.
+  // Il terzo gesto esiste, e va SOLO verso l'alto: sua decisione, stesso giorno.
+  ['A12 · a mano si scelgono solo i livelli piu alti di quello che si vede', () => {
+    const atteso = { basso: ['medio', 'alto'], medio: ['alto'], alto: [] };
+    for (const [corrente, sopra] of Object.entries(atteso)) {
+      const dati = livelliPiuAlti(corrente).join(',');
+      if (dati !== sopra.join(',')) return `sopra ${corrente}: ${dati}, atteso ${sopra.join(',')}`;
+    }
+    // Niente livello e niente proposta: non c'e' un basso da alzare, si sceglie tutto.
+    if (livelliPiuAlti(null).join(',') !== 'basso,medio,alto') return livelliPiuAlti(null).join(',');
+
+    // E la regola sta nella funzione, non solo nel menu: un livello non piu alto
+    // non passa nemmeno chiamandola a mano.
+    if (patchScegliLivello('basso', 'motivo', 'medio') !== null) return 'un livello piu basso e passato';
+    if (patchScegliLivello('alto', 'motivo', 'alto') !== null) return 'lo stesso livello e passato';
+    if (patchScegliLivello('alto', '   ', 'medio') !== null) return 'senza motivazione e passato';
+  }],
+  ['A13 · il livello scelto a mano si distingue nell archivio da quello della tabella', () => {
+    const p = patchScegliLivello('alto', 'DVR rev. 3, saldatura in ambiente confinato', 'medio', 'Mario Rossi', null, new Date(2026, 8, 16));
+    if (p.livello_rischio !== 'alto') return JSON.stringify(p);
+    if (p.livello_rischio_definito_mediante !== 'livello ALTO scelto a mano il 16/09/2026 da Mario Rossi: DVR rev. 3, saldatura in ambiente confinato') {
+      return p.livello_rischio_definito_mediante;
+    }
+    // E si accumula come gli altri due gesti.
+    const dopo = patchApplicaLivello('alto', 'Mario Rossi', p.livello_rischio_definito_mediante, new Date(2026, 8, 17));
+    const righe = righeDefinitoMediante(dopo.livello_rischio_definito_mediante);
+    if (righe.length !== 2 || !righe[1].includes('scelto a mano')) return JSON.stringify(righe);
   }],
 ];
 

@@ -15,6 +15,7 @@ import type { Cliente, Sede } from '../lib/types';
 import {
   risolviAteco, cercaAteco, ETICHETTA_RISCHIO, classificaAteco,
   patchSceltaAteco, statoRischio, patchTogliLivello, patchApplicaLivello, righeDefinitoMediante,
+  patchScegliLivello, livelliPiuAlti,
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
@@ -886,6 +887,10 @@ function CampoAteco({
   // dell'organigramma. Se la sessione non lo sa dire, la riga si scrive senza
   // firma invece che con una firma inventata.
   const [storiaAperta, setStoriaAperta] = useState(false);
+  // Il terzo gesto: un livello deciso da una persona. Si scelgono solo i livelli
+  // PIU ALTI di quello che si vede (decisione di Francesco, 16.09.2026).
+  const [scegliendo, setScegliendo] = useState<RischioAteco | null>(null);
+  const [motivoScelta, setMotivoScelta] = useState('');
   const { tecnico, session } = useAuth();
   const chi = tecnico
     ? [tecnico.nome, tecnico.cognome].filter(Boolean).join(' ')
@@ -910,6 +915,7 @@ function CampoAteco({
 
   const { proposto, effettivo, puoApplicare, soloProposta } = statoRischio(testo, livello);
   const righeDecisione = righeDefinitoMediante(definitoMediante);
+  const piuAlti = livelliPiuAlti(effettivo);
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -1074,6 +1080,83 @@ function CampoAteco({
                 La motivazione resta scritta accanto al livello. Poi premi Salva.
               </div>
             </div>
+          )}
+          {/* Il terzo gesto (16.09.2026): un livello che la tabella non propone.
+              Solo verso l'alto, e con la motivazione: vedi `livelliPiuAlti`. */}
+          {!togliendo && piuAlti.length > 0 && (
+            scegliendo === null ? (
+              <button
+                type="button"
+                onClick={() => { setScegliendo(piuAlti[0]); setMotivoScelta(''); }}
+                title="Applica un livello piu alto di quello proposto, con la ragione"
+                style={{
+                  display: 'block', margin: '4px auto 0', background: 'none', border: 'none',
+                  padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11,
+                  color: 'var(--ink-soft)', textDecoration: 'underline',
+                }}>
+                scegli a mano
+              </button>
+            ) : (
+              <div style={{ marginTop: 6, textAlign: 'left', width: 220 }}>
+                <div style={{ display: 'flex', gap: 5, marginBottom: 5 }}>
+                  {piuAlti.map((l) => (
+                    <button key={l} type="button" onClick={() => setScegliendo(l)}
+                      style={{
+                        flex: 1, fontFamily: 'inherit', fontSize: 11.5, fontWeight: 800,
+                        padding: '5px 4px', borderRadius: 8, cursor: 'pointer',
+                        border: `2px solid ${coloreRischio(l)}`,
+                        background: scegliendo === l ? coloreRischio(l) : 'transparent',
+                        color: scegliendo === l ? '#fff' : coloreRischio(l),
+                      }}>
+                      {ETICHETTA_RISCHIO[l]}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  autoFocus
+                  value={motivoScelta}
+                  placeholder="Perché piu alto (DVR, verbale...)"
+                  onChange={(e) => setMotivoScelta(e.target.value)}
+                  style={{
+                    width: '100%', fontFamily: 'inherit', fontSize: 12, padding: '6px 8px',
+                    border: '1px solid var(--line)', borderRadius: 8,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                  <button
+                    type="button"
+                    disabled={!motivoScelta.trim()}
+                    onClick={() => {
+                      const p = patchScegliLivello(scegliendo, motivoScelta, effettivo, chi, definitoMediante);
+                      if (!p) return;
+                      onPatch(p);
+                      setScegliendo(null);
+                    }}
+                    style={{
+                      fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, padding: '5px 10px',
+                      borderRadius: 8, border: 'none', color: '#fff',
+                      background: motivoScelta.trim() ? coloreRischio(scegliendo) : 'var(--faint)',
+                      cursor: motivoScelta.trim() ? 'pointer' : 'default',
+                    }}>
+                    Applica
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScegliendo(null)}
+                    style={{
+                      fontFamily: 'inherit', fontSize: 11.5, padding: '5px 10px', borderRadius: 8,
+                      border: '1px solid var(--line)', background: 'none', cursor: 'pointer',
+                    }}>
+                    Annulla
+                  </button>
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', marginTop: 4 }}>
+                  Solo piu alto di {effettivo ? ETICHETTA_RISCHIO[effettivo] : 'niente'}: piu basso si decide
+                  per persona, nel campo «Rischio (override)». Poi premi Salva.
+                </div>
+              </div>
+            )
           )}
         </div>
       </div>

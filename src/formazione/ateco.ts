@@ -287,6 +287,42 @@ function componi(riga: string, precedente: string | null): string {
   return p === '' ? riga : riga + '\n' + p;
 }
 
+// I livelli che si possono scegliere a mano: SOLO quelli piu' alti di quello che
+// c'e' adesso. Deciso da Francesco il 16.09.2026, e non e' una limitazione
+// arbitraria: alzare la classe rispetto al default dell'Allegato IV e' la mossa che
+// l'Interpello 1/2025 prevede quando la valutazione dei rischi trova rischi
+// particolari, mentre ABBASSARLA per l'intera azienda vorrebbe dire dichiarare che
+// il default sbaglia per tutti. La discesa che l'ASR 2025 prevede (Parte II 2.1.1,
+// chi non frequenta i reparti produttivi) e' **per mansione** e ha gia' il suo posto:
+// il campo «Rischio (override)» della singola persona.
+//
+// `corrente` e' il livello che si vede — quello salvato, o la proposta dell'ATECO se
+// non ce n'e' uno. Con niente, si puo' scegliere qualunque cosa: non c'e' un basso
+// da alzare.
+export const ORDINE_RISCHIO: RischioAteco[] = ['basso', 'medio', 'alto'];
+
+export function livelliPiuAlti(corrente: RischioAteco | null | undefined): RischioAteco[] {
+  if (corrente == null) return ORDINE_RISCHIO.slice();
+  return ORDINE_RISCHIO.slice(ORDINE_RISCHIO.indexOf(corrente) + 1);
+}
+
+// Il terzo gesto: un livello deciso da una persona e non dalla tabella. Chiede la
+// motivazione come «togli», e si rifiuta se il livello non e' piu' alto di quello
+// che c'e': la regola sta qui e non solo nel menu, cosi' non la si aggira.
+export function patchScegliLivello(
+  livello: RischioAteco, motivazione: string, corrente: RischioAteco | null | undefined = null,
+  chi: string | null = null, precedente: string | null = null, oggi: Date = new Date(),
+): { livello_rischio: RischioAteco; livello_rischio_definito_mediante: string } | null {
+  const m = motivazione.trim();
+  if (m === '') return null;
+  if (!livelliPiuAlti(corrente).includes(livello)) return null;
+  return {
+    livello_rischio: livello,
+    livello_rischio_definito_mediante: componi(
+      `livello ${ETICHETTA_RISCHIO[livello]} scelto a mano ${firma(oggi, chi)}: ${m}`, precedente),
+  };
+}
+
 // Le decisioni scritte nella colonna, dalla piu' recente. Le legge la scheda per
 // mostrare l'ultima e tenere le altre dietro una i.
 export function righeDefinitoMediante(testo: string | null | undefined): string[] {
