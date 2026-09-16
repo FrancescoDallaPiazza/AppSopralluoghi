@@ -91,6 +91,19 @@ const casi = [
     const ignoto = statoRischio('nessun codice', 'medio');
     if (ignoto.proposto !== null || ignoto.puoApplicare || ignoto.effettivo !== 'medio') return JSON.stringify(ignoto);
   }],
+  // Aggiunto il 15.09.2026 sera: nella verifica a vista un cliente senza livello
+  // mostrava la proposta come un livello salvato. Negativo: ATECO_MODULO con
+  // l'ateco.ts di main 7949c92, dove `soloProposta` non esiste.
+  ['A7 · senza livello salvato il bottone sa che mostra solo la proposta; con un livello salvato no', () => {
+    const vuoto = statoRischio(alta.divisione, null);
+    if (vuoto.soloProposta !== true || vuoto.effettivo !== 'alto') return `senza livello: ${JSON.stringify(vuoto)}`;
+    const salvato = statoRischio(alta.divisione, 'basso');
+    if (salvato.soloProposta !== false || salvato.effettivo !== 'basso') return `con livello: ${JSON.stringify(salvato)}`;
+    const uguale = statoRischio(alta.divisione, 'alto');
+    if (uguale.soloProposta !== false) return `livello uguale alla proposta: ${JSON.stringify(uguale)}`;
+    const niente = statoRischio('nessun codice', null);
+    if (niente.soloProposta !== false || niente.effettivo !== null) return `niente: ${JSON.stringify(niente)}`;
+  }],
 ];
 
 let falliti = 0;
