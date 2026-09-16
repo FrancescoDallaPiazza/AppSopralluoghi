@@ -37,7 +37,7 @@ await build({
   entryPoints: [modulo],
   bundle: true, platform: 'node', format: 'esm', outfile: fuori, logLevel: 'warning',
 });
-const { patchSceltaAteco, statoRischio, cercaAteco, risolviAteco, patchTogliLivello, patchApplicaLivello } = await import(pathToFileURL(fuori).href);
+const { patchSceltaAteco, statoRischio, cercaAteco, risolviAteco, patchTogliLivello, patchApplicaLivello, righeDefinitoMediante } = await import(pathToFileURL(fuori).href);
 rmSync(fuori, { force: true });
 
 // Una divisione che propone 'basso' e una che propone 'alto', prese dal catalogo
@@ -111,10 +111,10 @@ const casi = [
   // funzioni non esistono e i due casi falliscono con un'eccezione.
   ['A8 · togliere il livello lo porta a null, il codice ATECO resta, e il bottone torna a proporre', () => {
     let c = applica({ codice_ateco: null, ateco_origine: 'cella del gestionale', livello_rischio: null }, patchSceltaAteco(alta));
-    c = applica(c, patchApplicaLivello(statoRischio(c.codice_ateco, c.livello_rischio).proposto, 'Mario Rossi', new Date(2026, 8, 16)));
+    c = applica(c, patchApplicaLivello(statoRischio(c.codice_ateco, c.livello_rischio).proposto, 'Mario Rossi', null, new Date(2026, 8, 16)));
     if (c.livello_rischio !== 'alto') return `preparazione: livello ${c.livello_rischio}, atteso alto`;
 
-    const p = patchTogliLivello('ATECO sbagliato, corretto in visura', 'Mario Rossi', new Date(2026, 8, 16));
+    const p = patchTogliLivello('ATECO sbagliato, corretto in visura', 'Mario Rossi', null, new Date(2026, 8, 16));
     const chiavi = Object.keys(p).sort();
     if (chiavi.join(',') !== 'livello_rischio,livello_rischio_definito_mediante') return `chiavi della patch: ${chiavi.join(',')}`;
 
@@ -131,38 +131,59 @@ const casi = [
     for (const vuota of ['', '   ', String.fromCharCode(9, 10, 32)]) {
       if (patchTogliLivello(vuota) !== null) return `motivazione ${JSON.stringify(vuota)}: doveva essere null`;
     }
-    const p = patchTogliLivello('  ATECO sbagliato, corretto in visura  ', 'Mario Rossi', new Date(2026, 8, 16));
+    const p = patchTogliLivello('  ATECO sbagliato, corretto in visura  ', 'Mario Rossi', null, new Date(2026, 8, 16));
     const m = p.livello_rischio_definito_mediante;
     if (!m.includes('ATECO sbagliato, corretto in visura')) return `la motivazione non c'e': ${m}`;
     if (m.includes('  ATECO')) return `la motivazione non e' stata ripulita: ${m}`;
     if (!m.includes('16/09/2026')) return `la data non c'e': ${m}`;
     // E il gesto del bottone dice da dove viene il livello che applica.
-    const a = patchApplicaLivello('alto', 'Mario Rossi', new Date(2026, 8, 16));
+    const a = patchApplicaLivello('alto', 'Mario Rossi', null, new Date(2026, 8, 16));
     if (a.livello_rischio !== 'alto') return JSON.stringify(a);
     if (!a.livello_rischio_definito_mediante.startsWith('tabella_ateco')) return a.livello_rischio_definito_mediante;
   }],
   // Aggiunto il 16.09.2026, subito dopo: la data da sola non dice chi ha premuto,
   // e il tecnico collegato questo repo lo conosce gia' (organigramma-revisioni).
   ['A10 · la riga porta chi ha premuto, e senza di lui resta leggibile lo stesso', () => {
-    const conChi = patchTogliLivello('motivo', 'Mario Rossi', new Date(2026, 8, 16));
+    const conChi = patchTogliLivello('motivo', 'Mario Rossi', null, new Date(2026, 8, 16));
     if (conChi.livello_rischio_definito_mediante !== 'livello tolto il 16/09/2026 da Mario Rossi: motivo') {
       return conChi.livello_rischio_definito_mediante;
     }
-    const applicato = patchApplicaLivello('alto', 'Mario Rossi', new Date(2026, 8, 16));
+    const applicato = patchApplicaLivello('alto', 'Mario Rossi', null, new Date(2026, 8, 16));
     if (applicato.livello_rischio_definito_mediante !== 'tabella_ateco, applicato il 16/09/2026 da Mario Rossi') {
       return applicato.livello_rischio_definito_mediante;
     }
     // Sessione che non sa dire chi: niente «da», e nessun «da null» o «da undefined».
     for (const senza of [null, '', '   ']) {
-      const p = patchTogliLivello('motivo', senza, new Date(2026, 8, 16));
+      const p = patchTogliLivello('motivo', senza, null, new Date(2026, 8, 16));
       if (p.livello_rischio_definito_mediante !== 'livello tolto il 16/09/2026: motivo') {
         return `senza chi (${JSON.stringify(senza)}): ${p.livello_rischio_definito_mediante}`;
       }
-      const a2 = patchApplicaLivello('alto', senza, new Date(2026, 8, 16));
+      const a2 = patchApplicaLivello('alto', senza, null, new Date(2026, 8, 16));
       if (a2.livello_rischio_definito_mediante !== 'tabella_ateco, applicato il 16/09/2026') {
         return `senza chi (${JSON.stringify(senza)}): ${a2.livello_rischio_definito_mediante}`;
       }
     }
+  }],
+  // Aggiunto il 16.09.2026, dal rilievo di Francesco sull'anteprima: riapplicando
+  // il livello spariva il motivo per cui era stato tolto. Ora il testo si accumula.
+  ['A11 · le decisioni si accumulano: la nuova va in testa, le precedenti restano', () => {
+    const tolto = patchTogliLivello('ATECO sbagliato', 'Mario Rossi', null, new Date(2026, 8, 16));
+    const riapplicato = patchApplicaLivello('alto', 'Mario Rossi', tolto.livello_rischio_definito_mediante, new Date(2026, 8, 17));
+    const righe = righeDefinitoMediante(riapplicato.livello_rischio_definito_mediante);
+    if (righe.length !== 2) return `righe: ${JSON.stringify(righe)}`;
+    if (righe[0] !== 'tabella_ateco, applicato il 17/09/2026 da Mario Rossi') return righe[0];
+    if (righe[1] !== 'livello tolto il 16/09/2026 da Mario Rossi: ATECO sbagliato') return righe[1];
+
+    // Un terzo giro non perde nessuno dei due precedenti, e l'ordine resta.
+    const ditolto = patchTogliLivello('di nuovo', 'Mario Rossi', riapplicato.livello_rischio_definito_mediante, new Date(2026, 8, 18));
+    const tre = righeDefinitoMediante(ditolto.livello_rischio_definito_mediante);
+    if (tre.length !== 3 || !tre[0].startsWith('livello tolto il 18/09/2026')) return JSON.stringify(tre);
+
+    // Una colonna vuota, o con soli spazi, non produce righe finte.
+    if (righeDefinitoMediante(null).length !== 0) return 'null produce righe';
+    if (righeDefinitoMediante('   ').length !== 0) return 'spazi producono righe';
+    const primo = patchTogliLivello('primo', null, '   ', new Date(2026, 8, 16));
+    if (righeDefinitoMediante(primo.livello_rischio_definito_mediante).length !== 1) return 'la prima riga non e sola';
   }],
 ];
 

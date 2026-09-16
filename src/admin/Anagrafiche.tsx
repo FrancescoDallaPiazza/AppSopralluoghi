@@ -14,7 +14,7 @@ import {
 import type { Cliente, Sede } from '../lib/types';
 import {
   risolviAteco, cercaAteco, ETICHETTA_RISCHIO, classificaAteco,
-  patchSceltaAteco, statoRischio, patchTogliLivello, patchApplicaLivello,
+  patchSceltaAteco, statoRischio, patchTogliLivello, patchApplicaLivello, righeDefinitoMediante,
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
@@ -885,6 +885,7 @@ function CampoAteco({
   // Chi sta premendo: il tecnico collegato, come per le revisioni
   // dell'organigramma. Se la sessione non lo sa dire, la riga si scrive senza
   // firma invece che con una firma inventata.
+  const [storiaAperta, setStoriaAperta] = useState(false);
   const { tecnico, session } = useAuth();
   const chi = tecnico
     ? [tecnico.nome, tecnico.cognome].filter(Boolean).join(' ')
@@ -908,6 +909,7 @@ function CampoAteco({
   };
 
   const { proposto, effettivo, puoApplicare, soloProposta } = statoRischio(testo, livello);
+  const righeDecisione = righeDefinitoMediante(definitoMediante);
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -979,7 +981,7 @@ function CampoAteco({
           <button
             type="button"
             disabled={!puoApplicare}
-            onClick={() => proposto && onPatch(patchApplicaLivello(proposto, chi))}
+            onClick={() => proposto && onPatch(patchApplicaLivello(proposto, chi, definitoMediante))}
             title={puoApplicare ? 'Applica il rischio proposto dall\u2019ATECO' : 'Livello di rischio del cliente'}
             style={soloProposta && effettivo ? {
               // Solo la proposta, il cliente non ha un livello (15.09.2026): contorno
@@ -1045,7 +1047,7 @@ function CampoAteco({
                   type="button"
                   disabled={!motivo.trim()}
                   onClick={() => {
-                    const p = patchTogliLivello(motivo, chi);
+                    const p = patchTogliLivello(motivo, chi, definitoMediante);
                     if (!p) return;
                     onPatch(p);
                     setTogliendo(false);
@@ -1126,9 +1128,39 @@ function CampoAteco({
           diceva anche «modificabile anche dall'organigramma del cliente», che nel
           codice non trova riscontro (la schermata Formazione manda qui): tolta
           finche' non si sa quale delle due frasi sia quella vecchia. */}
-      {definitoMediante && (
-        <div style={{ marginTop: 3, fontSize: 11.5, color: 'var(--ink-soft)' }}>
-          Deciso mediante: <i>{definitoMediante}</i>
+      {righeDecisione.length > 0 && (
+        <div style={{ marginTop: 3, fontSize: 11.5, color: 'var(--ink-soft)', position: 'relative' }}>
+          Deciso mediante: <i>{righeDecisione[0]}</i>
+          {/* Le decisioni precedenti non si buttano e non stanno sotto gli occhi:
+              la scheda mostra l'ultima, le altre aspettano dietro la i. */}
+          {righeDecisione.length > 1 && (
+            <>
+              {' '}
+              <button
+                type="button"
+                title="Le decisioni precedenti"
+                onMouseEnter={() => setStoriaAperta(true)}
+                onMouseLeave={() => setStoriaAperta(false)}
+                onClick={() => setStoriaAperta((v) => !v)}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontFamily: 'inherit', fontSize: 11.5, color: 'var(--ink-soft)',
+                }}>
+                ⓘ {righeDecisione.length - 1} prima
+              </button>
+              {storiaAperta && (
+                <div style={{
+                  position: 'absolute', zIndex: 30, left: 0, top: '100%', marginTop: 4,
+                  background: '#fff', border: '1px solid var(--line)', borderRadius: 10,
+                  boxShadow: '0 8px 24px rgba(0,0,0,.12)', padding: '8px 10px', maxWidth: 420,
+                }}>
+                  {righeDecisione.slice(1).map((r, i) => (
+                    <div key={i} style={{ marginTop: i === 0 ? 0 : 4 }}>{r}</div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

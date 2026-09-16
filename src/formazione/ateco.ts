@@ -267,12 +267,30 @@ export function patchSceltaAteco(d: AtecoDivisione): { codice_ateco: string } {
 // giustificazione. Qui la giustificazione e' la tabella, e si scrive con la parola
 // che la decisione 8 di AppOverall usa per quel caso.
 export function patchApplicaLivello(
-  livello: RischioAteco, chi: string | null = null, oggi: Date = new Date(),
+  livello: RischioAteco, chi: string | null = null,
+  precedente: string | null = null, oggi: Date = new Date(),
 ): { livello_rischio: RischioAteco; livello_rischio_definito_mediante: string } {
   return {
     livello_rischio: livello,
-    livello_rischio_definito_mediante: `tabella_ateco, applicato ${firma(oggi, chi)}`,
+    livello_rischio_definito_mediante: componi(`tabella_ateco, applicato ${firma(oggi, chi)}`, precedente),
   };
+}
+
+// Il testo si ACCUMULA: la riga nuova va in testa e le precedenti restano sotto.
+// Il 16.09.2026 la prima versione sovrascriveva, e riapplicare il livello faceva
+// sparire il motivo per cui era stato tolto — cioe' proprio la riga che serviva a
+// capire perche' adesso c'e'. Una colonna sola e' la forma povera di un archivio:
+// la forma giusta e' una riga per decisione, ed e' la decisione 8 nel repo unico.
+// Qui si tiene tutto in un testo, in ordine dal piu' recente al piu' vecchio.
+function componi(riga: string, precedente: string | null): string {
+  const p = (precedente ?? '').trim();
+  return p === '' ? riga : riga + '\n' + p;
+}
+
+// Le decisioni scritte nella colonna, dalla piu' recente. Le legge la scheda per
+// mostrare l'ultima e tenere le altre dietro una i.
+export function righeDefinitoMediante(testo: string | null | undefined): string[] {
+  return (testo ?? '').split('\n').map((r) => r.trim()).filter((r) => r !== '');
 }
 
 // «il 16/09/2026 da Mario Rossi», o senza il «da» quando chi ha premuto non si sa:
@@ -305,13 +323,14 @@ function firma(oggi: Date, chi: string | null): string {
 // come autore: in questo repo la persona esiste gia', quello che manca e' la
 // colonna per puntarci (decisione 8, repo unico).
 export function patchTogliLivello(
-  motivazione: string, chi: string | null = null, oggi: Date = new Date(),
+  motivazione: string, chi: string | null = null,
+  precedente: string | null = null, oggi: Date = new Date(),
 ): { livello_rischio: null; livello_rischio_definito_mediante: string } | null {
   const m = motivazione.trim();
   if (m === '') return null;
   return {
     livello_rischio: null,
-    livello_rischio_definito_mediante: `livello tolto ${firma(oggi, chi)}: ${m}`,
+    livello_rischio_definito_mediante: componi(`livello tolto ${firma(oggi, chi)}: ${m}`, precedente),
   };
 }
 
