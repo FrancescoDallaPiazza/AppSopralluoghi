@@ -261,6 +261,45 @@ export function patchSceltaAteco(d: AtecoDivisione): { codice_ateco: string } {
   return { codice_ateco: d.divisione };
 }
 
+// Cosa scrive il bottone RISCHIO quando applica la proposta: il livello E come e'
+// stato deciso. Il secondo campo (mig. 072) e' la sorella dei due che esistono per
+// antincendio e primo soccorso: un verdetto che si porta dietro la propria
+// giustificazione. Qui la giustificazione e' la tabella, e si scrive con la parola
+// che la decisione 8 di AppOverall usa per quel caso.
+export function patchApplicaLivello(livello: RischioAteco): {
+  livello_rischio: RischioAteco; livello_rischio_definito_mediante: string;
+} {
+  return { livello_rischio: livello, livello_rischio_definito_mediante: 'tabella_ateco' };
+}
+
+// Il gesto opposto: riporta il livello a «non impostato», e NON tocca il codice
+// ATECO. Il 16.09.2026, nella verifica a vista, un livello applicato per prova non
+// si poteva piu' togliere: il bottone lo scriveva e nessuna schermata lo
+// cancellava. Finche' il livello seguiva l'ATECO il gesto opposto era cambiare il
+// codice; da quando e' un gesto suo, gliene serve uno suo anche per disfarlo.
+//
+// **Senza motivazione non si toglie**, e non e' un attrito decorativo: un livello
+// che sparisce senza una ragione scritta e' indistinguibile da un livello che non
+// c'e' mai stato, e fra un mese nessuno sa se fosse sbagliato o se qualcuno abbia
+// premuto per errore. Deciso da Francesco il 16.09.2026. Ritorna `null` se la
+// motivazione e' vuota: chi chiama non ha una patch da applicare.
+//
+// La data entra nel testo perche' la colonna e' una sola. Chi ha deciso non c'e':
+// in questo repo non esiste ancora un vocabolario di operatori, e inventarne uno
+// qui significherebbe scriverlo due volte (decisione 8, repo unico).
+export function patchTogliLivello(motivazione: string, oggi: Date = new Date()): {
+  livello_rischio: null; livello_rischio_definito_mediante: string;
+} | null {
+  const m = motivazione.trim();
+  if (m === '') return null;
+  const g = String(oggi.getDate()).padStart(2, '0');
+  const me = String(oggi.getMonth() + 1).padStart(2, '0');
+  return {
+    livello_rischio: null,
+    livello_rischio_definito_mediante: `livello tolto il ${g}/${me}/${oggi.getFullYear()}: ${m}`,
+  };
+}
+
 // Cosa mostra e cosa propone il bottone RISCHIO. `proposto` e' il livello
 // dell'Allegato IV per il codice scritto; `effettivo` e' quello del cliente, o la
 // proposta se il cliente non ne ha uno; `puoApplicare` dice se il bottone ha

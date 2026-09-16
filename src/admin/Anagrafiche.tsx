@@ -14,7 +14,7 @@ import {
 import type { Cliente, Sede } from '../lib/types';
 import {
   risolviAteco, cercaAteco, ETICHETTA_RISCHIO, classificaAteco,
-  patchSceltaAteco, statoRischio,
+  patchSceltaAteco, statoRischio, patchTogliLivello, patchApplicaLivello,
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
@@ -375,6 +375,7 @@ function SchedaCliente({
         </div>
         <CampoAteco
           codice={cliente.codice_ateco}
+          definitoMediante={cliente.livello_rischio_definito_mediante}
           origine={cliente.ateco_origine}
           livello={cliente.livello_rischio}
           onPatch={patch}
@@ -863,16 +864,23 @@ function SediCliente({ cliente, sedi, onCambia }: {
 // dopo una correzione a mano l'avviso «la divisione potrebbe essere un'altra»
 // confronta ancora il codice nuovo con quella cella, e puo' restare.
 function CampoAteco({
-  codice, origine, livello, onPatch,
+  codice, origine, livello, definitoMediante, onPatch,
 }: {
   codice: string | null;
   // La cella da cui il codice e' stato derivato (mig. 065). Serve a dire se
   // quella divisione sia affidabile: il codice da solo non lo puo' dire.
   origine: string | null;
   livello: RischioAteco | null;
+  // Come e' stato deciso il livello che c'e' (mig. 072). Si mostra sotto il
+  // bottone: un livello senza la sua ragione e' un verdetto senza firma.
+  definitoMediante: string | null;
   onPatch: (p: Partial<Cliente>) => void;
 }) {
   const [aperto, setAperto] = useState(false);
+  // Il gesto che toglie il livello chiede una motivazione, e la chiede qui dentro:
+  // finche' `togliendo` e' falso si vede solo la voce.
+  const [togliendo, setTogliendo] = useState(false);
+  const [motivo, setMotivo] = useState('');
   const testo = codice ?? '';
   const ris = risolviAteco(testo);
   const suggerimenti = useMemo(() => cercaAteco(testo), [testo]);
@@ -963,7 +971,7 @@ function CampoAteco({
           <button
             type="button"
             disabled={!puoApplicare}
-            onClick={() => proposto && onPatch({ livello_rischio: proposto })}
+            onClick={() => proposto && onPatch(patchApplicaLivello(proposto))}
             title={puoApplicare ? 'Applica il rischio proposto dall\u2019ATECO' : 'Livello di rischio del cliente'}
             style={soloProposta && effettivo ? {
               // Solo la proposta, il cliente non ha un livello (15.09.2026): contorno
@@ -991,6 +999,70 @@ function CampoAteco({
           {puoApplicare && proposto && (
             <div style={{ fontSize: 11, marginTop: 4, color: 'var(--ink-soft)', maxWidth: 170 }}>
               ATECO propone {ETICHETTA_RISCHIO[proposto]}: premi per applicarlo
+            </div>
+          )}
+          {/* Il gesto opposto (16.09.2026): il bottone applica, questo disapplica.
+              Compare solo quando un livello e' salvato — su un cliente che non ne ha
+              non c'e' niente da togliere. Il codice ATECO resta dov'e', e la
+              motivazione e' obbligatoria: senza, il livello sparirebbe senza che
+              nessuno sappia perche'. */}
+          {livello && !togliendo && (
+            <button
+              type="button"
+              onClick={() => { setTogliendo(true); setMotivo(''); }}
+              title="Riporta il livello a «non impostato». Il codice ATECO resta"
+              style={{
+                display: 'block', margin: '4px auto 0', background: 'none', border: 'none',
+                padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11,
+                color: 'var(--ink-soft)', textDecoration: 'underline',
+              }}>
+              togli il livello
+            </button>
+          )}
+          {livello && togliendo && (
+            <div style={{ marginTop: 6, textAlign: 'left', width: 220 }}>
+              <input
+                type="text"
+                autoFocus
+                value={motivo}
+                placeholder="Perché si toglie"
+                onChange={(e) => setMotivo(e.target.value)}
+                style={{
+                  width: '100%', fontFamily: 'inherit', fontSize: 12, padding: '6px 8px',
+                  border: '1px solid var(--line)', borderRadius: 8,
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                <button
+                  type="button"
+                  disabled={!motivo.trim()}
+                  onClick={() => {
+                    const p = patchTogliLivello(motivo);
+                    if (!p) return;
+                    onPatch(p);
+                    setTogliendo(false);
+                  }}
+                  style={{
+                    fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, padding: '5px 10px',
+                    borderRadius: 8, border: 'none', color: '#fff',
+                    background: motivo.trim() ? 'var(--no)' : 'var(--faint)',
+                    cursor: motivo.trim() ? 'pointer' : 'default',
+                  }}>
+                  Togli
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTogliendo(false)}
+                  style={{
+                    fontFamily: 'inherit', fontSize: 11.5, padding: '5px 10px', borderRadius: 8,
+                    border: '1px solid var(--line)', background: 'none', cursor: 'pointer',
+                  }}>
+                  Annulla
+                </button>
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', marginTop: 4 }}>
+                La motivazione resta scritta accanto al livello. Poi premi Salva.
+              </div>
             </div>
           )}
         </div>
@@ -1041,8 +1113,16 @@ function CampoAteco({
           ? <b style={{ color: coloreRischio(livello) }}>{ETICHETTA_RISCHIO[livello]}</b>
           : <span style={{ color: 'var(--faint)' }}>non impostato</span>}
         {puoApplicare && <> · proposto <b style={{ color: coloreRischio(proposto!) }}>{ETICHETTA_RISCHIO[proposto!]}</b> dall'ATECO (usa il bottone)</>}
-        {' '}· modificabile anche dall'organigramma del cliente.
       </div>
+      {/* Il verdetto e la sua ragione, uno sotto l'altra. Il 16.09.2026 questa riga
+          diceva anche «modificabile anche dall'organigramma del cliente», che nel
+          codice non trova riscontro (la schermata Formazione manda qui): tolta
+          finche' non si sa quale delle due frasi sia quella vecchia. */}
+      {definitoMediante && (
+        <div style={{ marginTop: 3, fontSize: 11.5, color: 'var(--ink-soft)' }}>
+          Deciso mediante: <i>{definitoMediante}</i>
+        </div>
+      )}
     </div>
   );
 }

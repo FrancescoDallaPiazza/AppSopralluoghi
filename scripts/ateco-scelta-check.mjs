@@ -37,7 +37,7 @@ await build({
   entryPoints: [modulo],
   bundle: true, platform: 'node', format: 'esm', outfile: fuori, logLevel: 'warning',
 });
-const { patchSceltaAteco, statoRischio, cercaAteco, risolviAteco } = await import(pathToFileURL(fuori).href);
+const { patchSceltaAteco, statoRischio, cercaAteco, risolviAteco, patchTogliLivello, patchApplicaLivello } = await import(pathToFileURL(fuori).href);
 rmSync(fuori, { force: true });
 
 // Una divisione che propone 'basso' e una che propone 'alto', prese dal catalogo
@@ -103,6 +103,42 @@ const casi = [
     if (uguale.soloProposta !== false) return `livello uguale alla proposta: ${JSON.stringify(uguale)}`;
     const niente = statoRischio('nessun codice', null);
     if (niente.soloProposta !== false || niente.effettivo !== null) return `niente: ${JSON.stringify(niente)}`;
+  }],
+  // Aggiunti il 16.09.2026: nella verifica a vista un livello applicato per prova
+  // non si poteva togliere. Il gesto opposto ora esiste, chiede una motivazione
+  // (decisione di Francesco dello stesso giorno) e scrive accanto al livello come
+  // e' stato deciso (mig. 072). Negativo: con l'ateco.ts di main b52913e le due
+  // funzioni non esistono e i due casi falliscono con un'eccezione.
+  ['A8 · togliere il livello lo porta a null, il codice ATECO resta, e il bottone torna a proporre', () => {
+    let c = applica({ codice_ateco: null, ateco_origine: 'cella del gestionale', livello_rischio: null }, patchSceltaAteco(alta));
+    c = applica(c, patchApplicaLivello(statoRischio(c.codice_ateco, c.livello_rischio).proposto));
+    if (c.livello_rischio !== 'alto') return `preparazione: livello ${c.livello_rischio}, atteso alto`;
+
+    const p = patchTogliLivello('ATECO sbagliato, corretto in visura', new Date(2026, 8, 16));
+    const chiavi = Object.keys(p).sort();
+    if (chiavi.join(',') !== 'livello_rischio,livello_rischio_definito_mediante') return `chiavi della patch: ${chiavi.join(',')}`;
+
+    const dopo = applica(c, p);
+    if (dopo.livello_rischio !== null) return `livello ${dopo.livello_rischio}, atteso null`;
+    if (dopo.codice_ateco !== alta.divisione) return `il codice e' cambiato: ${dopo.codice_ateco}`;
+    if (dopo.ateco_origine !== 'cella del gestionale') return `la cella d'origine e' cambiata: ${dopo.ateco_origine}`;
+
+    // E si torna esattamente dove si era prima di premere: proposta, non salvata.
+    const st = statoRischio(dopo.codice_ateco, dopo.livello_rischio);
+    if (st.soloProposta !== true || st.proposto !== 'alto' || !st.puoApplicare) return JSON.stringify(st);
+  }],
+  ['A9 · senza motivazione non si toglie, e con la motivazione restano la ragione e la data', () => {
+    for (const vuota of ['', '   ', String.fromCharCode(9, 10, 32)]) {
+      if (patchTogliLivello(vuota) !== null) return `motivazione ${JSON.stringify(vuota)}: doveva essere null`;
+    }
+    const p = patchTogliLivello('  ATECO sbagliato, corretto in visura  ', new Date(2026, 8, 16));
+    const m = p.livello_rischio_definito_mediante;
+    if (!m.includes('ATECO sbagliato, corretto in visura')) return `la motivazione non c'e': ${m}`;
+    if (m.includes('  ATECO')) return `la motivazione non e' stata ripulita: ${m}`;
+    if (!m.includes('16/09/2026')) return `la data non c'e': ${m}`;
+    // E il gesto del bottone dice da dove viene il livello che applica.
+    const a = patchApplicaLivello('alto');
+    if (a.livello_rischio !== 'alto' || a.livello_rischio_definito_mediante !== 'tabella_ateco') return JSON.stringify(a);
   }],
 ];
 
