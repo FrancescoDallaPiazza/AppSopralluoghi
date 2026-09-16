@@ -266,10 +266,26 @@ export function patchSceltaAteco(d: AtecoDivisione): { codice_ateco: string } {
 // antincendio e primo soccorso: un verdetto che si porta dietro la propria
 // giustificazione. Qui la giustificazione e' la tabella, e si scrive con la parola
 // che la decisione 8 di AppOverall usa per quel caso.
-export function patchApplicaLivello(livello: RischioAteco): {
-  livello_rischio: RischioAteco; livello_rischio_definito_mediante: string;
-} {
-  return { livello_rischio: livello, livello_rischio_definito_mediante: 'tabella_ateco' };
+export function patchApplicaLivello(
+  livello: RischioAteco, chi: string | null = null, oggi: Date = new Date(),
+): { livello_rischio: RischioAteco; livello_rischio_definito_mediante: string } {
+  return {
+    livello_rischio: livello,
+    livello_rischio_definito_mediante: `tabella_ateco, applicato ${firma(oggi, chi)}`,
+  };
+}
+
+// «il 16/09/2026 da Mario Rossi», o senza il «da» quando chi ha premuto non si sa:
+// una riga senza firma resta leggibile, e mentire sull'autore sarebbe peggio che
+// tacerlo. `chi` e' il tecnico collegato (nome e cognome): non e' l'identificatore
+// che la decisione 8 vuole — quello e' `tecnico.id`, e chiede una colonna sua — ma
+// e' una persona e non una stringa inventata qui.
+function firma(oggi: Date, chi: string | null): string {
+  const g = String(oggi.getDate()).padStart(2, '0');
+  const m = String(oggi.getMonth() + 1).padStart(2, '0');
+  const quando = `il ${g}/${m}/${oggi.getFullYear()}`;
+  const nome = (chi ?? '').trim();
+  return nome === '' ? quando : `${quando} da ${nome}`;
 }
 
 // Il gesto opposto: riporta il livello a «non impostato», e NON tocca il codice
@@ -284,19 +300,18 @@ export function patchApplicaLivello(livello: RischioAteco): {
 // premuto per errore. Deciso da Francesco il 16.09.2026. Ritorna `null` se la
 // motivazione e' vuota: chi chiama non ha una patch da applicare.
 //
-// La data entra nel testo perche' la colonna e' una sola. Chi ha deciso non c'e':
-// in questo repo non esiste ancora un vocabolario di operatori, e inventarne uno
-// qui significherebbe scriverlo due volte (decisione 8, repo unico).
-export function patchTogliLivello(motivazione: string, oggi: Date = new Date()): {
-  livello_rischio: null; livello_rischio_definito_mediante: string;
-} | null {
+// La data e chi ha premuto entrano nel testo perche' la colonna e' una sola. `chi`
+// e' il tecnico collegato, lo stesso che le revisioni dell'organigramma registrano
+// come autore: in questo repo la persona esiste gia', quello che manca e' la
+// colonna per puntarci (decisione 8, repo unico).
+export function patchTogliLivello(
+  motivazione: string, chi: string | null = null, oggi: Date = new Date(),
+): { livello_rischio: null; livello_rischio_definito_mediante: string } | null {
   const m = motivazione.trim();
   if (m === '') return null;
-  const g = String(oggi.getDate()).padStart(2, '0');
-  const me = String(oggi.getMonth() + 1).padStart(2, '0');
   return {
     livello_rischio: null,
-    livello_rischio_definito_mediante: `livello tolto il ${g}/${me}/${oggi.getFullYear()}: ${m}`,
+    livello_rischio_definito_mediante: `livello tolto ${firma(oggi, chi)}: ${m}`,
   };
 }
 

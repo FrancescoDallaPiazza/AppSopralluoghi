@@ -111,10 +111,10 @@ const casi = [
   // funzioni non esistono e i due casi falliscono con un'eccezione.
   ['A8 · togliere il livello lo porta a null, il codice ATECO resta, e il bottone torna a proporre', () => {
     let c = applica({ codice_ateco: null, ateco_origine: 'cella del gestionale', livello_rischio: null }, patchSceltaAteco(alta));
-    c = applica(c, patchApplicaLivello(statoRischio(c.codice_ateco, c.livello_rischio).proposto));
+    c = applica(c, patchApplicaLivello(statoRischio(c.codice_ateco, c.livello_rischio).proposto, 'Mario Rossi', new Date(2026, 8, 16)));
     if (c.livello_rischio !== 'alto') return `preparazione: livello ${c.livello_rischio}, atteso alto`;
 
-    const p = patchTogliLivello('ATECO sbagliato, corretto in visura', new Date(2026, 8, 16));
+    const p = patchTogliLivello('ATECO sbagliato, corretto in visura', 'Mario Rossi', new Date(2026, 8, 16));
     const chiavi = Object.keys(p).sort();
     if (chiavi.join(',') !== 'livello_rischio,livello_rischio_definito_mediante') return `chiavi della patch: ${chiavi.join(',')}`;
 
@@ -131,14 +131,38 @@ const casi = [
     for (const vuota of ['', '   ', String.fromCharCode(9, 10, 32)]) {
       if (patchTogliLivello(vuota) !== null) return `motivazione ${JSON.stringify(vuota)}: doveva essere null`;
     }
-    const p = patchTogliLivello('  ATECO sbagliato, corretto in visura  ', new Date(2026, 8, 16));
+    const p = patchTogliLivello('  ATECO sbagliato, corretto in visura  ', 'Mario Rossi', new Date(2026, 8, 16));
     const m = p.livello_rischio_definito_mediante;
     if (!m.includes('ATECO sbagliato, corretto in visura')) return `la motivazione non c'e': ${m}`;
     if (m.includes('  ATECO')) return `la motivazione non e' stata ripulita: ${m}`;
     if (!m.includes('16/09/2026')) return `la data non c'e': ${m}`;
     // E il gesto del bottone dice da dove viene il livello che applica.
-    const a = patchApplicaLivello('alto');
-    if (a.livello_rischio !== 'alto' || a.livello_rischio_definito_mediante !== 'tabella_ateco') return JSON.stringify(a);
+    const a = patchApplicaLivello('alto', 'Mario Rossi', new Date(2026, 8, 16));
+    if (a.livello_rischio !== 'alto') return JSON.stringify(a);
+    if (!a.livello_rischio_definito_mediante.startsWith('tabella_ateco')) return a.livello_rischio_definito_mediante;
+  }],
+  // Aggiunto il 16.09.2026, subito dopo: la data da sola non dice chi ha premuto,
+  // e il tecnico collegato questo repo lo conosce gia' (organigramma-revisioni).
+  ['A10 · la riga porta chi ha premuto, e senza di lui resta leggibile lo stesso', () => {
+    const conChi = patchTogliLivello('motivo', 'Mario Rossi', new Date(2026, 8, 16));
+    if (conChi.livello_rischio_definito_mediante !== 'livello tolto il 16/09/2026 da Mario Rossi: motivo') {
+      return conChi.livello_rischio_definito_mediante;
+    }
+    const applicato = patchApplicaLivello('alto', 'Mario Rossi', new Date(2026, 8, 16));
+    if (applicato.livello_rischio_definito_mediante !== 'tabella_ateco, applicato il 16/09/2026 da Mario Rossi') {
+      return applicato.livello_rischio_definito_mediante;
+    }
+    // Sessione che non sa dire chi: niente «da», e nessun «da null» o «da undefined».
+    for (const senza of [null, '', '   ']) {
+      const p = patchTogliLivello('motivo', senza, new Date(2026, 8, 16));
+      if (p.livello_rischio_definito_mediante !== 'livello tolto il 16/09/2026: motivo') {
+        return `senza chi (${JSON.stringify(senza)}): ${p.livello_rischio_definito_mediante}`;
+      }
+      const a2 = patchApplicaLivello('alto', senza, new Date(2026, 8, 16));
+      if (a2.livello_rischio_definito_mediante !== 'tabella_ateco, applicato il 16/09/2026') {
+        return `senza chi (${JSON.stringify(senza)}): ${a2.livello_rischio_definito_mediante}`;
+      }
+    }
   }],
 ];
 

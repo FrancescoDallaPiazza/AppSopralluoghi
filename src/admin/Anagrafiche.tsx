@@ -19,6 +19,7 @@ import {
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
 import { allineaPersoneOrganigramma } from '../lib/admin/formazione';
+import { useAuth } from '../AuthProvider';
 import Scadenzario from './Scadenzario';
 import CoseDaFare from './CoseDaFare';
 
@@ -881,6 +882,13 @@ function CampoAteco({
   // finche' `togliendo` e' falso si vede solo la voce.
   const [togliendo, setTogliendo] = useState(false);
   const [motivo, setMotivo] = useState('');
+  // Chi sta premendo: il tecnico collegato, come per le revisioni
+  // dell'organigramma. Se la sessione non lo sa dire, la riga si scrive senza
+  // firma invece che con una firma inventata.
+  const { tecnico, session } = useAuth();
+  const chi = tecnico
+    ? [tecnico.nome, tecnico.cognome].filter(Boolean).join(' ')
+    : session?.user?.email ?? null;
   const testo = codice ?? '';
   const ris = risolviAteco(testo);
   const suggerimenti = useMemo(() => cercaAteco(testo), [testo]);
@@ -971,7 +979,7 @@ function CampoAteco({
           <button
             type="button"
             disabled={!puoApplicare}
-            onClick={() => proposto && onPatch(patchApplicaLivello(proposto))}
+            onClick={() => proposto && onPatch(patchApplicaLivello(proposto, chi))}
             title={puoApplicare ? 'Applica il rischio proposto dall\u2019ATECO' : 'Livello di rischio del cliente'}
             style={soloProposta && effettivo ? {
               // Solo la proposta, il cliente non ha un livello (15.09.2026): contorno
@@ -1037,7 +1045,7 @@ function CampoAteco({
                   type="button"
                   disabled={!motivo.trim()}
                   onClick={() => {
-                    const p = patchTogliLivello(motivo);
+                    const p = patchTogliLivello(motivo, chi);
                     if (!p) return;
                     onPatch(p);
                     setTogliendo(false);
