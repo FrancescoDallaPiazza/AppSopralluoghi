@@ -64,6 +64,12 @@ export interface Cliente {
   // Livello di rischio (colonna da migration 015): proposto in anagrafica dal
   // codice ATECO (Allegato IV ASR 2025) e sovrascrivibile dall'organigramma.
   livello_rischio: 'basso' | 'medio' | 'alto' | null;
+  // Come e' stato deciso quel livello (migration 072): testo libero, scritto nella
+  // stessa patch del verdetto, come per antincendio e primo soccorso. Lo scrive il
+  // bottone RISCHIO ("tabella_ateco") e lo scrive il gesto che toglie il livello
+  // (la motivazione dell'operatore, con la data). NULL = non sappiamo come e' stato
+  // deciso: e' la verita' per tutte le righe anteriori alla migrazione.
+  livello_rischio_definito_mediante: string | null;
   // Emergenze (migration 041/049): livello rischio incendio e gruppo primo
   // soccorso, definiti a monte; guidano il corso richiesto agli addetti.
   // Numero di lavoratori occupati (migration 062). Determina le ore dovute dove

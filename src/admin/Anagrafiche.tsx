@@ -14,11 +14,13 @@ import {
 import type { Cliente, Sede } from '../lib/types';
 import {
   risolviAteco, cercaAteco, ETICHETTA_RISCHIO, classificaAteco,
-  patchSceltaAteco, statoRischio,
+  patchSceltaAteco, statoRischio, patchTogliLivello, patchApplicaLivello, righeDefinitoMediante,
+  patchScegliLivello, livelliPiuAlti,
   type AtecoDivisione, type RischioAteco,
 } from '../formazione';
 import { OrganigrammaCliente, RisorseUmane } from '../formazione';
 import { allineaPersoneOrganigramma } from '../lib/admin/formazione';
+import { useAuth } from '../AuthProvider';
 import Scadenzario from './Scadenzario';
 import CoseDaFare from './CoseDaFare';
 
@@ -375,6 +377,7 @@ function SchedaCliente({
         </div>
         <CampoAteco
           codice={cliente.codice_ateco}
+          definitoMediante={cliente.livello_rischio_definito_mediante}
           origine={cliente.ateco_origine}
           livello={cliente.livello_rischio}
           onPatch={patch}
@@ -863,16 +866,35 @@ function SediCliente({ cliente, sedi, onCambia }: {
 // dopo una correzione a mano l'avviso «la divisione potrebbe essere un'altra»
 // confronta ancora il codice nuovo con quella cella, e puo' restare.
 function CampoAteco({
-  codice, origine, livello, onPatch,
+  codice, origine, livello, definitoMediante, onPatch,
 }: {
   codice: string | null;
   // La cella da cui il codice e' stato derivato (mig. 065). Serve a dire se
   // quella divisione sia affidabile: il codice da solo non lo puo' dire.
   origine: string | null;
   livello: RischioAteco | null;
+  // Come e' stato deciso il livello che c'e' (mig. 072). Si mostra sotto il
+  // bottone: un livello senza la sua ragione e' un verdetto senza firma.
+  definitoMediante: string | null;
   onPatch: (p: Partial<Cliente>) => void;
 }) {
   const [aperto, setAperto] = useState(false);
+  // Il gesto che toglie il livello chiede una motivazione, e la chiede qui dentro:
+  // finche' `togliendo` e' falso si vede solo la voce.
+  const [togliendo, setTogliendo] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  // Chi sta premendo: il tecnico collegato, come per le revisioni
+  // dell'organigramma. Se la sessione non lo sa dire, la riga si scrive senza
+  // firma invece che con una firma inventata.
+  const [storiaAperta, setStoriaAperta] = useState(false);
+  // Il terzo gesto: un livello deciso da una persona. Si scelgono solo i livelli
+  // PIU ALTI di quello che si vede (decisione di Francesco, 16.09.2026).
+  const [scegliendo, setScegliendo] = useState<RischioAteco | null>(null);
+  const [motivoScelta, setMotivoScelta] = useState('');
+  const { tecnico, session } = useAuth();
+  const chi = tecnico
+    ? [tecnico.nome, tecnico.cognome].filter(Boolean).join(' ')
+    : session?.user?.email ?? null;
   const testo = codice ?? '';
   const ris = risolviAteco(testo);
   const suggerimenti = useMemo(() => cercaAteco(testo), [testo]);
@@ -892,6 +914,8 @@ function CampoAteco({
   };
 
   const { proposto, effettivo, puoApplicare, soloProposta } = statoRischio(testo, livello);
+  const righeDecisione = righeDefinitoMediante(definitoMediante);
+  const piuAlti = livelliPiuAlti(effettivo);
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -963,7 +987,7 @@ function CampoAteco({
           <button
             type="button"
             disabled={!puoApplicare}
-            onClick={() => proposto && onPatch({ livello_rischio: proposto })}
+            onClick={() => proposto && onPatch(patchApplicaLivello(proposto, chi, definitoMediante))}
             title={puoApplicare ? 'Applica il rischio proposto dall\u2019ATECO' : 'Livello di rischio del cliente'}
             style={soloProposta && effettivo ? {
               // Solo la proposta, il cliente non ha un livello (15.09.2026): contorno
@@ -992,6 +1016,147 @@ function CampoAteco({
             <div style={{ fontSize: 11, marginTop: 4, color: 'var(--ink-soft)', maxWidth: 170 }}>
               ATECO propone {ETICHETTA_RISCHIO[proposto]}: premi per applicarlo
             </div>
+          )}
+          {/* Il gesto opposto (16.09.2026): il bottone applica, questo disapplica.
+              Compare solo quando un livello e' salvato — su un cliente che non ne ha
+              non c'e' niente da togliere. Il codice ATECO resta dov'e', e la
+              motivazione e' obbligatoria: senza, il livello sparirebbe senza che
+              nessuno sappia perche'. */}
+          {livello && !togliendo && (
+            <button
+              type="button"
+              onClick={() => { setTogliendo(true); setMotivo(''); }}
+              title="Riporta il livello a «non impostato». Il codice ATECO resta"
+              style={{
+                display: 'block', margin: '4px auto 0', background: 'none', border: 'none',
+                padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11,
+                color: 'var(--ink-soft)', textDecoration: 'underline',
+              }}>
+              togli il livello
+            </button>
+          )}
+          {livello && togliendo && (
+            <div style={{ marginTop: 6, textAlign: 'left', width: 220 }}>
+              <input
+                type="text"
+                autoFocus
+                value={motivo}
+                placeholder="Perché si toglie"
+                onChange={(e) => setMotivo(e.target.value)}
+                style={{
+                  width: '100%', fontFamily: 'inherit', fontSize: 12, padding: '6px 8px',
+                  border: '1px solid var(--line)', borderRadius: 8,
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                <button
+                  type="button"
+                  disabled={!motivo.trim()}
+                  onClick={() => {
+                    const p = patchTogliLivello(motivo, chi, definitoMediante);
+                    if (!p) return;
+                    onPatch(p);
+                    setTogliendo(false);
+                  }}
+                  style={{
+                    fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, padding: '5px 10px',
+                    borderRadius: 8, border: 'none', color: '#fff',
+                    background: motivo.trim() ? 'var(--no)' : 'var(--faint)',
+                    cursor: motivo.trim() ? 'pointer' : 'default',
+                  }}>
+                  Togli
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTogliendo(false)}
+                  style={{
+                    fontFamily: 'inherit', fontSize: 11.5, padding: '5px 10px', borderRadius: 8,
+                    border: '1px solid var(--line)', background: 'none', cursor: 'pointer',
+                  }}>
+                  Annulla
+                </button>
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', marginTop: 4 }}>
+                La motivazione resta scritta accanto al livello. Poi premi Salva.
+              </div>
+            </div>
+          )}
+          {/* Il terzo gesto (16.09.2026): un livello che la tabella non propone.
+              Solo verso l'alto, e con la motivazione: vedi `livelliPiuAlti`. */}
+          {!togliendo && piuAlti.length > 0 && (
+            scegliendo === null ? (
+              <button
+                type="button"
+                onClick={() => { setScegliendo(piuAlti[0]); setMotivoScelta(''); }}
+                title="Applica un livello piu alto di quello proposto, con la ragione"
+                style={{
+                  display: 'block', margin: '4px auto 0', background: 'none', border: 'none',
+                  padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11,
+                  color: 'var(--ink-soft)', textDecoration: 'underline',
+                }}>
+                scegli a mano
+              </button>
+            ) : (
+              <div style={{ marginTop: 6, textAlign: 'left', width: 220 }}>
+                <div style={{ display: 'flex', gap: 5, marginBottom: 5 }}>
+                  {piuAlti.map((l) => (
+                    <button key={l} type="button" onClick={() => setScegliendo(l)}
+                      style={{
+                        flex: 1, fontFamily: 'inherit', fontSize: 11.5, fontWeight: 800,
+                        padding: '5px 4px', borderRadius: 8, cursor: 'pointer',
+                        border: `2px solid ${coloreRischio(l)}`,
+                        background: scegliendo === l ? coloreRischio(l) : 'transparent',
+                        color: scegliendo === l ? '#fff' : coloreRischio(l),
+                      }}>
+                      {ETICHETTA_RISCHIO[l]}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  autoFocus
+                  value={motivoScelta}
+                  placeholder="Perché piu alto (DVR, verbale...)"
+                  onChange={(e) => setMotivoScelta(e.target.value)}
+                  style={{
+                    width: '100%', fontFamily: 'inherit', fontSize: 12, padding: '6px 8px',
+                    border: '1px solid var(--line)', borderRadius: 8,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                  <button
+                    type="button"
+                    disabled={!motivoScelta.trim()}
+                    onClick={() => {
+                      const p = patchScegliLivello(scegliendo, motivoScelta, effettivo, chi, definitoMediante);
+                      if (!p) return;
+                      onPatch(p);
+                      setScegliendo(null);
+                    }}
+                    style={{
+                      fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, padding: '5px 10px',
+                      borderRadius: 8, border: 'none', color: '#fff',
+                      background: motivoScelta.trim() ? coloreRischio(scegliendo) : 'var(--faint)',
+                      cursor: motivoScelta.trim() ? 'pointer' : 'default',
+                    }}>
+                    Applica
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScegliendo(null)}
+                    style={{
+                      fontFamily: 'inherit', fontSize: 11.5, padding: '5px 10px', borderRadius: 8,
+                      border: '1px solid var(--line)', background: 'none', cursor: 'pointer',
+                    }}>
+                    Annulla
+                  </button>
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', marginTop: 4 }}>
+                  Solo piu alto di {effettivo ? ETICHETTA_RISCHIO[effettivo] : 'niente'}: piu basso si decide
+                  per persona, nel campo «Rischio (override)». Poi premi Salva.
+                </div>
+              </div>
+            )
           )}
         </div>
       </div>
@@ -1041,8 +1206,46 @@ function CampoAteco({
           ? <b style={{ color: coloreRischio(livello) }}>{ETICHETTA_RISCHIO[livello]}</b>
           : <span style={{ color: 'var(--faint)' }}>non impostato</span>}
         {puoApplicare && <> · proposto <b style={{ color: coloreRischio(proposto!) }}>{ETICHETTA_RISCHIO[proposto!]}</b> dall'ATECO (usa il bottone)</>}
-        {' '}· modificabile anche dall'organigramma del cliente.
       </div>
+      {/* Il verdetto e la sua ragione, uno sotto l'altra. Il 16.09.2026 questa riga
+          diceva anche «modificabile anche dall'organigramma del cliente», che nel
+          codice non trova riscontro (la schermata Formazione manda qui): tolta
+          finche' non si sa quale delle due frasi sia quella vecchia. */}
+      {righeDecisione.length > 0 && (
+        <div style={{ marginTop: 3, fontSize: 11.5, color: 'var(--ink-soft)', position: 'relative' }}>
+          Deciso mediante: <i>{righeDecisione[0]}</i>
+          {/* Le decisioni precedenti non si buttano e non stanno sotto gli occhi:
+              la scheda mostra l'ultima, le altre aspettano dietro la i. */}
+          {righeDecisione.length > 1 && (
+            <>
+              {' '}
+              <button
+                type="button"
+                title="Le decisioni precedenti"
+                onMouseEnter={() => setStoriaAperta(true)}
+                onMouseLeave={() => setStoriaAperta(false)}
+                onClick={() => setStoriaAperta((v) => !v)}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontFamily: 'inherit', fontSize: 11.5, color: 'var(--ink-soft)',
+                }}>
+                ⓘ {righeDecisione.length - 1} prima
+              </button>
+              {storiaAperta && (
+                <div style={{
+                  position: 'absolute', zIndex: 30, left: 0, top: '100%', marginTop: 4,
+                  background: '#fff', border: '1px solid var(--line)', borderRadius: 10,
+                  boxShadow: '0 8px 24px rgba(0,0,0,.12)', padding: '8px 10px', maxWidth: 420,
+                }}>
+                  {righeDecisione.slice(1).map((r, i) => (
+                    <div key={i} style={{ marginTop: i === 0 ? 0 : 4 }}>{r}</div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

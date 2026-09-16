@@ -261,6 +261,115 @@ export function patchSceltaAteco(d: AtecoDivisione): { codice_ateco: string } {
   return { codice_ateco: d.divisione };
 }
 
+// Cosa scrive il bottone RISCHIO quando applica la proposta: il livello E come e'
+// stato deciso. Il secondo campo (mig. 072) e' la sorella dei due che esistono per
+// antincendio e primo soccorso: un verdetto che si porta dietro la propria
+// giustificazione. Qui la giustificazione e' la tabella, e si scrive con la parola
+// che la decisione 8 di AppOverall usa per quel caso.
+export function patchApplicaLivello(
+  livello: RischioAteco, chi: string | null = null,
+  precedente: string | null = null, oggi: Date = new Date(),
+): { livello_rischio: RischioAteco; livello_rischio_definito_mediante: string } {
+  return {
+    livello_rischio: livello,
+    livello_rischio_definito_mediante: componi(`tabella_ateco, applicato ${firma(oggi, chi)}`, precedente),
+  };
+}
+
+// Il testo si ACCUMULA: la riga nuova va in testa e le precedenti restano sotto.
+// Il 16.09.2026 la prima versione sovrascriveva, e riapplicare il livello faceva
+// sparire il motivo per cui era stato tolto — cioe' proprio la riga che serviva a
+// capire perche' adesso c'e'. Una colonna sola e' la forma povera di un archivio:
+// la forma giusta e' una riga per decisione, ed e' la decisione 8 nel repo unico.
+// Qui si tiene tutto in un testo, in ordine dal piu' recente al piu' vecchio.
+function componi(riga: string, precedente: string | null): string {
+  const p = (precedente ?? '').trim();
+  return p === '' ? riga : riga + '\n' + p;
+}
+
+// I livelli che si possono scegliere a mano: SOLO quelli piu' alti di quello che
+// c'e' adesso. Deciso da Francesco il 16.09.2026, e non e' una limitazione
+// arbitraria: alzare la classe rispetto al default dell'Allegato IV e' la mossa che
+// l'Interpello 1/2025 prevede quando la valutazione dei rischi trova rischi
+// particolari, mentre ABBASSARLA per l'intera azienda vorrebbe dire dichiarare che
+// il default sbaglia per tutti. La discesa che l'ASR 2025 prevede (Parte II 2.1.1,
+// chi non frequenta i reparti produttivi) e' **per mansione** e ha gia' il suo posto:
+// il campo «Rischio (override)» della singola persona.
+//
+// `corrente` e' il livello che si vede — quello salvato, o la proposta dell'ATECO se
+// non ce n'e' uno. Con niente, si puo' scegliere qualunque cosa: non c'e' un basso
+// da alzare.
+export const ORDINE_RISCHIO: RischioAteco[] = ['basso', 'medio', 'alto'];
+
+export function livelliPiuAlti(corrente: RischioAteco | null | undefined): RischioAteco[] {
+  if (corrente == null) return ORDINE_RISCHIO.slice();
+  return ORDINE_RISCHIO.slice(ORDINE_RISCHIO.indexOf(corrente) + 1);
+}
+
+// Il terzo gesto: un livello deciso da una persona e non dalla tabella. Chiede la
+// motivazione come «togli», e si rifiuta se il livello non e' piu' alto di quello
+// che c'e': la regola sta qui e non solo nel menu, cosi' non la si aggira.
+export function patchScegliLivello(
+  livello: RischioAteco, motivazione: string, corrente: RischioAteco | null | undefined = null,
+  chi: string | null = null, precedente: string | null = null, oggi: Date = new Date(),
+): { livello_rischio: RischioAteco; livello_rischio_definito_mediante: string } | null {
+  const m = motivazione.trim();
+  if (m === '') return null;
+  if (!livelliPiuAlti(corrente).includes(livello)) return null;
+  return {
+    livello_rischio: livello,
+    livello_rischio_definito_mediante: componi(
+      `livello ${ETICHETTA_RISCHIO[livello]} scelto a mano ${firma(oggi, chi)}: ${m}`, precedente),
+  };
+}
+
+// Le decisioni scritte nella colonna, dalla piu' recente. Le legge la scheda per
+// mostrare l'ultima e tenere le altre dietro una i.
+export function righeDefinitoMediante(testo: string | null | undefined): string[] {
+  return (testo ?? '').split('\n').map((r) => r.trim()).filter((r) => r !== '');
+}
+
+// «il 16/09/2026 da Mario Rossi», o senza il «da» quando chi ha premuto non si sa:
+// una riga senza firma resta leggibile, e mentire sull'autore sarebbe peggio che
+// tacerlo. `chi` e' il tecnico collegato (nome e cognome): non e' l'identificatore
+// che la decisione 8 vuole — quello e' `tecnico.id`, e chiede una colonna sua — ma
+// e' una persona e non una stringa inventata qui.
+function firma(oggi: Date, chi: string | null): string {
+  const g = String(oggi.getDate()).padStart(2, '0');
+  const m = String(oggi.getMonth() + 1).padStart(2, '0');
+  const quando = `il ${g}/${m}/${oggi.getFullYear()}`;
+  const nome = (chi ?? '').trim();
+  return nome === '' ? quando : `${quando} da ${nome}`;
+}
+
+// Il gesto opposto: riporta il livello a «non impostato», e NON tocca il codice
+// ATECO. Il 16.09.2026, nella verifica a vista, un livello applicato per prova non
+// si poteva piu' togliere: il bottone lo scriveva e nessuna schermata lo
+// cancellava. Finche' il livello seguiva l'ATECO il gesto opposto era cambiare il
+// codice; da quando e' un gesto suo, gliene serve uno suo anche per disfarlo.
+//
+// **Senza motivazione non si toglie**, e non e' un attrito decorativo: un livello
+// che sparisce senza una ragione scritta e' indistinguibile da un livello che non
+// c'e' mai stato, e fra un mese nessuno sa se fosse sbagliato o se qualcuno abbia
+// premuto per errore. Deciso da Francesco il 16.09.2026. Ritorna `null` se la
+// motivazione e' vuota: chi chiama non ha una patch da applicare.
+//
+// La data e chi ha premuto entrano nel testo perche' la colonna e' una sola. `chi`
+// e' il tecnico collegato, lo stesso che le revisioni dell'organigramma registrano
+// come autore: in questo repo la persona esiste gia', quello che manca e' la
+// colonna per puntarci (decisione 8, repo unico).
+export function patchTogliLivello(
+  motivazione: string, chi: string | null = null,
+  precedente: string | null = null, oggi: Date = new Date(),
+): { livello_rischio: null; livello_rischio_definito_mediante: string } | null {
+  const m = motivazione.trim();
+  if (m === '') return null;
+  return {
+    livello_rischio: null,
+    livello_rischio_definito_mediante: componi(`livello tolto ${firma(oggi, chi)}: ${m}`, precedente),
+  };
+}
+
 // Cosa mostra e cosa propone il bottone RISCHIO. `proposto` e' il livello
 // dell'Allegato IV per il codice scritto; `effettivo` e' quello del cliente, o la
 // proposta se il cliente non ne ha uno; `puoApplicare` dice se il bottone ha
