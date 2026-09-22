@@ -3433,6 +3433,45 @@ state toccate. Non è una lettura da rifare meglio: è una **domanda al gestiona
 quando è stato fatto quell'aggiornamento, su quali corsi, se resta traccia del
 valore precedente. Prima della domanda sulla colonna `Data`.
 
+## VERDEPOSITIVO SRL non c'è più, e ci sono volute due letture (22 settembre)
+
+Il cliente è fallito. L'assegnazione era «completarla» (indirizzo, ATECO,
+livelli): è decaduta, e Francesco ha ordinato la cancellazione. Lo script è
+`supabase/scripts/cancella_verdepositivo.sql` (`449e1cf`, più `393264b` e
+`9f51c49`), lanciato da Francesco dall'SQL Editor — **da qui non si esegue
+niente sulla produzione**.
+
+**Fatto**, e lo dice la lettura in sola lettura dopo il commit:
+`verdepositivo_rimaste` **0**, clienti **609 → 608**. Con il cliente se ne sono
+andate in cascata la sua sede e **4 persone**.
+
+**Perché contare prima non era una formalità.** Su questo schema un
+`delete from cliente` **non si ferma da solo**: `sede` e `persona` sono
+`on delete cascade` (029, 015), `azione.responsabile_cliente_id` è
+`on delete set null` (001), e solo `incarico` è `restrict`. Un delete a mano
+non avrebbe dato errore: si sarebbe portato via quelle 4 persone in silenzio,
+e avremmo letto «cancellata» senza sapere di averle perse. Il primo lancio
+infatti **si è fermato** e le ha mostrate; solo allora, visto che dietro di
+loro `formazione`, `nomina`, `esonero`, `azione` e `adempimento` erano tutti a
+zero — anagrafiche nude dell'import — Francesco ha deciso di farle passare.
+**La decisione è arrivata dopo il referto, non prima.** Su AppOverall vale
+l'opposto (tutte `restrict`): il loro delete rifiuta, il nostro obbedisce.
+
+Due cose dello script che val la pena riusare:
+
+- **i pendenti li dice `pg_constraint`, ricorsivamente**, non un elenco di
+  tabelle scritto a memoria — che invecchia con lo schema. E se incontra una
+  chiave che non sa seguire solleva un errore invece di contare per difetto;
+- **la condizione sta dentro la `where` del delete**, non in un
+  `raise exception`: un errore annulla la transazione e si porta via anche il
+  referto, e si vedrebbe l'eccezione al posto dei conteggi, che sono l'unica
+  cosa per cui lo script esiste.
+
+Un inciampo, per chi riscrive query sul catalogo: `42P21` al primo lancio. I
+nomi presi da `pg_class` sono di tipo `name`, collazione **"C"**; il termine
+non ricorsivo della CTE era testo normale. Si forza `collate "default"` dove
+quei nomi diventano confronti.
+
 ## Cosa blocca, e chi lo tiene
 
 - **I clienti NON sono da rifare: ci sono già.** Misurato il 9 settembre
