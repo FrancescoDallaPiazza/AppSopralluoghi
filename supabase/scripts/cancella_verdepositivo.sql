@@ -37,6 +37,13 @@
 -- contato e blocca lui. Per far bloccare anche la sede vuota,
 -- togli la riga marcata "SEDE" piu' sotto.
 --
+-- LE PERSONE BLOCCANO, e il 22.09.2026 hanno bloccato: 4 righe in
+-- "persona", anagrafiche nude (formazione, nomina, esonero, azione,
+-- adempimento tutti a zero dietro di loro). Farle passare vuol dire
+-- cancellare dati di persone vere in cascata (015), e quella riga
+-- non l'ho scritta io: la scrive Francesco, vedi il commento
+-- "PERSONE" nella condizione del delete.
+--
 -- SE QUALCOSA PENDE, l'alternativa e' in fondo, commentata:
 -- marcarla non attiva invece di cancellarla. Un cliente che chiude
 -- ha una storia - attestati, nomine - che un ispettore puo' chiedere
@@ -292,6 +299,20 @@ where id = (select id from _bersaglio)
       and tabella <> 'public.sede'   -- SEDE: togli questa riga per
   )                                  -- far bloccare anche la sede
   and not exists (select 1 from _sciolte where righe > 0);
+-- PERSONE. Cosi' com'e', le 4 persone di VERDEPOSITIVO bloccano, e
+-- il 22.09.2026 hanno bloccato. Per farle passare in cascata:
+--   - nella prima condizione, al posto di
+--       and tabella <> 'public.sede'
+--     va
+--       and tabella not in ('public.sede', 'public.persona')
+--   - nella riga qui sopra, al posto di
+--       where righe > 0
+--     va
+--       where righe > 0
+--         and tabella not in ('public.sede', 'public.persona')
+-- Vanno cambiate tutte e due: la seconda regge le colonne senza
+-- vincolo, e "persona.import_key" contiene l'id del cliente, quindi
+-- da sola fermerebbe lo script lo stesso.
 
 insert into _esito
   values ('clienti dopo', (select count(*)::text from public.cliente));
