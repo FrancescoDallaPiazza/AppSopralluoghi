@@ -81,13 +81,17 @@ end $$;
 -- ------------------------------------------------------------------
 -- 2. Le chiavi esterne, dal catalogo.
 -- ------------------------------------------------------------------
+-- Il "collate" non e' un vezzo: i nomi presi dal catalogo sono di
+-- tipo "name", che ha collazione "C". Senza questo, la ricorsione
+-- qui sotto rifiuta di partire (42P21) e i confronti con _visto
+-- litigano sulla collazione.
 create temp table _fk as
 select
   con.conname::text                       as nome,
-  (nf.nspname || '.' || cf.relname)::text as figlio,
-  (np.nspname || '.' || cp.relname)::text as padre,
-  af.attname::text                        as col_figlio,
-  ap.attname::text                        as col_padre,
+  ((nf.nspname || '.' || cf.relname)::text collate "default") as figlio,
+  ((np.nspname || '.' || cp.relname)::text collate "default") as padre,
+  (af.attname::text collate "default")     as col_figlio,
+  (ap.attname::text collate "default")      as col_padre,
   array_length(con.conkey, 1)             as n_col
 from pg_constraint con
 join pg_class     cf on cf.oid = con.conrelid
