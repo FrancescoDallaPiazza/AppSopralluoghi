@@ -37,12 +37,13 @@
 -- contato e blocca lui. Per far bloccare anche la sede vuota,
 -- togli la riga marcata "SEDE" piu' sotto.
 --
--- LE PERSONE BLOCCANO, e il 22.09.2026 hanno bloccato: 4 righe in
--- "persona", anagrafiche nude (formazione, nomina, esonero, azione,
--- adempimento tutti a zero dietro di loro). Farle passare vuol dire
--- cancellare dati di persone vere in cascata (015), e quella riga
--- non l'ho scritta io: la scrive Francesco, vedi il commento
--- "PERSONE" nella condizione del delete.
+-- NEANCHE LE PERSONE BLOCCANO PIU', e questa e' la decisione di
+-- Francesco del 22.09.2026, presa DOPO aver letto il referto del
+-- primo lancio: 4 righe in "persona", anagrafiche nude - formazione,
+-- nomina, esonero, azione e adempimento tutti a zero dietro di loro.
+-- Se ne vanno in cascata col cliente (015). Sono dati di persone
+-- vere e il piano Supabase e' free: se ci si ripensa, si torna
+-- indietro PRIMA di lanciare, vedi il commento "PERSONE" sotto.
 --
 -- SE QUALCOSA PENDE, l'alternativa e' in fondo, commentata:
 -- marcarla non attiva invece di cancellarla. Un cliente che chiude
@@ -296,11 +297,16 @@ where id = (select id from _bersaglio)
   and not exists (
     select 1 from _conta
     where righe > 0
-      and tabella <> 'public.sede'   -- SEDE: togli questa riga per
-  )                                  -- far bloccare anche la sede
-  and not exists (select 1 from _sciolte where righe > 0);
--- PERSONE. Cosi' com'e', le 4 persone di VERDEPOSITIVO bloccano, e
--- il 22.09.2026 hanno bloccato. Per farle passare in cascata:
+      and tabella not in ('public.sede', 'public.persona')
+  )
+  and not exists (
+    select 1 from _sciolte
+    where righe > 0
+      and tabella not in ('public.sede', 'public.persona')
+  );
+-- PERSONE. Al primo lancio, il 22.09.2026, le 4 persone di
+-- VERDEPOSITIVO hanno bloccato. Francesco ha deciso di farle passare
+-- in cascata, e questo e' il cambio, rispetto a quel lancio:
 --   - nella prima condizione, al posto di
 --       and tabella <> 'public.sede'
 --     va
